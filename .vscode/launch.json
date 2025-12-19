@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "BeApplication",
+            "request": "launch",
+            "mainClass": "DoAn.BE.BeApplication",
+            "projectName": "BE"
+        },
+        {
+            "name": "Mobile (Flutter)",
+            "request": "launch",
+            "type": "dart",
+            "program": "mobile/lib/main.dart"
+        },
+        {
+            "name": "Web Frontend (Chrome)",
+            "request": "launch",
+            "type": "chrome",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/frontend-web/src"
+        },
+        {
+            "name": "Backend (Spring Boot)",
+            "type": "java",
+            "request": "launch",
+            "mainClass": "com.dungnha3.BE.BeApplication",
+            "projectName": "BE"
+        }
+    ]
+}

@@ -1,0 +1,240 @@
+/* Audit Logs Page - Clean Style */
+
+.audit-logs-container {
+    padding: 0;
+}
+
+/* Header */
+.audit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 20px 24px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+}
+
+.audit-header-left h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #0891b2;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.audit-header-left p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.btn-refresh {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-refresh:hover {
+    background: #e2e8f0;
+}
+
+/* Empty State */
+.empty-state {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 16px;
+    padding: 60px 40px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+
+.empty-state i {
+    font-size: 48px;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    font-size: 1.1rem;
+    color: #1e293b;
+    margin: 0 0 6px;
+}
+
+.empty-state p {
+    color: #64748b;
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Table Card */
+.logs-table-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.logs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.logs-table thead {
+    background: #f8fafc;
+}
+
+.logs-table th {
+    padding: 14px 18px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.logs-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+}
+
+.logs-table tbody tr:hover {
+    background: rgba(8, 145, 178, 0.03);
+}
+
+.logs-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Time Cell */
+.time-cell {
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* Actor Info */
+.actor-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.actor-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.actor-role {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+/* Action Badge */
+.action-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.action-badge i {
+    font-size: 12px;
+}
+
+/* Target Info */
+.target-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.target-name {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.target-type {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* Severity Badge */
+.severity-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Loading */
+.audit-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
+    color: #64748b;
+}
+
+.audit-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #0891b2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error */
+.audit-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.audit-error i {
+    font-size: 40px;
+    color: #f59e0b;
+    margin-bottom: 12px;
+}
+
+.audit-error p {
+    color: #64748b;
+    margin: 0 0 16px;
+}
+
+.audit-error button {
+    padding: 10px 20px;
+    background: #0891b2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.audit-error button:hover {
+    background: #0e7490;
+}

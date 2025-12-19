@@ -1,0 +1,77 @@
+# Project-wide ignores
+
+# Logs
+logs/
+*.log
+*.gz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/*
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Temp files
+*.tmp
+*.bak
+*.cache
+
+# =====================================================
+# SECURITY - NEVER COMMIT THESE FILES!
+# =====================================================
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Application secrets
+**/application-local.properties
+**/application-prod.properties
+**/application-secret.properties
+
+# Firebase credentials
+firebase-*.json
+*-firebase-adminsdk-*.json
+google-services.json
+
+# SSL/TLS certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# AWS/Cloud credentials
+.aws/
+credentials.json
+
+# =====================================================
+# Build outputs & Dependencies
+# =====================================================
+
+# Dependencies (will be handled by subproject gitignores)
+node_modules/
+
+# Java
+target/
+*.class
+*.jar
+*.war
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Uploads (user data)
+uploads/
+!uploads/.gitkeep

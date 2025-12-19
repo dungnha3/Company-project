@@ -1,0 +1,7 @@
+export { default as ProfilePage } from '@/features/employee/profile/ProfilePage'
+export { default as MyPayrollPage } from '@/features/employee/payroll/MyPayrollPage'
+export { default as MyAttendancePage } from '@/features/employee/attendance/MyAttendancePage'
+export { default as MyLeavePage } from '@/features/employee/leave/MyLeavePage'
+export { default as MyDocumentsPage } from '@/features/employee/documents/MyDocumentsPage'
+export { default as MyProjectsPage } from '@/features/employee/projects/MyProjectsPage'
+export { default as MyStoragePage } from '@/features/employee/storage/MyStoragePage'

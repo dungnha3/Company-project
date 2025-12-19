@@ -1,0 +1,296 @@
+/* HR Notifications Page Styles - Matching HR Dashboard Theme */
+
+.hr-notif-container {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.55));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.6));
+    padding: 25px;
+    box-shadow: var(--shadow, 0 8px 32px 0 rgba(31, 38, 135, 0.07));
+}
+
+/* Header */
+.hr-notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.hr-notif-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark, #2d3436);
+}
+
+.hr-notif-subtitle {
+    margin: 4px 0 0 0;
+    font-size: 0.9rem;
+    color: var(--text-light, #636e72);
+}
+
+.hr-notif-create-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #8e44ad, #a29bfe);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(142, 68, 173, 0.3);
+    transition: all 0.3s ease;
+}
+
+.hr-notif-create-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(142, 68, 173, 0.4);
+}
+
+/* Stats */
+.hr-notif-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.hr-notif-stat-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 16px 24px;
+    border-radius: 15px;
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.6));
+    box-shadow: var(--shadow);
+    min-width: 120px;
+}
+
+.hr-notif-stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color, #8e44ad);
+}
+
+.hr-notif-stat-value.text-green {
+    color: #00b894;
+    background: none;
+}
+
+.hr-notif-stat-value.text-orange {
+    color: #f39c12;
+    background: none;
+}
+
+.hr-notif-stat-label {
+    font-size: 0.85rem;
+    color: var(--text-light, #636e72);
+    margin-top: 4px;
+}
+
+/* Table Container */
+.hr-notif-table-container {
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 15px;
+    overflow: hidden;
+    border: var(--glass-border);
+}
+
+.hr-notif-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hr-notif-table thead {
+    background: rgba(142, 68, 173, 0.08);
+}
+
+.hr-notif-table th {
+    text-align: left;
+    padding: 14px 16px;
+    color: var(--text-light, #636e72);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.hr-notif-table th.text-center,
+.hr-notif-table td.text-center {
+    text-align: center;
+}
+
+.hr-notif-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.hr-notif-table tbody tr:hover {
+    background: rgba(142, 68, 173, 0.05);
+}
+
+.hr-notif-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    font-size: 0.9rem;
+    color: var(--text-dark, #2d3436);
+}
+
+.hr-notif-title-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hr-notif-title-cell strong {
+    color: var(--text-dark, #2d3436);
+}
+
+.hr-notif-preview {
+    font-size: 0.8rem;
+    color: var(--text-light, #636e72);
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badges */
+.hr-notif-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.priority-urgent {
+    background: linear-gradient(135deg, #ff7675, #d63031);
+    color: white;
+}
+
+.priority-high {
+    background: linear-gradient(135deg, #fdcb6e, #f39c12);
+    color: white;
+}
+
+.priority-normal {
+    background: rgba(14, 132, 227, 0.15);
+    color: #0984e3;
+}
+
+.priority-low {
+    background: rgba(0, 184, 148, 0.15);
+    color: #00b894;
+}
+
+.status-read {
+    background: rgba(0, 184, 148, 0.15);
+    color: #00b894;
+}
+
+.status-unread {
+    background: rgba(253, 203, 110, 0.25);
+    color: #f39c12;
+}
+
+.hr-notif-delete-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 118, 117, 0.15);
+    color: #ff7675;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hr-notif-delete-btn:hover {
+    background: #ff7675;
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Loading & Empty States */
+.hr-notif-loading {
+    padding: 48px;
+    text-align: center;
+    color: var(--text-light, #636e72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.hr-notif-empty {
+    padding: 64px;
+    text-align: center;
+}
+
+.hr-notif-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+}
+
+.hr-notif-empty-text {
+    font-size: 1rem;
+    color: var(--text-light, #636e72);
+    margin-bottom: 24px;
+}
+
+/* Pagination */
+.hr-notif-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.5);
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.hr-notif-page-info {
+    font-size: 0.85rem;
+    color: var(--text-light, #636e72);
+}
+
+.hr-notif-page-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.hr-notif-page-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(142, 68, 173, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.6);
+    color: var(--text-light, #636e72);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.hr-notif-page-btn:hover:not(:disabled) {
+    background: rgba(142, 68, 173, 0.1);
+    border-color: var(--primary-color, #8e44ad);
+    color: var(--primary-color, #8e44ad);
+}
+
+.hr-notif-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.hr-notif-page-btn.active {
+    background: linear-gradient(135deg, #8e44ad, #a29bfe);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 10px rgba(142, 68, 173, 0.3);
+}

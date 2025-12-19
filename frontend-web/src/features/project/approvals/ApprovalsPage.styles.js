@@ -1,0 +1,126 @@
+export const styles = {
+  container: {
+    width: '100%',
+    minHeight: '100vh',
+    backgroundColor: '#f8fafc',
+    padding: '24px',
+  },
+  header: {
+    marginBottom: '24px',
+  },
+  title: {
+    fontSize: '28px',
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: '8px',
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#64748b',
+  },
+  pageContent: {
+    width: '100%',
+  },
+  tableCard: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '24px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  },
+  tableHeader: {
+    marginBottom: '20px',
+  },
+  tableTitle: {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#1e293b',
+    margin: 0,
+  },
+  approvalCard: {
+    padding: '20px',
+    marginBottom: '16px',
+    backgroundColor: '#f8fafc',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+  },
+  approvalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '16px',
+  },
+  approvalEmployee: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: '4px',
+  },
+  approvalType: {
+    fontSize: '14px',
+    color: '#64748b',
+  },
+  approvalBody: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '16px',
+    marginBottom: '16px',
+  },
+  approvalField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  approvalLabel: {
+    fontSize: '12px',
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  approvalValue: {
+    fontSize: '14px',
+    color: '#1e293b',
+    fontWeight: '500',
+  },
+  approvalReason: {
+    gridColumn: '1 / -1',
+    padding: '12px',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+  },
+  approvalReasonLabel: {
+    fontSize: '12px',
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: '4px',
+  },
+  approvalReasonText: {
+    fontSize: '14px',
+    color: '#1e293b',
+  },
+  approvalActions: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
+  },
+  rejectBtn: {
+    padding: '10px 20px',
+    borderRadius: '8px',
+    border: 'none',
+    background: 'linear-gradient(195deg, #ef4444 0%, #dc2626 100%)',
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  approveBtn: {
+    padding: '10px 20px',
+    borderRadius: '8px',
+    border: 'none',
+    background: 'linear-gradient(195deg, #10b981 0%, #059669 100%)',
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+}

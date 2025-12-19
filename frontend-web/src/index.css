@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* Reset cơ bản */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f0f2f5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Custom Scrollbar for all contentbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(142, 68, 173, 0.3);
+  /* Primary Purple with low opacity */
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0);
+  /* Creates padding effect if background-clip is used, but here simpler */
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(142, 68, 173, 0.6);
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 68, 173, 0.3) rgba(0, 0, 0, 0.02);
+}
