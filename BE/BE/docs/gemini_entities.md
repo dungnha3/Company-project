@@ -28,16 +28,6 @@ This document describes all entities, DTOs, enums, and data structures in the sy
 - `OneToMany` → `CompanyMember` (memberships)
 - `OneToOne` → `Employee`
 
-### Entity: RoleChangeRequest
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | Long | Primary key |
-| `user` | User | Requesting user |
-| `company` | Company | Target company |
-| `requestedRole` | CompanyRole | Desired role |
-| `status` | Enum | `PENDING`, `APPROVED`, `REJECTED` |
-| `createdAt` | LocalDateTime | Request time |
-
 ---
 
 ## 2. Core Module: Company
@@ -330,16 +320,6 @@ This document describes all entities, DTOs, enums, and data structures in the sy
 | `message` | Message | Parent message |
 | `user` | User | Reactor |
 | `emoji` | String | Reaction emoji |
-
-### Entity: Meeting
-| Field | Type | Description |
-|-------|------|-------------|
-| `meetingId` | Long | Primary key |
-| `chatRoom` | ChatRoom | Associated room |
-| `title` | String | Meeting title |
-| `scheduledStart` | LocalDateTime | Scheduled start |
-| `scheduledEnd` | LocalDateTime | Scheduled end |
-| `status` | Enum | `SCHEDULED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED` |
 
 ---
 

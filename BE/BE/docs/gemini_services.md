@@ -94,18 +94,13 @@ http://localhost:8080/api
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | Get current user profile | Required |
-| GET | `/me` | Get current user details | Required |
 | PUT | `/` | Update profile | Required |
-| PUT | `/avatar` | Update avatar | Required |
+| POST | `/change-password` | Change password | Required |
+| PATCH | `/online` | Set online status | Required |
+| PATCH | `/offline` | Set offline status | Required |
+| PUT | `/fcm-token` | Update FCM token | Required |
 
-### AdminController (`/api/admin`)
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/role-requests` | List pending role requests | OWNER, ADMIN |
-| POST | `/role-requests/{id}/approve` | Approve role request | OWNER, ADMIN |
-| POST | `/role-requests/{id}/reject` | Reject role request | OWNER, ADMIN |
+> **Note**: Use `GET /api/auth/me` for fetching current user profile.
 
 ---
 
