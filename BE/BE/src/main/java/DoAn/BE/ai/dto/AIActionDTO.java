@@ -7,49 +7,33 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO cho các action mà AI có thể thực hiện
- * Khi AI detect user muốn tạo project/task, sẽ trả về action này
- */
+// DTO cho các action mà AI có thể thực hiện
+
+// Khi AI detect user muốn tạo project/task, sẽ trả về action này
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AIActionDTO {
-
-    /**
-     * Loại action
-     */
+// Loại action
     private ActionType actionType;
 
-    /**
-     * Trạng thái action
-     */
+// Trạng thái action
     private ActionStatus status;
 
-    /**
-     * Thông điệp mô tả action
-     */
+// Thông điệp mô tả action
     private String message;
 
-    /**
-     * Dữ liệu của action (tùy theo loại action)
-     */
+// Dữ liệu của action (tùy theo loại action)
     private Map<String, Object> data;
 
-    /**
-     * ID của entity được tạo/cập nhật (nếu có)
-     */
+// ID của entity được tạo/cập nhật (nếu có)
     private Long entityId;
 
-    /**
-     * Tên của entity được tạo/cập nhật
-     */
+// Tên của entity được tạo/cập nhật
     private String entityName;
 
-    /**
-     * Các loại action AI có thể thực hiện
-     */
+// Các loại action AI có thể thực hiện
     public enum ActionType {
         // Project actions
         CREATE_PROJECT,
@@ -85,9 +69,7 @@ public class AIActionDTO {
         NONE
     }
 
-    /**
-     * Trạng thái của action
-     */
+// Trạng thái của action
     public enum ActionStatus {
         PENDING, // Chờ xác nhận từ user
         CONFIRMED, // User đã xác nhận

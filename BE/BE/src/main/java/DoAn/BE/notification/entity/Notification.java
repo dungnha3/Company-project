@@ -16,14 +16,23 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// Entity thông báo đơn giản (dùng cho chat, general notifications)
+// [Entity thông báo đơn giản - dùng cho chat, general notifications] (Role: Data Model)
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {
+        // Index cho query: findByUser_UserId (User's notifications - CRITICAL)
+        @jakarta.persistence.Index(name = "idx_notif_user", columnList = "user_id"),
+        // Index cho query: findByIsRead (Unread filter)
+        @jakarta.persistence.Index(name = "idx_notif_read", columnList = "is_read"),
+        // Index cho query: findByType (Type filter)
+        @jakarta.persistence.Index(name = "idx_notif_type", columnList = "type"),
+        // Index cho query: findByCreatedAt (Pagination by time)
+        @jakarta.persistence.Index(name = "idx_notif_created", columnList = "created_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Notification {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "notification_id")
@@ -51,17 +60,28 @@ public class Notification {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "priority", length = 20)
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    private NotificationPriority priority = NotificationPriority.NORMAL;
+
+    @Column(name = "metadata", columnDefinition = "TEXT")
+    private String metadata;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.priority == null) {
+            this.priority = NotificationPriority.NORMAL;
+        }
     }
 
     // Constructor tiện lợi cho thông báo chung
     public Notification(User user, String title, String content) {
         this.user = user;
-        this.type = "GENERAL";
+        this.type = NotificationType.SYSTEM_ALERT.name();
         this.title = title;
         this.content = content;
+        this.priority = NotificationPriority.NORMAL;
     }
 
     // Đánh dấu đã đọc

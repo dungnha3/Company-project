@@ -7,68 +7,60 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Validator cho file upload security
- */
+// [Validator cho file upload security] (Role: System)
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class FileValidator {
-    
+
     private final FileSecurityConfig fileSecurityConfig;
-    
-    /**
-     * Validate file upload (extension, MIME type, size)
-     */
+
+    // [Validate file upload (extension, MIME type, size)] (Role: System)
     public void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File không được để trống");
         }
-        
+
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || originalFilename.isEmpty()) {
             throw new BadRequestException("Tên file không hợp lệ");
         }
-        
+
         // 1. Check filename không chứa path traversal
         if (originalFilename.contains("..")) {
             log.warn("⚠️ Path traversal attempt detected: {}", originalFilename);
             throw new BadRequestException("❌ Tên file không hợp lệ: chứa ký tự nguy hiểm");
         }
-        
+
         // 2. Check file extension
         String extension = getFileExtension(originalFilename);
         if (!fileSecurityConfig.isExtensionAllowed(extension)) {
             log.warn("⚠️ Blocked file extension: {} ({})", extension, originalFilename);
             throw new BadRequestException(
-                String.format("❌ Loại file .%s không được phép upload. " +
-                    "Chỉ chấp nhận: %s", 
-                    extension, 
-                    String.join(", ", fileSecurityConfig.getAllowedExtensions())
-                )
-            );
+                    String.format("❌ Loại file .%s không được phép upload. " +
+                            "Chỉ chấp nhận: %s",
+                            extension,
+                            String.join(", ", fileSecurityConfig.getAllowedExtensions())));
         }
-        
+
         // 3. Check MIME type
         String mimeType = file.getContentType();
         if (mimeType != null && !fileSecurityConfig.isMimeTypeAllowed(mimeType)) {
             log.warn("⚠️ Blocked MIME type: {} for file {}", mimeType, originalFilename);
             throw new BadRequestException(
-                String.format("❌ Loại file (MIME: %s) không được phép upload", mimeType)
-            );
+                    String.format("❌ Loại file (MIME: %s) không được phép upload", mimeType));
         }
-        
+
         // 4. Check file size
         long fileSize = file.getSize();
         if (!fileSecurityConfig.isFileSizeAllowed(fileSize)) {
             log.warn("⚠️ File too large: {} bytes for file {}", fileSize, originalFilename);
             throw new BadRequestException(
-                String.format("❌ File quá lớn: %.2f MB. Giới hạn: %.2f MB",
-                    fileSize / (1024.0 * 1024.0),
-                    fileSecurityConfig.getMaxFileSize() / (1024.0 * 1024.0))
-            );
+                    String.format("❌ File quá lớn: %.2f MB. Giới hạn: %.2f MB",
+                            fileSize / (1024.0 * 1024.0),
+                            fileSecurityConfig.getMaxFileSize() / (1024.0 * 1024.0)));
         }
-        
+
         // 5. Check for null bytes (possible malicious file)
         try {
             byte[] bytes = file.getBytes();
@@ -83,34 +75,29 @@ public class FileValidator {
         } catch (Exception e) {
             log.error("Error reading file bytes: {}", e.getMessage());
         }
-        
-        log.info("✅ File validation passed: {} ({}, {} bytes)", 
-            originalFilename, extension, fileSize);
+
+        log.info("✅ File validation passed: {} ({}, {} bytes)",
+                originalFilename, extension, fileSize);
     }
-    
-    /**
-     * Validate filename only (không cần MultipartFile)
-     */
+
+    // [Validate filename only] (Role: System)
     public void validateFilename(String filename) {
         if (filename == null || filename.isEmpty()) {
             throw new BadRequestException("Tên file không hợp lệ");
         }
-        
+
         if (filename.contains("..")) {
             throw new BadRequestException("Tên file không hợp lệ: chứa ký tự nguy hiểm");
         }
-        
+
         String extension = getFileExtension(filename);
         if (!fileSecurityConfig.isExtensionAllowed(extension)) {
             throw new BadRequestException(
-                String.format("Loại file .%s không được phép", extension)
-            );
+                    String.format("Loại file .%s không được phép", extension));
         }
     }
-    
-    /**
-     * Get file extension
-     */
+
+    // [Get file extension] (Role: System)
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return "";

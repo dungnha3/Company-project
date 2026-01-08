@@ -8,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO cho response từ AI Assistant
- */
+// DTO cho response từ AI Assistant
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

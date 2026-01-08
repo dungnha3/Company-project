@@ -1,0 +1,199 @@
+package DoAn.BE.hrm.service;
+
+import DoAn.BE.hrm.entity.Attendance;
+import DoAn.BE.hrm.entity.Employee;
+import DoAn.BE.hrm.repository.AttendanceRepository;
+import DoAn.BE.hrm.repository.EmployeeRepository;
+import DoAn.BE.notification.service.AttendanceNotificationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+// [Scheduled jobs service for Attendance - remind checkout, check missing] (Role: System)
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AttendanceScheduledService {
+
+    private final AttendanceRepository attendanceRepository;
+    private final EmployeeRepository employeeRepository;
+    private final AttendanceNotificationService attendanceNotificationService;
+    private final DoAn.BE.notification.service.FCMService fcmService;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    // [Remind checkout at end of day - 5:30 PM] (Role: Scheduled)
+    @Scheduled(cron = "0 30 17 * * MON-FRI")
+    @Transactional(readOnly = true)
+    public void remindCheckout() {
+        log.info("🔔 Starting checkout reminder...");
+
+        LocalDate today = LocalDate.now();
+
+        // OPTIMIZED: Only get active employees instead of all
+        List<Employee> activeEmployees = employeeRepository.findByStatus(Employee.EmployeeStatus.ACTIVE);
+
+        int reminderCount = 0;
+        for (Employee employee : activeEmployees) {
+            try {
+                // Check if employee has checked in but not checked out
+                List<Attendance> todayAttendance = attendanceRepository
+                        .findByEmployee_EmployeeIdAndAttendanceDate(employee.getEmployeeId(), today);
+
+                if (!todayAttendance.isEmpty()) {
+                    Attendance attendance = todayAttendance.get(0);
+
+                    // Has check-in but no check-out
+                    if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() == null) {
+                        if (employee.getUser() != null) {
+                            attendanceNotificationService.createCheckoutReminderNotification(
+                                    employee.getUser().getUserId());
+
+                            // 📱 Push FCM notification
+                            if (employee.getUser().getFcmToken() != null) {
+                                Map<String, String> data = new HashMap<>();
+                                data.put("type", "ATTENDANCE_CHECKOUT_REMINDER");
+                                data.put("link", "/attendance");
+                                fcmService.sendToDevice(
+                                        employee.getUser().getFcmToken(),
+                                        "⏰ Checkout Reminder",
+                                        "You haven't checked out today. Please check out before leaving!",
+                                        data);
+                            }
+
+                            reminderCount++;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error sending checkout reminder for employee {}: {}",
+                        employee.getFullName(), e.getMessage());
+            }
+        }
+
+        log.info("✅ Finished checkout reminders. Sent {} reminders", reminderCount);
+    }
+
+    // [Check missing attendance - 8:00 PM] (Role: Scheduled)
+    @Scheduled(cron = "0 0 20 * * MON-FRI")
+    @Transactional(readOnly = true)
+    public void checkMissingAttendance() {
+        log.info("🔍 Starting missing attendance check...");
+
+        LocalDate today = LocalDate.now();
+        String dateStr = today.format(DATE_FORMATTER);
+
+        // OPTIMIZED: Only get active employees instead of all
+        List<Employee> activeEmployees = employeeRepository.findByStatus(Employee.EmployeeStatus.ACTIVE);
+
+        int missingCount = 0;
+        for (Employee employee : activeEmployees) {
+            try {
+                // Check if employee has attendance record today
+                List<Attendance> todayAttendance = attendanceRepository
+                        .findByEmployee_EmployeeIdAndAttendanceDate(employee.getEmployeeId(), today);
+
+                if (todayAttendance.isEmpty()) {
+                    // No attendance record - send notification
+                    if (employee.getUser() != null) {
+                        attendanceNotificationService.createMissingAttendanceNotification(
+                                employee.getUser().getUserId(),
+                                dateStr);
+                        missingCount++;
+                        log.debug("⚠️ Sent missing attendance notification for: {}", employee.getFullName());
+                    }
+                } else {
+                    Attendance attendance = todayAttendance.get(0);
+
+                    // Has check-in but no check-out
+                    if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() == null) {
+                        if (employee.getUser() != null) {
+                            attendanceNotificationService.createMissingAttendanceNotification(
+                                    employee.getUser().getUserId(),
+                                    dateStr + " (Missing Checkout)");
+
+                            // 📱 Push FCM notification
+                            if (employee.getUser().getFcmToken() != null) {
+                                Map<String, String> data = new HashMap<>();
+                                data.put("type", "ATTENDANCE_MISSING_CHECKOUT");
+                                data.put("link", "/attendance");
+                                fcmService.sendToDevice(
+                                        employee.getUser().getFcmToken(),
+                                        "⚠️ Missing Checkout",
+                                        "You haven't checked out on " + dateStr,
+                                        data);
+                            }
+
+                            missingCount++;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error checking attendance for employee {}: {}",
+                        employee.getFullName(), e.getMessage());
+            }
+        }
+
+        log.info("✅ Finished missing attendance check. Sent {} notifications", missingCount);
+    }
+
+    // [Send monthly summary - 1st of month 9:00 AM] (Role: Scheduled)
+    @Scheduled(cron = "0 0 9 1 * *")
+    @Transactional(readOnly = true)
+    public void sendMonthlySummary() {
+        log.info("📊 Starting monthly summary...");
+
+        LocalDate lastMonth = LocalDate.now().minusMonths(1);
+        LocalDate firstDayOfLastMonth = lastMonth.withDayOfMonth(1);
+        LocalDate lastDayOfLastMonth = lastMonth.withDayOfMonth(lastMonth.lengthOfMonth());
+
+        String monthStr = lastMonth.format(DateTimeFormatter.ofPattern("MM/yyyy"));
+
+        // OPTIMIZED: Only get active employees instead of all
+        List<Employee> activeEmployees = employeeRepository.findByStatus(Employee.EmployeeStatus.ACTIVE);
+
+        int summaryCount = 0;
+        for (Employee employee : activeEmployees) {
+            try {
+                // Get attendance records for last month
+                List<Attendance> monthAttendance = attendanceRepository
+                        .findByEmployee_EmployeeIdAndAttendanceDateBetween(
+                                employee.getEmployeeId(),
+                                firstDayOfLastMonth,
+                                lastDayOfLastMonth);
+
+                int totalDays = monthAttendance.size();
+                int lateDays = (int) monthAttendance.stream()
+                        .filter(cc -> cc.getStatus() == Attendance.AttendanceStatus.LATE)
+                        .count();
+
+                // Calculate absent days (working days - attendance days)
+                int workingDays = lastMonth.lengthOfMonth(); // Simplified
+                int absentDays = Math.max(0, workingDays - totalDays);
+
+                if (employee.getUser() != null) {
+                    attendanceNotificationService.createMonthlyAttendanceSummaryNotification(
+                            employee.getUser().getUserId(),
+                            monthStr,
+                            totalDays,
+                            lateDays,
+                            absentDays);
+                    summaryCount++;
+                }
+            } catch (Exception e) {
+                log.error("Error sending monthly summary for employee {}: {}",
+                        employee.getFullName(), e.getMessage());
+            }
+        }
+
+        log.info("✅ Finished monthly summary. Sent {} summaries", summaryCount);
+    }
+}

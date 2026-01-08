@@ -8,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO cho lịch sử hội thoại AI
- */
+// DTO cho lịch sử hội thoại AI
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

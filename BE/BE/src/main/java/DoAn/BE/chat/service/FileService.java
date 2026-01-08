@@ -79,7 +79,8 @@ public class FileService {
         message.setContent(request.getContent());
         message.setMessageType(detectMessageType(request));
         message.setFile(file);
-        message.setSentAt(LocalDateTime.now());
+        // message.setCreatedAt(LocalDateTime.now()); // Handled by BaseEntity
+        // @PrePersist
         message.setIsDeleted(false);
 
         message = messageRepository.save(message);
@@ -196,7 +197,7 @@ public class FileService {
             throw new BadRequestException("Bạn không có quyền xem file trong phòng này");
         }
 
-        List<Message> messages = messageRepository.findByChatRoom_RoomIdOrderBySentAtAsc(roomId);
+        List<Message> messages = messageRepository.findByChatRoom_RoomIdOrderByCreatedAtAsc(roomId);
 
         return messages.stream()
                 .filter(message -> message.getFile() != null)
@@ -214,7 +215,7 @@ public class FileService {
             throw new BadRequestException("Bạn không có quyền xem hình ảnh trong phòng này");
         }
 
-        List<Message> messages = messageRepository.findByChatRoom_RoomIdOrderBySentAtAsc(roomId);
+        List<Message> messages = messageRepository.findByChatRoom_RoomIdOrderByCreatedAtAsc(roomId);
 
         return messages.stream()
                 .filter(message -> message.getMessageType() == Message.MessageType.IMAGE)
@@ -259,10 +260,10 @@ public class FileService {
         dto.setFileId(message.getFile() != null ? message.getFile().getFileId() : null);
         dto.setFileName(message.getFile() != null ? message.getFile().getOriginalFilename() : null);
         dto.setFileUrl(message.getFile() != null ? message.getFile().getFilePath() : null);
-        dto.setSentAt(message.getSentAt());
+        dto.setSentAt(message.getCreatedAt());
         dto.setIsDeleted(message.getIsDeleted());
-        dto.setEditedAt(message.getEditedAt());
-        dto.setIsEdited(message.getEditedAt() != null);
+        dto.setEditedAt(message.getUpdatedAt());
+        dto.setIsEdited(message.getUpdatedAt() != null);
 
         return dto;
     }

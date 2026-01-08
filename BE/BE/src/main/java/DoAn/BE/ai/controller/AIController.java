@@ -26,10 +26,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * REST Controller cho AI ChatBot Assistant
- * Cung cấp các endpoint cho chức năng AI giống Notion AI
- */
+// REST Controller cho AI ChatBot Assistant
+
+// Cung cấp các endpoint cho chức năng AI giống Notion AI
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
@@ -41,10 +40,8 @@ public class AIController {
     private final GeminiService geminiService;
     private final AIActionExecutor actionExecutor;
     private final UserRepository userRepository;
-    
-    /**
-     * Kiểm tra AI service status
-     */
+
+// Kiểm tra AI service status
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
         boolean isAvailable = geminiService.isAvailable();
@@ -55,10 +52,8 @@ public class AIController {
                         : "AI Assistant chưa được cấu hình. Vui lòng thiết lập GEMINI_API_KEY."
         ));
     }
-    
-    /**
-     * Chat với AI Assistant
-     */
+
+// Chat với AI Assistant
     @PostMapping("/chat")
     public ResponseEntity<AIChatResponse> chat(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -71,10 +66,8 @@ public class AIController {
         AIChatResponse response = aiService.chat(userId, request);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Quick action - Tóm tắt dự án
-     */
+
+// Quick action - Tóm tắt dự án
     @PostMapping("/projects/{projectId}/summarize")
     public ResponseEntity<AIChatResponse> summarizeProject(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -84,10 +77,8 @@ public class AIController {
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.SUMMARIZE_PROJECT);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Quick action - Tóm tắt sprint hiện tại
-     */
+
+// Quick action - Tóm tắt sprint hiện tại
     @PostMapping("/projects/{projectId}/summarize-sprint")
     public ResponseEntity<AIChatResponse> summarizeSprint(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -97,10 +88,8 @@ public class AIController {
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.SUMMARIZE_SPRINT);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Quick action - Gợi ý công việc ưu tiên
-     */
+
+// Quick action - Gợi ý công việc ưu tiên
     @PostMapping("/projects/{projectId}/suggest-tasks")
     public ResponseEntity<AIChatResponse> suggestTasks(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -110,10 +99,8 @@ public class AIController {
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.SUGGEST_TASKS);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Quick action - Phân tích tiến độ
-     */
+
+// Quick action - Phân tích tiến độ
     @PostMapping("/projects/{projectId}/analyze")
     public ResponseEntity<AIChatResponse> analyzeProgress(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -123,10 +110,8 @@ public class AIController {
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.ANALYZE_PROGRESS);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Quick action - Tạo báo cáo
-     */
+
+// Quick action - Tạo báo cáo
     @PostMapping("/projects/{projectId}/report")
     public ResponseEntity<AIChatResponse> generateReport(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -136,10 +121,8 @@ public class AIController {
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.GENERATE_REPORT);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Lấy danh sách conversations của user
-     */
+
+// Lấy danh sách conversations của user
     @GetMapping("/conversations")
     public ResponseEntity<Page<AIConversationDTO>> getConversations(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -150,10 +133,8 @@ public class AIController {
         Page<AIConversationDTO> conversations = aiService.getConversations(userId, page, size);
         return ResponseEntity.ok(conversations);
     }
-    
-    /**
-     * Lấy chi tiết một conversation với tất cả messages
-     */
+
+// Lấy chi tiết một conversation với tất cả messages
     @GetMapping("/conversations/{conversationId}")
     public ResponseEntity<AIConversationDTO> getConversation(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -163,10 +144,8 @@ public class AIController {
         AIConversationDTO conversation = aiService.getConversation(conversationId, userId);
         return ResponseEntity.ok(conversation);
     }
-    
-    /**
-     * Xóa một conversation
-     */
+
+// Xóa một conversation
     @DeleteMapping("/conversations/{conversationId}")
     public ResponseEntity<Map<String, String>> deleteConversation(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -176,10 +155,8 @@ public class AIController {
         aiService.deleteConversation(conversationId, userId);
         return ResponseEntity.ok(Map.of("message", "Conversation deleted successfully"));
     }
-    
-    /**
-     * Hiển thị hướng dẫn sử dụng AI Assistant
-     */
+
+// Hiển thị hướng dẫn sử dụng AI Assistant
     @GetMapping("/help")
     public ResponseEntity<AIChatResponse> getHelp(
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -188,10 +165,8 @@ public class AIController {
         AIChatResponse response = aiService.quickAction(userId, null, AIActionType.HELP);
         return ResponseEntity.ok(response);
     }
-    
-    /**
-     * Thực thi một action từ AI (tạo project, task, sprint...)
-     */
+
+// Thực thi một action từ AI (tạo project, task, sprint...)
     @PostMapping("/actions/execute")
     public ResponseEntity<AIActionDTO> executeAction(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -203,10 +178,8 @@ public class AIController {
         AIActionDTO result = actionExecutor.executeAction(action, userId);
         return ResponseEntity.ok(result);
     }
-    
-    /**
-     * Thực thi nhiều actions cùng lúc
-     */
+
+// Thực thi nhiều actions cùng lúc
     @PostMapping("/actions/execute-batch")
     public ResponseEntity<List<AIActionDTO>> executeBatchActions(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -223,11 +196,9 @@ public class AIController {
     }
     
     // ==================== Helper Methods ====================
-    
-    /**
-     * Lấy User ID từ Security Context
-     * JWT Filter đặt User entity làm principal, không phải UserDetails
-     */
+// Lấy User ID từ Security Context
+
+// JWT Filter đặt User entity làm principal, không phải UserDetails
     private Long getCurrentUserId(UserDetails userDetails) {
         // Thử lấy từ SecurityContext trước (đây là cách JWT filter hoạt động)
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

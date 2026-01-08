@@ -22,7 +22,6 @@ import DoAn.BE.ai.dto.ProjectContextDTO;
 import DoAn.BE.ai.entity.AIConversation;
 import DoAn.BE.ai.entity.AIMessage;
 import DoAn.BE.ai.repository.AIConversationRepository;
-import DoAn.BE.ai.repository.AIMessageRepository;
 import DoAn.BE.ai.service.GeminiService.GeminiResponse;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.user.entity.User;
@@ -30,10 +29,9 @@ import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Service chính xử lý AI Assistant cho Project Management
- * Tương tự như Notion AI - hỗ trợ quản lý dự án thông minh
- */
+// Service chính xử lý AI Assistant cho Project Management
+
+// Tương tự như Notion AI - hỗ trợ quản lý dự án thông minh
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -43,11 +41,9 @@ public class AIProjectAssistantService {
     private final GeminiService geminiService;
     private final ProjectContextService projectContextService;
     private final AIConversationRepository conversationRepository;
-    private final AIMessageRepository messageRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final AIActionParser actionParser;
-    private final AIActionExecutor actionExecutor;
 
     // System prompt cho AI Assistant
     private static final String BASE_SYSTEM_PROMPT = """
@@ -83,17 +79,20 @@ public class AIProjectAssistantService {
             Khi gợi ý tasks cho dự án, PHẢI chia theo Sprint, format như sau:
 
             ### 🏃 Sprint 1: Khởi động & Thiết kế (2 tuần)
-            **Công việc 1: [Tên task]**
+
+// *Công việc 1: [Tên task]**
             - Mô tả: [Mô tả chi tiết]
             - Thời gian ước tính: [X] giờ
             - Ưu tiên: HIGH
 
             ### 🏃 Sprint 2: Phát triển chức năng chính (2 tuần)
-            **Công việc X: [Tên task]**
+
+// *Công việc X: [Tên task]**
             ...
 
             ### 🏃 Sprint 3: Hoàn thiện & Kiểm thử (2 tuần)
-            **Công việc Y: [Tên task]**
+
+// *Công việc Y: [Tên task]**
             ...
 
             Khi user yêu cầu tạo mới, hãy:
@@ -110,9 +109,7 @@ public class AIProjectAssistantService {
             - Khi gợi ý tasks, LUÔN chia thành các Sprint/giai đoạn
             """;
 
-    /**
-     * Xử lý chat request từ user
-     */
+// Xử lý chat request từ user
     public AIChatResponse chat(Long userId, AIChatRequest request) {
         long startTime = System.currentTimeMillis();
 
@@ -195,9 +192,7 @@ public class AIProjectAssistantService {
                 .build();
     }
 
-    /**
-     * Lấy lịch sử conversation của user
-     */
+// Lấy lịch sử conversation của user
     @Transactional(readOnly = true)
     public Page<AIConversationDTO> getConversations(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -207,9 +202,7 @@ public class AIProjectAssistantService {
         return conversations.map(this::toConversationDTO);
     }
 
-    /**
-     * Lấy chi tiết một conversation với messages
-     */
+// Lấy chi tiết một conversation với messages
     @Transactional(readOnly = true)
     public AIConversationDTO getConversation(String conversationUuid, Long userId) {
         AIConversation conversation = conversationRepository
@@ -224,9 +217,7 @@ public class AIProjectAssistantService {
         return toConversationDTOWithMessages(conversation);
     }
 
-    /**
-     * Xóa (soft delete) conversation
-     */
+// Xóa (soft delete) conversation
     public void deleteConversation(String conversationUuid, Long userId) {
         AIConversation conversation = conversationRepository
                 .findByConversationUuid(conversationUuid)
@@ -240,9 +231,7 @@ public class AIProjectAssistantService {
         conversationRepository.save(conversation);
     }
 
-    /**
-     * Quick actions - các hành động nhanh
-     */
+// Quick actions - các hành động nhanh
     public AIChatResponse quickAction(Long userId, Long projectId, AIActionType actionType) {
         String message = switch (actionType) {
             case SUMMARIZE_PROJECT -> "Hãy tóm tắt tình trạng hiện tại của dự án này";

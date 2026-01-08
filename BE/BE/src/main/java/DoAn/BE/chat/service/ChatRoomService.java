@@ -16,7 +16,7 @@ import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.EntityNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
-import DoAn.BE.common.util.PermissionUtil;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.chat.websocket.service.WebSocketNotificationService;
 import DoAn.BE.notification.service.ChatNotificationService;
 import lombok.extern.slf4j.Slf4j;
@@ -26,9 +26,10 @@ import org.springframework.dao.DataAccessException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-// Service quản lý chat rooms (tạo, sửa, xóa, thêm/xóa members, permissions)
+// [Service quản lý chat rooms - tạo, sửa, xóa, quản lý members] (Role: Chat Users)
 @Service
 @Transactional
 @Slf4j
@@ -41,6 +42,7 @@ public class ChatRoomService {
     private final ChatNotificationService chatNotificationService;
     private final ProjectRepository projectRepository;
     private final MessageRepository messageRepository;
+    private final AccessControlService accessControlService;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository,
             ChatRoomMemberRepository chatRoomMemberRepository,
@@ -48,7 +50,8 @@ public class ChatRoomService {
             WebSocketNotificationService webSocketNotificationService,
             ChatNotificationService chatNotificationService,
             ProjectRepository projectRepository,
-            MessageRepository messageRepository) {
+            MessageRepository messageRepository,
+            AccessControlService accessControlService) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatRoomMemberRepository = chatRoomMemberRepository;
         this.userRepository = userRepository;
@@ -56,14 +59,14 @@ public class ChatRoomService {
         this.chatNotificationService = chatNotificationService;
         this.projectRepository = projectRepository;
         this.messageRepository = messageRepository;
+        this.accessControlService = accessControlService;
     }
 
     // Tạo phòng chat mới
     public ChatRoomDTO createChatRoom(CreateChatRoomRequest request, User currentUser) {
         try {
-            if (!PermissionUtil.canUseChat(currentUser)) {
-                throw new ForbiddenException("Admin không có quyền sử dụng chat");
-            }
+            // [Granular Permission] Kiểm tra quyền tạo nhóm chat
+            accessControlService.checkChatCreateGroupPermission();
 
             if (request.getName() == null || request.getName().trim().isEmpty()) {
                 throw new BadRequestException("Tên phòng chat không được để trống");
@@ -135,7 +138,7 @@ public class ChatRoomService {
 
     // Lấy danh sách phòng chat của user
     public List<ChatRoomDTO> getChatRoomsByUserId(User currentUser) {
-        if (!PermissionUtil.canUseChat(currentUser)) {
+        if (!accessControlService.canUseChat(currentUser)) {
             throw new ForbiddenException("Admin không có quyền sử dụng chat");
         }
 
@@ -164,6 +167,7 @@ public class ChatRoomService {
     }
 
     // Tìm hoặc tạo chat 1-1
+    // OPTIMIZED: Use existing repository query instead of loop
     public ChatRoomDTO findOrCreateDirectChat(Long userId1, Long userId2) {
         if (userId1 == null || userId2 == null) {
             throw new BadRequestException("User ID không được để trống");
@@ -173,18 +177,13 @@ public class ChatRoomService {
         User user2 = userRepository.findById(userId2)
                 .orElseThrow(() -> new EntityNotFoundException("User 2 không tồn tại"));
 
-        List<ChatRoomMember> user1Rooms = chatRoomMemberRepository.findByUser_UserId(userId1);
-        for (ChatRoomMember member1 : user1Rooms) {
-            ChatRoom room = member1.getChatRoom();
-            if (room.getType() == ChatRoom.RoomType.DIRECT) {
-                boolean user2InRoom = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(room.getRoomId(),
-                        userId2);
-                if (user2InRoom) {
-                    return convertToChatRoomDTO(room);
-                }
-            }
+        // Use optimized repository query instead of looping through all rooms
+        Optional<ChatRoom> existingRoom = chatRoomRepository.findDirectChatBetweenUsers(userId1, userId2);
+        if (existingRoom.isPresent()) {
+            return convertToChatRoomDTO(existingRoom.get());
         }
 
+        // Create new direct chat
         ChatRoom directRoom = new ChatRoom();
         directRoom.setName(user1.getUsername() + " & " + user2.getUsername());
         directRoom.setType(ChatRoom.RoomType.DIRECT);
@@ -452,10 +451,10 @@ public class ChatRoomService {
         dto.setMemberCount(members.size());
 
         // Fetch and set last message
-        Message lastMessage = messageRepository.findTopByChatRoom_RoomIdOrderBySentAtDesc(chatRoom.getRoomId());
+        Message lastMessage = messageRepository.findTopByChatRoom_RoomIdOrderByCreatedAtDesc(chatRoom.getRoomId());
         if (lastMessage != null) {
             dto.setLastMessage(lastMessage);
-            dto.setLastMessageAt(lastMessage.getSentAt());
+            dto.setLastMessageAt(lastMessage.getCreatedAt());
         }
 
         return dto;

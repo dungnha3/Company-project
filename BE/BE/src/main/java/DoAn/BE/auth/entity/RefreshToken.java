@@ -8,45 +8,50 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-// Entity lưu refresh token để làm mới access token khi hết hạn
+// [Entity lưu refresh token - làm mới access token] (Role: Security)
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_tokens", indexes = {
+        // Index cho query: findByUser_UserId (User's tokens)
+        @jakarta.persistence.Index(name = "idx_rt_user", columnList = "user_id"),
+        // Index cho query: deleteByExpiresAtBefore (Cleanup expired)
+        @jakarta.persistence.Index(name = "idx_rt_expires", columnList = "expires_at")
+})
 public class RefreshToken {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
-    
+
     @Column(name = "token", nullable = false, unique = true, length = 500)
     private String token;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    
+
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
-    
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "is_revoked", nullable = false)
     private Boolean isRevoked = false;
-    
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
-    
+
     // Kiểm tra token đã hết hạn chưa
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiresAt);
     }
-    
+
     // Kiểm tra token còn hợp lệ không (chưa hết hạn và chưa bị thu hồi)
     public boolean isValid() {
         return !this.isRevoked && !this.isExpired();

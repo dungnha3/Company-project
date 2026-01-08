@@ -1,7 +1,7 @@
 package DoAn.BE.notification.service;
 
 import DoAn.BE.notification.repository.NotificationRepository;
-import DoAn.BE.notification.repository.ThongBaoRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,25 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/**
- * Service tự động dọn dẹp notifications cũ
- * Chạy hàng ngày lúc 2:00 AM để xóa notifications cũ hơn retention period
- */
+// [Service dọn dẹp notifications cũ - chạy scheduled hàng ngày] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationCleanupService {
 
     private final NotificationRepository notificationRepository;
-    private final ThongBaoRepository thongBaoRepository;
 
     @Value("${notification.retention.days:30}")
     private int retentionDays;
 
-    /**
-     * Xóa notifications cũ hơn retention period (mặc định 30 ngày)
-     * Chạy mỗi ngày lúc 2:00 AM
-     */
+    // [Xóa notifications cũ hơn retention period - chạy 2:00 AM] (Role: Scheduled)
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void cleanupOldNotifications() {
@@ -38,24 +31,13 @@ public class NotificationCleanupService {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(retentionDays);
 
         try {
-            // Đếm trước khi xóa để log
             long notificationCount = notificationRepository.countOlderThan(cutoffDate);
-            long thongBaoCount = thongBaoRepository.countOlderThan(cutoffDate);
 
-            log.info("📊 Tìm thấy {} notifications và {} thông báo cũ cần xóa",
-                    notificationCount, thongBaoCount);
+            log.info("📊 Tìm thấy {} notifications cũ cần xóa", notificationCount);
 
-            if (notificationCount > 0 || thongBaoCount > 0) {
-                // Xóa Notification entities
+            if (notificationCount > 0) {
                 int deletedNotifications = notificationRepository.deleteOlderThan(cutoffDate);
                 log.info("✅ Đã xóa {} notifications từ bảng Notification", deletedNotifications);
-
-                // Xóa ThongBao entities
-                int deletedThongBao = thongBaoRepository.deleteOlderThan(cutoffDate);
-                log.info("✅ Đã xóa {} thông báo từ bảng ThongBao", deletedThongBao);
-
-                log.info("🎉 Hoàn tất dọn dẹp: {} tổng records đã xóa",
-                        deletedNotifications + deletedThongBao);
             } else {
                 log.info("✨ Không có notifications cũ cần xóa");
             }
@@ -64,12 +46,7 @@ public class NotificationCleanupService {
         }
     }
 
-    /**
-     * Manual cleanup - có thể gọi từ Admin API
-     * 
-     * @param days số ngày retention
-     * @return số records đã xóa
-     */
+    // [Manual cleanup - gọi từ Admin API] (Role: Admin)
     @Transactional
     public int manualCleanup(int days) {
         log.info("🧹 Manual cleanup: xóa notifications cũ hơn {} ngày", days);
@@ -77,11 +54,8 @@ public class NotificationCleanupService {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(days);
 
         int deletedNotifications = notificationRepository.deleteOlderThan(cutoffDate);
-        int deletedThongBao = thongBaoRepository.deleteOlderThan(cutoffDate);
+        log.info("✅ Manual cleanup hoàn tất: {} records đã xóa", deletedNotifications);
 
-        int total = deletedNotifications + deletedThongBao;
-        log.info("✅ Manual cleanup hoàn tất: {} records đã xóa", total);
-
-        return total;
+        return deletedNotifications;
     }
 }

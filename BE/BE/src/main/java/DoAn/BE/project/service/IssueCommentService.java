@@ -1,7 +1,7 @@
 package DoAn.BE.project.service;
 
 import DoAn.BE.common.exception.*;
-import DoAn.BE.common.util.PermissionUtil;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.IssueComment;
@@ -13,7 +13,7 @@ import DoAn.BE.project.repository.IssueCommentRepository;
 import DoAn.BE.project.repository.IssueActivityRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.user.entity.User;
-import DoAn.BE.user.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,14 +33,14 @@ public class IssueCommentService {
     private final IssueRepository issueRepository;
     private final IssueActivityRepository issueActivityRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final UserRepository userRepository;
     private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
     private final DoAn.BE.notification.service.FCMService fcmService;
+    private final AccessControlService accessControlService;
 
     @Transactional
     public IssueCommentDTO createComment(CreateCommentRequest request, User currentUser) {
         // Kiểm tra quyền truy cập project
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -118,7 +118,7 @@ public class IssueCommentService {
 
     @Transactional(readOnly = true)
     public List<IssueCommentDTO> getIssueComments(Long issueId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -153,7 +153,6 @@ public class IssueCommentService {
 
         validateProjectAccess(comment.getIssue().getProject().getProjectId(), currentUser.getUserId());
 
-        String oldContent = comment.getContent();
         comment.setContent(newContent);
         comment = issueCommentRepository.save(comment);
 
@@ -193,7 +192,7 @@ public class IssueCommentService {
 
     @Transactional(readOnly = true)
     public List<IssueCommentDTO> getProjectComments(Long projectId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 

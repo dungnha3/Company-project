@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import DoAn.BE.common.entity.TenantScopedEntity;
+import org.hibernate.annotations.Filter;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -20,15 +22,27 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-// Entity quản lý file (upload, download, versioning, soft delete, quota)
+// [Entity quản lý file - upload, download, versioning, soft delete, quota] (Role: Data Model)
 @Entity
-@Table(name = "files")
+@Table(name = "files", indexes = {
+        // Index cho query: findByFolder (Files trong folder)
+        @jakarta.persistence.Index(name = "idx_file_folder", columnList = "folder_id"),
+        // Index cho query: findByOwner (User's files)
+        @jakarta.persistence.Index(name = "idx_file_owner", columnList = "owner_id"),
+        // Index cho query: findByIsDeleted (Non-deleted files)
+        @jakarta.persistence.Index(name = "idx_file_deleted", columnList = "is_deleted"),
+        // Index cho query: findByMimeType (File type filter)
+        @jakarta.persistence.Index(name = "idx_file_mimetype", columnList = "mime_type")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class File {
+@EqualsAndHashCode(callSuper = true)
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class File extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -80,6 +94,9 @@ public class File {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = false; // Mặc định là private
+
     @OneToMany(mappedBy = "parentFile", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<File> versions;
@@ -105,17 +122,18 @@ public class File {
 
     // Format kích thước file (B, KB, MB, GB, TB)
     public String getFileSizeFormatted() {
-        if (fileSize == null) return "0 B";
-        
+        if (fileSize == null)
+            return "0 B";
+
         long size = fileSize;
-        String[] units = {"B", "KB", "MB", "GB", "TB"};
+        String[] units = { "B", "KB", "MB", "GB", "TB" };
         int unitIndex = 0;
-        
+
         while (size >= 1024 && unitIndex < units.length - 1) {
             size /= 1024;
             unitIndex++;
         }
-        
+
         return size + " " + units[unitIndex];
     }
 
@@ -126,11 +144,9 @@ public class File {
 
     // Kiểm tra file là document (PDF, Word, Excel)
     public boolean isDocument() {
-        return mimeType != null && (
-            mimeType.startsWith("application/pdf") ||
-            mimeType.startsWith("application/msword") ||
-            mimeType.startsWith("application/vnd.openxmlformats-officedocument")
-        );
+        return mimeType != null && (mimeType.startsWith("application/pdf") ||
+                mimeType.startsWith("application/msword") ||
+                mimeType.startsWith("application/vnd.openxmlformats-officedocument"));
     }
 
     // Kiểm tra file là video
@@ -147,5 +163,9 @@ public class File {
     public void incrementVersion() {
         this.version++;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getUrl() {
+        return "/api/files/" + this.fileId; // Basic download URL
     }
 }

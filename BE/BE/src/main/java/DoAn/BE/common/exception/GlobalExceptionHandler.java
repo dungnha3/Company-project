@@ -106,7 +106,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
             org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
-        ErrorResponse error = new ErrorResponse("File size vượt quá giới hạn cho phép",
+        ErrorResponse error = new ErrorResponse("Kích thước tệp tin vượt quá giới hạn cho phép",
                 HttpStatus.PAYLOAD_TOO_LARGE.value());
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
     }
@@ -148,8 +148,21 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        log.error("❌ Unhandled exception occurred", ex);
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String username = "Anonymous";
+        try {
+            if (DoAn.BE.common.util.SecurityUtil.isAuthenticated()) {
+                username = DoAn.BE.common.util.SecurityUtil.getCurrentUsername();
+            }
+        } catch (Exception e) {
+            // Ignore auth check errors during exception handling
+        }
+
+        log.error("❌ Exception at {} {}: User={}. Error: {}",
+                request.getMethod(), request.getRequestURI(), username, ex.getMessage());
+        log.error("Stack trace:", ex);
+
         ErrorResponse error = new ErrorResponse("Lỗi hệ thống: " + ex.getMessage(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);

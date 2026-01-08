@@ -1,9 +1,9 @@
 package DoAn.BE.project.service;
 
 import DoAn.BE.common.exception.*;
-import DoAn.BE.common.util.PermissionUtil;
-import DoAn.BE.hr.entity.PhongBan;
-import DoAn.BE.hr.repository.PhongBanRepository;
+import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.hrm.entity.Department;
+import DoAn.BE.hrm.repository.DepartmentRepository;
 import DoAn.BE.chat.entity.ChatRoom;
 import DoAn.BE.chat.entity.ChatRoomMember;
 import DoAn.BE.chat.entity.ChatRoomMemberId;
@@ -28,38 +28,38 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-// Service quản lý dự án (CRUD, members, phòng ban)
+// [Service quản lý dự án - CRUD, members, phòng ban] (Role: Project Manager/Employee)
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
-    private final PhongBanRepository phongBanRepository;
+    private final DepartmentRepository departmentRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ProjectChatIntegrationService projectChatIntegrationService;
     private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
     private final DoAn.BE.notification.service.FCMService fcmService;
     private final DoAn.BE.storage.service.StorageProjectIntegrationService storageProjectIntegrationService;
+    private final AccessControlService accessControlService;
 
     @Transactional
     public ProjectDTO createProject(CreateProjectRequest request, User currentUser) {
-        // Admin và HR/Accounting không có quyền
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
-            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
-        }
+        // [Granular Permission] Kiểm tra quyền tạo dự án
+        accessControlService.checkProjectCreatePermission();
 
         log.info("User {} tạo dự án mới: {}", currentUser.getUsername(), request.getName());
 
         if (projectRepository.findByKeyProject(request.getKeyProject()).isPresent()) {
             throw new DuplicateException("Mã dự án đã tồn tại: " + request.getKeyProject());
         }
-        PhongBan phongBan = null;
+        Department department = null;
         if (request.getPhongbanId() != null) {
-            phongBan = phongBanRepository.findById(request.getPhongbanId())
+            department = departmentRepository.findById(request.getPhongbanId())
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phòng ban"));
         }
 
@@ -76,7 +76,7 @@ public class ProjectService {
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
         project.setCreatedBy(currentUser);
-        project.setPhongBan(phongBan);
+        project.setDepartment(department);
         project.setStatus(Project.ProjectStatus.ACTIVE);
         project.setIsActive(true);
 
@@ -120,14 +120,14 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public ProjectDTO getProjectById(Long projectId, User currentUser) {
         // Admin và HR/Accounting không có quyền
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
 
-        // Check if user has access to this project
+        // Kiểm tra xem user có quyền truy cập dự án này không
         validateProjectAccess(projectId, currentUser.getUserId());
 
         return convertToDTO(project);
@@ -135,17 +135,12 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectDTO> getAllProjects(User currentUser) {
-        // Admin và HR/Accounting không có quyền
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        // Kiểm tra quyền truy cập dự án
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
-        // Project Manager chỉ xem dự án của mình
-        if (currentUser.isManagerProject()) {
-            return getMyProjects(currentUser.getUserId());
-        }
-
-        // Employee xem dự án tham gia
+        // Tất cả user đều xem dự án mình tham gia
         return getMyProjects(currentUser.getUserId());
     }
 
@@ -160,7 +155,7 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public List<ProjectDTO> getMyProjects(User currentUser) {
         // Admin và HR/Accounting không có quyền
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -172,10 +167,10 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
 
-        // Check if user can manage this project
+        // Kiểm tra quyền quản lý dự án
         validateProjectManagement(projectId, userId);
 
-        // Update fields if provided
+        // Cập nhật các trường thông tin
         if (request.getName() != null) {
             project.setName(request.getName());
         }
@@ -186,12 +181,12 @@ public class ProjectService {
             Project.ProjectStatus oldStatus = project.getStatus();
             project.setStatus(request.getStatus());
 
-            // Post system message if status changed
+            // Gửi tin nhắn hệ thống nếu trạng thái thay đổi
             if (oldStatus != request.getStatus()) {
                 if (request.getStatus() == Project.ProjectStatus.COMPLETED) {
                     projectChatIntegrationService.notifyProjectCompleted(project);
 
-                    // Send notification to all members
+                    // Gửi thông báo đến tất cả thành viên
                     List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
                     for (ProjectMember member : members) {
                         if (member.getUser() != null) {
@@ -207,7 +202,7 @@ public class ProjectService {
                             oldStatus != null ? oldStatus.toString() : "N/A",
                             request.getStatus().toString());
 
-                    // Send notification to all members
+                    // Gửi thông báo đến tất cả thành viên
                     List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
                     for (ProjectMember member : members) {
                         if (member.getUser() != null) {
@@ -228,12 +223,12 @@ public class ProjectService {
             project.setEndDate(request.getEndDate());
         }
         if (request.getPhongbanId() != null) {
-            PhongBan phongBan = phongBanRepository.findById(request.getPhongbanId())
+            Department dept = departmentRepository.findById(request.getPhongbanId())
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phòng ban"));
-            project.setPhongBan(phongBan);
+            project.setDepartment(dept);
         }
 
-        // Validate dates
+        // Validate ngày tháng
         if (project.getStartDate() != null && project.getEndDate() != null) {
             if (project.getEndDate().isBefore(project.getStartDate())) {
                 throw new BadRequestException("Ngày kết thúc phải sau ngày bắt đầu");
@@ -249,7 +244,7 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
 
-        // Only OWNER can delete project
+        // Chỉ OWNER mới được xóa dự án
         ProjectMember member = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
 
@@ -257,21 +252,21 @@ public class ProjectService {
             throw new ForbiddenException("Chỉ chủ dự án mới có thể xóa dự án");
         }
 
-        // Soft delete
+        // Xóa mềm (Soft delete)
         project.setIsActive(false);
         projectRepository.save(project);
 
-        // Archive project chat - set inactive but keep history
+        // Lưu trữ chat dự án - set inactive nhưng giữ lịch sử
         List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
         if (!projectChats.isEmpty()) {
             ChatRoom projectChatRoom = projectChats.get(0);
-            // Post final system message
+            // Gửi tin nhắn hệ thống cuối cùng
             projectChatIntegrationService.postSystemMessage(project,
                     " Dự án đã được đóng. Chat room sẽ chuyển sang chế độ chỉ đọc.");
             log.info("Archived project chat room {} for project {}", projectChatRoom.getRoomId(), projectId);
         }
 
-        // Send notification to all members
+        // Gửi thông báo đến tất cả thành viên
         List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
         for (ProjectMember projectMember : members) {
             if (projectMember.getUser() != null) {
@@ -287,41 +282,41 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
 
-        // Check if user can manage this project
+        // Kiểm tra quyền quản lý dự án
         validateProjectManagement(projectId, userId);
 
-        // Validate new member exists
+        // Validate thành viên mới tồn tại
         User newMember = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
 
-        // Check if user is already a member
+        // Kiểm tra xem user đã là thành viên chưa
         if (projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, request.getUserId()).isPresent()) {
             throw new DuplicateException("Người dùng đã là thành viên của dự án");
         }
 
-        // Add member
+        // Thêm thành viên
         ProjectMember projectMember = new ProjectMember(project, newMember, request.getRole());
         projectMember = projectMemberRepository.save(projectMember);
 
-        // Sync to project chat room
+        // Đồng bộ với project chat room
         List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
         if (!projectChats.isEmpty()) {
             ChatRoom projectChatRoom = projectChats.get(0);
 
-            // Check if not already in chat
+            // Kiểm tra nếu chưa trong chat
             boolean alreadyInChat = chatRoomMemberRepository
                     .existsByChatRoom_RoomIdAndUser_UserId(projectChatRoom.getRoomId(), request.getUserId());
 
             if (!alreadyInChat) {
                 ChatRoomMember chatMember = new ChatRoomMember();
-                // Create composite key first
+                // Tạo composite key trước
                 ChatRoomMemberId chatMemberId = new ChatRoomMemberId();
                 chatMemberId.setRoomId(projectChatRoom.getRoomId());
                 chatMemberId.setUserId(newMember.getUserId());
                 chatMember.setId(chatMemberId);
                 chatMember.setChatRoom(projectChatRoom);
                 chatMember.setUser(newMember);
-                // OWNER/MANAGER = ADMIN, others = MEMBER
+                // OWNER/MANAGER = ADMIN, khác = MEMBER
                 chatMember.setRole(request.getRole() == ProjectRole.OWNER || request.getRole() == ProjectRole.MANAGER
                         ? ChatRoomMember.MemberRole.ADMIN
                         : ChatRoomMember.MemberRole.MEMBER);
@@ -332,25 +327,25 @@ public class ProjectService {
             }
         }
 
-        // Create project folder for new member
+        // Tạo thư mục dự án cho thành viên mới
         try {
             storageProjectIntegrationService.getOrCreateProjectFolder(project, newMember);
             log.info("Created project folder for new member {} in project {}", newMember.getUserId(), projectId);
         } catch (Exception e) {
             log.error("Failed to create project folder for member {}: {}", newMember.getUserId(), e.getMessage());
-            // Don't fail the whole operation if folder creation fails
+            // Không fail toàn bộ operation nếu tạo folder thất bại
         }
 
-        // Post system message
+        // Gửi tin nhắn hệ thống
         projectChatIntegrationService.notifyMemberAdded(project, newMember.getUsername(), request.getRole().toString());
 
-        // Send notification to new member
+        // Gửi thông báo đến thành viên mới
         projectNotificationService.createProjectMemberAddedNotification(
                 newMember.getUserId(),
                 project.getName(),
                 project.getProjectId());
 
-        // 📱 Push FCM notification to new member
+        // 📱 Push FCM notification đến thành viên mới
         try {
             if (newMember.getFcmToken() != null) {
                 Map<String, String> data = new HashMap<>();
@@ -372,25 +367,25 @@ public class ProjectService {
 
     @Transactional
     public void removeMember(Long projectId, Long memberId, Long userId) {
-        // Check if project exists and user can manage it
+        // Kiểm tra dự án tồn tại
         projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
 
-        // Check if user can manage this project
+        // Kiểm tra quyền quản lý dự án
         validateProjectManagement(projectId, userId);
 
         ProjectMember memberToRemove = projectMemberRepository
                 .findByProject_ProjectIdAndUser_UserId(projectId, memberId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thành viên trong dự án"));
 
-        // Cannot remove OWNER
+        // Không thể xóa OWNER
         if (memberToRemove.isOwner()) {
             throw new ForbiddenException("Không thể xóa chủ dự án");
         }
 
         projectMemberRepository.delete(memberToRemove);
 
-        // Sync to project chat room
+        // Đồng bộ với project chat room
         Project project = projectRepository.findById(projectId).orElse(null);
         if (project != null) {
             List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
@@ -406,16 +401,16 @@ public class ProjectService {
                 }
             }
 
-            // Post system message
+            // Gửi tin nhắn hệ thống
             projectChatIntegrationService.notifyMemberRemoved(project, memberToRemove.getUser().getUsername());
 
-            // Send notification to removed member
+            // Gửi thông báo đến thành viên bị xóa
             if (memberToRemove.getUser() != null) {
                 projectNotificationService.createProjectMemberRemovedNotification(
                         memberToRemove.getUser().getUserId(),
                         project.getName());
 
-                // 📱 Push FCM notification to removed member
+                // 📱 Push FCM notification đến thành viên bị xóa
                 try {
                     if (memberToRemove.getUser().getFcmToken() != null) {
                         Map<String, String> data = new HashMap<>();
@@ -436,7 +431,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectMemberDTO> getProjectMembers(Long projectId, Long userId) {
-        // Validate access
+        // Kiểm tra quyền truy cập
         validateProjectAccess(projectId, userId);
 
         List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
@@ -447,13 +442,13 @@ public class ProjectService {
 
     @Transactional
     public ProjectMemberDTO updateMemberRole(Long projectId, Long memberId, ProjectRole newRole, Long userId) {
-        // Check if user can manage this project
+        // Kiểm tra quyền quản lý dự án
         validateProjectManagement(projectId, userId);
 
         ProjectMember member = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, memberId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thành viên trong dự án"));
 
-        // Cannot change OWNER role
+        // Không thể thay đổi role của OWNER
         if (member.isOwner()) {
             throw new ForbiddenException("Không thể thay đổi vai trò của chủ dự án");
         }
@@ -461,7 +456,7 @@ public class ProjectService {
         member.setRole(newRole);
         member = projectMemberRepository.save(member);
 
-        // Send notification to member
+        // Gửi thông báo đến thành viên
         if (member.getUser() != null && member.getProject() != null) {
             projectNotificationService.createProjectRoleChangedNotification(
                     member.getUser().getUserId(),
@@ -503,9 +498,9 @@ public class ProjectService {
             dto.setCreatedByName(project.getCreatedBy().getUsername());
         }
 
-        if (project.getPhongBan() != null) {
-            dto.setPhongbanId(project.getPhongBan().getPhongbanId());
-            dto.setPhongbanName(project.getPhongBan().getTenPhongBan());
+        if (project.getDepartment() != null) {
+            dto.setPhongbanId(project.getDepartment().getDepartmentId());
+            dto.setPhongbanName(project.getDepartment().getName());
         }
 
         return dto;
@@ -523,7 +518,7 @@ public class ProjectService {
         }
 
         dto.setRole(member.getRole());
-        dto.setJoinedAt(member.getJoinedAt());
+        dto.setJoinedAt(member.getCreatedAt());
         return dto;
     }
 }

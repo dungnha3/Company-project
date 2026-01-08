@@ -7,14 +7,14 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-// Entity quản lý comment/thảo luận trên Issue
+// [Entity comment/thảo luận trên Issue] (Role: Data Model)
 @Entity
 @Table(name = "issue_comments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class IssueComment {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "comment_id")

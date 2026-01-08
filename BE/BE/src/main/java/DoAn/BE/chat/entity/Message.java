@@ -10,25 +10,35 @@ import DoAn.BE.storage.entity.File;
 
 // Entity tin nhắn chat (TEXT, FILE, IMAGE) với soft delete và reply support
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = {
+        // Index cho query: findByChatRoom_RoomId (Room's messages - CRITICAL for chat)
+        @jakarta.persistence.Index(name = "idx_msg_room", columnList = "room_id"),
+        // Index cho query: findBySender (User's sent messages)
+        @jakarta.persistence.Index(name = "idx_msg_sender", columnList = "sender_id"),
+        // Index cho query: findByCreatedAt (Pagination by time)
+        @jakarta.persistence.Index(name = "idx_msg_created", columnList = "created_at"),
+        // Index cho query: findByIsDeleted (Non-deleted messages)
+        @jakarta.persistence.Index(name = "idx_msg_deleted", columnList = "is_deleted")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Message {
-    
+@EqualsAndHashCode(callSuper = true)
+public class Message extends DoAn.BE.common.entity.BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long messageId;
 
     @ManyToOne
-    @JoinColumn(name = "room_id", nullable = false)  
+    @JoinColumn(name = "room_id", nullable = false)
     private ChatRoom chatRoom;
 
     @ManyToOne
-    @JoinColumn(name = "sender_id")  // Allow null for system messages
+    @JoinColumn(name = "sender_id") // Allow null for system messages
     private User sender;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")  
+    @Column(columnDefinition = "NVARCHAR(MAX)")
     private String content;
 
     @Enumerated(EnumType.STRING)
@@ -36,26 +46,15 @@ public class Message {
     private MessageType messageType = MessageType.TEXT;
 
     @ManyToOne
-    @JoinColumn(name = "file_id")  
+    @JoinColumn(name = "file_id")
     private File file;
-
-    @Column(name = "sent_at")
-    private LocalDateTime sentAt;
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 
-    @Column(name = "edited_at")
-    private LocalDateTime editedAt;
-
     @ManyToOne
     @JoinColumn(name = "reply_to_message_id")
     private Message replyToMessage;
-
-    @PrePersist
-    protected void onCreate() {
-        this.sentAt = LocalDateTime.now();
-    }
 
     // Constructors
     public Message(ChatRoom chatRoom, User sender, String content) {
@@ -75,13 +74,14 @@ public class Message {
     }
 
     public void markAsEdited() {
-        this.editedAt = LocalDateTime.now();
+        this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // Enum
+    // [Loại tin nhắn] (Role: Enum)
     public enum MessageType {
         TEXT,
         FILE,
-        IMAGE
+        IMAGE,
+        SYSTEM
     }
 }

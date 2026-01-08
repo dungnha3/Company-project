@@ -15,9 +15,7 @@ import DoAn.BE.ai.config.GeminiConfig;
 import DoAn.BE.ai.entity.AIMessage;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Service để gọi Google Gemini API
- */
+// Service để gọi Google Gemini API
 @Service
 @Slf4j
 public class GeminiService {
@@ -30,10 +28,8 @@ public class GeminiService {
         this.webClient = geminiWebClient;
         this.config = config;
     }
-    
-    /**
-     * Gửi chat request đến Gemini và nhận response
-     */
+
+// Gửi chat request đến Gemini và nhận response
     public GeminiResponse chat(String systemPrompt, List<AIMessage> conversationHistory, String userMessage) {
         if (!isAvailable()) {
             log.error("Gemini service is not available. Config: {}, WebClient: {}", 
@@ -67,25 +63,19 @@ public class GeminiService {
             throw new RuntimeException("Lỗi khi gọi AI: " + e.getMessage(), e);
         }
     }
-    
-    /**
-     * Chat đơn giản không có conversation history
-     */
+
+// Chat đơn giản không có conversation history
     public String simpleChat(String systemPrompt, String userMessage) {
         GeminiResponse response = chat(systemPrompt, new ArrayList<>(), userMessage);
         return response.getContent();
     }
-    
-    /**
-     * Kiểm tra Gemini service có sẵn không
-     */
+
+// Kiểm tra Gemini service có sẵn không
     public boolean isAvailable() {
         return config.isConfigured() && webClient != null;
     }
-    
-    /**
-     * Build request body cho Gemini API
-     */
+
+// Build request body cho Gemini API
     private Map<String, Object> buildRequestBody(String systemPrompt, List<AIMessage> conversationHistory, String userMessage) {
         Map<String, Object> body = new HashMap<>();
         
@@ -144,10 +134,8 @@ public class GeminiService {
         
         return body;
     }
-    
-    /**
-     * Parse response từ Gemini API
-     */
+
+// Parse response từ Gemini API
     @SuppressWarnings("unchecked")
     private GeminiResponse parseResponse(Map<String, Object> response) {
         if (response == null) {
@@ -195,10 +183,8 @@ public class GeminiService {
         
         return new GeminiResponse("Xin lỗi, tôi không thể xử lý yêu cầu của bạn lúc này.", 0);
     }
-    
-    /**
-     * Handle API errors
-     */
+
+// Handle API errors
     private void handleApiError(WebClientResponseException e) {
         String errorBody = e.getResponseBodyAsString();
         int statusCode = e.getStatusCode().value();
@@ -213,10 +199,8 @@ public class GeminiService {
             throw new RuntimeException("Không có quyền truy cập API. Vui lòng kiểm tra API key.", e);
         }
     }
-    
-    /**
-     * Response wrapper class
-     */
+
+// Response wrapper class
     public static class GeminiResponse {
         private final String content;
         private final int tokensUsed;

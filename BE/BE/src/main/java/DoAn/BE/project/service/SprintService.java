@@ -1,7 +1,7 @@
 package DoAn.BE.project.service;
 
 import DoAn.BE.common.exception.*;
-import DoAn.BE.common.util.PermissionUtil;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.entity.Sprint;
@@ -13,7 +13,7 @@ import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.user.entity.User;
-import DoAn.BE.user.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,14 +33,14 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueRepository issueRepository;
-    private final UserRepository userRepository;
     private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
     private final DoAn.BE.notification.service.FCMService fcmService;
+    private final AccessControlService accessControlService;
 
     @Transactional
     public SprintDTO createSprint(CreateSprintRequest request, User currentUser) {
         // Kiểm tra quyền truy cập project
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -80,7 +80,7 @@ public class SprintService {
 
     @Transactional(readOnly = true)
     public SprintDTO getSprintById(Long sprintId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -98,7 +98,7 @@ public class SprintService {
 
     @Transactional(readOnly = true)
     public List<SprintDTO> getProjectSprints(Long projectId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -122,7 +122,7 @@ public class SprintService {
 
         validateProjectManagement(sprint.getProject().getProjectId(), currentUser.getUserId());
 
-        // Update fields if provided
+        // Cập nhật các trường thông tin
         if (request.getName() != null) {
             sprint.setName(request.getName());
         }
@@ -136,12 +136,12 @@ public class SprintService {
             sprint.setEndDate(request.getEndDate());
         }
         if (request.getStatus() != null) {
-            // Validate status transition
+            // Validate chuyển trạng thái
             validateStatusTransition(sprint, request.getStatus());
             sprint.setStatus(request.getStatus());
         }
 
-        // Validate dates
+        // Validate ngày tháng
         if (sprint.getStartDate() != null && sprint.getEndDate() != null) {
             if (sprint.getEndDate().isBefore(sprint.getStartDate())) {
                 throw new BadRequestException("Ngày kết thúc phải sau ngày bắt đầu");
@@ -257,14 +257,14 @@ public class SprintService {
         sprint.setStatus(SprintStatus.COMPLETED);
         sprint = sprintRepository.save(sprint);
 
-        // Calculate completion stats
+        // Tính toán thống kê hoàn thành
         List<Issue> sprintIssues = issueRepository.findBySprint_SprintId(sprintId);
         int totalIssues = sprintIssues.size();
         int completedIssues = (int) sprintIssues.stream()
                 .filter(Issue::isDone)
                 .count();
 
-        // Notify all project members
+        // Thông báo đến tất cả thành viên dự án
         List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(
                 sprint.getProject().getProjectId());
         for (ProjectMember member : members) {

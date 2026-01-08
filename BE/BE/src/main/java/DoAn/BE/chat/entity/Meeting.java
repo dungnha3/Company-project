@@ -17,7 +17,8 @@ import DoAn.BE.user.entity.User;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Meeting {
+@EqualsAndHashCode(callSuper = true)
+public class Meeting extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,12 +61,6 @@ public class Meeting {
     @Column(name = "meeting_link", length = 500)
     private String meetingLink;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
     // Participants
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
@@ -74,16 +69,10 @@ public class Meeting {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        super.onCreate(); // Call BaseEntity onCreate
         if (this.type == MeetingType.INSTANT) {
             this.status = MeetingStatus.IN_PROGRESS;
         }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
     }
 
     // Enums

@@ -79,10 +79,7 @@ public class FolderService {
         return convertToDTO(folder);
     }
 
-    /**
-     * Check if user can access folder (owner or project member)
-     * Also checks parent folder recursively for subfolders in project folders
-     */
+    // [Check if user can access folder - owner or project member] (Role: Internal)
     private boolean canAccessFolder(Folder folder, Long userId) {
         // Owner can always access
         if (folder.getOwner().getUserId().equals(userId)) {

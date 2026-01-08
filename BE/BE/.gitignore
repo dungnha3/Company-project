@@ -37,9 +37,18 @@ logs/
 *.log
 *.gz
 
-### Environment ###
+### Environment & Security (NEVER COMMIT!) ###
 application-local.properties
+**/application.properties
+!**/application.properties.example
 .env
+.env.*
+*.env
+serviceAccountKey.json
+*.p12
+*.jks
+*.pem
+*.key
 
 ### Uploads ###
 uploads/

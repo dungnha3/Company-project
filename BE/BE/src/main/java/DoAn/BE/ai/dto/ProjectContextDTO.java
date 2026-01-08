@@ -8,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO chứa context của project để cung cấp cho AI
- */
+// DTO chứa context của project để cung cấp cho AI
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -10,10 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-/**
- * Listener xử lý WebSocket connect/disconnect events
- * Tự động đánh dấu user online/offline khi kết nối/ngắt kết nối WebSocket
- */
+// [Listener xử lý WebSocket connect/disconnect events - online/offline status] (Role: System)
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -21,9 +18,7 @@ public class WebSocketEventListener {
 
     private final UserPresenceService userPresenceService;
 
-    /**
-     * Xử lý khi user kết nối WebSocket
-     */
+    // [Xử lý khi user kết nối WebSocket] (Role: System)
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         try {
@@ -40,9 +35,7 @@ public class WebSocketEventListener {
         }
     }
 
-    /**
-     * Xử lý khi user ngắt kết nối WebSocket
-     */
+    // [Xử lý khi user ngắt kết nối WebSocket] (Role: System)
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         try {

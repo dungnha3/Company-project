@@ -7,14 +7,14 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-// Entity lưu lịch sử thay đổi của Issue (activity log/audit trail)
+// [Entity lịch sử thay đổi Issue - audit trail] (Role: Data Model)
 @Entity
 @Table(name = "issue_activities")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class IssueActivity {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "activity_id")
@@ -53,8 +53,8 @@ public class IssueActivity {
     }
 
     // Constructor for field changes
-    public IssueActivity(Issue issue, User user, ActivityType activityType, 
-                        String fieldName, String oldValue, String newValue) {
+    public IssueActivity(Issue issue, User user, ActivityType activityType,
+            String fieldName, String oldValue, String newValue) {
         this.issue = issue;
         this.user = user;
         this.activityType = activityType;
@@ -113,18 +113,18 @@ public class IssueActivity {
 
     // Enum
     public enum ActivityType {
-        CREATED,                // Issue được tạo
-        STATUS_CHANGED,         // Thay đổi trạng thái
-        ASSIGNEE_CHANGED,       // Thay đổi người được giao
-        PRIORITY_CHANGED,       // Thay đổi độ ưu tiên
-        SPRINT_CHANGED,         // Thay đổi sprint
-        DUE_DATE_CHANGED,       // Thay đổi hạn hoàn thành
+        CREATED, // Issue được tạo
+        STATUS_CHANGED, // Thay đổi trạng thái
+        ASSIGNEE_CHANGED, // Thay đổi người được giao
+        PRIORITY_CHANGED, // Thay đổi độ ưu tiên
+        SPRINT_CHANGED, // Thay đổi sprint
+        DUE_DATE_CHANGED, // Thay đổi hạn hoàn thành
         ESTIMATED_HOURS_CHANGED, // Thay đổi thời gian ước tính
-        ACTUAL_HOURS_CHANGED,   // Cập nhật thời gian thực tế
-        TITLE_CHANGED,          // Thay đổi tiêu đề
-        DESCRIPTION_CHANGED,    // Thay đổi mô tả
-        COMMENT_ADDED,          // Thêm comment
-        COMMENT_EDITED,         // Sửa comment
-        COMMENT_DELETED         // Xóa comment
+        ACTUAL_HOURS_CHANGED, // Cập nhật thời gian thực tế
+        TITLE_CHANGED, // Thay đổi tiêu đề
+        DESCRIPTION_CHANGED, // Thay đổi mô tả
+        COMMENT_ADDED, // Thêm comment
+        COMMENT_EDITED, // Sửa comment
+        COMMENT_DELETED // Xóa comment
     }
 }

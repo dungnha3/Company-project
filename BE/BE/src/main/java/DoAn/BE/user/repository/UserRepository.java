@@ -31,22 +31,34 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByIsOnlineTrue();
 
-    // Find by role
-    List<User> findByRole(User.Role role);
-
-    // Search
-    @Query("SELECT u FROM User u WHERE " +
-            "u.username LIKE %:keyword% OR " +
-            "u.email LIKE %:keyword% OR " +
-            "u.phoneNumber LIKE %:keyword% OR " +
-            "EXISTS (SELECT nv FROM NhanVien nv WHERE nv.user.userId = u.userId AND nv.hoTen LIKE %:keyword%)")
-    List<User> searchByKeyword(@Param("keyword") String keyword);
-
-    // Count
-    long countByRole(User.Role role);
-
     long countByIsOnlineTrue();
 
     // Find inactive users
     List<User> findByIsOnlineTrueAndLastSeenBefore(LocalDateTime cutoffTime);
+
+    // Search users
+    @Query("SELECT u FROM User u WHERE u.username LIKE %:keyword% OR u.email LIKE %:keyword% OR u.phoneNumber LIKE %:keyword%")
+    List<User> searchByKeyword(@Param("keyword") String keyword);
+
+    // Find by reset password token
+    Optional<User> findByResetPasswordToken(String token);
+
+    // [OPTIMIZED: Bulk update for resetAllUsersStatus]
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE User u SET u.isOnline = false WHERE u.isOnline = true")
+    int resetAllOnlineUsersToOffline();
+
+    // [OPTIMIZED: Bulk update for endMeeting]
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE User u SET u.presenceStatus = 'ONLINE' WHERE u.presenceStatus = 'IN_MEETING' AND u.userId IN :userIds")
+    int updatePresenceStatusFromMeetingToOnline(@Param("userIds") List<Long> userIds);
+
+    // [SAAS] Find users by company with memberships eagerly loaded
+    @Query("SELECT DISTINCT u FROM User u " +
+            "LEFT JOIN FETCH u.memberships m " +
+            "LEFT JOIN FETCH m.company " +
+            "WHERE EXISTS (SELECT 1 FROM CompanyMember cm WHERE cm.user = u AND cm.company.companyId = :companyId AND cm.isActive = true)")
+    List<User> findUsersByCompanyIdWithMemberships(@Param("companyId") Long companyId);
 }

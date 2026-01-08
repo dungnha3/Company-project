@@ -13,7 +13,8 @@ import DoAn.BE.user.entity.User;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MeetingParticipant {
+@EqualsAndHashCode(callSuper = true)
+public class MeetingParticipant extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,14 +39,6 @@ public class MeetingParticipant {
 
     @Column(name = "left_at")
     private LocalDateTime leftAt;
-
-    @Column(name = "invited_at")
-    private LocalDateTime invitedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.invitedAt = LocalDateTime.now();
-    }
 
     // Enum
     public enum ParticipantStatus {

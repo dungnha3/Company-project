@@ -1,22 +1,24 @@
 package DoAn.BE.project.entity;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.*;
 import lombok.*;
 import DoAn.BE.user.entity.User;
 
-// Entity quản lý thành viên dự án (roles: OWNER, MANAGER, DEVELOPER, QA, VIEWER)
+// [Entity thành viên dự án - quản lý role] (Role: Data Model)
 @Entity
-@Table(
-    name = "project_members",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"project_id", "user_id"})
-)
+@Table(name = "project_members", uniqueConstraints = @UniqueConstraint(columnNames = { "project_id",
+        "user_id" }), indexes = {
+                // Index cho query: findByProject_ProjectId (Project members list)
+                @jakarta.persistence.Index(name = "idx_pm_project", columnList = "project_id"),
+                // Index cho query: findByUser_UserId (User's projects)
+                @jakarta.persistence.Index(name = "idx_pm_user", columnList = "user_id")
+        })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProjectMember {
-    
+@EqualsAndHashCode(callSuper = true)
+public class ProjectMember extends DoAn.BE.common.entity.BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -32,14 +34,6 @@ public class ProjectMember {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ProjectRole role = ProjectRole.MEMBER;
-
-    @Column(name = "joined_at")
-    private LocalDateTime joinedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.joinedAt = LocalDateTime.now();
-    }
 
     // Constructor
     public ProjectMember(Project project, User user, ProjectRole role) {
@@ -63,9 +57,8 @@ public class ProjectMember {
 
     // Enum
     public enum ProjectRole {
-        OWNER,    // Chủ project - full permissions
-        MANAGER,  // Quản lý - manage issues, sprints
-        MEMBER    // Thành viên - view, create issues
+        OWNER, // Chủ project - full permissions
+        MANAGER, // Quản lý - manage issues, sprints
+        MEMBER // Thành viên - view, create issues
     }
 }
-

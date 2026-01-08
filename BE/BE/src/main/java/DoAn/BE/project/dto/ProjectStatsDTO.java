@@ -17,7 +17,7 @@ public class ProjectStatsDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
-    
+
     // Issue Statistics
     private int totalIssues;
     private int completedIssues;
@@ -25,23 +25,29 @@ public class ProjectStatsDTO {
     private int todoIssues;
     private int overdueIssues;
     private double completionRate;
-    
+
     // Sprint Statistics
     private int totalSprints;
     private int activeSprints;
     private int completedSprints;
-    
+
     // Team Statistics
     private int totalMembers;
     private Map<String, Integer> memberWorkload; // userId -> issue count
-    
+
     // Priority Distribution
     private Map<String, Integer> priorityDistribution; // priority -> count
-    
+
     // Status Distribution
     private Map<String, Integer> statusDistribution; // status -> count
-    
+
     // Recent Activity Count
     private int recentActivityCount; // Last 7 days
     private int recentCommentCount; // Last 7 days
+
+    // Phase Statistics (NEW)
+    private int totalPhases;
+    private int completedPhases;
+    private int inProgressPhases;
+    private int planningPhases;
 }

@@ -38,10 +38,14 @@ public class WebSocketNotificationService {
         List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
         for (ChatRoomMember member : members) {
             if (!member.getUser().getUserId().equals(message.getSender().getUserId())) {
-                messagingTemplate.convertAndSendToUser(
-                        member.getUser().getUsername(),
-                        "/queue/notifications",
-                        wsMessage);
+                // Smart Notification Filtering
+                User.PresenceStatus status = member.getUser().getPresenceStatus();
+                if (status != User.PresenceStatus.BUSY && status != User.PresenceStatus.IN_MEETING) {
+                    messagingTemplate.convertAndSendToUser(
+                            member.getUser().getUsername(),
+                            "/queue/notifications",
+                            wsMessage);
+                }
             }
         }
     }
@@ -145,6 +149,10 @@ public class WebSocketNotificationService {
                 message,
                 data);
 
+        // Check User Status? (This method takes raw username, might need DB lookup if
+        // strict checking is needed)
+        // For now, assuming this specific method is for targeted high-priority or we
+        // rely on caller to check
         messagingTemplate.convertAndSendToUser(username, "/queue/notifications", wsMessage);
     }
 

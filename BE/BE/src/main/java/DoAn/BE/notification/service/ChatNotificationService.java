@@ -5,97 +5,88 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Service quản lý thông báo chat
+// [Service thông báo chat] (Role: System)
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class ChatNotificationService {
 
     private final NotificationService notificationService;
-    
-    /**
-     * Tạo chat notification với type động
-     */
-    public Notification createChatNotification(Long userId, String type, String title, String content, String link) {
-        return notificationService.createNotification(userId, "CHAT_" + type, title, content, link);
-    }
 
-    /**
-     * Tạo notification cho tin nhắn mới
-     */
+    // [Thông báo tin nhắn mới] (Role: System)
     public Notification createNewMessageNotification(Long userId, String senderName, String content, Long roomId) {
-        String title = "Tin nhắn mới từ " + senderName;
-        String truncatedContent = content != null && content.length() > 50 ? 
-            content.substring(0, 47) + "..." : content;
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "NEW_MESSAGE", title, truncatedContent, link);
+        String truncatedContent = content != null && content.length() > 50
+                ? content.substring(0, 47) + "..."
+                : content;
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_MESSAGE,
+                "/chat/rooms/" + roomId, senderName, truncatedContent);
     }
 
-    /**
-     * Tạo notification cho thành viên mới
-     */
+    // [Thông báo thành viên mới tham gia] (Role: System)
     public Notification createMemberJoinedNotification(Long userId, String memberName, Long roomId) {
-        String title = "Thành viên mới";
-        String content = memberName + " đã tham gia phòng chat";
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "MEMBER_JOINED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_ROOM,
+                "/chat/rooms/" + roomId, memberName);
     }
 
-    /**
-     * Tạo notification cho thành viên rời khỏi
-     */
+    // [Thông báo thành viên rời khỏi] (Role: System)
     public Notification createMemberLeftNotification(Long userId, String memberName, Long roomId) {
-        String title = "Thành viên rời khỏi";
-        String content = memberName + " đã rời khỏi phòng chat";
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "MEMBER_LEFT", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_ROOM,
+                "/chat/rooms/" + roomId, memberName);
     }
 
-    /**
-     * Tạo notification cho phòng chat được cập nhật
-     */
+    // [Thông báo phòng chat được cập nhật] (Role: System)
     public Notification createRoomUpdatedNotification(Long userId, String updateType, String details, Long roomId) {
-        String title = "Phòng chat được cập nhật";
-        String content = "Phòng chat đã được cập nhật: " + details;
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "ROOM_UPDATED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_ROOM,
+                "/chat/rooms/" + roomId, details);
     }
 
-    /**
-     * Tạo notification khi được thêm vào phòng chat
-     */
+    // [Thông báo được thêm vào phòng chat] (Role: System)
     public Notification createAddedToRoomNotification(Long userId, String roomName, String addedBy, Long roomId) {
-        String title = "Bạn được thêm vào phòng chat";
-        String content = addedBy + " đã thêm bạn vào phòng \"" + roomName + "\"";
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "ADDED_TO_ROOM", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_ROOM,
+                "/chat/rooms/" + roomId, addedBy, roomName);
     }
 
-    /**
-     * Tạo notification khi được reply tin nhắn
-     */
-    public Notification createMessageRepliedNotification(Long userId, String replierName, String replyContent, Long roomId) {
-        String title = replierName + " đã trả lời tin nhắn của bạn";
-        String truncatedContent = replyContent != null && replyContent.length() > 50 ? 
-            replyContent.substring(0, 47) + "..." : replyContent;
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "MESSAGE_REPLIED", title, truncatedContent, link);
+    // [Thông báo được reply tin nhắn] (Role: System)
+    public Notification createMessageRepliedNotification(Long userId, String replierName, String replyContent,
+            Long roomId) {
+        String truncatedContent = replyContent != null && replyContent.length() > 50
+                ? replyContent.substring(0, 47) + "..."
+                : replyContent;
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_MESSAGE,
+                "/chat/rooms/" + roomId, replierName, truncatedContent);
     }
 
-    /**
-     * Tạo notification khi role thay đổi
-     */
-    public Notification createRoleChangedNotification(Long userId, String newRole, String changedBy, Long roomId, String roomName) {
-        String title = "Quyền của bạn đã thay đổi";
-        String content = changedBy + " đã thay đổi quyền của bạn thành " + newRole + " trong phòng \"" + roomName + "\"";
-        String link = "/chat/rooms/" + roomId;
-        
-        return createChatNotification(userId, "ROLE_CHANGED", title, content, link);
+    // [Thông báo role thay đổi] (Role: System)
+    public Notification createRoleChangedNotification(Long userId, String newRole, String changedBy, Long roomId,
+            String roomName) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_ROOM,
+                "/chat/rooms/" + roomId, changedBy, newRole, roomName);
+    }
+
+    // [Thông báo mention] (Role: System)
+    public Notification createMentionNotification(Long userId, String senderName, String content, Long roomId) {
+        String truncatedContent = content != null && content.length() > 50
+                ? content.substring(0, 47) + "..."
+                : content;
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_MENTION,
+                "/chat/rooms/" + roomId, senderName, truncatedContent);
+    }
+
+    // [Thông báo task mention] (Role: System)
+    public Notification createTaskMentionNotification(Long userId, String senderName, String taskName, String taskUrl) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_TASK_MENTION,
+                taskUrl, senderName, taskName);
+    }
+
+    // [Thông báo tin nhắn bị sửa] (Role: System)
+    public Notification createMessageEditedNotification(Long userId, String editorName, Long roomId) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_MESSAGE,
+                "/chat/rooms/" + roomId, editorName);
+    }
+
+    // [Thông báo tin nhắn bị xóa] (Role: System)
+    public Notification createMessageDeletedNotification(Long userId, String deleterName, Long roomId) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.CHAT_MESSAGE,
+                "/chat/rooms/" + roomId, deleterName);
     }
 }

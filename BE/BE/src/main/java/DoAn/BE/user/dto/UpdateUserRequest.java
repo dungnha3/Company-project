@@ -1,6 +1,6 @@
 package DoAn.BE.user.dto;
 
-import DoAn.BE.user.entity.User;
+import DoAn.BE.company.entity.CompanyRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -24,9 +24,11 @@ public class UpdateUserRequest {
     @Size(max = 500000, message = "Avatar URL không được quá 500KB")
     private String avatarUrl;
 
-    private User.Role role;
+    private CompanyRole role;
 
     private Boolean isActive;
+
+    private Boolean isSystemAdmin; // Field mới
 
     // Fields for NhanVien entity
     @Size(max = 100, message = "Họ tên không được quá 100 ký tự")

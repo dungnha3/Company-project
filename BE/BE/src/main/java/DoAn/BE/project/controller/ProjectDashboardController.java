@@ -5,8 +5,7 @@ import DoAn.BE.project.service.ProjectDashboardService;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,33 +14,27 @@ import java.util.List;
 @RequestMapping("/api/project-dashboard")
 @RequiredArgsConstructor
 public class ProjectDashboardController {
-    
+
     private final ProjectDashboardService dashboardService;
-    
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (User) auth.getPrincipal();
-    }
-    
+
     @GetMapping("/project/{projectId}/stats")
     public ResponseEntity<ProjectStatsDTO> getProjectStats(
-            @PathVariable Long projectId) {
-        User currentUser = getCurrentUser();
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
         ProjectStatsDTO stats = dashboardService.getProjectStats(projectId, currentUser);
         return ResponseEntity.ok(stats);
     }
-    
+
     @GetMapping("/sprint/{sprintId}/burndown")
     public ResponseEntity<SprintBurndownDTO> getSprintBurndown(
-            @PathVariable Long sprintId) {
-        User currentUser = getCurrentUser();
+            @PathVariable Long sprintId,
+            @AuthenticationPrincipal User currentUser) {
         SprintBurndownDTO burndown = dashboardService.getSprintBurndown(sprintId, currentUser);
         return ResponseEntity.ok(burndown);
     }
-    
+
     @GetMapping("/my-projects")
-    public ResponseEntity<List<ProjectStatsDTO>> getUserProjectsStats() {
-        User currentUser = getCurrentUser();
+    public ResponseEntity<List<ProjectStatsDTO>> getUserProjectsStats(@AuthenticationPrincipal User currentUser) {
         List<ProjectStatsDTO> stats = dashboardService.getUserProjectsStats(currentUser);
         return ResponseEntity.ok(stats);
     }

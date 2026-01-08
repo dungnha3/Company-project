@@ -11,16 +11,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.user.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 // Service xử lý JWT token (tạo, validate, extract claims)
+// Note: jwt.secret should be set in application.properties/yml for production
+//       Default key is for development only!
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret:mySecretKey123456789012345678901234567890}")
+    // Must override with environment variable or config file in production
+    @Value("${jwt.secret}")
     private String secretKey;
 
     @Value("${jwt.expiration:86400000}") // 24 giờ
@@ -67,12 +71,22 @@ public class JwtService {
         return createToken(claims, userDetails.getUsername(), jwtExpiration);
     }
 
-    // Generate access token từ User entity (với custom claims)
+    // Generate access token từ User entity (chưa chọn company)
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
-        claims.put("role", user.getRole().name());
         claims.put("isActive", user.getIsActive());
+        // Chưa có companyId và role vì user chưa chọn company
+        return createToken(claims, user.getUsername(), jwtExpiration);
+    }
+
+    // Generate access token với company context
+    public String generateToken(User user, Long companyId, CompanyRole role) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getUserId());
+        claims.put("isActive", user.getIsActive());
+        claims.put("companyId", companyId);
+        claims.put("role", role.name());
         return createToken(claims, user.getUsername(), jwtExpiration);
     }
 
@@ -115,10 +129,24 @@ public class JwtService {
         return claims.get("userId", Long.class);
     }
 
+    // Lấy companyId từ token
+    public Long getCompanyIdFromToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return claims.get("companyId", Long.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // Lấy role từ token
     public String getRoleFromToken(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("role", String.class);
+        try {
+            Claims claims = extractAllClaims(token);
+            return claims.get("role", String.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // Kiểm tra có phải refresh token không

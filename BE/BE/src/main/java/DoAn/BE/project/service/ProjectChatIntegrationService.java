@@ -13,89 +13,76 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Service để tích hợp Project events với Chat
- * Auto post system messages vào project chat khi có updates
- */
+// [Service tích hợp Project events với Chat] (Role: Integration)
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ProjectChatIntegrationService {
-    
+
     private final ChatRoomRepository chatRoomRepository;
     private final MessageRepository messageRepository;
-    
-    /**
-     * Post system message vào project chat
-     */
+
+    // [Gửi system message vào project chat] (Role: Internal)
     @Transactional
-    public void postSystemMessage(Project project, String message) {
+    public void postSystemMessage(Project project, String messageContent) {
+        // [Validate input] (Role: Guard)
+        if (project == null || messageContent == null || messageContent.isBlank()) {
+            log.warn("Project hoặc message không được null/empty");
+            return;
+        }
+
         try {
+            // [Tìm chat room của project] (Role: Query)
             List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
             if (projectChats.isEmpty()) {
                 log.warn("Project {} không có chat room", project.getProjectId());
                 return;
             }
-            
+
             ChatRoom chatRoom = projectChats.get(0);
-            
-            // TEMPORARY FIX: Skip system messages until database is updated
-            log.info("SKIPPED system message to project chat {}: {}", chatRoom.getRoomId(), message);
-            return;
-            
-            /* TODO: Enable after running fix_message_sender_null.sql
+
+            // [Tạo system message] (Role: Create)
             Message systemMessage = new Message();
             systemMessage.setChatRoom(chatRoom);
-            systemMessage.setSender(null); // System message không có sender
-            systemMessage.setContent("🤖 " + message); // Prefix with bot emoji for system messages
-            systemMessage.setMessageType(Message.MessageType.TEXT);
-            systemMessage.setSentAt(LocalDateTime.now());
+            systemMessage.setSender(null);
+            systemMessage.setContent("🤖 " + messageContent);
+            systemMessage.setMessageType(Message.MessageType.SYSTEM);
+            systemMessage.setCreatedAt(LocalDateTime.now());
             systemMessage.setIsDeleted(false);
-            
+
             messageRepository.save(systemMessage);
-            log.info("Posted system message to project chat {}: {}", chatRoom.getRoomId(), message);
-            */
-            
+            log.info("Đã gửi system message đến project chat {}: {}", chatRoom.getRoomId(), messageContent);
+
         } catch (Exception e) {
-            log.error("Error posting system message to project chat: {}", e.getMessage(), e);
+            log.error("Lỗi gửi system message đến project chat: {}", e.getMessage(), e);
         }
     }
-    
-    /**
-     * Notification khi project status thay đổi
-     */
+
+    // [Thông báo khi project status thay đổi] (Role: Event Handler)
     public void notifyProjectStatusChanged(Project project, String oldStatus, String newStatus) {
         String message = String.format("📊 Trạng thái dự án đã thay đổi: %s → %s", oldStatus, newStatus);
         postSystemMessage(project, message);
     }
-    
-    /**
-     * Notification khi project deadline thay đổi
-     */
+
+    // [Thông báo khi project deadline thay đổi] (Role: Event Handler)
     public void notifyProjectDeadlineChanged(Project project, String oldDeadline, String newDeadline) {
         String message = String.format("📅 Deadline dự án đã thay đổi: %s → %s", oldDeadline, newDeadline);
         postSystemMessage(project, message);
     }
-    
-    /**
-     * Notification khi có member mới
-     */
+
+    // [Thông báo khi có member mới] (Role: Event Handler)
     public void notifyMemberAdded(Project project, String memberName, String role) {
         String message = String.format("👤 %s đã được thêm vào dự án với vai trò %s", memberName, role);
         postSystemMessage(project, message);
     }
-    
-    /**
-     * Notification khi member rời đi
-     */
+
+    // [Thông báo khi member rời đi] (Role: Event Handler)
     public void notifyMemberRemoved(Project project, String memberName) {
         String message = String.format("👋 %s đã rời khỏi dự án", memberName);
         postSystemMessage(project, message);
     }
-    
-    /**
-     * Notification khi project completed
-     */
+
+    // [Thông báo khi project hoàn thành] (Role: Event Handler)
     public void notifyProjectCompleted(Project project) {
         String message = "🎉 Chúc mừng! Dự án đã hoàn thành!";
         postSystemMessage(project, message);

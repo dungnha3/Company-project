@@ -1,7 +1,7 @@
 package DoAn.BE.project.service;
 
 import DoAn.BE.common.exception.*;
-import DoAn.BE.common.util.PermissionUtil;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.dto.IssueActivityDTO;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.IssueActivity;
@@ -28,10 +28,11 @@ public class IssueActivityService {
     private final IssueActivityRepository issueActivityRepository;
     private final IssueRepository issueRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final AccessControlService accessControlService;
 
     @Transactional(readOnly = true)
     public List<IssueActivityDTO> getIssueActivities(Long issueId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -52,7 +53,7 @@ public class IssueActivityService {
 
     @Transactional(readOnly = true)
     public List<IssueActivityDTO> getProjectActivities(Long projectId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
@@ -66,7 +67,7 @@ public class IssueActivityService {
 
     @Transactional(readOnly = true)
     public List<IssueActivityDTO> getUserActivities(Long projectId, User currentUser) {
-        if (!PermissionUtil.canAccessProjects(currentUser)) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 

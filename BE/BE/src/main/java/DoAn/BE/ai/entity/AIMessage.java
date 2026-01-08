@@ -5,9 +5,7 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Entity lưu trữ từng tin nhắn trong cuộc hội thoại AI
- */
+// Entity lưu trữ từng tin nhắn trong cuộc hội thoại AI
 @Entity
 @Table(name = "ai_messages")
 @Data

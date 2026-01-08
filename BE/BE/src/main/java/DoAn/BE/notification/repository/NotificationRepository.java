@@ -36,4 +36,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Đếm notifications cũ (để log)
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.createdAt < :cutoffDate")
     long countOlderThan(LocalDateTime cutoffDate);
+
+    // [Adapter Support] Lấy notification theo type
+    List<Notification> findByUser_UserIdAndTypeOrderByCreatedAtDesc(Long userId, String type);
+
+    // [Adapter Support] Lấy notification theo priority
+    List<Notification> findByUser_UserIdAndPriorityOrderByCreatedAtDesc(Long userId,
+            DoAn.BE.notification.entity.NotificationPriority priority);
 }

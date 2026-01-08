@@ -6,9 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO cho request chat với AI Assistant
- */
+// DTO cho request chat với AI Assistant
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

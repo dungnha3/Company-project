@@ -2,158 +2,111 @@ package DoAn.BE.notification.service;
 
 import DoAn.BE.notification.entity.Notification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Service quản lý thông báo dự án (project, issue, sprint)
+// [Service quản lý thông báo dự án] (Role: Project System)
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class ProjectNotificationService {
 
     private final NotificationService notificationService;
-    
-    /**
-     * Tạo notification khi được thêm vào project
-     */
+
+    // ========================= PROJECT NOTIFICATIONS =========================
+
+    // [Tạo notification khi được thêm vào project] (Role: Project)
     public Notification createProjectMemberAddedNotification(Long userId, String projectName, Long projectId) {
-        String title = "Được thêm vào dự án";
-        String content = "Bạn đã được thêm vào dự án \"" + projectName + "\"";
-        String link = "/projects/" + projectId;
-        return notificationService.createNotification(userId, "PROJECT_MEMBER_ADDED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_ASSIGNED,
+                "/projects/" + projectId, projectName);
     }
-    
-    /**
-     * Tạo notification khi bị xóa khỏi project
-     */
+
+    // [Tạo notification khi bị xóa khỏi project] (Role: Project)
     public Notification createProjectMemberRemovedNotification(Long userId, String projectName) {
-        String title = "Bị xóa khỏi dự án";
-        String content = "Bạn đã bị xóa khỏi dự án \"" + projectName + "\"";
-        String link = "/projects";
-        return notificationService.createNotification(userId, "PROJECT_MEMBER_REMOVED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_UPDATE,
+                "/projects", projectName);
     }
-    
-    /**
-     * Tạo notification khi project status thay đổi
-     */
-    public Notification createProjectStatusChangedNotification(Long userId, String projectName, String newStatus, Long projectId) {
-        String title = "Trạng thái dự án thay đổi";
-        String content = "Dự án \"" + projectName + "\" đã chuyển sang trạng thái: " + newStatus;
-        String link = "/projects/" + projectId;
-        return notificationService.createNotification(userId, "PROJECT_STATUS_CHANGED", title, content, link);
+
+    // [Tạo notification khi project status thay đổi] (Role: Project)
+    public Notification createProjectStatusChangedNotification(Long userId, String projectName, String newStatus,
+            Long projectId) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_UPDATE,
+                "/projects/" + projectId, projectName, newStatus);
     }
-    
-    /**
-     * Tạo notification khi project hoàn thành
-     */
+
+    // [Tạo notification khi project hoàn thành] (Role: Project)
     public Notification createProjectCompletedNotification(Long userId, String projectName, Long projectId) {
-        String title = "Dự án hoàn thành";
-        String content = "🎉 Chúc mừng! Dự án \"" + projectName + "\" đã hoàn thành!";
-        String link = "/projects/" + projectId;
-        return notificationService.createNotification(userId, "PROJECT_COMPLETED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_UPDATE,
+                "/projects/" + projectId, projectName);
     }
-    
-    /**
-     * Tạo notification khi project bị archive/delete
-     */
+
+    // [Tạo notification khi project bị archive/delete] (Role: Project)
     public Notification createProjectArchivedNotification(Long userId, String projectName) {
-        String title = "Dự án đã đóng";
-        String content = "Dự án \"" + projectName + "\" đã được đóng và chuyển sang chế độ chỉ đọc";
-        String link = "/projects";
-        return notificationService.createNotification(userId, "PROJECT_ARCHIVED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_UPDATE,
+                "/projects", projectName);
     }
-    
-    /**
-     * Tạo notification khi role thay đổi trong project
-     */
-    public Notification createProjectRoleChangedNotification(Long userId, String projectName, String newRole, Long projectId) {
-        String title = "Vai trò trong dự án thay đổi";
-        String content = "Vai trò của bạn trong dự án \"" + projectName + "\" đã thay đổi thành: " + newRole;
-        String link = "/projects/" + projectId;
-        return notificationService.createNotification(userId, "PROJECT_ROLE_CHANGED", title, content, link);
+
+    // [Tạo notification khi role thay đổi trong project] (Role: Project)
+    public Notification createProjectRoleChangedNotification(Long userId, String projectName, String newRole,
+            Long projectId) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_UPDATE,
+                "/projects/" + projectId, projectName, newRole);
     }
-    
-    /**
-     * Tạo notification khi issue được assign
-     */
+
+    // ========================= ISSUE NOTIFICATIONS =========================
+
+    // [Tạo notification khi issue được assign] (Role: Issue)
     public Notification createIssueAssignedNotification(Long userId, String issueTitle, String projectName) {
-        String title = "Issue mới được giao";
-        String content = "Bạn được giao issue \"" + issueTitle + "\" trong dự án \"" + projectName + "\"";
-        String link = "/projects/issues";
-        return notificationService.createNotification(userId, "PROJECT_ISSUE_ASSIGNED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_ISSUE,
+                "/projects/issues", issueTitle, projectName);
     }
-    
-    /**
-     * Tạo notification khi có comment mới trên issue
-     */
+
+    // [Tạo notification khi có comment mới trên issue] (Role: Issue)
     public Notification createIssueCommentNotification(Long userId, String commenterName, String issueTitle) {
-        String title = "Comment mới trên issue";
-        String content = commenterName + " đã comment trên issue \"" + issueTitle + "\"";
-        String link = "/projects/issues";
-        return notificationService.createNotification(userId, "PROJECT_ISSUE_COMMENT", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_ISSUE,
+                "/projects/issues", commenterName, issueTitle);
     }
-    
-    /**
-     * Tạo notification khi issue thay đổi status
-     */
+
+    // [Tạo notification khi issue thay đổi status] (Role: Issue)
     public Notification createIssueStatusChangedNotification(Long userId, String issueTitle, String newStatus) {
-        String title = "Trạng thái issue thay đổi";
-        String content = "Issue \"" + issueTitle + "\" đã chuyển sang trạng thái: " + newStatus;
-        String link = "/projects/issues";
-        return notificationService.createNotification(userId, "PROJECT_ISSUE_STATUS", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_ISSUE,
+                "/projects/issues", issueTitle, newStatus);
     }
-    
-    /**
-     * Tạo notification khi issue bị overdue
-     */
+
+    // [Tạo notification khi issue bị overdue] (Role: Issue)
     public Notification createIssueOverdueNotification(Long userId, String issueTitle, String issueKey) {
-        String title = "Issue quá hạn";
-        String content = "⚠️ Issue \"" + issueTitle + "\" (" + issueKey + ") đã quá hạn!";
-        String link = "/projects/issues/" + issueKey;
-        return notificationService.createNotification(userId, "PROJECT_ISSUE_OVERDUE", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_ISSUE,
+                "/projects/issues/" + issueKey, issueTitle, issueKey);
     }
-    
-    /**
-     * Tạo notification khi issue được update (priority, deadline, etc.)
-     */
-    public Notification createIssueUpdatedNotification(Long userId, String issueTitle, String updaterName, String changeDescription) {
-        String title = "Issue được cập nhật";
-        String content = updaterName + " đã cập nhật issue \"" + issueTitle + "\": " + changeDescription;
-        String link = "/projects/issues";
-        return notificationService.createNotification(userId, "PROJECT_ISSUE_UPDATED", title, content, link);
+
+    // [Tạo notification khi issue được update] (Role: Issue)
+    public Notification createIssueUpdatedNotification(Long userId, String issueTitle, String updaterName,
+            String changeDescription) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_ISSUE,
+                "/projects/issues", updaterName, issueTitle, changeDescription);
     }
-    
-    /**
-     * Tạo notification khi sprint bắt đầu
-     */
+
+    // ========================= SPRINT NOTIFICATIONS =========================
+
+    // [Tạo notification khi sprint bắt đầu] (Role: Sprint)
     public Notification createSprintStartedNotification(Long userId, String sprintName, Long projectId) {
-        String title = "🚀 Sprint mới bắt đầu";
-        String content = "Sprint \"" + sprintName + "\" đã bắt đầu. Chúc team làm việc hiệu quả!";
-        String link = "/projects/" + projectId + "/sprints";
-        return notificationService.createNotification(userId, "PROJECT_SPRINT_STARTED", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_SPRINT,
+                "/projects/" + projectId + "/sprints", sprintName);
     }
-    
-    /**
-     * Tạo notification khi sprint sắp kết thúc (3 ngày trước)
-     */
+
+    // [Tạo notification khi sprint sắp kết thúc (3 ngày trước)] (Role: Sprint)
     public Notification createSprintEndingNotification(Long userId, String sprintName, String endDate, Long projectId) {
-        String title = "⏰ Sprint sắp kết thúc";
-        String content = "Sprint \"" + sprintName + "\" sẽ kết thúc vào " + endDate + ". Hãy hoàn thành các task còn lại!";
-        String link = "/projects/" + projectId + "/sprints";
-        return notificationService.createNotification(userId, "PROJECT_SPRINT_ENDING", title, content, link);
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_SPRINT,
+                "/projects/" + projectId + "/sprints", sprintName, endDate);
     }
-    
-    /**
-     * Tạo notification khi sprint hoàn thành
-     */
-    public Notification createSprintCompletedNotification(Long userId, String sprintName, int completedIssues, int totalIssues, Long projectId) {
-        String title = "✅ Sprint hoàn thành";
-        String content = String.format(
-            "Sprint \"%s\" đã hoàn thành! Kết quả: %d/%d issues hoàn thành (%.1f%%)",
-            sprintName, completedIssues, totalIssues, 
-            totalIssues > 0 ? (completedIssues * 100.0 / totalIssues) : 0
-        );
-        String link = "/projects/" + projectId + "/sprints";
-        return notificationService.createNotification(userId, "PROJECT_SPRINT_COMPLETED", title, content, link);
+
+    // [Tạo notification khi sprint hoàn thành] (Role: Sprint)
+    public Notification createSprintCompletedNotification(Long userId, String sprintName, int completedIssues,
+            int totalIssues, Long projectId) {
+        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.PROJECT_SPRINT,
+                "/projects/" + projectId + "/sprints", sprintName, completedIssues, totalIssues,
+                totalIssues > 0 ? (completedIssues * 100.0 / totalIssues) : 0);
     }
 }

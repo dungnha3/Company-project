@@ -1,7 +1,8 @@
 package DoAn.BE.auth.filter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -13,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import DoAn.BE.auth.service.JwtService;
 import DoAn.BE.auth.service.SessionService;
+import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.service.UserService;
 import jakarta.servlet.FilterChain;
@@ -20,7 +22,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-// Filter xác thực JWT token cho mỗi request (trừ public endpoints)
+// Filter xác thực JWT token và set TenantContext cho mỗi request
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -35,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    @SuppressWarnings({"squid:S1181", "squid:S1181"}) // JWT validation requires generic exception handling
+    @SuppressWarnings({ "squid:S1181" })
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
@@ -55,47 +57,66 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
 
         try {
-            // Extract username từ JWT
             username = jwtService.extractUsername(jwt);
 
-            // Kiểm tra username và SecurityContext
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                // Tìm user trong database
-                User user = userService.findByUsername(username)
-                        .orElse(null);
+                User user = userService.findByUsername(username).orElse(null);
 
                 if (user != null && jwtService.validateToken(jwt)) {
+                    // [DEBUG] Log isSystemAdmin value
+                    System.out.println("=== DEBUG JwtFilter ===");
+                    System.out.println("User loaded: " + user.getUsername());
+                    System.out.println("isSystemAdmin from DB: " + user.isSystemAdminAccount());
+                    System.out.println("isSystemAdmin field: " + user.getIsSystemAdmin());
 
-                    // Kiểm tra user có active không
                     if (!user.getIsActive()) {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.getWriter().write("{\"error\":\"Tài khoản đã bị vô hiệu hóa\"}");
                         return;
                     }
 
-                    // Tạo authentication token với User object làm principal
+                    // Lấy companyId và role từ token
+                    Long companyId = jwtService.getCompanyIdFromToken(jwt);
+                    String role = jwtService.getRoleFromToken(jwt);
+
+                    // Set TenantContext nếu có companyId trong token (header được xử lý bởi
+                    // TenantFilter)
+                    if (companyId != null && TenantContext.getCompanyId() == null) {
+                        TenantContext.setCompanyId(companyId);
+                    }
+
+                    // Tạo authorities từ role trong token
+                    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+
+                    // [SAAS] System Admin gets special authority, bypassing company role checks
+                    if (user.isSystemAdminAccount()) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+                        System.out.println("✅ Added ROLE_SYSTEM_ADMIN authority for: " + user.getUsername());
+                    }
+
+                    if (role != null && !role.isEmpty()) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                    } else if (authorities.isEmpty()) {
+                        // User chưa chọn company và không phải System Admin, cấp quyền cơ bản
+                        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                    }
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            user, // Set User object làm principal
-                            null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-                    );
+                            user, null, authorities);
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                    // Cập nhật session activity (nếu có sessionId trong header)
+                    // Cập nhật session activity
                     String sessionId = request.getHeader("X-Session-ID");
                     if (sessionId != null && !sessionId.trim().isEmpty()) {
                         sessionService.updateSessionActivity(sessionId);
                     }
                 }
             }
-        } catch (io.jsonwebtoken.ExpiredJwtException |
-                 io.jsonwebtoken.MalformedJwtException |
-                 io.jsonwebtoken.security.SignatureException |
-                 io.jsonwebtoken.UnsupportedJwtException |
-                 IllegalArgumentException e) {
+        } catch (io.jsonwebtoken.ExpiredJwtException | io.jsonwebtoken.MalformedJwtException
+                | io.jsonwebtoken.security.SignatureException | io.jsonwebtoken.UnsupportedJwtException
+                | IllegalArgumentException e) {
             logger.warn("JWT validation failed: " + e.getMessage());
             SecurityContextHolder.clearContext();
         } catch (RuntimeException e) {
@@ -109,11 +130,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
-
-        // Không filter các endpoint public
-        return path.startsWith("/api/auth/") ||
-               path.startsWith("/api/public/") ||
-               path.equals("/error") ||
-               path.startsWith("/actuator/");
+        return path.startsWith("/api/auth/login") ||
+                path.startsWith("/api/auth/register") ||
+                path.startsWith("/api/auth/google") ||
+                path.startsWith("/api/public/") ||
+                path.equals("/error") ||
+                path.startsWith("/actuator/") ||
+                path.startsWith("/ws/");
     }
 }

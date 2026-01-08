@@ -12,9 +12,7 @@ import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Entity lưu trữ cuộc hội thoại với AI Assistant
- */
+// Entity lưu trữ cuộc hội thoại với AI Assistant
 @Entity
 @Table(name = "ai_conversations")
 @Data

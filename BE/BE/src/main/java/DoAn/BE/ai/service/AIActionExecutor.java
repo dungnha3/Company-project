@@ -2,7 +2,6 @@ package DoAn.BE.ai.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,10 +34,9 @@ import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Service thực thi các action từ AI
- * Xử lý tạo Project, Issue, Sprint tự động
- */
+// Service thực thi các action từ AI
+
+// Xử lý tạo Project, Issue, Sprint tự động
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -54,9 +52,7 @@ public class AIActionExecutor {
     private final ChatRoomService chatRoomService;
     private final FolderService folderService;
 
-    /**
-     * Thực thi action từ AI
-     */
+// Thực thi action từ AI
     public AIActionDTO executeAction(AIActionDTO action, Long userId) {
         log.info("Executing AI action: {} for user: {}", action.getActionType(), userId);
 
@@ -87,9 +83,7 @@ public class AIActionExecutor {
         }
     }
 
-    /**
-     * Tạo project mới
-     */
+// Tạo project mới
     private AIActionDTO createProject(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
 
@@ -163,9 +157,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Tạo issue/task mới
-     */
+// Tạo issue/task mới
     private AIActionDTO createIssue(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
 
@@ -226,9 +218,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Tạo nhiều issues cùng lúc
-     */
+// Tạo nhiều issues cùng lúc
     @SuppressWarnings("unchecked")
     private AIActionDTO createMultipleIssues(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
@@ -265,9 +255,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Tạo sprint mới
-     */
+// Tạo sprint mới
     private AIActionDTO createSprint(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
 
@@ -310,9 +298,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Gán issue cho user
-     */
+// Gán issue cho user
     private AIActionDTO assignIssue(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
 
@@ -343,9 +329,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Thay đổi trạng thái issue
-     */
+// Thay đổi trạng thái issue
     private AIActionDTO changeIssueStatus(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
 
@@ -376,9 +360,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Bắt đầu sprint
-     */
+// Bắt đầu sprint
     private AIActionDTO startSprint(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
         Long sprintId = getLongValue(data, "sprintId");
@@ -402,9 +384,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Hoàn thành sprint
-     */
+// Hoàn thành sprint
     private AIActionDTO completeSprint(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
         Long sprintId = getLongValue(data, "sprintId");
@@ -509,10 +489,7 @@ public class AIActionExecutor {
     }
 
     // ==================== Auto Setup Methods ====================
-
-    /**
-     * Thiết lập dự án hoàn chỉnh: tạo project + tasks + thêm members + gán việc
-     */
+// Thiết lập dự án hoàn chỉnh: tạo project + tasks + thêm members + gán việc
     @SuppressWarnings("unchecked")
     private AIActionDTO setupProjectComplete(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
@@ -615,7 +592,6 @@ public class AIActionExecutor {
         resultMessage.append(String.format("👥 Đã thêm %d thành viên vào dự án\n", projectMembers.size()));
 
         // 4. Tạo Sprints (giai đoạn) và tasks
-        @SuppressWarnings("unchecked")
         List<Map<String, Object>> sprintsData = (List<Map<String, Object>>) data.get("sprints");
         Integer sprintCount = getIntValue(data, "sprintCount", 3);
 
@@ -660,7 +636,6 @@ public class AIActionExecutor {
                 createdSprints.add(sprint);
 
                 // Create tasks for this sprint
-                @SuppressWarnings("unchecked")
                 List<Map<String, Object>> sprintTasks = (List<Map<String, Object>>) sprintData.get("tasks");
                 if (sprintTasks != null) {
                     for (Map<String, Object> taskData : sprintTasks) {
@@ -761,9 +736,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Thêm thành viên vào project
-     */
+// Thêm thành viên vào project
     @SuppressWarnings("unchecked")
     private AIActionDTO addProjectMembers(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
@@ -824,9 +797,7 @@ public class AIActionExecutor {
         return action;
     }
 
-    /**
-     * Tự động gán tasks cho members trong project
-     */
+// Tự động gán tasks cho members trong project
     private AIActionDTO autoAssignTasks(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
 

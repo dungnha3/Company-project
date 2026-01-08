@@ -11,24 +11,24 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// Request DTO tạo Issue/task mới
+// [Request tạo Issue/task mới] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateIssueRequest {
     @NotNull(message = "Project ID không được để trống")
     private Long projectId;
-    
+
     @NotBlank(message = "Tiêu đề không được để trống")
     @Size(max = 255, message = "Tiêu đề không được quá 255 ký tự")
     private String title;
-    
+
     @Size(max = 2000, message = "Mô tả không được quá 2000 ký tự")
     private String description;
-    
+
     // StatusId có thể null, mặc định là To Do (id: 1)
     private Integer statusId;
-    
+
     private Priority priority;
     private Long assigneeId;
     private BigDecimal estimatedHours;

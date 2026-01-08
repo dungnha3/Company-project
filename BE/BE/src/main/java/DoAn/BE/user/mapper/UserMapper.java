@@ -1,6 +1,6 @@
 package DoAn.BE.user.mapper;
 
-import DoAn.BE.hr.repository.NhanVienRepository;
+import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.user.dto.UserDTO;
 import DoAn.BE.user.entity.User;
 import org.springframework.stereotype.Component;
@@ -11,15 +11,10 @@ import java.util.stream.Collectors;
 @Component
 public class UserMapper {
 
-    private final NhanVienRepository nhanVienRepository;
-
-    public UserMapper(NhanVienRepository nhanVienRepository) {
-        this.nhanVienRepository = nhanVienRepository;
+    public UserMapper() {
     }
 
-    /**
-     * Convert User entity to UserDTO
-     */
+    // [Convert User entity to UserDTO] (Role: System)
     public UserDTO toDTO(User user) {
         if (user == null) {
             return null;
@@ -31,30 +26,54 @@ public class UserMapper {
         dto.setEmail(user.getEmail());
         dto.setPhoneNumber(user.getPhoneNumber());
         dto.setAvatarUrl(user.getAvatarUrl());
-        dto.setRole(user.getRole());
+
+        // [SAAS] Set System Admin flag
+        dto.setIsSystemAdmin(user.getIsSystemAdmin());
+
+        // Lấy role từ CompanyMember trong context hiện tại
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+
+        try {
+            if (companyId != null && user.getMemberships() != null) {
+                user.getMemberships().stream()
+                        .filter(m -> m.getCompany().getCompanyId().equals(companyId)
+                                && Boolean.TRUE.equals(m.getIsActive()))
+                        .findFirst()
+                        .ifPresentOrElse(member -> {
+                            // Dùng CompanyRole trực tiếp
+                            dto.setRole(member.getRole() != null ? member.getRole() : CompanyRole.EMPLOYEE);
+                        }, () -> dto.setRole(CompanyRole.EMPLOYEE));
+            } else {
+                dto.setRole(CompanyRole.EMPLOYEE);
+            }
+
+            // [SAAS] Map all company memberships for System Admin UI
+            if (user.getMemberships() != null && !user.getMemberships().isEmpty()) {
+                List<UserDTO.CompanyMembershipInfo> memberships = user.getMemberships().stream()
+                        .map(m -> new UserDTO.CompanyMembershipInfo(
+                                m.getCompany().getCompanyId(),
+                                m.getCompany().getName(),
+                                m.getRole() != null ? m.getRole().name() : null,
+                                m.getIsActive()))
+                        .collect(Collectors.toList());
+                dto.setCompanyMemberships(memberships);
+            }
+        } catch (org.hibernate.LazyInitializationException e) {
+            // Memberships not loaded - set defaults
+            dto.setRole(CompanyRole.EMPLOYEE);
+            dto.setCompanyMemberships(null);
+        }
+
         dto.setIsActive(user.getIsActive());
         dto.setIsOnline(user.getIsOnline());
         dto.setLastSeen(user.getLastSeen());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setLastLogin(user.getLastLogin());
 
-        // Lấy nhanvienId và fullName nếu user có liên kết với NhanVien
-        nhanVienRepository.findByUser_UserId(user.getUserId())
-                .ifPresent(nhanVien -> {
-                    dto.setNhanvienId(nhanVien.getNhanvienId());
-                    dto.setFullName(nhanVien.getHoTen());
-                });
-
-        if (dto.getFullName() == null) {
-            dto.setFullName(user.getUsername()); // Fallback
-        }
-
         return dto;
     }
 
-    /**
-     * Convert list of User entities to list of UserDTOs
-     */
+    // [Convert list of User entities to list of UserDTOs] (Role: System)
     public List<UserDTO> toDTOList(List<User> users) {
         if (users == null) {
             return null;

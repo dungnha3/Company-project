@@ -35,12 +35,9 @@ public class UserPresenceService {
         resetAllUsersStatus();
     }
 
+    // [OPTIMIZED: Bulk update instead of N saves in loop]
     private void resetAllUsersStatus() {
-        List<User> onlineUsers = userRepository.findByIsOnlineTrue();
-        for (User user : onlineUsers) {
-            user.setIsOnline(false);
-            userRepository.save(user);
-        }
+        userRepository.resetAllOnlineUsersToOffline();
     }
 
     private final Set<Long> onlineUsers = ConcurrentHashMap.newKeySet(); // Lưu danh sách user đang online
@@ -77,30 +74,6 @@ public class UserPresenceService {
         if (wasOnline) {
             notifyUserStatusChange(userId, false);
         }
-    }
-
-    // Kiểm tra user có online không
-    public boolean isUserOnline(@NonNull Long userId) {
-        return onlineUsers.contains(userId);
-    }
-
-    // Lấy danh sách user online
-    public List<Long> getOnlineUsers() {
-        return List.copyOf(onlineUsers);
-    }
-
-    // Lấy số lượng user online
-    public int getOnlineUserCount() {
-        return onlineUsers.size();
-    }
-
-    // Cập nhật last seen của user
-    public void updateLastSeen(@NonNull Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
-
-        user.setLastSeen(LocalDateTime.now());
-        userRepository.save(user);
     }
 
     // Thông báo thay đổi trạng thái online/offline

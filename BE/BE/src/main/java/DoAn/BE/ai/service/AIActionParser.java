@@ -14,10 +14,9 @@ import DoAn.BE.ai.dto.AIActionDTO.ActionStatus;
 import DoAn.BE.ai.dto.AIActionDTO.ActionType;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Service phân tích response từ AI để trích xuất các action
- * Tìm các pattern như "tạo dự án", "tạo task", etc.
- */
+// Service phân tích response từ AI để trích xuất các action
+
+// Tìm các pattern như "tạo dự án", "tạo task", etc.
 @Service
 @Slf4j
 public class AIActionParser {
@@ -65,9 +64,7 @@ public class AIActionParser {
             "(?i)(?:mô tả|description|desc)[^:]*:\\s*(.+)",
             Pattern.UNICODE_CASE);
 
-    /**
-     * Phân tích message từ user để detect action intent
-     */
+// Phân tích message từ user để detect action intent
     public List<AIActionDTO> parseUserMessage(String message, Long projectId) {
         List<AIActionDTO> actions = new ArrayList<>();
 
@@ -104,9 +101,7 @@ public class AIActionParser {
         return actions;
     }
 
-    /**
-     * Kiểm tra xem user có yêu cầu thiết lập dự án hoàn chỉnh không
-     */
+// Kiểm tra xem user có yêu cầu thiết lập dự án hoàn chỉnh không
     public boolean isSetupProjectCompleteRequest(String message) {
         String lowerMessage = message.toLowerCase();
 
@@ -139,10 +134,8 @@ public class AIActionParser {
         return false;
     }
 
-    /**
-     * Phân tích response từ AI để tìm các actions được gợi ý
-     * AI có thể trả về JSON actions trong response
-     */
+// Phân tích response từ AI để tìm các actions được gợi ý
+// AI có thể trả về JSON actions trong response
     public List<AIActionDTO> parseAIResponse(String aiResponse, Long projectId) {
         List<AIActionDTO> actions = new ArrayList<>();
 
@@ -176,9 +169,7 @@ public class AIActionParser {
         return actions;
     }
 
-    /**
-     * Kiểm tra user message có yêu cầu tạo mới không
-     */
+// Kiểm tra user message có yêu cầu tạo mới không
     public boolean isCreateRequest(String message) {
         String lowerMessage = message.toLowerCase();
         return lowerMessage.contains("tạo") ||
@@ -188,9 +179,7 @@ public class AIActionParser {
                 lowerMessage.contains("khởi tạo");
     }
 
-    /**
-     * Kiểm tra user message có yêu cầu liên quan đến project
-     */
+// Kiểm tra user message có yêu cầu liên quan đến project
     public boolean isProjectRelated(String message) {
         String lowerMessage = message.toLowerCase();
         return lowerMessage.contains("dự án") ||
@@ -198,9 +187,7 @@ public class AIActionParser {
                 lowerMessage.contains("prj");
     }
 
-    /**
-     * Kiểm tra user message có yêu cầu liên quan đến task
-     */
+// Kiểm tra user message có yêu cầu liên quan đến task
     public boolean isTaskRelated(String message) {
         String lowerMessage = message.toLowerCase();
         return lowerMessage.contains("task") ||
@@ -211,10 +198,7 @@ public class AIActionParser {
     }
 
     // ==================== Private Helper Methods ====================
-
-    /**
-     * Tạo action thiết lập dự án hoàn chỉnh
-     */
+// Tạo action thiết lập dự án hoàn chỉnh
     private AIActionDTO createSetupProjectCompleteAction(String message) {
         Map<String, Object> data = new HashMap<>();
 
@@ -309,10 +293,9 @@ public class AIActionParser {
                 .build();
     }
 
-    /**
-     * Trích xuất danh sách tasks từ AI response
-     * Chỉ lấy các dòng có tiêu đề công việc, bỏ qua metadata
-     */
+// Trích xuất danh sách tasks từ AI response
+
+// Chỉ lấy các dòng có tiêu đề công việc, bỏ qua metadata
     private List<Map<String, Object>> extractTaskListFromResponse(String response) {
         List<Map<String, Object>> tasks = new ArrayList<>();
 
@@ -370,9 +353,7 @@ public class AIActionParser {
         return tasks;
     }
 
-    /**
-     * Kiểm tra xem dòng có phải là tiêu đề công việc không
-     */
+// Kiểm tra xem dòng có phải là tiêu đề công việc không
     private boolean isTaskTitleLine(String line) {
         String lowerLine = line.toLowerCase();
 
@@ -413,9 +394,7 @@ public class AIActionParser {
         return false;
     }
 
-    /**
-     * Kiểm tra xem dòng có phải là metadata không
-     */
+// Kiểm tra xem dòng có phải là metadata không
     private boolean isMetadataLine(String lowerLine) {
         // Remove leading whitespace and bullet for checking
         String check = lowerLine.replaceFirst("^\\s*[-•]?\\s*", "").trim();
@@ -462,9 +441,7 @@ public class AIActionParser {
         return false;
     }
 
-    /**
-     * Trích xuất tiêu đề task từ dòng
-     */
+// Trích xuất tiêu đề task từ dòng
     private String extractTaskTitle(String line) {
         // Remove markdown bold markers
         String clean = line.replaceAll("\\*\\*", "").trim();
@@ -496,9 +473,7 @@ public class AIActionParser {
         return clean.isEmpty() ? null : clean;
     }
 
-    /**
-     * Trích xuất và áp dụng metadata vào task
-     */
+// Trích xuất và áp dụng metadata vào task
     private void extractAndApplyMetadata(String line, Map<String, Object> task) {
         // Extract estimated hours
         Matcher timeMatcher = TIME_PATTERN.matcher(line);
@@ -539,9 +514,7 @@ public class AIActionParser {
         }
     }
 
-    /**
-     * Chuẩn hóa giá trị priority
-     */
+// Chuẩn hóa giá trị priority
     private String normalizePriority(String priority) {
         String lower = priority.toLowerCase();
         if (lower.equals("low") || lower.equals("thấp")) {
@@ -579,7 +552,6 @@ public class AIActionParser {
         return "MEDIUM";
     }
 
-    @SuppressWarnings("unchecked")
     private AIActionDTO parseJsonAction(String json, Long projectId) {
         // Simple JSON parsing without external library
         // In production, use Jackson ObjectMapper

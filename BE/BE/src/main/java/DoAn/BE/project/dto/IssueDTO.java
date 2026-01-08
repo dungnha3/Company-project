@@ -9,7 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// DTO truyền dữ liệu công việc/task
+// [DTO thông tin công việc/task] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

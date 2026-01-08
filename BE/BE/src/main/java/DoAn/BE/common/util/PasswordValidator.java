@@ -2,10 +2,9 @@ package DoAn.BE.common.util;
 
 import java.util.regex.Pattern;
 
-/**
- * Password Validator - Kiểm tra độ mạnh mật khẩu
- * Áp dụng best practices về bảo mật mật khẩu
- */
+// Password Validator - Kiểm tra độ mạnh mật khẩu
+
+// Áp dụng best practices về bảo mật mật khẩu
 public class PasswordValidator {
     
     // Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt
@@ -13,28 +12,22 @@ public class PasswordValidator {
         "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
     
     private static final Pattern pattern = Pattern.compile(PASSWORD_PATTERN);
-    
-    /**
-     * Kiểm tra mật khẩu có đáp ứng yêu cầu không
-     */
+
+// Kiểm tra mật khẩu có đáp ứng yêu cầu không
     public static boolean isValid(String password) {
         if (password == null || password.trim().isEmpty()) {
             return false;
         }
         return pattern.matcher(password).matches();
     }
-    
-    /**
-     * Lấy mô tả yêu cầu mật khẩu
-     */
+
+// Lấy mô tả yêu cầu mật khẩu
     public static String getPasswordRequirements() {
         return "Mật khẩu phải có ít nhất 8 ký tự, bao gồm: " +
                "chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)";
     }
-    
-    /**
-     * Kiểm tra mật khẩu có phổ biến không
-     */
+
+// Kiểm tra mật khẩu có phổ biến không
     public static boolean isCommonPassword(String password) {
         String[] commonPasswords = {
             "password", "123456", "123456789", "12345678", "12345",
@@ -55,12 +48,12 @@ public class PasswordValidator {
         }
         return false;
     }
-    
-    /**
-     * Validate mật khẩu và trả về thông báo lỗi (nếu có)
-     * @param password Mật khẩu cần validate
-     * @return null nếu hợp lệ, thông báo lỗi nếu không hợp lệ
-     */
+
+// Validate mật khẩu và trả về thông báo lỗi (nếu có)
+
+// @param password Mật khẩu cần validate
+
+// @return null nếu hợp lệ, thông báo lỗi nếu không hợp lệ
     public static String validatePassword(String password) {
         if (password == null || password.trim().isEmpty()) {
             return "Mật khẩu không được để trống";
@@ -84,11 +77,10 @@ public class PasswordValidator {
         
         return null; // Mật khẩu hợp lệ
     }
-    
-    /**
-     * Kiểm tra độ mạnh mật khẩu (0-4)
-     * 0: Rất yếu, 1: Yếu, 2: Trung bình, 3: Mạnh, 4: Rất mạnh
-     */
+
+// Kiểm tra độ mạnh mật khẩu (0-4)
+
+// 0: Rất yếu, 1: Yếu, 2: Trung bình, 3: Mạnh, 4: Rất mạnh
     public static int getPasswordStrength(String password) {
         if (password == null || password.isEmpty()) {
             return 0;

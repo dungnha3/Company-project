@@ -10,15 +10,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+
 import java.util.Map;
 import java.util.HashMap;
 
-/**
- * Service xử lý scheduled jobs cho Issue
- * - Check overdue issues daily
- * - Send reminders
- */
+// [Service scheduled jobs cho Issue - check overdue, send reminders] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -28,23 +24,22 @@ public class IssueScheduledService {
     private final ProjectNotificationService projectNotificationService;
     private final DoAn.BE.notification.service.FCMService fcmService;
 
-    /**
-     * Check overdue issues mỗi ngày lúc 9:00 AM
-     */
+    // [Check overdue issues - 9:00 AM hàng ngày] (Role: Scheduled)
     @Scheduled(cron = "0 0 9 * * *")
     @Transactional
     public void checkOverdueIssues() {
         log.info("🔍 Bắt đầu kiểm tra overdue issues...");
 
-        LocalDate today = LocalDate.now();
-
-        // Get all issues chưa done
-        List<Issue> allIssues = issueRepository.findAll();
-
+        int page = 0;
+        int size = 100;
         int overdueCount = 0;
-        for (Issue issue : allIssues) {
-            // Check if issue is overdue
-            if (issue.isOverdue() && issue.getAssignee() != null) {
+        org.springframework.data.domain.Page<Issue> issuePage;
+
+        do {
+            issuePage = issueRepository.findOverdueIssues(LocalDate.now(),
+                    org.springframework.data.domain.PageRequest.of(page, size));
+
+            for (Issue issue : issuePage.getContent()) {
                 try {
                     // Send notification
                     projectNotificationService.createIssueOverdueNotification(
@@ -73,31 +68,29 @@ public class IssueScheduledService {
                             issue.getIssueKey(), e.getMessage());
                 }
             }
-        }
+            page++;
+        } while (issuePage.hasNext());
 
         log.info("✅ Hoàn tất kiểm tra overdue issues. Đã gửi {} notifications", overdueCount);
     }
 
-    /**
-     * Reminder cho issues sắp đến deadline (3 ngày trước)
-     * Chạy mỗi ngày lúc 10:00 AM
-     */
+    // [Reminder deadline sắp tới (3 ngày) - 10:00 AM hàng ngày] (Role: Scheduled)
     @Scheduled(cron = "0 0 10 * * *")
     @Transactional
     public void remindUpcomingDeadlines() {
         log.info("🔔 Bắt đầu nhắc deadline sắp tới...");
 
         LocalDate threeDaysLater = LocalDate.now().plusDays(3);
-
-        List<Issue> allIssues = issueRepository.findAll();
-
+        int page = 0;
+        int size = 100;
         int reminderCount = 0;
-        for (Issue issue : allIssues) {
-            // Check if deadline is in 3 days and not done
-            if (issue.getDueDate() != null &&
-                    issue.getDueDate().equals(threeDaysLater) &&
-                    !issue.isDone() &&
-                    issue.getAssignee() != null) {
+        org.springframework.data.domain.Page<Issue> issuePage;
+
+        do {
+            issuePage = issueRepository.findUpcomingDeadlines(threeDaysLater,
+                    org.springframework.data.domain.PageRequest.of(page, size));
+
+            for (Issue issue : issuePage.getContent()) {
                 try {
                     projectNotificationService.createIssueUpdatedNotification(
                             issue.getAssignee().getUserId(),
@@ -126,7 +119,8 @@ public class IssueScheduledService {
                             issue.getIssueKey(), e.getMessage());
                 }
             }
-        }
+            page++;
+        } while (issuePage.hasNext());
 
         log.info("✅ Hoàn tất nhắc deadline. Đã gửi {} reminders", reminderCount);
     }

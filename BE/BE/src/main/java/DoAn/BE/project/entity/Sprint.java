@@ -1,24 +1,21 @@
 package DoAn.BE.project.entity;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-// Entity quản lý Sprint (Scrum sprint cycles)
+// [Entity Sprint - quản lý chu kỳ Scrum] (Role: Data Model)
 @Entity
 @Table(name = "sprints")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Sprint {
-    
+@EqualsAndHashCode(callSuper = true)
+public class Sprint extends DoAn.BE.common.entity.BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "sprint_id")
@@ -48,29 +45,6 @@ public class Sprint {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    // Relationships
-    @OneToMany(mappedBy = "sprint", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<Issue> issues;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    // Helper methods
     public boolean isActive() {
         return this.status == SprintStatus.ACTIVE;
     }
@@ -80,9 +54,9 @@ public class Sprint {
     }
 
     public boolean canBeStarted() {
-        return this.status == SprintStatus.PLANNING && 
-               this.startDate != null && 
-               this.endDate != null;
+        return this.status == SprintStatus.PLANNING &&
+                this.startDate != null &&
+                this.endDate != null;
     }
 
     public boolean canBeCompleted() {
@@ -90,16 +64,16 @@ public class Sprint {
     }
 
     public boolean isOverdue() {
-        return this.status == SprintStatus.ACTIVE && 
-               this.endDate != null && 
-               this.endDate.isBefore(LocalDate.now());
+        return this.status == SprintStatus.ACTIVE &&
+                this.endDate != null &&
+                this.endDate.isBefore(LocalDate.now());
     }
 
     // Enum
     public enum SprintStatus {
-        PLANNING,   // Đang lên kế hoạch
-        ACTIVE,     // Đang hoạt động
-        COMPLETED,  // Hoàn thành
-        CANCELLED   // Đã hủy
+        PLANNING, // Đang lên kế hoạch
+        ACTIVE, // Đang hoạt động
+        COMPLETED, // Hoàn thành
+        CANCELLED // Đã hủy
     }
 }

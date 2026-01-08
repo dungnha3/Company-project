@@ -1,6 +1,10 @@
 package DoAn.BE.storage.service;
 
+import DoAn.BE.company.service.CompanyService; // [NEW] Import
+import DoAn.BE.common.context.TenantContext; // [FIX] Correct Package
+
 import DoAn.BE.common.exception.*;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.storage.dto.FileDTO;
 import DoAn.BE.storage.dto.FileUploadResponse;
@@ -32,7 +36,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,9 +56,15 @@ public class FileStorageService {
     private final StorageProjectFileUploadListener projectFileUploadListener;
     private final FileValidator fileValidator;
     private final AuditLogService auditLogService;
+    private final CompanyService companyService;
+    private final MinioService minioService;
+    private final AccessControlService accessControlService;
 
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
+
+    @Value("${storage.type:local}") // [NEW] local or minio
+    private String storageType;
 
     @Value("${app.storage.user-quota-gb:5}")
     private Long userQuotaGB;
@@ -65,6 +77,9 @@ public class FileStorageService {
     @Transactional
     public FileUploadResponse uploadFile(MultipartFile file, Long folderId, Long userId, String ipAddress,
             String userAgent) {
+        // [Granular Permission] Kiểm tra quyền upload file
+        accessControlService.checkStorageUploadPermission();
+
         // Validate user
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
@@ -90,24 +105,58 @@ public class FileStorageService {
         }
 
         try {
-            // Initialize storage location
-            initializeStorage();
+            String filePath;
 
-            // Generate unique filename
-            String fileExtension = getFileExtension(originalFilename);
-            String storedFilename = UUID.randomUUID().toString() + (fileExtension.isEmpty() ? "" : "." + fileExtension);
+            // Logic switch based on storageType
+            if ("minio".equalsIgnoreCase(storageType)) {
+                // Storage path structure: users/{userId}/{uuid_filename}
+                String fileExtension = getFileExtension(originalFilename);
+                String uniqueFilename = UUID.randomUUID().toString()
+                        + (fileExtension.isEmpty() ? "" : "." + fileExtension);
+                String objectName = "users/" + userId + "/" + uniqueFilename;
 
-            // Determine storage path
-            Path targetLocation = fileStorageLocation.resolve(storedFilename);
+                // Upload to MinIO
+                minioService.uploadFile(file, objectName);
 
-            // Copy file to target location
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+                filePath = objectName; // Store object name in DB for MinIO
+
+                // If using proxy through backend:
+                // downloadUrl = "/api/storage/files/download/"; // we need fileId, appended
+                // later
+            } else {
+                // Initialize storage location
+                initializeStorage();
+
+                // Generate unique filename
+                String fileExtension = getFileExtension(originalFilename);
+                String storedFilename = UUID.randomUUID().toString()
+                        + (fileExtension.isEmpty() ? "" : "." + fileExtension);
+
+                // Determine storage path
+                Path targetLocation = fileStorageLocation.resolve(storedFilename);
+
+                // Copy file to target location
+                Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+                filePath = targetLocation.toString();
+            }
 
             // Save file metadata to database
             File fileEntity = new File();
+            // Store just UUID part or Full Path? For Local it stores Full Absolute Path
+            // (bad practice but existing).
+            // Let's refactor slightly to store reliable path.
+            // For MinIO, we store objectName.
+            // For Local, we keep storing Absolute Path to avoid breaking changes, OR we
+            // store relative path?
+            // Existing code: fileEntity.setFilePath(targetLocation.toString()); -> Absolute
+            // Path.
+
+            String storedFilename = Paths.get(filePath).getFileName().toString(); // Extract filename
+
             fileEntity.setFilename(storedFilename);
             fileEntity.setOriginalFilename(originalFilename);
-            fileEntity.setFilePath(targetLocation.toString());
+            fileEntity.setFilePath(filePath);
             fileEntity.setFileSize(file.getSize());
             fileEntity.setMimeType(file.getContentType());
             fileEntity.setFolder(folder);
@@ -175,10 +224,18 @@ public class FileStorageService {
         }
 
         try {
-            Path filePath = Paths.get(file.getFilePath()).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
+            Resource resource;
+            if ("minio".equalsIgnoreCase(storageType)) {
+                java.io.InputStream inputStream = minioService.getFile(file.getFilePath()); // filePath stores
+                                                                                            // objectName for MinIO
+                resource = new org.springframework.core.io.InputStreamResource(inputStream);
+            } else {
+                Path filePath = Paths.get(file.getFilePath()).normalize();
+                resource = new UrlResource(filePath.toUri());
+            }
 
-            if (resource.exists() && resource.isReadable()) {
+            if (resource.exists() || "minio".equalsIgnoreCase(storageType)) { // MinIO stream always exists if no
+                                                                              // exception
                 // Log successful file download
                 auditLogService.logAction(
                         user,
@@ -382,9 +439,13 @@ public class FileStorageService {
         }
 
         try {
-            // Delete physical file
-            Path filePath = Paths.get(file.getFilePath());
-            Files.deleteIfExists(filePath);
+            if ("minio".equalsIgnoreCase(storageType)) {
+                minioService.deleteFile(file.getFilePath()); // filePath is objectName
+            } else {
+                // Delete physical file
+                Path filePath = Paths.get(file.getFilePath());
+                Files.deleteIfExists(filePath);
+            }
 
             // Delete from database
             fileRepository.delete(file);
@@ -426,8 +487,10 @@ public class FileStorageService {
 
     @Transactional(readOnly = true)
     public StorageStatsDTO getStorageStats(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+        // user variable was unused
+        if (!userRepository.existsById(userId)) {
+            throw new EntityNotFoundException("Không tìm thấy người dùng");
+        }
 
         // Get ALL accessible folders (owned + project)
         List<Folder> ownedFolders = folderRepository.findByOwner_UserId(userId);
@@ -463,23 +526,28 @@ public class FileStorageService {
         List<File> allFiles = new java.util.ArrayList<>(ownedFiles);
         allFiles.addAll(projectFiles);
 
-        // Calculate stats
-        long totalFiles = allFiles.stream().filter(f -> !f.getIsDeleted()).count();
+        // Calculate stats - OPTIMIZED: Single loop instead of 4 stream iterations
+        long totalFiles = 0;
         long totalFolders = allFolders.size();
-        long totalSize = allFiles.stream()
-                .filter(f -> !f.getIsDeleted())
-                .mapToLong(File::getFileSize)
-                .sum();
+        long totalSize = 0;
+        Set<String> mimeTypes = new HashSet<>();
 
-        // Count file types
-        long fileTypes = allFiles.stream()
-                .filter(f -> !f.getIsDeleted())
-                .map(f -> f.getMimeType() != null ? f.getMimeType().split("/")[0] : "unknown")
-                .distinct()
-                .count();
+        for (File f : allFiles) {
+            if (!f.getIsDeleted()) {
+                totalFiles++;
+                totalSize += f.getFileSize();
+                if (f.getMimeType() != null) {
+                    mimeTypes.add(f.getMimeType().split("/")[0]);
+                } else {
+                    mimeTypes.add("unknown");
+                }
+            }
+        }
+        long fileTypes = mimeTypes.size();
 
-        // Determine quota based on role
-        long quotaBytes = (user.getRole().name().equals("ADMIN") ? adminQuotaGB : userQuotaGB) * 1024 * 1024 * 1024;
+        // Quota dựa trên vai trò - Owner/Admin được quota cao hơn
+        long quotaGb = accessControlService.isOwnerOrAdmin() ? adminQuotaGB : userQuotaGB;
+        long quotaBytes = quotaGb * 1024L * 1024L * 1024L;
         long remainingQuota = quotaBytes - totalSize;
         double usagePercentage = (double) totalSize / quotaBytes * 100;
 
@@ -507,16 +575,42 @@ public class FileStorageService {
     }
 
     private void checkStorageQuota(Long userId, long fileSize) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+        // user variable was unused
+        if (!userRepository.existsById(userId)) {
+            throw new EntityNotFoundException("Không tìm thấy người dùng");
+        }
 
-        List<File> userFiles = fileRepository.findByOwner_UserId(userId);
-        long currentUsage = userFiles.stream()
-                .filter(f -> !f.getIsDeleted())
-                .mapToLong(File::getFileSize)
-                .sum();
+        // OPTIMIZED: Use SUM query instead of loading all files
+        Long currentUsage = fileRepository.sumFileSizeByOwner(userId);
+        if (currentUsage == null) {
+            currentUsage = 0L;
+        }
 
-        long quotaBytes = (user.getRole().name().equals("ADMIN") ? adminQuotaGB : userQuotaGB) * 1024 * 1024 * 1024;
+        // Quota dựa trên vai trò - Owner/Admin được quota cao hơn
+        long quotaBytes;
+
+        // 1. Fetch Company Settings
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId != null) {
+            var settings = companyService.getSettingsCached(companyId);
+
+            if (accessControlService.isOwnerOrAdmin()) {
+                // Admin gets company max or default admin quota
+                quotaBytes = settings.getMaxStorageBytes(); // Use company max for admin for now
+            } else {
+                // Employee gets specific quota or fallback
+                Long userQuota = settings.getUserStorageQuotaBytes();
+                if (userQuota != null) {
+                    quotaBytes = userQuota;
+                } else {
+                    quotaBytes = userQuotaGB * 1024L * 1024L * 1024L;
+                }
+            }
+        } else {
+            // Fallback if no company context (e.g. personal workspace if implemented)
+            long quotaGb = accessControlService.isOwnerOrAdmin() ? adminQuotaGB : userQuotaGB;
+            quotaBytes = quotaGb * 1024L * 1024L * 1024L;
+        }
         long newUsage = currentUsage + fileSize;
 
         // Kiểm tra vượt quota
@@ -564,10 +658,9 @@ public class FileStorageService {
         return String.format("%.2f %s", size, units[unitIndex]);
     }
 
-    /**
-     * Check if user can access folder (owner or project member)
-     * Also checks parent folder recursively for subfolders in project folders
-     */
+// Check if user can access folder (owner or project member)
+
+// Also checks parent folder recursively for subfolders in project folders
     private boolean canAccessFolder(Folder folder, Long userId) {
         // Owner can always access
         if (folder.getOwner().getUserId().equals(userId)) {
@@ -594,11 +687,16 @@ public class FileStorageService {
         return false;
     }
 
-    /**
-     * Check if user can access file (owner or project member if file in project
-     * folder)
-     */
+// Check if user can access file (owner or project member if file in project
+
+// folder)
     private boolean canAccessFile(File file, Long userId) {
+        // [SAAS] System Admin can access all files
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null && user.isSystemAdminAccount()) {
+            return true;
+        }
+
         // Owner can always access
         if (file.getOwner().getUserId().equals(userId)) {
             return true;

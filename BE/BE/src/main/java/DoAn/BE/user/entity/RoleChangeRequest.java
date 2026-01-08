@@ -1,83 +1,56 @@
 package DoAn.BE.user.entity;
 
+import DoAn.BE.company.entity.Company;
+import DoAn.BE.company.entity.CompanyRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import DoAn.BE.common.entity.BaseEntity;
 
-import java.time.LocalDateTime;
-
-/**
- * Entity cho yêu cầu thay đổi role của user
- * HR Manager có thể gửi yêu cầu lên Admin để duyệt
- */
 @Entity
-@Table(name = "role_change_requests")
+@Table(name = "role_change_requests", indexes = {
+        @Index(name = "idx_rcr_company", columnList = "company_id"),
+        @Index(name = "idx_rcr_status", columnList = "status")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoleChangeRequest {
-    
+@EqualsAndHashCode(callSuper = true)
+public class RoleChangeRequest extends BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "request_id")
     private Long requestId;
-    
-    @ManyToOne
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User targetUser; // User cần thay đổi role
-    
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "current_role", nullable = false, length = 30)
-    private User.Role currentRole;
-    
+    @Column(name = "current_role", nullable = false)
+    private CompanyRole currentRole;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "requested_role", nullable = false, length = 30)
-    private User.Role requestedRole;
-    
-    @ManyToOne
-    @JoinColumn(name = "requested_by", nullable = false)
-    private User requestedBy; // HR Manager gửi yêu cầu
-    
-    @Column(name = "reason", length = 500)
-    private String reason;
-    
+    @Column(name = "requested_role", nullable = false)
+    private CompanyRole requestedRole;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(nullable = false)
     private RequestStatus status = RequestStatus.PENDING;
-    
-    @ManyToOne
-    @JoinColumn(name = "reviewed_by")
-    private User reviewedBy; // Admin duyệt
-    
-    @Column(name = "review_note", length = 500)
-    private String reviewNote;
-    
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
-    @Column(name = "reviewed_at")
-    private LocalDateTime reviewedAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
-    
-    public void approve(User admin, String note) {
-        this.status = RequestStatus.APPROVED;
-        this.reviewedBy = admin;
-        this.reviewNote = note;
-        this.reviewedAt = LocalDateTime.now();
-    }
-    
-    public void reject(User admin, String note) {
-        this.status = RequestStatus.REJECTED;
-        this.reviewedBy = admin;
-        this.reviewNote = note;
-        this.reviewedAt = LocalDateTime.now();
-    }
-    
+
+    @Column(columnDefinition = "TEXT")
+    private String reason;
+
+    @Column(name = "admin_note", columnDefinition = "TEXT")
+    private String adminNote;
+
     public enum RequestStatus {
         PENDING,
         APPROVED,

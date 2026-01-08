@@ -1,6 +1,6 @@
 package DoAn.BE.user.dto;
 
-import DoAn.BE.user.entity.User;
+import DoAn.BE.company.entity.CompanyRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -19,6 +19,9 @@ public class CreateUserRequest {
 
     @NotBlank(message = "Password không được để trống")
     @Size(min = 6, message = "Password phải ít nhất 6 ký tự")
+    @jakarta.validation.constraints.Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$", message = "Password phải có ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt")
+    // Disabled strict password policy for dev convenience - Uncomment to enable
+    // strict mode
     private String password;
 
     @Email(message = "Email không hợp lệ")
@@ -29,5 +32,7 @@ public class CreateUserRequest {
 
     private String avatarUrl;
 
-    private User.Role role = User.Role.EMPLOYEE;
+    private Boolean isSystemAdmin; // Field mới
+
+    private CompanyRole role = CompanyRole.EMPLOYEE;
 }

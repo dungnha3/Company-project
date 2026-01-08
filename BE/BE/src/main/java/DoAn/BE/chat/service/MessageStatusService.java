@@ -1,6 +1,5 @@
 package DoAn.BE.chat.service;
 
-import DoAn.BE.chat.entity.Message;
 import DoAn.BE.chat.entity.MessageStatus;
 import DoAn.BE.chat.entity.MessageStatusId;
 import DoAn.BE.chat.repository.MessageRepository;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -29,11 +27,11 @@ public class MessageStatusService {
     // Đánh dấu tin nhắn đã gửi
     public void markMessageAsDelivered(@NonNull Long messageId, @NonNull Long userId) {
         messageRepository.findById(messageId)
-            .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
-        
+                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+
         Optional<MessageStatus> statusOpt = messageStatusRepository.findById(
-            new MessageStatusId(messageId, userId));
-        
+                new MessageStatusId(messageId, userId));
+
         if (statusOpt.isPresent()) {
             MessageStatus status = statusOpt.get();
             status.setStatus(MessageStatus.MessageStatusType.DELIVERED);
@@ -41,15 +39,15 @@ public class MessageStatusService {
             messageStatusRepository.save(status);
         }
     }
-    
+
     // Đánh dấu tin nhắn đã đọc
     public void markMessageAsSeen(@NonNull Long messageId, @NonNull Long userId) {
         messageRepository.findById(messageId)
-            .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
-        
+                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+
         Optional<MessageStatus> statusOpt = messageStatusRepository.findById(
-            new MessageStatusId(messageId, userId));
-        
+                new MessageStatusId(messageId, userId));
+
         if (statusOpt.isPresent()) {
             MessageStatus status = statusOpt.get();
             status.setStatus(MessageStatus.MessageStatusType.SEEN);
@@ -57,28 +55,12 @@ public class MessageStatusService {
             messageStatusRepository.save(status);
         }
     }
-    
-    // Đánh dấu tất cả tin nhắn trong phòng đã đọc
+
+    // [OPTIMIZED: Bulk update instead of N method calls in loop]
     public void markAllMessagesAsSeen(@NonNull Long roomId, @NonNull Long userId) {
-        List<Message> messages = messageRepository.findByChatRoom_RoomIdOrderBySentAtAsc(roomId);
-        
-        for (Message message : messages) {
-            markMessageAsSeen(message.getMessageId(), userId);
-        }
+        messageStatusRepository.markAllAsSeenInRoom(roomId, userId, LocalDateTime.now());
     }
-    
-    // Lấy trạng thái tin nhắn
-    public MessageStatus getMessageStatus(@NonNull Long messageId, @NonNull Long userId) {
-        return messageStatusRepository.findById(
-            new MessageStatusId(messageId, userId))
-            .orElse(null);
-    }
-    
-    // Lấy danh sách trạng thái tin nhắn
-    public List<MessageStatus> getMessageStatuses(@NonNull Long messageId) {
-        return messageStatusRepository.findByMessage_MessageId(messageId);
-    }
-    
+
     // Đếm số tin nhắn chưa đọc trong phòng
     public Long getUnreadCount(@NonNull Long roomId, @NonNull Long userId) {
         return messageStatusRepository.countUnreadMessagesInRoom(roomId, userId);

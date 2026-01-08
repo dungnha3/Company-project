@@ -1,5 +1,6 @@
 package DoAn.BE.storage.entity;
 
+import DoAn.BE.common.entity.TenantScopedEntity;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.project.entity.Project;
 import jakarta.persistence.*;
@@ -9,14 +10,26 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.Filter;
 
-// Entity quản lý folder (PERSONAL, SHARED, PROJECT) với cấu trúc tree
+// [Entity quản lý folder - PERSONAL, SHARED, PROJECT với cấu trúc tree] (Role: Data Model)
 @Entity
-@Table(name = "folders")
+@Table(name = "folders", indexes = {
+        // Index cho query: findByOwner (User's folders)
+        @jakarta.persistence.Index(name = "idx_folder_owner", columnList = "owner_id"),
+        // Index cho query: findByParentFolder (Subfolder lookup)
+        @jakarta.persistence.Index(name = "idx_folder_parent", columnList = "parent_folder_id"),
+        // Index cho query: findByFolderType (Type filter)
+        @jakarta.persistence.Index(name = "idx_folder_type", columnList = "folder_type"),
+        // Index cho query: findByProject (Project folders)
+        @jakarta.persistence.Index(name = "idx_folder_project", columnList = "project_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Folder {
+@EqualsAndHashCode(callSuper = true)
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class Folder extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

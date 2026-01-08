@@ -1,24 +1,33 @@
 package DoAn.BE.project.entity;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
+import DoAn.BE.common.entity.TenantScopedEntity;
+import org.hibernate.annotations.Filter;
 import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-import DoAn.BE.hr.entity.PhongBan;
+import DoAn.BE.hrm.entity.Department;
 
-// Entity quản lý dự án (Agile/Scrum projects)
+// [Entity quản lý dự án - thuộc về một công ty] (Role: Data Model)
 @Entity
-@Table(name = "projects")
+@Table(name = "projects", indexes = {
+        // Index cho query: findByStatus (Active project list)
+        @jakarta.persistence.Index(name = "idx_proj_status", columnList = "status"),
+        // Index cho query: findByCreatedBy (User's created projects)
+        @jakarta.persistence.Index(name = "idx_proj_createdby", columnList = "created_by"),
+        // Index cho query: findByPhongBan (Department's projects)
+        @jakarta.persistence.Index(name = "idx_proj_department", columnList = "department_id"),
+        // Index cho query: findByIsActive (Active filter)
+        @jakarta.persistence.Index(name = "idx_proj_active", columnList = "is_active")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Project {
+@EqualsAndHashCode(callSuper = true)
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class Project extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,37 +61,11 @@ public class Project {
     private User createdBy;
 
     @ManyToOne
-    @JoinColumn(name = "phongban_id")
-    private PhongBan phongBan;
+    @JoinColumn(name = "department_id")
+    private Department department;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    // Relationships
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<ProjectMember> members;
-
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<Issue> issues;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     // Helper methods
     public boolean isActive() {

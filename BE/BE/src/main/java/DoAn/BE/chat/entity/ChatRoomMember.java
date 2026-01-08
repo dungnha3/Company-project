@@ -6,8 +6,14 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+// [Entity thành viên chat room] (Role: Data Model)
 @Entity
-@Table(name = "chat_room_members")
+@Table(name = "chat_room_members", indexes = {
+        // Index cho query: findByUser_UserId (User's chat rooms - CRITICAL)
+        @jakarta.persistence.Index(name = "idx_crm_user", columnList = "user_id"),
+        // Index cho query: findByChatRoom_RoomId (Room's members)
+        @jakarta.persistence.Index(name = "idx_crm_room", columnList = "room_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

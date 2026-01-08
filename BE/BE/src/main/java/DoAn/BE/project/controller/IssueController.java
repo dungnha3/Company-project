@@ -15,32 +15,30 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// [Controller quản lý issues/tasks] (Role: Project Members)
 @RestController
 @RequestMapping("/api/issues")
 @RequiredArgsConstructor
 @Slf4j
 public class IssueController {
-    
+
     private final IssueService issueService;
-    
+
+    // ==================== CRUD ====================
+
+    // [Tạo issue mới] (Role: Project Member)
     @PostMapping
     public ResponseEntity<IssueDTO> createIssue(
             @Valid @RequestBody CreateIssueRequest request,
             Authentication authentication) {
-        try {
-            log.info("Creating issue - Request: {}", request);
-            User user = (User) authentication.getPrincipal();
-            Long userId = user.getUserId();
-            log.info("User ID: {}", userId);
-            IssueDTO issue = issueService.createIssue(request, userId);
-            log.info("Issue created successfully: {}", issue.getIssueId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(issue);
-        } catch (Exception e) {
-            log.error("Error creating issue", e);
-            throw e;
-        }
+        log.info("Tạo issue mới - Request: {}", request);
+        User user = (User) authentication.getPrincipal();
+        IssueDTO issue = issueService.createIssue(request, user.getUserId());
+        log.info("Đã tạo issue: {}", issue.getIssueId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(issue);
     }
-    
+
+    // [Lấy thông tin issue] (Role: Project Member)
     @GetMapping("/{issueId}")
     public ResponseEntity<IssueDTO> getIssue(
             @PathVariable Long issueId,
@@ -49,48 +47,8 @@ public class IssueController {
         IssueDTO issue = issueService.getIssueById(issueId, user.getUserId());
         return ResponseEntity.ok(issue);
     }
-    
-    @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<IssueDTO>> getProjectIssues(
-            @PathVariable Long projectId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getProjectIssues(projectId, user.getUserId());
-        return ResponseEntity.ok(issues);
-    }
-    
-    @GetMapping("/project/{projectId}/backlog")
-    public ResponseEntity<List<IssueDTO>> getProjectBacklog(
-            @PathVariable Long projectId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getProjectBacklog(projectId, user.getUserId());
-        return ResponseEntity.ok(issues);
-    }
-    
-    @GetMapping("/sprint/{sprintId}")
-    public ResponseEntity<List<IssueDTO>> getSprintIssues(
-            @PathVariable Long sprintId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getSprintIssues(sprintId, user.getUserId());
-        return ResponseEntity.ok(issues);
-    }
-    
-    @GetMapping("/my-issues")
-    public ResponseEntity<List<IssueDTO>> getMyIssues(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getMyIssues(user.getUserId());
-        return ResponseEntity.ok(issues);
-    }
-    
-    @GetMapping("/my-reported")
-    public ResponseEntity<List<IssueDTO>> getMyReportedIssues(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getMyReportedIssues(user.getUserId());
-        return ResponseEntity.ok(issues);
-    }
-    
+
+    // [Cập nhật issue] (Role: Project Member)
     @PutMapping("/{issueId}")
     public ResponseEntity<IssueDTO> updateIssue(
             @PathVariable Long issueId,
@@ -100,7 +58,8 @@ public class IssueController {
         IssueDTO issue = issueService.updateIssue(issueId, request, user.getUserId());
         return ResponseEntity.ok(issue);
     }
-    
+
+    // [Xóa issue] (Role: Project Manager/Reporter)
     @DeleteMapping("/{issueId}")
     public ResponseEntity<Void> deleteIssue(
             @PathVariable Long issueId,
@@ -109,7 +68,60 @@ public class IssueController {
         issueService.deleteIssue(issueId, user.getUserId());
         return ResponseEntity.noContent().build();
     }
-    
+
+    // ==================== PROJECT/SPRINT QUERIES ====================
+
+    // [Lấy issues của project] (Role: Project Member)
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<IssueDTO>> getProjectIssues(
+            @PathVariable Long projectId,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        List<IssueDTO> issues = issueService.getProjectIssues(projectId, user.getUserId());
+        return ResponseEntity.ok(issues);
+    }
+
+    // [Lấy backlog của project] (Role: Project Member)
+    @GetMapping("/project/{projectId}/backlog")
+    public ResponseEntity<List<IssueDTO>> getProjectBacklog(
+            @PathVariable Long projectId,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        List<IssueDTO> issues = issueService.getProjectBacklog(projectId, user.getUserId());
+        return ResponseEntity.ok(issues);
+    }
+
+    // [Lấy issues của sprint] (Role: Project Member)
+    @GetMapping("/sprint/{sprintId}")
+    public ResponseEntity<List<IssueDTO>> getSprintIssues(
+            @PathVariable Long sprintId,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        List<IssueDTO> issues = issueService.getSprintIssues(sprintId, user.getUserId());
+        return ResponseEntity.ok(issues);
+    }
+
+    // ==================== MY ISSUES ====================
+
+    // [Lấy issues được giao cho tôi] (Role: Authenticated User)
+    @GetMapping("/my-issues")
+    public ResponseEntity<List<IssueDTO>> getMyIssues(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        List<IssueDTO> issues = issueService.getMyIssues(user.getUserId());
+        return ResponseEntity.ok(issues);
+    }
+
+    // [Lấy issues tôi đã tạo] (Role: Authenticated User)
+    @GetMapping("/my-reported")
+    public ResponseEntity<List<IssueDTO>> getMyReportedIssues(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        List<IssueDTO> issues = issueService.getMyReportedIssues(user.getUserId());
+        return ResponseEntity.ok(issues);
+    }
+
+    // ==================== ACTIONS ====================
+
+    // [Gán issue cho người khác] (Role: Project Manager)
     @PatchMapping("/{issueId}/assign/{assigneeId}")
     public ResponseEntity<IssueDTO> assignIssue(
             @PathVariable Long issueId,
@@ -119,7 +131,8 @@ public class IssueController {
         IssueDTO issue = issueService.assignIssue(issueId, assigneeId, user.getUserId());
         return ResponseEntity.ok(issue);
     }
-    
+
+    // [Thay đổi trạng thái issue] (Role: Project Member)
     @PatchMapping("/{issueId}/status/{statusId}")
     public ResponseEntity<IssueDTO> changeIssueStatus(
             @PathVariable Long issueId,

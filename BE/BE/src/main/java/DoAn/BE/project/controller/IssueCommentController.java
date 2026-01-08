@@ -7,8 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,51 +16,46 @@ import java.util.List;
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
 public class IssueCommentController {
-    
+
     private final IssueCommentService issueCommentService;
-    
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (User) auth.getPrincipal();
-    }
-    
+
     @PostMapping
     public ResponseEntity<IssueCommentDTO> createComment(
-            @Valid @RequestBody CreateCommentRequest request) {
-        User currentUser = getCurrentUser();
+            @Valid @RequestBody CreateCommentRequest request,
+            @AuthenticationPrincipal User currentUser) {
         IssueCommentDTO comment = issueCommentService.createComment(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(comment);
     }
-    
+
     @GetMapping("/issue/{issueId}")
     public ResponseEntity<List<IssueCommentDTO>> getIssueComments(
-            @PathVariable Long issueId) {
-        User currentUser = getCurrentUser();
+            @PathVariable Long issueId,
+            @AuthenticationPrincipal User currentUser) {
         List<IssueCommentDTO> comments = issueCommentService.getIssueComments(issueId, currentUser);
         return ResponseEntity.ok(comments);
     }
-    
+
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<IssueCommentDTO>> getProjectComments(
-            @PathVariable Long projectId) {
-        User currentUser = getCurrentUser();
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
         List<IssueCommentDTO> comments = issueCommentService.getProjectComments(projectId, currentUser);
         return ResponseEntity.ok(comments);
     }
-    
+
     @PutMapping("/{commentId}")
     public ResponseEntity<IssueCommentDTO> updateComment(
             @PathVariable Long commentId,
-            @RequestBody String content) {
-        User currentUser = getCurrentUser();
+            @RequestBody String content,
+            @AuthenticationPrincipal User currentUser) {
         IssueCommentDTO comment = issueCommentService.updateComment(commentId, content, currentUser);
         return ResponseEntity.ok(comment);
     }
-    
+
     @DeleteMapping("/{commentId}")
     public ResponseEntity<Void> deleteComment(
-            @PathVariable Long commentId) {
-        User currentUser = getCurrentUser();
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal User currentUser) {
         issueCommentService.deleteComment(commentId, currentUser);
         return ResponseEntity.noContent().build();
     }

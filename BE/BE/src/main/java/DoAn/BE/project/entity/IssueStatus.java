@@ -7,27 +7,27 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-// Entity quản lý trạng thái của Issue (To Do, In Progress, Review, Done)
+// [Entity trạng thái Issue - To Do, In Progress, Done] (Role: Data Model)
 @Entity
 @Table(name = "issue_statuses")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class IssueStatus {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "status_id")
     private Integer statusId;
 
     @Column(nullable = false, unique = true, length = 50)
-    private String name;  // To Do, In Progress, Review, Done
+    private String name; // To Do, In Progress, Review, Done
 
     @Column(name = "order_index", nullable = false)
-    private Integer orderIndex;  // Thứ tự: 1, 2, 3, 4
+    private Integer orderIndex; // Thứ tự: 1, 2, 3, 4
 
     @Column(length = 7)
-    private String color;  // Hex color: #4BADE8
+    private String color; // Hex color: #4BADE8
 
     // Relationships
     @OneToMany(mappedBy = "issueStatus")
@@ -54,4 +54,3 @@ public class IssueStatus {
         return "Done".equals(this.name);
     }
 }
-

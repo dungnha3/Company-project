@@ -1,5 +1,6 @@
 package DoAn.BE.user.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -7,20 +8,26 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
 
+import DoAn.BE.common.event.UserCreatedEvent;
+import DoAn.BE.common.event.UserDeletedEvent;
+import DoAn.BE.common.event.UserUpdatedEvent;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.company.repository.CompanyMemberRepository;
+import DoAn.BE.company.repository.CompanyRepository;
+import DoAn.BE.company.service.RoleTemplateService;
+import DoAn.BE.hrm.entity.Position;
+import DoAn.BE.hrm.entity.Employee;
+import DoAn.BE.hrm.entity.Department;
+import DoAn.BE.hrm.repository.PositionRepository;
+import DoAn.BE.hrm.repository.EmployeeRepository;
+import DoAn.BE.hrm.repository.DepartmentRepository;
+import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.DuplicateException;
 import DoAn.BE.common.exception.EntityNotFoundException;
-import DoAn.BE.notification.service.AuthNotificationService;
-import DoAn.BE.audit.service.AuditLogService;
-import DoAn.BE.audit.entity.AuditLog;
-import DoAn.BE.common.exception.ForbiddenException;
-import DoAn.BE.hr.entity.ChucVu;
-import DoAn.BE.hr.entity.NhanVien;
-import DoAn.BE.hr.entity.PhongBan;
-import DoAn.BE.hr.repository.ChucVuRepository;
-import DoAn.BE.hr.repository.NhanVienRepository;
-import DoAn.BE.hr.repository.PhongBanRepository;
 import DoAn.BE.user.dto.CreateAccountWithEmployeeRequest;
 import DoAn.BE.user.dto.CreateUserRequest;
 import DoAn.BE.user.dto.UpdatePasswordRequest;
@@ -31,255 +38,226 @@ import DoAn.BE.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
-// Service quản lý users (CRUD, search, role management, tích hợp với HR)
+// [Service managing users - Core CRUD operations] (Role: Admin/HR)
 @Service
 @Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final NhanVienRepository nhanVienRepository;
-    private final PhongBanRepository phongBanRepository;
-    private final ChucVuRepository chucVuRepository;
-    private final AuthNotificationService authNotificationService;
-    private final AuditLogService auditLogService;
+    private final EmployeeRepository employeeRepository;
+    private final DepartmentRepository departmentRepository;
+    private final PositionRepository positionRepository;
+    private final CompanyMemberRepository companyMemberRepository;
+    private final CompanyRepository companyRepository;
+    private final RoleTemplateService roleTemplateService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-            NhanVienRepository nhanVienRepository, PhongBanRepository phongBanRepository,
-            ChucVuRepository chucVuRepository, AuthNotificationService authNotificationService,
-            AuditLogService auditLogService) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.nhanVienRepository = nhanVienRepository;
-        this.phongBanRepository = phongBanRepository;
-        this.chucVuRepository = chucVuRepository;
-        this.authNotificationService = authNotificationService;
-        this.auditLogService = auditLogService;
-    }
+    // Delegated services
+    private final UserSaasService userSaasService;
+    private final UserQueryService userQueryService;
 
+    // Create new User
     public User createUser(CreateUserRequest request) {
+        // [GUARD CLAUSE]
+        if (request == null) {
+            throw new BadRequestException("Create user request cannot be empty");
+        }
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new BadRequestException("Username cannot be empty");
+        }
+        if (request.getPassword() == null || request.getPassword().length() < 6) {
+            throw new BadRequestException("Password must be at least 6 characters");
+        }
+
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new DuplicateException("User đã tồn tại");
+            throw new DuplicateException("Username already exists");
         }
 
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
-        user.setRole(request.getRole());
+
         user.setIsActive(true);
+        user.setIsSystemAdmin(request.getIsSystemAdmin() != null ? request.getIsSystemAdmin() : false); // Default false
         user.setPhoneNumber(request.getPhoneNumber());
         user.setAvatarUrl(request.getAvatarUrl());
         user = userRepository.save(user);
 
-        // AUTO-CREATE EMPLOYEE: Mỗi user đều là một nhân viên
-        try {
-            NhanVien employee = new NhanVien();
-            employee.setUser(user);
-            employee.setHoTen(extractFullNameFromUsername(user.getUsername()));
-            employee.setNgaySinh(java.time.LocalDate.of(1990, 1, 1)); // Default birthdate
-            employee.setGioiTinh(NhanVien.GioiTinh.Khác); // Default gender
-            employee.setNgayVaoLam(java.time.LocalDate.now());
-            employee.setTrangThai(NhanVien.TrangThaiNhanVien.DANG_LAM_VIEC);
-            // PhongBan và ChucVu sẽ được update bởi DataSeed sau
-            nhanVienRepository.save(employee);
-            log.info("✅ Auto-created employee for user: {}", user.getUsername());
-        } catch (Exception e) {
-            log.error("❌ Failed to auto-create employee for user {}: {}", user.getUsername(), e.getMessage(), e);
-            // Không throw exception để không block việc tạo user
+        // EVENT DRIVEN
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new UserCreatedEvent(this, user));
+            log.info("📢 Published UserCreatedEvent for user: {}", user.getUsername());
         }
-
-        // Gửi welcome notification
-        authNotificationService.createWelcomeNotification(user.getUserId(), user.getUsername());
-
-        // Audit log - ghi lại việc tạo user
-        auditLogService.logAction(
-                user, // actor (hoặc current user nếu có)
-                "CREATE_USER",
-                "USER",
-                user.getUserId(),
-                null,
-                user,
-                AuditLog.Severity.INFO,
-                null,
-                null);
 
         log.info("Created new user: {}", user.getUsername());
 
         return user;
     }
 
-    /**
-     * Extract full name from username (helper method)
-     */
-    private String extractFullNameFromUsername(String username) {
-        // Convert username to readable name
-        // Examples: "admin" -> "Admin", "hr_nguyen_van_a" -> "Nguyễn Văn A"
-        if (username == null || username.isEmpty()) {
-            return "Unknown";
-        }
-
-        // Remove common prefixes
-        String cleanName = username
-                .replaceFirst("^(admin|hr|acc|pm|emp)_?", "")
-                .replace("_", " ");
-
-        if (cleanName.isEmpty()) {
-            // For simple usernames like "admin", "hr", capitalize first letter
-            return username.substring(0, 1).toUpperCase() + username.substring(1);
-        }
-
-        // Capitalize each word
-        String[] words = cleanName.split("\\s+");
-        StringBuilder result = new StringBuilder();
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                result.append(Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1).toLowerCase())
-                        .append(" ");
-            }
-        }
-        return result.toString().trim();
-    }
-
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
-
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
     }
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
-    // Cập nhật user (sử dụng bởi controller cũ - deprecated)
+    // ==================== SAAS OPERATIONS (Delegated to UserSaasService)
+    public Page<User> getUsersByCurrentCompany(Pageable pageable) {
+        return userSaasService.getUsersByCurrentCompany(pageable);
+    }
+
+    public List<User> getUsersByCurrentCompanyWithoutPaging() {
+        return userSaasService.getUsersByCurrentCompanyWithoutPaging();
+    }
+
+    public Page<User> getUsersByCompanyId(Long companyId, Pageable pageable) {
+        return userSaasService.getUsersByCompanyId(companyId, pageable);
+    }
+
+    public void updateUserRoleInCompany(Long userId, Long companyId, String roleName, User currentUser) {
+        userSaasService.updateUserRoleInCompany(userId, companyId, roleName, currentUser);
+    }
+
+    public void updateSystemAdminStatus(Long userId, Boolean isSystemAdmin, User currentUser) {
+        userSaasService.updateSystemAdminStatus(userId, isSystemAdmin, currentUser);
+    }
+
     public User updateUser(Long id, UpdateUserRequest request) {
         User user = getUserById(id);
-
-        // Lưu old values để audit
-        String oldUsername = user.getUsername();
-        String oldEmail = user.getEmail();
-        User.Role oldRole = user.getRole();
         Boolean oldIsActive = user.getIsActive();
 
-        // Check duplicate username if changed
         if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.getUsername())) {
-                throw new DuplicateException("Username đã tồn tại");
+                throw new DuplicateException("Username already exists");
             }
             user.setUsername(request.getUsername());
         }
 
-        // Check duplicate email if changed
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new DuplicateException("Email đã tồn tại");
+                throw new DuplicateException("Email already exists");
             }
             user.setEmail(request.getEmail());
         }
 
-        // Update other fields
+        Long companyId = TenantContext.getCompanyId();
+        CompanyMember currentMember = null;
+        if (companyId != null) {
+            currentMember = companyMemberRepository.findByUser_UserIdAndCompany_CompanyId(id, companyId).orElse(null);
+        }
+
+        User currentUser = null;
+        try {
+            currentUser = DoAn.BE.common.util.SecurityUtil.getCurrentUser();
+        } catch (Exception e) {
+            currentUser = user;
+        }
+
         if (request.getPhoneNumber() != null) {
             user.setPhoneNumber(request.getPhoneNumber());
         }
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl());
         }
-        if (request.getRole() != null && !request.getRole().equals(oldRole)) {
-            user.setRole(request.getRole());
-        }
+
         if (request.getIsActive() != null && !request.getIsActive().equals(oldIsActive)) {
             user.setIsActive(request.getIsActive());
         }
 
-        User savedUser = userRepository.save(user);
-
-        // Audit log nếu có thay đổi quan trọng
-        if (!oldRole.equals(savedUser.getRole()) || !oldIsActive.equals(savedUser.getIsActive())) {
-            log.warn("⚠️ User {} changed - Role: {} -> {}, Active: {} -> {}",
-                    user.getUsername(), oldRole, savedUser.getRole(), oldIsActive, savedUser.getIsActive());
+        if (request.getIsSystemAdmin() != null && !request.getIsSystemAdmin().equals(user.getIsSystemAdmin())) {
+            if (currentUser != null && currentUser.isSystemAdminAccount()) {
+                user.setIsSystemAdmin(request.getIsSystemAdmin());
+            } else {
+                log.warn("User {} tried to change System Admin status without permission",
+                        currentUser != null ? currentUser.getUsername() : "Unknown");
+            }
         }
+
+        if (request.getRole() != null && currentMember != null) {
+            CompanyRole newRole = request.getRole();
+            if (!newRole.equals(currentMember.getRole())) {
+                currentMember.setRole(newRole);
+                companyMemberRepository.save(currentMember);
+                if (eventPublisher != null) {
+                    eventPublisher.publishEvent(
+                            new UserUpdatedEvent(this, user, currentUser, UserUpdatedEvent.UpdateType.ROLE_UPDATE));
+                }
+            }
+        } else if (request.getRole() != null && currentMember == null && companyId != null) {
+            Optional<DoAn.BE.company.entity.Company> companyOpt = companyRepository.findById(companyId);
+            if (companyOpt.isPresent()) {
+                CompanyRole companyRole = request.getRole();
+                CompanyMember member = new CompanyMember();
+                member.setUser(user);
+                member.setCompany(companyOpt.get());
+                member.setRole(companyRole);
+                member.setJoinedAt(LocalDateTime.now());
+                member.setIsActive(true);
+                companyMemberRepository.save(member);
+                log.info("✅ Created CompanyMember for user: {} with role: {}", user.getUsername(), companyRole);
+            }
+        }
+
+        User savedUser = userRepository.save(user);
 
         return savedUser;
     }
 
     public User activateUser(Long id) {
         User user = getUserById(id);
-
-        // Không cần restrict activate vì đây là hành động tích cực
         user.setIsActive(true);
         user = userRepository.save(user);
 
-        // Gửi notification
-        authNotificationService.createAccountActivatedNotification(id);
-
-        // Audit log
-        auditLogService.logAction(
-                user,
-                "ACTIVATE_USER",
-                "USER",
-                user.getUserId(),
-                false,
-                true,
-                AuditLog.Severity.INFO,
-                null,
-                null);
-
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(
+                    new UserUpdatedEvent(this, user, user, UserUpdatedEvent.UpdateType.STATUS_CHANGE_ACTIVATED));
+        }
         log.info("Activated user: {}", user.getUsername());
-
         return user;
     }
 
     public User deactivateUser(Long id) {
         User user = getUserById(id);
-
         user.setIsActive(false);
         user = userRepository.save(user);
 
-        // Gửi notification
-        authNotificationService.createAccountDeactivatedNotification(id, null);
-
-        // Audit log
-        auditLogService.logAction(
-                user,
-                "DEACTIVATE_USER",
-                "USER",
-                user.getUserId(),
-                true,
-                false,
-                AuditLog.Severity.WARNING,
-                null,
-                null);
-
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(
+                    new UserUpdatedEvent(this, user, user, UserUpdatedEvent.UpdateType.STATUS_CHANGE_DEACTIVATED));
+        }
         log.info("Deactivated user: {}", user.getUsername());
-
         return user;
     }
 
-    // Tìm kiếm user theo keyword (username hoặc email) - optimized query
+    // ==================== SEARCH & STATS (Delegated to UserQueryService)
     public List<User> searchUsers(String keyword) {
-        return userRepository.searchByKeyword(keyword);
+        return userQueryService.searchUsers(keyword);
     }
 
-    public List<User> getUsersByRole(User.Role role) {
-        return userRepository.findByRole(role);
+    public List<User> getUsersByRole(CompanyRole role) {
+        return userQueryService.getUsersByRole(role);
     }
 
     public List<User> getActiveUsers() {
-        return userRepository.findByIsActiveTrue();
+        return userQueryService.getActiveUsers();
     }
 
     public List<User> getOnlineUsers() {
-        return userRepository.findByIsOnlineTrue();
+        return userQueryService.getOnlineUsers();
     }
 
-    public long countUsersByRole(User.Role role) {
-        return userRepository.countByRole(role);
+    public long countUsersByRole(CompanyRole role) {
+        return userQueryService.countUsersByRole(role);
     }
 
     public long countOnlineUsers() {
-        return userRepository.countByIsOnlineTrue();
+        return userQueryService.countOnlineUsers();
     }
 
     public boolean existsByUsername(String username) {
@@ -290,177 +268,246 @@ public class UserService {
         return userRepository.existsByEmail(email);
     }
 
-    /**
-     * Tạo tài khoản kèm nhân viên
-     */
-    public NhanVien createAccountWithEmployee(CreateAccountWithEmployeeRequest request, User currentUser) {
-        log.info("HR Manager {} tạo tài khoản kèm nhân viên: {}", currentUser.getUsername(), request.getUsername());
+    // [DEPRECATED] Create account with employee profile - For Seeding only
+    @Deprecated
+    public Employee createAccountWithEmployee(CreateAccountWithEmployeeRequest request, User currentUser) {
+        if (request == null)
+            throw new BadRequestException("Data cannot be empty");
 
-        // Kiểm tra tên đăng nhập đã tồn tại
+        log.info("HR Manager {} creating user with employee profile: {}", currentUser.getUsername(),
+                request.getUsername());
+
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new DuplicateException("Tên đăng nhập đã tồn tại");
+            throw new DuplicateException("Username already exists");
         }
 
-        // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateException("Email đã tồn tại");
+            throw new DuplicateException("Email already exists");
         }
 
-        // Tạo tài khoản
+        // Create User
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
-        user.setRole(User.Role.valueOf(request.getRole()));
         user.setIsActive(true);
         user.setPhoneNumber(request.getSoDienThoai());
         User savedUser = userRepository.save(user);
 
-        // Tạo nhân viên
-        NhanVien nhanVien = new NhanVien();
-        nhanVien.setHoTen(request.getHoTen());
-        // Email được lưu trong User entity
-        nhanVien.setGioiTinh(request.getGioiTinh() != null ? NhanVien.GioiTinh.valueOf(request.getGioiTinh())
-                : NhanVien.GioiTinh.Nam);
-        nhanVien.setDiaChi(request.getDiaChi());
-        nhanVien.setNgaySinh(request.getNgaySinh());
-        nhanVien.setNgayVaoLam(request.getNgayVaoLam());
-        // Số điện thoại lưu cả trong User và NhanVien entity để hiển thị đúng
-        nhanVien.setSdt(request.getSoDienThoai());
-        nhanVien.setCccd(request.getCccd());
-        nhanVien.setTrangThai(NhanVien.TrangThaiNhanVien.DANG_LAM_VIEC);
-        nhanVien.setUser(savedUser);
+        // Create CompanyMember
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId != null) {
+            DoAn.BE.company.entity.Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new EntityNotFoundException("Company not found"));
 
-        // Gán phòng ban và chức vụ nếu có
+            CompanyRole role = CompanyRole.EMPLOYEE;
+            if (request.getRole() != null) {
+                try {
+                    // Try to parse CompanyRole directly
+                    role = CompanyRole.valueOf(request.getRole());
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid role in request: {}. Defaulting to EMPLOYEE.", request.getRole());
+                }
+            }
+
+            CompanyMember member = new CompanyMember();
+            member.setUser(savedUser);
+            member.setCompany(company);
+            member.setRole(role);
+            member.setPermissions(roleTemplateService.getTemplate(role));
+            member.setJoinedAt(LocalDateTime.now());
+            member.setIsActive(true);
+            companyMemberRepository.save(member);
+            log.info("✅ Created CompanyMember for new employee: {} with role: {}", savedUser.getUsername(), role);
+        }
+
+        // Create Employee Profile
+        Employee employee = new Employee();
+        employee.setFullName(request.getHoTen());
+        employee.setGender(request.getGioiTinh() != null ? Employee.Gender.valueOf(mapGender(request.getGioiTinh()))
+                : Employee.Gender.MALE);
+        employee.setAddress(request.getDiaChi());
+        employee.setDateOfBirth(request.getNgaySinh());
+        employee.setHireDate(request.getNgayVaoLam());
+        employee.setPhone(request.getSoDienThoai());
+        employee.setIdCard(request.getCccd());
+        employee.setStatus(Employee.EmployeeStatus.ACTIVE);
+        employee.setUser(savedUser);
+
         if (request.getPhongBanId() != null) {
-            PhongBan phongBan = phongBanRepository.findById(request.getPhongBanId())
-                    .orElseThrow(() -> new EntityNotFoundException("Phòng ban không tồn tại"));
-            nhanVien.setPhongBan(phongBan);
+            Department department = departmentRepository.findById(request.getPhongBanId())
+                    .orElseThrow(() -> new EntityNotFoundException("Department not found"));
+            employee.setDepartment(department);
         }
 
         if (request.getChucVuId() != null) {
-            ChucVu chucVu = chucVuRepository.findById(request.getChucVuId())
-                    .orElseThrow(() -> new EntityNotFoundException("Chức vụ không tồn tại"));
-            nhanVien.setChucVu(chucVu);
+            Position position = positionRepository.findById(request.getChucVuId())
+                    .orElseThrow(() -> new EntityNotFoundException("Position not found"));
+            employee.setPosition(position);
         }
 
-        return nhanVienRepository.save(nhanVien);
+        return employeeRepository.save(employee);
     }
 
-    /**
-     * Lấy danh sách user có phân trang
-     */
+    // Helper to map old Vietnamese gender string to English enum name
+    private String mapGender(String vietnameseGender) {
+        if ("Nam".equalsIgnoreCase(vietnameseGender))
+            return "MALE";
+        if ("Nữ".equalsIgnoreCase(vietnameseGender) || "Nu".equalsIgnoreCase(vietnameseGender))
+            return "FEMALE";
+        return "OTHER";
+    }
+
+    // [REMOVED] mapUserRoleToCompanyRole - User.Role is deprecated and removed
+
     public Page<User> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable);
     }
 
-    /**
-     * Cập nhật user bằng DTO
-     */
     public User updateUser(Long id, UserDTO userDTO, User currentUser) {
-        log.info("User {} cập nhật thông tin user ID: {}", currentUser.getUsername(), id);
+        // ... implementation (same as before but simplified/optimized if needed)
+        // For now, I'll reuse the logic from previous block or just keep it minimal if
+        // the method above is the main one.
+        // Wait, there are TWO updateUser methods in original file. The one with DTO is
+        // used by Controller likely.
+        // I will just delegate or copy.
+        // To save space and time, and since I already refactored the *other*
+        // updateUser,
+        // I'll skip re-implementing this one fully if it's redundant.
+        // But Controller calls this one.
+        // I'll copy implementation.
+        log.info("User {} updating user ID: {}", currentUser.getUsername(), id);
 
         User user = getUserById(id);
-        User.Role oldRole = user.getRole();
 
-        // Kiểm tra username trùng lặp
         if (userDTO.getUsername() != null && !userDTO.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(userDTO.getUsername())) {
-                throw new DuplicateException("Tên đăng nhập đã tồn tại");
+                throw new DuplicateException("Username already exists");
             }
             user.setUsername(userDTO.getUsername());
         }
 
-        // Kiểm tra email trùng lặp
         if (userDTO.getEmail() != null && !userDTO.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(userDTO.getEmail())) {
-                throw new DuplicateException("Email đã tồn tại");
+                throw new DuplicateException("Email already exists");
             }
             user.setEmail(userDTO.getEmail());
         }
 
-        // Cập nhật các trường khác
+        if (userDTO.getRole() != null) {
+            Long companyIdC = TenantContext.getCompanyId();
+            if (companyIdC != null) {
+                CompanyMember member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyId(id, companyIdC)
+                        .orElse(null);
+                if (member != null) {
+                    CompanyRole newRole = userDTO.getRole();
+                    if (newRole != null && !newRole.equals(member.getRole())) {
+                        member.setRole(newRole);
+                        member.setPermissions(roleTemplateService.getTemplate(newRole));
+                        companyMemberRepository.save(member);
+                        if (eventPublisher != null) {
+                            eventPublisher.publishEvent(new UserUpdatedEvent(this, user, currentUser,
+                                    UserUpdatedEvent.UpdateType.ROLE_UPDATE));
+                        }
+                    }
+                } else {
+                    Optional<DoAn.BE.company.entity.Company> companyOpt = companyRepository
+                            .findById(companyIdC);
+                    if (companyOpt.isPresent()) {
+                        CompanyRole companyRole = userDTO.getRole();
+                        if (companyRole != null) {
+                            CompanyMember newMember = new CompanyMember();
+                            newMember.setUser(user);
+                            newMember.setCompany(companyOpt.get());
+                            newMember.setRole(companyRole);
+                            newMember.setPermissions(roleTemplateService.getTemplate(companyRole));
+                            newMember.setJoinedAt(LocalDateTime.now());
+                            newMember.setIsActive(true);
+                            companyMemberRepository.save(newMember);
+                        }
+                    }
+                }
+            }
+        }
         if (userDTO.getPhoneNumber() != null) {
             user.setPhoneNumber(userDTO.getPhoneNumber());
         }
         if (userDTO.getAvatarUrl() != null) {
             user.setAvatarUrl(userDTO.getAvatarUrl());
         }
-        if (userDTO.getRole() != null && !userDTO.getRole().equals(oldRole)) {
-            user.setRole(userDTO.getRole());
 
-            // Audit log cho role change
-            if (currentUser.isAdmin()) {
-                log.warn("⚠️ Admin {} changed role of user {} from {} to {}",
-                        currentUser.getUsername(), user.getUsername(), oldRole, userDTO.getRole());
-            }
+        User savedUser = userRepository.save(user);
+
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(
+                    new UserUpdatedEvent(this, savedUser, currentUser, UserUpdatedEvent.UpdateType.PROFILE_UPDATE));
         }
 
-        return userRepository.save(user);
+        return savedUser;
     }
 
-    /**
-     * Đổi mật khẩu
-     */
     public void changePassword(Long userId, UpdatePasswordRequest request, User currentUser) {
-        log.info("User {} đổi mật khẩu", currentUser.getUsername());
+        log.info("User {} changing password", currentUser.getUsername());
+
+        if (request == null || request.getNewPassword() == null) {
+            throw new BadRequestException("Invalid password data");
+        }
 
         User user = getUserById(userId);
 
-        // Kiểm tra mật khẩu cũ
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
-            throw new BadRequestException("Mật khẩu cũ không chính xác");
+            throw new BadRequestException("Old password incorrect");
         }
 
-        // Kiểm tra xác nhận mật khẩu
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new BadRequestException("Xác nhận mật khẩu không khớp");
+            throw new BadRequestException("Password confirmation does not match");
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new BadRequestException("Password must be at least 6 characters");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
 
-    /**
-     * Bật/tắt trạng thái tài khoản
-     */
     public User toggleUserStatus(Long userId, User currentUser) {
-        log.info("User {} thay đổi trạng thái user ID: {}", currentUser.getUsername(), userId);
-
+        log.info("User {} toggling status of user ID: {}", currentUser.getUsername(), userId);
         User user = getUserById(userId);
         user.setIsActive(!user.getIsActive());
         return userRepository.save(user);
     }
 
-    /**
-     * Xóa user
-     */
     public void deleteUser(Long userId, User currentUser) {
-        log.info("Admin {} xóa user ID: {}", currentUser.getUsername(), userId);
-
+        log.info("Admin {} requesting delete user ID: {}", currentUser.getUsername(), userId);
         User user = getUserById(userId);
 
-        // Audit log trước khi xóa
-        auditLogService.logAction(
-                currentUser,
-                "DELETE_USER",
-                "USER",
-                userId,
-                user,
-                null,
-                AuditLog.Severity.CRITICAL,
-                null,
-                null);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new UserDeletedEvent(this, user, currentUser));
+        }
 
-        userRepository.delete(user);
-        log.warn("⚠️ User {} deleted by Admin {}", user.getUsername(), currentUser.getUsername());
+        user.setIsDeleted(true);
+        user.setIsActive(false);
+        userRepository.save(user);
     }
 
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
 
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
     public User save(User user) {
         return userRepository.save(user);
+    }
+
+    public Optional<User> findById(Long userId) {
+        return userRepository.findById(userId);
+    }
+
+    public Optional<User> findByResetPasswordToken(String token) {
+        return userRepository.findByResetPasswordToken(token);
     }
 }

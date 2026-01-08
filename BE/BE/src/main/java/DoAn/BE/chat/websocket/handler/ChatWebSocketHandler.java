@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// WebSocket handler xử lý real-time chat messages, typing indicators, user presence
+// [WebSocket handler xử lý real-time chat messages, typing indicators, user presence] (Role: System)
 @Controller
 @Slf4j
 public class ChatWebSocketHandler {
@@ -89,9 +89,7 @@ public class ChatWebSocketHandler {
         }
     }
 
-    /**
-     * Handle typing start
-     */
+    // [Handle typing start] (Role: System)
     @MessageMapping("/chat.typing.start")
     public void handleTypingStart(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -128,9 +126,7 @@ public class ChatWebSocketHandler {
         }
     }
 
-    /**
-     * Handle typing stop
-     */
+    // [Handle typing stop] (Role: System)
     @MessageMapping("/chat.typing.stop")
     public void handleTypingStop(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -167,9 +163,7 @@ public class ChatWebSocketHandler {
         }
     }
 
-    /**
-     * Handle user join room
-     */
+    // [Handle user join room] (Role: System)
     @MessageMapping("/chat.join")
     public void handleUserJoin(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -205,9 +199,7 @@ public class ChatWebSocketHandler {
         }
     }
 
-    /**
-     * Handle user leave room
-     */
+    // [Handle user leave room] (Role: System)
     @MessageMapping("/chat.leave")
     public void handleUserLeave(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -247,9 +239,7 @@ public class ChatWebSocketHandler {
         }
     }
 
-    /**
-     * Handle WebRTC signaling
-     */
+    // [Handle WebRTC signaling] (Role: System)
     @MessageMapping("/chat.signal")
     public void handleSignal(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -277,9 +267,7 @@ public class ChatWebSocketHandler {
         }
     }
 
-    /**
-     * Get typing users for a room
-     */
+    // [Get typing users for a room] (Role: System)
     public List<String> getTypingUsers(Long roomId) {
         if (roomId == null) {
             return List.of();

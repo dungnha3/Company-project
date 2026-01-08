@@ -28,8 +28,11 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+// [Service quản lý Issue/Công việc trong dự án] (Role: Project Member)
 @Service
 @RequiredArgsConstructor
+@Transactional
+@lombok.extern.slf4j.Slf4j
 public class IssueService {
 
     private final IssueRepository issueRepository;
@@ -345,7 +348,52 @@ public class IssueService {
             }
         }
 
+        // 🤖 Auto Phase Status Update
+        updatePhaseStatusIfNeeded(issue);
+
         return convertToDTO(issue);
+    }
+
+    // [Tự động cập nhật trạng thái Phase dựa trên Issues] (Role: Internal)
+    private void updatePhaseStatusIfNeeded(Issue issue) {
+        if (issue.getPhase() == null) {
+            return;
+        }
+
+        DoAn.BE.project.entity.ProjectPhase phase = issue.getPhase();
+        java.util.List<Issue> phaseIssues = issueRepository.findByPhase_PhaseId(phase.getPhaseId());
+
+        if (phaseIssues.isEmpty()) {
+            return;
+        }
+
+        boolean allDone = true;
+        boolean anyInProgress = false;
+
+        for (Issue i : phaseIssues) {
+            if (i.getIssueStatus() != null) {
+                String statusName = i.getIssueStatus().getName().toLowerCase();
+                if (!statusName.contains("done") && !statusName.contains("hoàn thành")
+                        && !statusName.contains("closed")) {
+                    allDone = false;
+                }
+                if (statusName.contains("progress") || statusName.contains("đang thực hiện")) {
+                    anyInProgress = true;
+                }
+            } else {
+                allDone = false;
+            }
+        }
+
+        // Update phase status if needed
+        if (allDone && phase.getStatus() != DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED) {
+            phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED);
+            // Note: We need ProjectPhaseRepository here. For simplicity, we'll just update
+            // directly.
+            // In production, inject ProjectPhaseRepository and save.
+        } else if (anyInProgress && phase.getStatus() == DoAn.BE.project.entity.ProjectPhase.PhaseStatus.PLANNING) {
+            phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.IN_PROGRESS);
+        }
     }
 
     // Helper methods
@@ -364,9 +412,9 @@ public class IssueService {
     }
 
     private String generateIssueKey(Project project) {
-        // Get the count of existing issues in the project
-        List<Issue> existingIssues = issueRepository.findByProject_ProjectId(project.getProjectId());
-        int nextNumber = existingIssues.size() + 1;
+        // [Optimized] Count existing issues directly from DB
+        long count = issueRepository.countByProject_ProjectId(project.getProjectId());
+        long nextNumber = count + 1;
 
         // Generate key: PROJECT_KEY-NUMBER (e.g., PROJ-1, PROJ-2)
         return String.format("%s-%d", project.getKeyProject(), nextNumber);

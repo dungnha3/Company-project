@@ -1,0 +1,29 @@
+package DoAn.BE.hrm.dto;
+
+import java.time.LocalDate;
+
+import DoAn.BE.hrm.entity.LeaveRequest.LeaveType;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class LeaveRequestRequest {
+
+    @NotNull(message = "Employee ID cannot be null")
+    private Long employeeId;
+
+    @NotNull(message = "Leave type cannot be null")
+    private LeaveType leaveType;
+
+    @NotNull(message = "Start date cannot be null")
+    private LocalDate startDate;
+
+    @NotNull(message = "End date cannot be null")
+    private LocalDate endDate;
+
+    private String reason;
+}

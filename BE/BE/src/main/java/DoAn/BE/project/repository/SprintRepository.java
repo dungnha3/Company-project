@@ -12,14 +12,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SprintRepository extends JpaRepository<Sprint, Long> {
     List<Sprint> findByProject_ProjectId(Long projectId);
+
     List<Sprint> findByProject_ProjectIdAndStatus(Long projectId, SprintStatus status);
+
     List<Sprint> findByStatus(SprintStatus status);
-    
+
+    // [Count queries for dashboard optimization]
+    long countByProject_ProjectId(Long projectId);
+
     @Query("SELECT s FROM Sprint s WHERE s.project.projectId = :projectId ORDER BY s.createdAt DESC")
     List<Sprint> findByProjectIdOrderByCreatedAtDesc(@Param("projectId") Long projectId);
-    
+
     Optional<Sprint> findFirstByProject_ProjectIdAndStatus(Long projectId, SprintStatus status);
-    
+
     @Query("SELECT COUNT(s) FROM Sprint s WHERE s.project.projectId = :projectId AND s.status = :status")
     long countByProjectIdAndStatus(@Param("projectId") Long projectId, @Param("status") SprintStatus status);
 }

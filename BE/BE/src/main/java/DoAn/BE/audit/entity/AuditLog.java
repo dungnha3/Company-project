@@ -8,10 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Entity lưu audit log cho các thao tác quan trọng
- * Đặc biệt: Admin actions trên tài khoản Manager
- */
+// Entity lưu audit log cho các thao tác quan trọng
+
+// Đặc biệt: Admin actions trên tài khoản Manager
 @Entity
 @Table(name = "audit_logs", indexes = {
     @Index(name = "idx_audit_actor", columnList = "actor_id"),

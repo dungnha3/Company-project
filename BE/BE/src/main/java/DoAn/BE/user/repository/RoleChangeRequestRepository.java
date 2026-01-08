@@ -9,12 +9,8 @@ import java.util.List;
 
 @Repository
 public interface RoleChangeRequestRepository extends JpaRepository<RoleChangeRequest, Long> {
-    
-    List<RoleChangeRequest> findByStatus(RequestStatus status);
-    
-    List<RoleChangeRequest> findByTargetUser_UserId(Long userId);
-    
-    List<RoleChangeRequest> findByRequestedBy_UserId(Long userId);
-    
-    List<RoleChangeRequest> findByStatusOrderByCreatedAtDesc(RequestStatus status);
+
+    List<RoleChangeRequest> findByCompany_CompanyIdAndStatus(Long companyId, RequestStatus status);
+
+    List<RoleChangeRequest> findByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
 }

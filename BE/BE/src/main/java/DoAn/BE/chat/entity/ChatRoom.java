@@ -1,6 +1,5 @@
 package DoAn.BE.chat.entity;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -13,11 +12,19 @@ import DoAn.BE.project.entity.Project;
 
 // Entity phòng chat (hỗ trợ 3 loại: DIRECT 1-1, GROUP, PROJECT)
 @Entity
-@Table(name = "chat_rooms")
+@Table(name = "chat_rooms", indexes = {
+        // Index cho query: findByType (Room type filter)
+        @jakarta.persistence.Index(name = "idx_cr_type", columnList = "type"),
+        // Index cho query: findByProject (Project chat lookup)
+        @jakarta.persistence.Index(name = "idx_cr_project", columnList = "project_id"),
+        // Index cho query: findByCreatedBy (User's created rooms)
+        @jakarta.persistence.Index(name = "idx_cr_createdby", columnList = "created_by")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatRoom {
+@EqualsAndHashCode(callSuper = true)
+public class ChatRoom extends DoAn.BE.common.entity.TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,9 +49,6 @@ public class ChatRoom {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
     // Relationships
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
@@ -53,11 +57,6 @@ public class ChatRoom {
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<ChatRoomMember> members;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
 
     // Helper methods
     public boolean isDirectChat() {
@@ -76,6 +75,7 @@ public class ChatRoom {
     public enum RoomType {
         DIRECT, // Chat 1-1
         GROUP, // Group chat
-        PROJECT // Project chat (auto-create khi tạo project)
+        PROJECT, // Project chat (auto-create khi tạo project)
+        VOICE // [NEW] Voice/Video Room
     }
 }
