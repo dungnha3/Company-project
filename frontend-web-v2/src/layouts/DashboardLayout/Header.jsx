@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
-import NotificationBell from './NotificationBell';
+import NotificationDropdown from '@shared/components/ui/NotificationDropdown';
 import UserMenu from './UserMenu';
 
 const PAGE_TITLES = {
@@ -44,7 +44,7 @@ export default function Header() {
             </div>
 
             <div className="flex items-center gap-4">
-                <NotificationBell />
+                <NotificationDropdown />
                 <UserMenu />
             </div>
         </header>

@@ -45,6 +45,21 @@ public class AuthController {
         }
     }
 
+    // Lấy thông tin user hiện tại (cho initAuth FE)
+    @GetMapping("/me")
+    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            throw new UnauthorizedException("Chưa đăng nhập");
+        }
+        // Tái sử dụng logic lấy info (không tạo token mới, chỉ lấy User & Membership)
+        // Tuy nhiên AuthService.login trả về token, ở đây ta cần hàm build response từ
+        // user.
+        // Tạm thời gọi lại service để lấy full info (có thể optimize sau)
+        // Hoặc đơn giản trả về AuthResponse dummy chỉ chứa User info
+        AuthResponse response = authService.getCurrentUser(currentUser.getUserId());
+        return ResponseEntity.ok(response);
+    }
+
     // Đăng ký tài khoản mới
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(

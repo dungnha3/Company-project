@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 // Layouts
@@ -13,6 +13,8 @@ import { RoleGuard } from './guards/RoleGuard';
 // Auth pages (not lazy - critical path)
 import LoginPage from '@pages/auth/LoginPage';
 import SelectCompanyPage from '@pages/auth/SelectCompanyPage';
+import LandingPage from '@pages/public/LandingPage';
+import OnboardingPage from '@pages/auth/OnboardingPage';
 
 // Lazy load feature pages
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
@@ -22,21 +24,31 @@ const EmployeesPage = lazy(() => import('@pages/hr/EmployeesPage'));
 const EmployeeDetailPage = lazy(() => import('@pages/hr/EmployeeDetailPage'));
 const DepartmentsPage = lazy(() => import('@pages/hr/DepartmentsPage'));
 const PositionsPage = lazy(() => import('@pages/hr/PositionsPage'));
+const ProjectsPage = lazy(() => import('@pages/projects/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('@pages/projects/ProjectDetailPage'));
 const AttendancePage = lazy(() => import('@pages/hr/AttendancePage'));
 const LeaveRequestsPage = lazy(() => import('@pages/hr/LeaveRequestsPage'));
 const SalariesPage = lazy(() => import('@pages/hr/SalariesPage'));
 const ContractsPage = lazy(() => import('@pages/hr/ContractsPage'));
 
 // Project pages
-const ProjectsPage = lazy(() => import('@pages/project/ProjectsPage'));
-const ProjectDetailPage = lazy(() => import('@pages/project/ProjectDetailPage'));
-const MyIssuesPage = lazy(() => import('@pages/project/MyIssuesPage'));
+const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
+
+
+const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPage'));
 
 // Other pages
 const ProfilePage = lazy(() => import('@pages/profile/ProfilePage'));
 const ChatPage = lazy(() => import('@pages/chat/ChatPage'));
 const NotificationsPage = lazy(() => import('@pages/notifications/NotificationsPage'));
 const StoragePage = lazy(() => import('@pages/storage/StoragePage'));
+
+// System Admin
+const SystemAdminLayout = lazy(() => import('@layouts/SystemAdminLayout'));
+const AdminCompaniesPage = lazy(() => import('@pages/admin/AdminCompaniesPage'));
+const AdminUsersPage = lazy(() => import('@pages/admin/AdminUsersPage'));
+const AdminAnalyticsPage = lazy(() => import('@pages/admin/AdminAnalyticsPage'));
+const AdminSettingsPage = lazy(() => import('@pages/admin/AdminSettingsPage'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -54,6 +66,56 @@ const router = createBrowserRouter([
         ],
     },
 
+    // System Admin Routes
+    {
+        path: '/admin',
+        element: (
+            <AuthGuard>
+                <Suspense fallback={<PageLoader />}>
+                    <SystemAdminLayout />
+                </Suspense>
+            </AuthGuard>
+        ),
+        children: [
+            {
+                path: 'companies',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminCompaniesPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'users',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminUsersPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'analytics',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminAnalyticsPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'settings',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminSettingsPage />
+                    </Suspense>
+                ),
+            },
+            {
+                index: true,
+                element: <Navigate to="companies" replace />,
+            }
+        ],
+    },
+
     // Company selection (authenticated but no company yet)
     {
         path: '/select-company',
@@ -63,10 +125,25 @@ const router = createBrowserRouter([
             </AuthGuard>
         ),
     },
+    // Onboarding (New Company Setup)
+    {
+        path: '/onboarding',
+        element: (
+            <AuthGuard>
+                <OnboardingPage />
+            </AuthGuard>
+        ),
+    },
+
+    // Landing Page (Public)
+    {
+        path: '/',
+        element: <LandingPage />,
+    },
 
     // Protected routes - require auth + company
     {
-        path: '/',
+        path: '/app',
         element: (
             <AuthGuard>
                 <CompanyGuard>

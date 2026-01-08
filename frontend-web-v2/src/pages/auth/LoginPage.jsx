@@ -26,12 +26,14 @@ export default function LoginPage() {
                 setCompanies(memberships);
 
                 // Navigate based on company count
-                if (memberships.length === 0) {
-                    // No companies - show error
-                    setError('Bạn chưa được mời vào công ty nào');
+                if (result.user.isSystemAdmin) {
+                    navigate('/admin/companies', { replace: true });
                 } else if (memberships.length === 1) {
                     // Single company - go directly to dashboard
-                    navigate(location.state?.from?.pathname || '/', { replace: true });
+                    navigate(location.state?.from?.pathname || '/app', { replace: true });
+                } else if (memberships.length === 0) {
+                    // No companies - go to Onboarding
+                    navigate('/onboarding', { replace: true });
                 } else {
                     // Multiple companies - go to selection
                     navigate('/select-company', { replace: true });

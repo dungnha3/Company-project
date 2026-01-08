@@ -17,6 +17,13 @@ export const ENDPOINTS = {
         CHANGE_PASSWORD: '/api/auth/change-password',
     },
 
+    // Admin (SaaS)
+    ADMIN: {
+        COMPANIES: '/api/companies/admin/all',
+        COMPANY_DETAILS: (id) => `/api/companies/admin/${id}`,
+        USERS: '/api/users/admin', // Assuming this exists or will mock
+    },
+
     // Companies
     COMPANIES: {
         LIST: '/api/companies',
@@ -55,7 +62,10 @@ export const ENDPOINTS = {
     // Employees
     EMPLOYEES: {
         LIST: '/api/employees',
+        CREATE: '/api/employees',
         BY_ID: (id) => `/api/employees/${id}`,
+        UPDATE: (id) => `/api/employees/${id}`,
+        DELETE: (id) => `/api/employees/${id}`,
         SEARCH: '/api/employees/search',
         BY_DEPARTMENT: (deptId) => `/api/employees/department/${deptId}`,
         BY_POSITION: (posId) => `/api/employees/position/${posId}`,
@@ -65,13 +75,19 @@ export const ENDPOINTS = {
     // Departments
     DEPARTMENTS: {
         LIST: '/api/departments',
+        CREATE: '/api/departments',
         BY_ID: (id) => `/api/departments/${id}`,
+        UPDATE: (id) => `/api/departments/${id}`,
+        DELETE: (id) => `/api/departments/${id}`,
     },
 
     // Positions
     POSITIONS: {
         LIST: '/api/positions',
+        CREATE: '/api/positions',
         BY_ID: (id) => `/api/positions/${id}`,
+        UPDATE: (id) => `/api/positions/${id}`,
+        DELETE: (id) => `/api/positions/${id}`,
     },
 
     // Attendance
@@ -113,7 +129,10 @@ export const ENDPOINTS = {
     // Contracts
     CONTRACTS: {
         LIST: '/api/contracts',
+        CREATE: '/api/contracts',
         BY_ID: (id) => `/api/contracts/${id}`,
+        UPDATE: (id) => `/api/contracts/${id}`,
+        DELETE: (id) => `/api/contracts/${id}`,
         BY_EMPLOYEE: (empId) => `/api/contracts/employee/${empId}`,
         EXPIRING: '/api/contracts/expiring',
     },
@@ -129,6 +148,29 @@ export const ENDPOINTS = {
     DASHBOARD: {
         STATS: '/api/dashboard/stats',
         MONTHLY: '/api/dashboard/monthly',
+    },
+
+    // Chat
+    CHAT: {
+        ROOMS: '/api/chat-rooms',
+        MESSAGES: (roomId) => `/api/chat-rooms/${roomId}/messages`,
+        CREATE_ROOM: '/api/chat-rooms',
+        MARK_READ: (roomId) => `/api/chat-rooms/${roomId}/read`,
+    },
+
+    // Notifications
+    NOTIFICATIONS: {
+        LIST: '/api/notifications',
+        MARK_READ: (id) => `/api/notifications/${id}/read`,
+        READ_ALL: '/api/notifications/read-all',
+        UNREAD_COUNT: '/api/notifications/unread-count',
+    },
+
+    // File Storage
+    STORAGE: {
+        UPLOAD: '/api/files/upload',
+        LIST: '/api/files', // Assuming list
+        DOWNLOAD: (id) => `/api/files/${id}`,
     },
 
     // Projects
@@ -222,4 +264,5 @@ export const ENDPOINTS = {
         BY_TARGET: (targetId) => `/api/audit-logs/target/${targetId}`,
         CRITICAL: '/api/audit-logs/critical',
     },
+
 };

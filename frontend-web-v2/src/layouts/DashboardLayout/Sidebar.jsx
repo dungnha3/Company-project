@@ -10,7 +10,8 @@ const NAV_CONFIG = [
         title: 'Tổng quan',
         roles: ['*'],
         items: [
-            { path: '/', icon: 'fa-house', label: 'Dashboard', exact: true },
+            { path: '/app', icon: 'fa-house', label: 'Dashboard', exact: true },
+            { path: '/app/settings/company', icon: 'fa-sliders', label: 'Cấu hình công ty', roles: ['OWNER', 'ADMIN'] },
         ],
     },
     {
@@ -18,10 +19,10 @@ const NAV_CONFIG = [
         title: 'Nhân sự',
         roles: ['OWNER', 'ADMIN', 'MANAGER_HR'],
         items: [
-            { path: '/employees', icon: 'fa-users', label: 'Nhân viên' },
-            { path: '/departments', icon: 'fa-building', label: 'Phòng ban' },
-            { path: '/positions', icon: 'fa-briefcase', label: 'Chức vụ' },
-            { path: '/contracts', icon: 'fa-file-contract', label: 'Hợp đồng' },
+            { path: '/app/employees', icon: 'fa-users', label: 'Nhân viên' },
+            { path: '/app/departments', icon: 'fa-building', label: 'Phòng ban' },
+            { path: '/app/positions', icon: 'fa-briefcase', label: 'Chức vụ' },
+            { path: '/app/contracts', icon: 'fa-file-contract', label: 'Hợp đồng' },
         ],
     },
     {
@@ -29,8 +30,8 @@ const NAV_CONFIG = [
         title: 'Chấm công & Nghỉ phép',
         roles: ['*'],
         items: [
-            { path: '/attendance', icon: 'fa-clock', label: 'Chấm công' },
-            { path: '/leave-requests', icon: 'fa-calendar-check', label: 'Nghỉ phép' },
+            { path: '/app/attendance', icon: 'fa-clock', label: 'Chấm công' },
+            { path: '/app/leave-requests', icon: 'fa-calendar-check', label: 'Nghỉ phép' },
         ],
     },
     {
@@ -38,7 +39,7 @@ const NAV_CONFIG = [
         title: 'Tài chính',
         roles: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING'],
         items: [
-            { path: '/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương' },
+            { path: '/app/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương' },
         ],
     },
     {
@@ -46,8 +47,8 @@ const NAV_CONFIG = [
         title: 'Dự án',
         roles: ['*'],
         items: [
-            { path: '/projects', icon: 'fa-folder-open', label: 'Dự án' },
-            { path: '/my-issues', icon: 'fa-list-check', label: 'Công việc' },
+            { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án' },
+            { path: '/app/my-issues', icon: 'fa-list-check', label: 'Công việc' },
         ],
     },
     {
@@ -55,9 +56,9 @@ const NAV_CONFIG = [
         title: 'Khác',
         roles: ['*'],
         items: [
-            { path: '/storage', icon: 'fa-folder', label: 'Tài liệu' },
-            { path: '/chat', icon: 'fa-comments', label: 'Trò chuyện' },
-            { path: '/notifications', icon: 'fa-bell', label: 'Thông báo' },
+            { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu' },
+            { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện' },
+            { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },
         ],
     },
 ];
@@ -113,7 +114,7 @@ export default function Sidebar() {
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100">
-                <NavLink to="/profile" className="menu-item" title="Cài đặt">
+                <NavLink to="/app/profile" className="menu-item" title="Cài đặt">
                     <i className="fa-solid fa-gear" />
                     {!sidebarCollapsed && <span>Cài đặt</span>}
                 </NavLink>

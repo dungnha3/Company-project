@@ -10,14 +10,16 @@ export const useCompanyStore = create(
             companies: [],         // User's company memberships
             currentCompany: null,  // Currently selected company
             currentRole: null,     // User's role in current company
+            members: [],           // Members list of current company
             loading: false,
+            error: null,
 
             // Actions
             setCompanies: (companies) => {
                 set({ companies });
 
                 // Auto-select if only one company
-                if (companies.length === 1) {
+                if (companies.length === 1 && !get().currentCompany) {
                     get().selectCompany(companies[0].companyId);
                 }
             },
@@ -26,7 +28,7 @@ export const useCompanyStore = create(
                 const company = get().companies.find(c => c.companyId === companyId);
                 if (!company) return false;
 
-                set({ loading: true });
+                set({ loading: true, error: null });
 
                 try {
                     // Notify backend about company selection
@@ -41,7 +43,51 @@ export const useCompanyStore = create(
                     return true;
                 } catch (error) {
                     console.error('Failed to select company:', error);
+                    set({ loading: false, error: error.message });
+                    return false;
+                }
+            },
+
+            fetchMembers: async () => {
+                const { currentCompany } = get();
+                if (!currentCompany) return;
+
+                set({ loading: true, error: null });
+                try {
+                    // BE uses /api/users endpoint with X-Company-Id header to filter members
+                    const response = await apiClient.get(ENDPOINTS.USERS.LIST);
+                    set({ members: response.data, loading: false });
+                } catch (error) {
+                    console.error('Failed to fetch members:', error);
+                    set({ loading: false, error: error.message });
+                }
+            },
+
+            inviteMember: async (email, role) => {
+                set({ loading: true, error: null });
+                try {
+                    await apiClient.post(ENDPOINTS.INVITES.SEND, { email, role });
                     set({ loading: false });
+                    return { success: true };
+                } catch (error) {
+                    set({ loading: false, error: error.message });
+                    return { success: false, error: error.response?.data?.message || 'Failed to invite' };
+                }
+            },
+
+            removeMember: async (userId) => {
+                set({ loading: true });
+                try {
+                    await apiClient.delete(ENDPOINTS.USERS.BY_ID(userId));
+
+                    // Optimistic update
+                    set(state => ({
+                        members: state.members.filter(m => m.id !== userId),
+                        loading: false
+                    }));
+                    return true;
+                } catch (error) {
+                    set({ loading: false, error: error.message });
                     return false;
                 }
             },
@@ -51,6 +97,8 @@ export const useCompanyStore = create(
                     companies: [],
                     currentCompany: null,
                     currentRole: null,
+                    members: [],
+                    error: null
                 });
             },
 

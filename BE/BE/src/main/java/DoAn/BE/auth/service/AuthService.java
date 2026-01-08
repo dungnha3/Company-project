@@ -120,6 +120,14 @@ public class AuthService {
         return buildAuthResponse(accessToken, refreshToken, user, memberships, selectedCompanyId);
     }
 
+    // [Lấy thông tin User hiện tại] (Role: Query)
+    public AuthResponse getCurrentUser(Long userId) {
+        User user = userService.getUserById(userId);
+        List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(userId);
+        // Build AuthResponse mà không cần issue token mới
+        return buildAuthResponse(null, null, user, memberships, null);
+    }
+
     // [Chọn công ty để làm việc] (Role: Authenticated User)
     public AuthResponse selectCompany(Long userId, Long companyId, String ipAddress, String userAgent) {
         // [Validate input] (Role: Guard)

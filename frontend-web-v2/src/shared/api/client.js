@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -43,7 +43,8 @@ apiClient.interceptors.response.use(
         const originalRequest = error.config;
 
         // If 401 and haven't tried refresh yet
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // SKIP if the request is for login (let the component handle the error)
+        if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/login')) {
             originalRequest._retry = true;
 
             try {
