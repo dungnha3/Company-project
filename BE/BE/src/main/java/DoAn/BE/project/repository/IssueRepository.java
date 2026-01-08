@@ -31,25 +31,43 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectId(Long projectId);
 
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findByProject_ProjectId(Long projectId, Pageable pageable);
+
         // [Lấy Issues của User (assigned) - OPTIMIZED] (Role: Self)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByAssignee_UserId(Long userId);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findByAssignee_UserId(Long userId, Pageable pageable);
 
         // [Lấy Issues của User (reported) - OPTIMIZED] (Role: Self)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByReporter_UserId(Long userId);
 
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findByReporter_UserId(Long userId, Pageable pageable);
+
         // [Lấy Issues của Sprint - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findBySprint_SprintId(Long sprintId);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findBySprint_SprintId(Long sprintId, Pageable pageable);
 
         // [Lấy Backlog (Issues không có Sprint) - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId);
 
+        @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId, Pageable pageable);
+
         // [Lấy Issues của Phase - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         List<Issue> findByPhase_PhaseId(Long phaseId);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
+        Page<Issue> findByPhase_PhaseId(Long phaseId, Pageable pageable);
 
         // ==================== SIMPLE QUERIES (No relations needed)
         // ====================

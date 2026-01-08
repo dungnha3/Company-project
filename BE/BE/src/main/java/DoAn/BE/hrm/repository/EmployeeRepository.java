@@ -11,6 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
@@ -21,18 +24,33 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     boolean existsByIdCard(String idCard);
 
+    // ...
+
     @EntityGraph(attributePaths = { "user" })
     List<Employee> findByStatus(EmployeeStatus status);
+
+    @EntityGraph(attributePaths = { "user" })
+    Page<Employee> findByStatus(EmployeeStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = { "user", "department", "position" })
     List<Employee> findByDepartment_DepartmentId(Long departmentId);
 
+    @EntityGraph(attributePaths = { "user", "department", "position" })
+    Page<Employee> findByDepartment_DepartmentId(Long departmentId, Pageable pageable);
+
     List<Employee> findByPosition_PositionId(Long positionId);
+
+    Page<Employee> findByPosition_PositionId(Long positionId, Pageable pageable);
 
     @Query("SELECT e FROM Employee e WHERE " +
             "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(e.idCard) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Employee> searchByKeyword(@Param("keyword") String keyword);
+
+    @Query("SELECT e FROM Employee e WHERE " +
+            "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(e.idCard) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Employee> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     long countByStatus(EmployeeStatus status);
 

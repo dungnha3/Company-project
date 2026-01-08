@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/comments")
@@ -28,18 +27,22 @@ public class IssueCommentController {
     }
 
     @GetMapping("/issue/{issueId}")
-    public ResponseEntity<List<IssueCommentDTO>> getIssueComments(
+    public ResponseEntity<org.springframework.data.domain.Page<IssueCommentDTO>> getIssueComments(
             @PathVariable Long issueId,
-            @AuthenticationPrincipal User currentUser) {
-        List<IssueCommentDTO> comments = issueCommentService.getIssueComments(issueId, currentUser);
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<IssueCommentDTO> comments = issueCommentService
+                .getIssueCommentsPaged(issueId, currentUser, pageable);
         return ResponseEntity.ok(comments);
     }
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<IssueCommentDTO>> getProjectComments(
+    public ResponseEntity<org.springframework.data.domain.Page<IssueCommentDTO>> getProjectComments(
             @PathVariable Long projectId,
-            @AuthenticationPrincipal User currentUser) {
-        List<IssueCommentDTO> comments = issueCommentService.getProjectComments(projectId, currentUser);
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<IssueCommentDTO> comments = issueCommentService
+                .getProjectCommentsPaged(projectId, currentUser, pageable);
         return ResponseEntity.ok(comments);
     }
 

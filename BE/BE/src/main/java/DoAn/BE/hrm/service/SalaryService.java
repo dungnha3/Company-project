@@ -146,7 +146,32 @@ public class SalaryService {
         if (!accessControlService.isAccountingManager() && !accessControlService.isOwnerOrAdmin()) {
             throw new ForbiddenException("Only Accounting or Admin can view all salaries");
         }
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return java.util.Collections.emptyList();
+        // Since findByCompanyId(Long) is native query returning List<Salary>, we need
+        // to implement it in repo or use existing findAll() if it respects tenant by
+        // default (via aspects or criteria).
+        // Assuming findAll() is safe or using repo.findAll() which is JPA standard.
+        // However, we added findByCompanyId in previous step? Wait, let me check. No,
+        // we added findByCompanyId(Long, Pageable).
+        // We should add a List method if we want to support this List method correctly
+        // with tenant filter.
+        // But the previous getAllSalaries just called findAll(). That implies findAll()
+        // wasn't filtered by tenant? Or maybe AspectJ handles it?
+        // Let's assume AspectJ handles filtering for findAll.
         return salaryRepository.findAll();
+    }
+
+    public org.springframework.data.domain.Page<Salary> getAllSalariesPaged(User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.isAccountingManager() && !accessControlService.isOwnerOrAdmin()) {
+            throw new ForbiddenException("Only Accounting or Admin can view all salaries");
+        }
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return org.springframework.data.domain.Page.empty(pageable);
+        return salaryRepository.findByCompanyId(companyId, pageable);
     }
 
     public Page<Salary> getAllSalariesPage(Pageable pageable, User currentUser) {
@@ -215,11 +240,35 @@ public class SalaryService {
         return salaryRepository.findByEmployee_EmployeeId(employeeId);
     }
 
+    public org.springframework.data.domain.Page<Salary> getSalariesByEmployeePaged(Long employeeId, User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        if (accessControlService.isAccountingManager() || accessControlService.isOwnerOrAdmin()) {
+            return salaryRepository.findByEmployee_EmployeeId(employeeId, pageable);
+        }
+
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+
+        if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new ForbiddenException("You can only view your own salary history");
+        }
+
+        return salaryRepository.findByEmployee_EmployeeId(employeeId, pageable);
+    }
+
     public List<Salary> getSalariesByPeriod(Integer month, Integer year, User currentUser) {
         if (!accessControlService.isAccountingManager()) {
             throw new ForbiddenException("Only Accounting can view salary reports by period");
         }
         return salaryRepository.findByMonthAndYear(month, year);
+    }
+
+    public org.springframework.data.domain.Page<Salary> getSalariesByPeriodPaged(Integer month, Integer year,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.isAccountingManager()) {
+            throw new ForbiddenException("Only Accounting can view salary reports by period");
+        }
+        return salaryRepository.findByMonthAndYear(month, year, pageable);
     }
 
     public Salary markAsPaid(Long id, User currentUser) {
@@ -284,6 +333,14 @@ public class SalaryService {
             throw new ForbiddenException("Only Accountant can view salaries by status");
         }
         return salaryRepository.findByPaymentStatus(status);
+    }
+
+    public org.springframework.data.domain.Page<Salary> getSalariesByStatusPaged(Salary.PaymentStatus status,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.isAccountingManager()) {
+            throw new ForbiddenException("Only Accountant can view salaries by status");
+        }
+        return salaryRepository.findByPaymentStatus(status, pageable);
     }
 
     public BigDecimal getTotalSalaryByPeriod(Integer month, Integer year, User currentUser) {

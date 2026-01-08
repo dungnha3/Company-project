@@ -7,41 +7,39 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
-       // Tìm audit logs theo actor
-       List<AuditLog> findByActor_UserId(Long actorId);
+       // Tìm audit logs theo actor (Paginated)
+       Page<AuditLog> findByActor_UserId(Long actorId, Pageable pageable);
 
-       // Tìm audit logs theo target user
-       List<AuditLog> findByTargetUser_UserId(Long targetUserId);
+       // Tìm audit logs theo target user (Paginated)
+       Page<AuditLog> findByTargetUser_UserId(Long targetUserId, Pageable pageable);
 
-       // Tìm audit logs theo action
-       List<AuditLog> findByAction(String action);
+       // Tìm audit logs theo action (Paginated)
+       Page<AuditLog> findByAction(String action, Pageable pageable);
 
-       // Tìm audit logs theo severity
-       List<AuditLog> findBySeverity(AuditLog.Severity severity);
+       // Tìm audit logs theo severity (Paginated)
+       Page<AuditLog> findBySeverity(AuditLog.Severity severity, Pageable pageable);
 
-       // Tìm critical logs trong khoảng thời gian
+       // Tìm critical logs trong khoảng thời gian (Paginated)
        @Query("SELECT a FROM AuditLog a WHERE a.severity = 'CRITICAL' " +
-                     "AND a.createdAt BETWEEN :startDate AND :endDate " +
-                     "ORDER BY a.createdAt DESC")
-       List<AuditLog> findCriticalLogsBetween(@Param("startDate") LocalDateTime startDate,
-                     @Param("endDate") LocalDateTime endDate);
+                     "AND a.createdAt BETWEEN :startDate AND :endDate")
+       Page<AuditLog> findCriticalLogsBetween(@Param("startDate") LocalDateTime startDate,
+                     @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
-       // Tìm tất cả actions của Admin trên Manager accounts (Checks if actor is ADMIN
-       // anywhere and target is MANAGER anywhere)
+       // Tìm tất cả actions của Admin trên Manager accounts (Paginated)
        @Query("SELECT DISTINCT a FROM AuditLog a " +
                      "JOIN a.actor.memberships mActor " +
                      "JOIN a.targetUser.memberships mTarget " +
                      "WHERE mActor.role = 'ADMIN' " +
-                     "AND mTarget.role IN ('MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT') " +
-                     "ORDER BY a.createdAt DESC")
-       List<AuditLog> findAdminActionsOnManagers();
+                     "AND mTarget.role IN ('MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT')")
+       Page<AuditLog> findAdminActionsOnManagers(Pageable pageable);
 
-       // Tìm recent logs (50 records gần nhất)
-       @Query("SELECT a FROM AuditLog a ORDER BY a.createdAt DESC")
-       List<AuditLog> findRecentLogs();
+       // Tìm recent logs (Paginated) - Sort logic should be passed via Pageable
+       @Query("SELECT a FROM AuditLog a")
+       Page<AuditLog> findAllLogs(Pageable pageable);
 }

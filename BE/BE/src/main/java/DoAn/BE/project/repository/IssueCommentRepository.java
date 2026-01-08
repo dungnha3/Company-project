@@ -26,4 +26,14 @@ public interface IssueCommentRepository extends JpaRepository<IssueComment, Long
     // [OPTIMIZED: Count comments since date - for dashboard]
     @Query("SELECT COUNT(c) FROM IssueComment c WHERE c.issue.project.projectId = :projectId AND c.createdAt > :since")
     long countByProjectIdSince(@Param("projectId") Long projectId, @Param("since") java.time.LocalDateTime since);
+
+    // ==================== PAGINATION SUPPORT ====================
+    @EntityGraph(attributePaths = { "user" })
+    org.springframework.data.domain.Page<IssueComment> findByIssue_IssueIdOrderByCreatedAtAsc(Long issueId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @EntityGraph(attributePaths = { "user", "issue" })
+    @Query("SELECT c FROM IssueComment c WHERE c.issue.project.projectId = :projectId ORDER BY c.createdAt DESC")
+    org.springframework.data.domain.Page<IssueComment> findByProjectIdOrderByCreatedAtDesc(
+            @Param("projectId") Long projectId, org.springframework.data.domain.Pageable pageable);
 }

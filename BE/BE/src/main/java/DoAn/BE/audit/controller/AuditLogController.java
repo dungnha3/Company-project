@@ -3,13 +3,14 @@ package DoAn.BE.audit.controller;
 import DoAn.BE.audit.entity.AuditLog;
 import DoAn.BE.audit.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 // Controller quản lý Audit Logs
 
@@ -22,54 +23,50 @@ public class AuditLogController {
 
     private final AuditLogService auditLogService;
 
-// GET /api/audit-logs
-
-// Lấy danh sách audit logs gần đây
+    // GET /api/audit-logs
+    // Lấy danh sách audit logs gần đây
     @GetMapping
-    public ResponseEntity<List<AuditLog>> getRecentLogs() {
-        List<AuditLog> logs = auditLogService.getRecentLogs();
+    public ResponseEntity<Page<AuditLog>> getRecentLogs(Pageable pageable) {
+        Page<AuditLog> logs = auditLogService.getRecentLogs(pageable);
         return ResponseEntity.ok(logs);
     }
 
-// GET /api/audit-logs/actor/{actorId}
-
-// Lấy audit logs theo actor (user thực hiện hành động)
+    // GET /api/audit-logs/actor/{actorId}
+    // Lấy audit logs theo actor (user thực hiện hành động)
     @GetMapping("/actor/{actorId}")
-    public ResponseEntity<List<AuditLog>> getLogsByActor(@PathVariable Long actorId) {
-        List<AuditLog> logs = auditLogService.getLogsByActor(actorId);
+    public ResponseEntity<Page<AuditLog>> getLogsByActor(
+            @PathVariable Long actorId,
+            Pageable pageable) {
+        Page<AuditLog> logs = auditLogService.getLogsByActor(actorId, pageable);
         return ResponseEntity.ok(logs);
     }
 
-// GET /api/audit-logs/target/{targetUserId}
-
-// Lấy audit logs theo target user (user bị thao tác)
+    // GET /api/audit-logs/target/{targetUserId}
+    // Lấy audit logs theo target user (user bị thao tác)
     @GetMapping("/target/{targetUserId}")
-    public ResponseEntity<List<AuditLog>> getLogsByTargetUser(@PathVariable Long targetUserId) {
-        List<AuditLog> logs = auditLogService.getLogsByTargetUser(targetUserId);
+    public ResponseEntity<Page<AuditLog>> getLogsByTargetUser(
+            @PathVariable Long targetUserId,
+            Pageable pageable) {
+        Page<AuditLog> logs = auditLogService.getLogsByTargetUser(targetUserId, pageable);
         return ResponseEntity.ok(logs);
     }
 
-// GET /api/audit-logs/critical
-
-// Lấy các critical logs trong khoảng thời gian
+    // GET /api/audit-logs/critical
+    // Lấy các critical logs trong khoảng thời gian
     @GetMapping("/critical")
-    public ResponseEntity<List<AuditLog>> getCriticalLogs(
+    public ResponseEntity<Page<AuditLog>> getCriticalLogs(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        List<AuditLog> logs = auditLogService.getCriticalLogs(startDate, endDate);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            Pageable pageable) {
+        Page<AuditLog> logs = auditLogService.getCriticalLogs(startDate, endDate, pageable);
         return ResponseEntity.ok(logs);
     }
 
-// GET /api/audit-logs/admin-on-managers
-
-// Lấy tất cả hành động của Admin trên Manager accounts
-
-// GET /api/audit-logs/admin-on-managers
-
-// Lấy tất cả hành động của Admin trên Manager accounts
+    // GET /api/audit-logs/admin-on-managers
+    // Lấy tất cả hành động của Admin trên Manager accounts
     @GetMapping("/admin-on-managers")
-    public ResponseEntity<List<AuditLog>> getAdminActionsOnManagers() {
-        List<AuditLog> logs = auditLogService.getAdminActionsOnManagers();
+    public ResponseEntity<Page<AuditLog>> getAdminActionsOnManagers(Pageable pageable) {
+        Page<AuditLog> logs = auditLogService.getAdminActionsOnManagers(pageable);
         return ResponseEntity.ok(logs);
     }
 }

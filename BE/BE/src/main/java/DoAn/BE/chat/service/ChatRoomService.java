@@ -148,6 +148,18 @@ public class ChatRoomService {
                 .collect(Collectors.toList());
     }
 
+    public org.springframework.data.domain.Page<ChatRoomDTO> getChatRoomsByUserIdPaged(User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canUseChat(currentUser)) {
+            throw new ForbiddenException("Admin không có quyền sử dụng chat");
+        }
+
+        // Sử dụng repo query mới đã add
+        org.springframework.data.domain.Page<ChatRoom> chatRooms = chatRoomRepository
+                .findChatRoomsByUserIdPaginated(currentUser.getUserId(), pageable);
+        return chatRooms.map(this::convertToChatRoomDTO);
+    }
+
     // Lấy thông tin phòng chat
     public ChatRoomDTO getChatRoomById(Long roomId, Long userId) {
         if (roomId == null || userId == null) {

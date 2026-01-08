@@ -49,8 +49,11 @@ public class ChatRoomController {
 
     // [Lấy danh sách phòng chat của user] (Role: Self)
     @GetMapping
-    public ResponseEntity<List<ChatRoomDTO>> getMyChatRooms(@AuthenticationPrincipal User currentUser) {
-        List<ChatRoomDTO> chatRooms = chatRoomService.getChatRoomsByUserId(currentUser);
+    public ResponseEntity<org.springframework.data.domain.Page<ChatRoomDTO>> getMyChatRooms(
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<ChatRoomDTO> chatRooms = chatRoomService
+                .getChatRoomsByUserIdPaged(currentUser, pageable);
         return ResponseEntity.ok(chatRooms);
     }
 

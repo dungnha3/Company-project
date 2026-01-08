@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 // [Controller managing salaries] (Role: Accounting/HR)
@@ -52,9 +51,12 @@ public class SalaryController {
 
     // [Get all salaries] (Role: Accounting)
     @GetMapping
-    public ResponseEntity<List<SalaryDTO>> getAllSalaries(@AuthenticationPrincipal User currentUser) {
-        List<Salary> salaries = salaryService.getAllSalaries(currentUser);
-        return ResponseEntity.ok(salaryMapper.toDTOList(salaries));
+    public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getAllSalaries(
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Salary> salaries = salaryService.getAllSalariesPaged(currentUser,
+                pageable);
+        return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
 
     // [Update salary] (Role: Accounting)
@@ -82,21 +84,25 @@ public class SalaryController {
 
     // [Get salaries by employee] (Role: Accounting/Self)
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<SalaryDTO>> getSalariesByEmployee(
+    public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getSalariesByEmployee(
             @PathVariable Long employeeId,
-            @AuthenticationPrincipal User currentUser) {
-        List<Salary> salaries = salaryService.getSalariesByEmployee(employeeId, currentUser);
-        return ResponseEntity.ok(salaryMapper.toDTOList(salaries));
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Salary> salaries = salaryService.getSalariesByEmployeePaged(employeeId,
+                currentUser, pageable);
+        return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
 
     // [Get salaries by period (month/year)] (Role: Accounting)
     @GetMapping("/period")
-    public ResponseEntity<List<SalaryDTO>> getSalariesByPeriod(
+    public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getSalariesByPeriod(
             @RequestParam Integer month,
             @RequestParam Integer year,
-            @AuthenticationPrincipal User currentUser) {
-        List<Salary> salaries = salaryService.getSalariesByPeriod(month, year, currentUser);
-        return ResponseEntity.ok(salaryMapper.toDTOList(salaries));
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Salary> salaries = salaryService.getSalariesByPeriodPaged(month, year,
+                currentUser, pageable);
+        return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
 
     // [Get salary by employee and period] (Role: Accounting/Self)
@@ -116,17 +122,19 @@ public class SalaryController {
     // [Get salaries by status] (Role: Accounting)
     // [Get salaries by status] (Role: Accounting)
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<SalaryDTO>> getSalariesByStatus(
+    public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getSalariesByStatus(
             @PathVariable String status,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
         Salary.PaymentStatus paymentStatus;
         try {
             paymentStatus = Salary.PaymentStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new DoAn.BE.common.exception.BadRequestException("Invalid payment status: " + status);
         }
-        List<Salary> salaries = salaryService.getSalariesByStatus(paymentStatus, currentUser);
-        return ResponseEntity.ok(salaryMapper.toDTOList(salaries));
+        org.springframework.data.domain.Page<Salary> salaries = salaryService.getSalariesByStatusPaged(paymentStatus,
+                currentUser, pageable);
+        return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
 
     // ==================== ACTIONS ====================

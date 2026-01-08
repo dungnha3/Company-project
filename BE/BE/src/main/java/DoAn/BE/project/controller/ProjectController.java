@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 // [Controller quản lý dự án] (Role: Project Members)
 @RestController
@@ -49,15 +51,19 @@ public class ProjectController {
 
     // [Lấy tất cả dự án mà user có quyền truy cập] (Role: Authenticated User)
     @GetMapping
-    public ResponseEntity<List<ProjectDTO>> getAllProjects(@AuthenticationPrincipal User currentUser) {
-        List<ProjectDTO> projects = projectService.getAllProjects(currentUser);
+    public ResponseEntity<Page<ProjectDTO>> getAllProjects(
+            @AuthenticationPrincipal User currentUser,
+            Pageable pageable) {
+        Page<ProjectDTO> projects = projectService.getAllProjectsPaged(currentUser, pageable);
         return ResponseEntity.ok(projects);
     }
 
     // [Lấy các dự án của user] (Role: Authenticated User)
     @GetMapping("/my-projects")
-    public ResponseEntity<List<ProjectDTO>> getMyProjects(@AuthenticationPrincipal User currentUser) {
-        List<ProjectDTO> projects = projectService.getMyProjects(currentUser);
+    public ResponseEntity<Page<ProjectDTO>> getMyProjects(
+            @AuthenticationPrincipal User currentUser,
+            Pageable pageable) {
+        Page<ProjectDTO> projects = projectService.getMyProjectsPaged(currentUser, pageable);
         return ResponseEntity.ok(projects);
     }
 

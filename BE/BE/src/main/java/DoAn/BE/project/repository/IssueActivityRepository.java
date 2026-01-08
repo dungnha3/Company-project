@@ -16,10 +16,19 @@ public interface IssueActivityRepository extends JpaRepository<IssueActivity, Lo
     @EntityGraph(attributePaths = { "user" })
     List<IssueActivity> findByIssue_IssueIdOrderByCreatedAtDesc(Long issueId);
 
+    @EntityGraph(attributePaths = { "user" })
+    org.springframework.data.domain.Page<IssueActivity> findByIssue_IssueIdOrderByCreatedAtDesc(Long issueId,
+            org.springframework.data.domain.Pageable pageable);
+
     // [OPTIMIZED: Fetch with user and issue for project activity feed]
     @EntityGraph(attributePaths = { "user", "issue" })
     @Query("SELECT a FROM IssueActivity a WHERE a.issue.project.projectId = :projectId ORDER BY a.createdAt DESC")
     List<IssueActivity> findByProjectIdOrderByCreatedAtDesc(@Param("projectId") Long projectId);
+
+    @EntityGraph(attributePaths = { "user", "issue" })
+    @Query("SELECT a FROM IssueActivity a WHERE a.issue.project.projectId = :projectId ORDER BY a.createdAt DESC")
+    org.springframework.data.domain.Page<IssueActivity> findByProjectIdOrderByCreatedAtDesc(
+            @Param("projectId") Long projectId, org.springframework.data.domain.Pageable pageable);
 
     @EntityGraph(attributePaths = { "user" })
     List<IssueActivity> findByActivityTypeOrderByCreatedAtDesc(ActivityType activityType);
@@ -32,6 +41,12 @@ public interface IssueActivityRepository extends JpaRepository<IssueActivity, Lo
     @Query("SELECT a FROM IssueActivity a WHERE a.issue.project.projectId = :projectId AND a.user.userId = :userId ORDER BY a.createdAt DESC")
     List<IssueActivity> findByProjectIdAndUserIdOrderByCreatedAtDesc(@Param("projectId") Long projectId,
             @Param("userId") Long userId);
+
+    @EntityGraph(attributePaths = { "user", "issue" })
+    @Query("SELECT a FROM IssueActivity a WHERE a.issue.project.projectId = :projectId AND a.user.userId = :userId ORDER BY a.createdAt DESC")
+    org.springframework.data.domain.Page<IssueActivity> findByProjectIdAndUserIdOrderByCreatedAtDesc(
+            @Param("projectId") Long projectId,
+            @Param("userId") Long userId, org.springframework.data.domain.Pageable pageable);
 
     // [OPTIMIZED: Count activities since date - for dashboard]
     @Query("SELECT COUNT(a) FROM IssueActivity a WHERE a.issue.project.projectId = :projectId AND a.createdAt > :since")

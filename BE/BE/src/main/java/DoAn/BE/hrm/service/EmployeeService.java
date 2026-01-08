@@ -196,8 +196,18 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Employee> getEmployeesByStatus(EmployeeStatus status, Pageable pageable) {
+        return employeeRepository.findByStatus(status, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<Employee> getEmployeesByDepartment(Long departmentId) {
         return employeeRepository.findByDepartment_DepartmentId(departmentId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Employee> getEmployeesByDepartment(Long departmentId, Pageable pageable) {
+        return employeeRepository.findByDepartment_DepartmentId(departmentId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -206,8 +216,18 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Employee> getEmployeesByPosition(Long positionId, Pageable pageable) {
+        return employeeRepository.findByPosition_PositionId(positionId, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<Employee> searchEmployees(String keyword) {
         return employeeRepository.searchByKeyword(keyword);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Employee> searchEmployees(String keyword, Pageable pageable) {
+        return employeeRepository.searchByKeyword(keyword, pageable);
     }
 
     public Employee updateStatus(Long id, EmployeeStatus status) {

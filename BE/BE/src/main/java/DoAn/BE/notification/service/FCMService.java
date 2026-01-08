@@ -4,16 +4,19 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 // [Service gửi Push Notification qua Firebase Cloud Messaging] (Role: System)
+// [ASYNC: All methods run in background thread pool to avoid blocking]
 @Service
 @Slf4j
 public class FCMService {
 
-    // [Gửi notification đến thiết bị cụ thể] (Role: Internal)
+    // [Gửi notification đến thiết bị cụ thể - ASYNC] (Role: Internal)
+    @Async("notificationExecutor")
     public void sendToDevice(String fcmToken, String title, String body, Map<String, String> data) {
         // [Validate input] (Role: Guard)
         if (fcmToken == null || fcmToken.isBlank()) {
@@ -45,7 +48,8 @@ public class FCMService {
         }
     }
 
-    // [Gửi notification đến topic] (Role: Internal)
+    // [Gửi notification đến topic - ASYNC] (Role: Internal)
+    @Async("notificationExecutor")
     public void sendToTopic(String topic, String title, String body, Map<String, String> data) {
         // [Validate input] (Role: Guard)
         if (topic == null || topic.isBlank()) {

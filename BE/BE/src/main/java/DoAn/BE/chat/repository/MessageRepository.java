@@ -3,6 +3,8 @@ package DoAn.BE.chat.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -38,4 +40,18 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                      "LOWER(m.content) LIKE LOWER(CONCAT('%', :keyword, '%')) AND " +
                      "m.isDeleted = false ORDER BY m.createdAt DESC")
        List<Message> searchMessagesByContent(@Param("roomId") Long roomId, @Param("keyword") String keyword);
+
+       // ==================== PAGINATED QUERIES ====================
+
+       // [PAGINATED: For large chat rooms - load messages in chunks]
+       @EntityGraph(attributePaths = { "sender" })
+       @Query("SELECT m FROM Message m WHERE m.chatRoom.roomId = :roomId AND m.isDeleted = false ORDER BY m.createdAt DESC")
+       Page<Message> findByRoomIdPaged(@Param("roomId") Long roomId, Pageable pageable);
+
+       // [PAGINATED: Load messages before a specific message (infinite scroll)]
+       @EntityGraph(attributePaths = { "sender" })
+       @Query("SELECT m FROM Message m WHERE m.chatRoom.roomId = :roomId AND m.createdAt < :before " +
+                     "AND m.isDeleted = false ORDER BY m.createdAt DESC")
+       Page<Message> findByRoomIdBeforeTime(@Param("roomId") Long roomId,
+                     @Param("before") LocalDateTime before, Pageable pageable);
 }

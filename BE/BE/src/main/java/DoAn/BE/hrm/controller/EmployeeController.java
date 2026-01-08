@@ -93,38 +93,42 @@ public class EmployeeController {
 
     // [Filter employees by status] (Role: HR/Accounting)
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<EmployeeDTO>> getEmployeesByStatus(
+    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByStatus(
             @PathVariable EmployeeStatus status,
+            Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
-        List<Employee> employees = employeeService.getEmployeesByStatus(status);
-        return ResponseEntity.ok(employeeMapper.toDTOList(employees, currentUser));
+        Page<Employee> employeePage = employeeService.getEmployeesByStatus(status, pageable);
+        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
     // [Filter employees by department] (Role: HR/Accounting)
     @GetMapping("/department/{departmentId}")
-    public ResponseEntity<List<EmployeeDTO>> getEmployeesByDepartment(
+    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByDepartment(
             @PathVariable Long departmentId,
+            Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
-        List<Employee> employees = employeeService.getEmployeesByDepartment(departmentId);
-        return ResponseEntity.ok(employeeMapper.toDTOList(employees, currentUser));
+        Page<Employee> employeePage = employeeService.getEmployeesByDepartment(departmentId, pageable);
+        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
     // [Filter employees by position] (Role: HR/Accounting)
     @GetMapping("/position/{positionId}")
-    public ResponseEntity<List<EmployeeDTO>> getEmployeesByPosition(
+    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByPosition(
             @PathVariable Long positionId,
+            Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
-        List<Employee> employees = employeeService.getEmployeesByPosition(positionId);
-        return ResponseEntity.ok(employeeMapper.toDTOList(employees, currentUser));
+        Page<Employee> employeePage = employeeService.getEmployeesByPosition(positionId, pageable);
+        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
     // [Search employees by keyword] (Role: HR/Accounting)
     @GetMapping("/search")
-    public ResponseEntity<List<EmployeeDTO>> searchEmployees(
+    public ResponseEntity<Page<EmployeeDTO>> searchEmployees(
             @RequestParam String keyword,
+            Pageable pageable,
             @AuthenticationPrincipal User currentUser) {
-        List<Employee> employees = employeeService.searchEmployees(keyword);
-        return ResponseEntity.ok(employeeMapper.toDTOList(employees, currentUser));
+        Page<Employee> employeePage = employeeService.searchEmployees(keyword, pageable);
+        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
     // ==================== ACTIONS ====================

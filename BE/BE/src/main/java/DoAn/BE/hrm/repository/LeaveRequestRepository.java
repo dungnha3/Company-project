@@ -14,35 +14,53 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
 
-    @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
-    List<LeaveRequest> findByEmployee_EmployeeId(Long employeeId);
+        @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
+        List<LeaveRequest> findByEmployee_EmployeeId(Long employeeId);
 
-    // Find overlapping requests
-    List<LeaveRequest> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate endDate, LocalDate startDate);
+        // Find overlapping requests
+        List<LeaveRequest> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate endDate,
+                        LocalDate startDate);
 
-    @EntityGraph(attributePaths = { "employee", "employee.user" })
-    List<LeaveRequest> findByStatus(LeaveStatus status);
+        @EntityGraph(attributePaths = { "employee", "employee.user" })
+        List<LeaveRequest> findByStatus(LeaveStatus status);
 
-    List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(Long employeeId, LeaveStatus status);
+        List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(Long employeeId, LeaveStatus status);
 
-    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.employeeId = :employeeId " +
-            "AND lr.status = 'APPROVED' " +
-            "AND (YEAR(lr.startDate) = :year OR YEAR(lr.endDate) = :year)")
-    List<LeaveRequest> findApprovedByEmployeeAndYear(@Param("employeeId") Long employeeId, @Param("year") int year);
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.employeeId = :employeeId " +
+                        "AND lr.status = 'APPROVED' " +
+                        "AND (YEAR(lr.startDate) = :year OR YEAR(lr.endDate) = :year)")
+        List<LeaveRequest> findApprovedByEmployeeAndYear(@Param("employeeId") Long employeeId, @Param("year") int year);
 
-    @Query("SELECT COUNT(lr) > 0 FROM LeaveRequest lr WHERE lr.employee.employeeId = :employeeId " +
-            "AND lr.status = 'APPROVED' " +
-            "AND :date BETWEEN lr.startDate AND lr.endDate")
-    boolean isEmployeeOnLeave(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
+        @Query("SELECT COUNT(lr) > 0 FROM LeaveRequest lr WHERE lr.employee.employeeId = :employeeId " +
+                        "AND lr.status = 'APPROVED' " +
+                        "AND :date BETWEEN lr.startDate AND lr.endDate")
+        boolean isEmployeeOnLeave(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
 
-    long countByStatus(LeaveStatus status);
+        long countByStatus(LeaveStatus status);
 
-    List<LeaveRequest> findByApprover_UserId(Long approverId);
+        List<LeaveRequest> findByApprover_UserId(Long approverId);
 
-    @Query("SELECT lr.leaveType, COUNT(lr) FROM LeaveRequest lr GROUP BY lr.leaveType")
-    List<Object[]> getStatsByLeaveType();
+        @Query("SELECT lr.leaveType, COUNT(lr) FROM LeaveRequest lr GROUP BY lr.leaveType")
+        List<Object[]> getStatsByLeaveType();
 
-    long countByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
+        long countByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
 
-    List<LeaveRequest> findByStartDateBetween(LocalDate startDate, LocalDate endDate);
+        List<LeaveRequest> findByStartDateBetween(LocalDate startDate, LocalDate endDate);
+
+        // ==================== PAGINATION SUPPORT ====================
+        @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
+        org.springframework.data.domain.Page<LeaveRequest> findByEmployee_EmployeeId(Long employeeId,
+                        org.springframework.data.domain.Pageable pageable);
+
+        @EntityGraph(attributePaths = { "employee", "employee.user" })
+        org.springframework.data.domain.Page<LeaveRequest> findByStatus(LeaveStatus status,
+                        org.springframework.data.domain.Pageable pageable);
+
+        @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
+        org.springframework.data.domain.Page<LeaveRequest> findByStartDateBetween(LocalDate startDate,
+                        LocalDate endDate, org.springframework.data.domain.Pageable pageable);
+
+        @Query("SELECT lr FROM LeaveRequest lr")
+        org.springframework.data.domain.Page<LeaveRequest> findAllRequests(
+                        org.springframework.data.domain.Pageable pageable);
 }

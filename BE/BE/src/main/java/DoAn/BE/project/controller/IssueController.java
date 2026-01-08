@@ -14,6 +14,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 // [Controller quản lý issues/tasks] (Role: Project Members)
 @RestController
@@ -73,31 +75,34 @@ public class IssueController {
 
     // [Lấy issues của project] (Role: Project Member)
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<IssueDTO>> getProjectIssues(
+    public ResponseEntity<Page<IssueDTO>> getProjectIssues(
             @PathVariable Long projectId,
+            Pageable pageable,
             Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getProjectIssues(projectId, user.getUserId());
+        Page<IssueDTO> issues = issueService.getProjectIssuesPaginated(projectId, user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
 
     // [Lấy backlog của project] (Role: Project Member)
     @GetMapping("/project/{projectId}/backlog")
-    public ResponseEntity<List<IssueDTO>> getProjectBacklog(
+    public ResponseEntity<Page<IssueDTO>> getProjectBacklog(
             @PathVariable Long projectId,
+            Pageable pageable,
             Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getProjectBacklog(projectId, user.getUserId());
+        Page<IssueDTO> issues = issueService.getProjectBacklogPaginated(projectId, user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
 
     // [Lấy issues của sprint] (Role: Project Member)
     @GetMapping("/sprint/{sprintId}")
-    public ResponseEntity<List<IssueDTO>> getSprintIssues(
+    public ResponseEntity<Page<IssueDTO>> getSprintIssues(
             @PathVariable Long sprintId,
+            Pageable pageable,
             Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getSprintIssues(sprintId, user.getUserId());
+        Page<IssueDTO> issues = issueService.getSprintIssuesPaginated(sprintId, user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
 
@@ -105,9 +110,11 @@ public class IssueController {
 
     // [Lấy issues được giao cho tôi] (Role: Authenticated User)
     @GetMapping("/my-issues")
-    public ResponseEntity<List<IssueDTO>> getMyIssues(Authentication authentication) {
+    public ResponseEntity<Page<IssueDTO>> getMyIssues(
+            Authentication authentication,
+            Pageable pageable) {
         User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getMyIssues(user.getUserId());
+        Page<IssueDTO> issues = issueService.getMyIssuesPaginated(user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
 

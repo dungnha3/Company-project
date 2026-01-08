@@ -1,422 +1,251 @@
-# Gemini Backend - Entity & Data Structure Documentation
+# Gemini Backend - Entity & Database Schema Documentation
 
-## Overview
-This document describes all entities, DTOs, enums, and data structures in the system.
+## Quick Reference Guide
 
----
-
-## 1. Core Module: User
-
-### Entity: User
-| Field | Type | Description |
-|-------|------|-------------|
-| `userId` | Long | Primary key |
-| `username` | String | Unique login name |
-| `email` | String | Unique email |
-| `phoneNumber` | String | Phone number |
-| `avatarUrl` | String | Avatar image URL |
-| `isActive` | Boolean | Account active status |
-| `isDeleted` | Boolean | Soft delete flag |
-| `isSystemAdmin` | Boolean | System-wide admin flag |
-| `isOnline` | Boolean | Online presence status |
-| `lastSeen` | LocalDateTime | Last activity time |
-| `lastLogin` | LocalDateTime | Last login time |
-| `presenceStatus` | Enum | `ONLINE`, `BUSY`, `IN_MEETING`, `OFFLINE` |
-| `status` | Enum | `ACTIVE`, `INACTIVE`, `PENDING_ACTIVATION` |
-
-**Relationships:**
-- `OneToMany` → `CompanyMember` (memberships)
-- `OneToOne` → `Employee`
+> Tài liệu liệt kê tất cả entities với tên cột database thực tế.
 
 ---
 
-## 2. Core Module: Company
+## 1. User Module
 
-### Entity: Company
-| Field | Type | Description |
-|-------|------|-------------|
-| `companyId` | Long | Primary key |
-| `name` | String | Company name |
-| `description` | String | Description |
-| `logoUrl` | String | Logo image URL |
-| `plan` | Enum | `FREE`, `BASIC`, `PRO`, `ENTERPRISE` |
-| `isActive` | Boolean | Company active status |
+### Table: `users`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `userId` | `user_id` | Long | Primary key |
+| `username` | `username` | String | Unique login name |
+| `email` | `email` | String | Unique email |
+| `phoneNumber` | `phone_number` | String | Phone number |
+| `avatarUrl` | `avatar_url` | String | Avatar image URL |
+| `isActive` | `is_active` | Boolean | Account active status |
+| `isDeleted` | `is_deleted` | Boolean | Soft delete flag |
+| `isSystemAdmin` | `is_system_admin` | Boolean | System-wide admin flag |
+| `isOnline` | `is_online` | Boolean | Online presence |
+| `lastSeen` | `last_seen` | LocalDateTime | Last activity |
+| `presenceStatus` | `presence_status` | Enum | ONLINE, BUSY, OFFLINE |
 
-**Relationships:**
-- `OneToOne` → `CompanySettings`
-- `OneToMany` → `CompanyMember`
+---
 
-### Entity: CompanyMember
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | Long | Primary key |
-| `user` | User | Member user |
-| `company` | Company | Parent company |
-| `role` | CompanyRole | Member role |
-| `permissions` | UserPermissions | JSON permissions object |
-| `isActive` | Boolean | Membership active |
-| `joinedAt` | LocalDateTime | Join date |
-| `invitedBy` | String | Inviter info |
+## 2. Company Module
 
-### Enum: CompanyRole
-| Value | Description |
-|-------|-------------|
-| `OWNER` | Company owner - highest privileges |
-| `ADMIN` | Administrator - manage members & settings |
-| `MANAGER_HR` | HR Manager |
-| `MANAGER_ACCOUNTING` | Accounting Manager |
-| `MANAGER_PROJECT` | Project Manager |
-| `EMPLOYEE` | Regular employee |
+### Table: `companies`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `companyId` | `company_id` | Long | Primary key |
+| `name` | `name` | String | Company name |
+| `description` | `description` | String | Description |
+| `logoUrl` | `logo_url` | String | Logo URL |
+| `plan` | `plan` | Enum | FREE, BASIC, PRO |
+| `isActive` | `is_active` | Boolean | Active status |
 
-### Entity: CompanySettings
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | Long | Primary key |
-| `company` | Company | Parent company |
-| `enableHrModule` | Boolean | HR module toggle |
-| `enableProjectModule` | Boolean | Project module toggle |
-| `enableChatModule` | Boolean | Chat module toggle |
-| `enableStorageModule` | Boolean | Storage module toggle |
-| `maxEmployees` | Integer | Employee limit |
-| `maxStorageMb` | Long | Storage quota in MB |
-
-### Class: UserPermissions (JSON Stored)
-| Field | Type | Description |
-|-------|------|-------------|
-| `canManageUsers` | Boolean | User management |
-| `canManageProjects` | Boolean | Project management |
-| `canViewReports` | Boolean | Report viewing |
-| `canManageSettings` | Boolean | Settings management |
+### Table: `company_members`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `id` | `id` | Long | Primary key |
+| `user` | `user_id` | FK→User | Member user |
+| `company` | `company_id` | FK→Company | Parent company |
+| `role` | `role` | Enum | CompanyRole |
+| `isActive` | `is_active` | Boolean | Membership active |
+| `joinedAt` | `joined_at` | LocalDateTime | Join date |
 
 ---
 
 ## 3. HRM Module
 
-### Entity: Employee
-| Field | Type | Description |
-|-------|------|-------------|
-| `employeeId` | Long | Primary key |
-| `user` | User | Linked user account |
-| `fullName` | String | Full name |
-| `idCard` | String | ID card number (CCCD) |
-| `dateOfBirth` | LocalDate | Birth date |
-| `gender` | Enum | `MALE`, `FEMALE`, `OTHER` |
-| `address` | String | Home address |
-| `phone` | String | Phone number |
-| `hireDate` | LocalDate | Employment start date |
-| `status` | Enum | `ACTIVE`, `RESIGNED`, `ON_LEAVE` |
-| `department` | Department | Department assignment |
-| `position` | Position | Job position |
-| `baseSalary` | BigDecimal | Base monthly salary |
-| `allowance` | BigDecimal | Monthly allowance |
+### Table: `employees`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `employeeId` | `employee_id` | Long | Primary key |
+| `user` | `user_id` | FK→User | Linked user |
+| `company` | `company_id` | FK→Company | Tenant |
+| `department` | `department_id` | FK→Department | Department |
+| `position` | `position_id` | FK→Position | Position |
+| `fullName` | `full_name` | String | Full name |
+| `dateOfBirth` | `date_of_birth` | LocalDate | DOB |
+| `gender` | `gender` | Enum | MALE, FEMALE |
+| `idCard` | `id_card` | String | ID card number |
+| `baseSalary` | `base_salary` | BigDecimal | Base salary |
+| `status` | `status` | Enum | ACTIVE, INACTIVE |
 
-### Entity: Department
-| Field | Type | Description |
-|-------|------|-------------|
-| `departmentId` | Long | Primary key |
-| `name` | String | Department name |
-| `description` | String | Description |
-| `manager` | Employee | Department manager |
+### Table: `departments`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `departmentId` | `department_id` | Long | Primary key |
+| `name` | `name` | String | Dept name |
+| `description` | `description` | String | Description |
+| `manager` | `manager_id` | FK→Employee | Manager |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: Position
-| Field | Type | Description |
-|-------|------|-------------|
-| `positionId` | Long | Primary key |
-| `name` | String | Position title |
-| `description` | String | Job description |
-| `level` | Integer | Hierarchy level |
+### Table: `positions`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `positionId` | `position_id` | Long | Primary key |
+| `name` | `name` | String | Position name |
+| `salaryCoefficient` | `salary_coefficient` | BigDecimal | Salary multiplier |
+| `level` | `level` | Integer | Position level |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: Attendance
-| Field | Type | Description |
-|-------|------|-------------|
-| `attendanceId` | Long | Primary key |
-| `employee` | Employee | Employee |
-| `date` | LocalDate | Work date |
-| `checkIn` | LocalDateTime | Check-in time |
-| `checkOut` | LocalDateTime | Check-out time |
-| `status` | Enum | `PRESENT`, `ABSENT`, `LATE`, `EARLY_LEAVE`, `ON_LEAVE` |
-| `workHours` | Double | Calculated work hours |
-| `overtimeHours` | Double | Overtime hours |
+### Table: `attendances`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `attendanceId` | `attendance_id` | Long | Primary key |
+| `employee` | `employee_id` | FK→Employee | Employee |
+| `attendanceDate` | `attendance_date` | LocalDate | Date |
+| `checkInTime` | `check_in_time` | LocalTime | Check-in |
+| `checkOutTime` | `check_out_time` | LocalTime | Check-out |
+| `workingHours` | `working_hours` | BigDecimal | Hours worked |
+| `status` | `status` | Enum | LATE, FULL_DAY |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: LeaveRequest
-| Field | Type | Description |
-|-------|------|-------------|
-| `leaveRequestId` | Long | Primary key |
-| `employee` | Employee | Requesting employee |
-| `leaveType` | Enum | `ANNUAL`, `SICK`, `PERSONAL`, `MATERNITY`, `UNPAID` |
-| `startDate` | LocalDate | Leave start |
-| `endDate` | LocalDate | Leave end |
-| `reason` | String | Leave reason |
-| `status` | Enum | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
-| `approvedBy` | User | Approver |
-| `rejectedBy` | User | Rejector |
-| `approvedAt` | LocalDateTime | Approval time |
+### Table: `leave_requests`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `leaveRequestId` | `leave_request_id` | Long | Primary key |
+| `employee` | `employee_id` | FK→Employee | Requester |
+| `leaveType` | `leave_type` | Enum | ANNUAL, SICK |
+| `startDate` | `start_date` | LocalDate | Start |
+| `endDate` | `end_date` | LocalDate | End |
+| `status` | `status` | Enum | PENDING, APPROVED |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: Salary
-| Field | Type | Description |
-|-------|------|-------------|
-| `salaryId` | Long | Primary key |
-| `employee` | Employee | Employee |
-| `month` | Integer | Salary month (1-12) |
-| `year` | Integer | Salary year |
-| `baseSalary` | BigDecimal | Base salary |
-| `allowance` | BigDecimal | Allowances |
-| `bonus` | BigDecimal | Bonuses |
-| `deductions` | BigDecimal | Deductions |
-| `netSalary` | BigDecimal | Net payment |
-| `status` | Enum | `DRAFT`, `PENDING`, `PAID` |
-| `paidAt` | LocalDateTime | Payment date |
-
-### Entity: Contract
-| Field | Type | Description |
-|-------|------|-------------|
-| `contractId` | Long | Primary key |
-| `employee` | Employee | Employee |
-| `contractType` | Enum | `FULL_TIME`, `PART_TIME`, `INTERNSHIP`, `CONTRACTOR` |
-| `startDate` | LocalDate | Contract start |
-| `endDate` | LocalDate | Contract end |
-| `salary` | BigDecimal | Contract salary |
-
-### Entity: Review
-| Field | Type | Description |
-|-------|------|-------------|
-| `reviewId` | Long | Primary key |
-| `employee` | Employee | Reviewed employee |
-| `reviewer` | User | Reviewer |
-| `reviewDate` | LocalDate | Review date |
-| `performanceScore` | Integer | Score (1-10) |
-| `comments` | String | Review comments |
-| `goals` | String | Next period goals |
+### Table: `salaries`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `salaryId` | `salary_id` | Long | Primary key |
+| `employee` | `employee_id` | FK→Employee | Employee |
+| `year` | `year` | Integer | Year |
+| `month` | `month` | Integer | Month |
+| `baseSalary` | `base_salary` | BigDecimal | Base |
+| `netSalary` | `net_salary` | BigDecimal | Net |
+| `status` | `status` | Enum | PENDING, PAID |
+| `company` | `company_id` | FK→Company | Tenant |
 
 ---
 
 ## 4. Project Module
 
-### Entity: Project
-| Field | Type | Description |
-|-------|------|-------------|
-| `projectId` | Long | Primary key |
-| `name` | String | Project name |
-| `description` | String | Description |
-| `key` | String | Short key (e.g., "PROJ") |
-| `owner` | User | Project owner |
-| `lead` | User | Project lead |
-| `startDate` | LocalDate | Start date |
-| `endDate` | LocalDate | Target end date |
-| `status` | Enum | `PLANNING`, `IN_PROGRESS`, `ON_HOLD`, `COMPLETED`, `CANCELLED` |
+### Table: `projects`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `projectId` | `project_id` | Long | Primary key |
+| `keyProject` | `key_project` | String | Unique key |
+| `name` | `name` | String | Project name |
+| `description` | `description` | String | Description |
+| `status` | `status` | Enum | ACTIVE, COMPLETED |
+| `createdBy` | `created_by` | FK→User | Creator |
+| `isActive` | `is_active` | Boolean | Active |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: ProjectMember
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | Long | Primary key |
-| `project` | Project | Parent project |
-| `user` | User | Member user |
-| `role` | Enum | `OWNER`, `ADMIN`, `MEMBER`, `VIEWER` |
-| `joinedAt` | LocalDateTime | Join date |
+### Table: `project_members`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `memberId` | `member_id` | Long | Primary key |
+| `project` | `project_id` | FK→Project | Project |
+| `user` | `user_id` | FK→User | Member |
+| `role` | `role` | Enum | LEAD, MEMBER |
 
-### Entity: Sprint
-| Field | Type | Description |
-|-------|------|-------------|
-| `sprintId` | Long | Primary key |
-| `project` | Project | Parent project |
-| `name` | String | Sprint name |
-| `goal` | String | Sprint goal |
-| `startDate` | LocalDate | Start date |
-| `endDate` | LocalDate | End date |
-| `status` | Enum | `PLANNING`, `ACTIVE`, `COMPLETED` |
+### Table: `issues`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `issueId` | `issue_id` | Long | Primary key |
+| `issueKey` | `issue_key` | String | Unique key |
+| `project` | `project_id` | FK→Project | Project |
+| `assignee` | `assignee_id` | FK→User | Assignee |
+| `reporter` | `reporter_id` | FK→User | Reporter |
+| `sprint` | `sprint_id` | FK→Sprint | Sprint |
+| `dueDate` | `due_date` | LocalDate | Due date |
 
-### Entity: Issue
-| Field | Type | Description |
-|-------|------|-------------|
-| `issueId` | Long | Primary key |
-| `project` | Project | Parent project |
-| `sprint` | Sprint | Assigned sprint (nullable) |
-| `issueStatus` | IssueStatus | Current status |
-| `reporter` | User | Issue creator |
-| `assignee` | User | Assigned user |
-| `title` | String | Issue title |
-| `description` | String | Description |
-| `issueType` | Enum | `TASK`, `BUG`, `STORY`, `EPIC` |
-| `priority` | Enum | `LOWEST`, `LOW`, `MEDIUM`, `HIGH`, `HIGHEST` |
-| `storyPoints` | Integer | Effort estimate |
-| `dueDate` | LocalDate | Due date |
-
-### Entity: IssueStatus
-| Field | Type | Description |
-|-------|------|-------------|
-| `statusId` | Long | Primary key |
-| `name` | String | Status name |
-| `category` | Enum | `TO_DO`, `IN_PROGRESS`, `DONE` |
-| `orderIndex` | Integer | Display order |
-
-### Entity: IssueComment
-| Field | Type | Description |
-|-------|------|-------------|
-| `commentId` | Long | Primary key |
-| `issue` | Issue | Parent issue |
-| `user` | User | Author |
-| `content` | String | Comment text |
-| `createdAt` | LocalDateTime | Created time |
-
-### Entity: IssueActivity
-| Field | Type | Description |
-|-------|------|-------------|
-| `activityId` | Long | Primary key |
-| `issue` | Issue | Parent issue |
-| `user` | User | Actor |
-| `action` | Enum | `CREATED`, `UPDATED`, `STATUS_CHANGED`, etc. |
-| `oldValue` | String | Previous value |
-| `newValue` | String | New value |
-| `createdAt` | LocalDateTime | Activity time |
-
-### Entity: ProjectPhase
-| Field | Type | Description |
-|-------|------|-------------|
-| `phaseId` | Long | Primary key |
-| `project` | Project | Parent project |
-| `name` | String | Phase name |
-| `startDate` | LocalDate | Start date |
-| `endDate` | LocalDate | End date |
-| `progress` | Integer | Completion percentage |
+### Table: `sprints`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `sprintId` | `sprint_id` | Long | Primary key |
+| `project` | `project_id` | FK→Project | Project |
+| `name` | `name` | String | Sprint name |
+| `startDate` | `start_date` | LocalDate | Start |
+| `endDate` | `end_date` | LocalDate | End |
+| `status` | `status` | Enum | PLANNING, ACTIVE |
 
 ---
 
 ## 5. Chat Module
 
-### Entity: ChatRoom
-| Field | Type | Description |
-|-------|------|-------------|
-| `chatRoomId` | Long | Primary key |
-| `name` | String | Room name |
-| `type` | Enum | `DIRECT`, `GROUP`, `PROJECT` |
-| `project` | Project | Linked project (if PROJECT type) |
-| `isActive` | Boolean | Room active |
+### Table: `chat_rooms`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `roomId` | `room_id` | Long | Primary key |
+| `name` | `name` | String | Room name |
+| `type` | `type` | Enum | PRIVATE, GROUP |
+| `createdBy` | `created_by` | FK→User | Creator |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: ChatRoomMember
-| Field | Type | Description |
-|-------|------|-------------|
-| `chatRoom` | ChatRoom | Room |
-| `user` | User | Member |
-| `role` | Enum | `ADMIN`, `MEMBER` |
-| `joinedAt` | LocalDateTime | Join date |
+### Table: `chat_room_members`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `id` | `id` | Long | Primary key |
+| `chatRoom` | `room_id` | FK→ChatRoom | Room |
+| `user` | `user_id` | FK→User | Member |
+| `role` | `role` | Enum | ADMIN, MEMBER |
 
-### Entity: Message
-| Field | Type | Description |
-|-------|------|-------------|
-| `messageId` | Long | Primary key |
-| `chatRoom` | ChatRoom | Parent room |
-| `sender` | User | Sender |
-| `content` | String | Message content |
-| `messageType` | Enum | `TEXT`, `IMAGE`, `FILE`, `SYSTEM` |
-| `replyTo` | Message | Reply reference |
-| `isEdited` | Boolean | Edit flag |
-| `isDeleted` | Boolean | Delete flag |
-| `createdAt` | LocalDateTime | Send time |
-
-### Entity: MessageReaction
-| Field | Type | Description |
-|-------|------|-------------|
-| `reactionId` | Long | Primary key |
-| `message` | Message | Parent message |
-| `user` | User | Reactor |
-| `emoji` | String | Reaction emoji |
+### Table: `messages`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `messageId` | `message_id` | Long | Primary key |
+| `chatRoom` | `room_id` | FK→ChatRoom | Room |
+| `sender` | `sender_id` | FK→User | Sender |
+| `content` | `content` | String | Message text |
+| `messageType` | `message_type` | Enum | TEXT, FILE |
+| `isDeleted` | `is_deleted` | Boolean | Deleted flag |
+| `createdAt` | `created_at` | LocalDateTime | Timestamp |
 
 ---
 
-## 6. Storage Module
+## 6. Notification Module
 
-### Entity: Folder
-| Field | Type | Description |
-|-------|------|-------------|
-| `folderId` | Long | Primary key |
-| `name` | String | Folder name |
-| `parentFolder` | Folder | Parent folder |
-| `owner` | User | Owner |
-| `project` | Project | Linked project |
-
-### Entity: File
-| Field | Type | Description |
-|-------|------|-------------|
-| `fileId` | Long | Primary key |
-| `filename` | String | System filename |
-| `originalFilename` | String | Original name |
-| `filePath` | String | Storage path |
-| `fileSize` | Long | Size in bytes |
-| `mimeType` | String | MIME type |
-| `folder` | Folder | Parent folder |
-| `owner` | User | Uploader |
-| `version` | Integer | File version |
-| `isPublic` | Boolean | Public access flag |
-| `isDeleted` | Boolean | Soft delete flag |
+### Table: `notifications`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `notificationId` | `notification_id` | Long | Primary key |
+| `user` | `user_id` | FK→User | Recipient |
+| `type` | `type` | String | Notification type |
+| `title` | `title` | String | Title |
+| `content` | `content` | String | Content body |
+| `isRead` | `is_read` | Boolean | Read status |
+| `createdAt` | `created_at` | LocalDateTime | Timestamp |
 
 ---
 
-## 7. Other Modules
+## 7. Storage Module
 
-### Entity: Notification
-| Field | Type | Description |
-|-------|------|-------------|
-| `notificationId` | Long | Primary key |
-| `recipient` | User | Target user |
-| `title` | String | Notification title |
-| `message` | String | Notification body |
-| `type` | NotificationType | Notification type |
-| `priority` | Enum | `LOW`, `NORMAL`, `HIGH`, `URGENT` |
-| `isRead` | Boolean | Read status |
-| `link` | String | Action link |
+### Table: `files`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `fileId` | `file_id` | Long | Primary key |
+| `fileName` | `file_name` | String | Original name |
+| `storagePath` | `storage_path` | String | Storage path |
+| `owner` | `owner_id` | FK→User | Owner |
+| `folder` | `folder_id` | FK→Folder | Parent folder |
+| `isDeleted` | `is_deleted` | Boolean | Deleted flag |
+| `company` | `company_id` | FK→Company | Tenant |
 
-### Entity: AuditLog
-| Field | Type | Description |
-|-------|------|-------------|
-| `auditLogId` | Long | Primary key |
-| `actor` | User | Acting user |
-| `action` | String | Action performed |
-| `entityType` | String | Target entity type |
-| `entityId` | Long | Target entity ID |
-| `oldValue` | String | Previous value (JSON) |
-| `newValue` | String | New value (JSON) |
-| `ipAddress` | String | Client IP |
-| `userAgent` | String | Client user agent |
-| `createdAt` | LocalDateTime | Action time |
-
-### Entity: RefreshToken
-| Field | Type | Description |
-|-------|------|-------------|
-| `tokenId` | Long | Primary key |
-| `user` | User | Token owner |
-| `token` | String | Token value |
-| `expiryDate` | LocalDateTime | Expiration |
-| `isRevoked` | Boolean | Revocation status |
-
-### Entity: UserSession
-| Field | Type | Description |
-|-------|------|-------------|
-| `sessionId` | Long | Primary key |
-| `user` | User | Session owner |
-| `token` | String | Session token |
-| `ipAddress` | String | Client IP |
-| `userAgent` | String | Browser info |
-| `lastActivity` | LocalDateTime | Last activity |
-| `isActive` | Boolean | Active status |
+### Table: `folders`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `folderId` | `folder_id` | Long | Primary key |
+| `name` | `name` | String | Folder name |
+| `parentFolder` | `parent_folder_id` | FK→Folder | Parent |
+| `owner` | `owner_id` | FK→User | Owner |
+| `company` | `company_id` | FK→Company | Tenant |
 
 ---
 
-## Multi-Tenancy Architecture
+## 8. Audit Module
 
-All business entities extend `TenantScopedEntity`:
-- Contains `company` field linking to parent Company
-- Automatic tenant filtering via Hibernate `@Filter`
-- Ensures data isolation between companies
-
-**Tenant-Scoped Entities:**
-- Employee, Department, Position
-- Attendance, LeaveRequest, Salary, Contract, Review
-- Project, Sprint, Issue, IssueStatus
-- ChatRoom, Message
-- File, Folder
-- Notification
-
-**Global Entities (No Tenant):**
-- User, CompanyMember
-- AuditLog
-- RefreshToken, UserSession
+### Table: `audit_logs`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `logId` | `log_id` | Long | Primary key |
+| `actor` | `actor_id` | FK→User | Actor user |
+| `action` | `action` | String | Action type |
+| `entityType` | `entity_type` | String | Entity name |
+| `entityId` | `entity_id` | Long | Entity ID |
+| `severity` | `severity` | Enum | INFO, CRITICAL |
+| `createdAt` | `created_at` | LocalDateTime | Timestamp |

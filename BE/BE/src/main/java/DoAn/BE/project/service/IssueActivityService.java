@@ -52,6 +52,27 @@ public class IssueActivityService {
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<IssueActivityDTO> getIssueActivitiesPaged(Long issueId,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+
+        if (issue.getProject() == null) {
+            throw new IllegalStateException("Issue không có dự án liên kết");
+        }
+
+        validateProjectAccess(issue.getProject().getProjectId(), currentUser.getUserId());
+
+        org.springframework.data.domain.Page<IssueActivity> activities = issueActivityRepository
+                .findByIssue_IssueIdOrderByCreatedAtDesc(issueId, pageable);
+        return activities.map(activity -> convertToDTO(activity, currentUser));
+    }
+
+    @Transactional(readOnly = true)
     public List<IssueActivityDTO> getProjectActivities(Long projectId, User currentUser) {
         if (!accessControlService.canAccessProjects(currentUser)) {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
@@ -63,6 +84,20 @@ public class IssueActivityService {
         return activities.stream()
                 .map(activity -> convertToDTO(activity, currentUser))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<IssueActivityDTO> getProjectActivitiesPaged(Long projectId,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        validateProjectAccess(projectId, currentUser.getUserId());
+
+        org.springframework.data.domain.Page<IssueActivity> activities = issueActivityRepository
+                .findByProjectIdOrderByCreatedAtDesc(projectId, pageable);
+        return activities.map(activity -> convertToDTO(activity, currentUser));
     }
 
     @Transactional(readOnly = true)
@@ -78,6 +113,21 @@ public class IssueActivityService {
         return activities.stream()
                 .map(activity -> convertToDTO(activity, currentUser))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<IssueActivityDTO> getUserActivitiesPaged(Long projectId,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        validateProjectAccess(projectId, currentUser.getUserId());
+
+        org.springframework.data.domain.Page<IssueActivity> activities = issueActivityRepository
+                .findByProjectIdAndUserIdOrderByCreatedAtDesc(
+                        projectId, currentUser.getUserId(), pageable);
+        return activities.map(activity -> convertToDTO(activity, currentUser));
     }
 
     @Transactional

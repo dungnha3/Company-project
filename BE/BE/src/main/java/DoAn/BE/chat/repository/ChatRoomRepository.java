@@ -11,26 +11,32 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
-    List<ChatRoom> findByProject(Project project);
-    List<ChatRoom> findByCreatedBy_UserId(Long userId);
-    Optional<ChatRoom> findByRoomId(Long roomId);
+       List<ChatRoom> findByProject(Project project);
 
-    // Tìm phòng chat 1-1 giữa 2 người
-    @Query("SELECT cr FROM ChatRoom cr " +
-           "JOIN cr.members m1 JOIN cr.members m2 " +
-           "WHERE cr.type = 'DIRECT' " +
-           "AND m1.user.userId = :userId1 AND m2.user.userId = :userId2 " +
-           "AND SIZE(cr.members) = 2")
-    Optional<ChatRoom> findDirectChatBetweenUsers(@Param("userId1") Long userId1, 
-                                                  @Param("userId2") Long userId2);
+       List<ChatRoom> findByCreatedBy_UserId(Long userId);
 
-    // Lấy danh sách phòng chat của user
-    @Query("SELECT DISTINCT cr FROM ChatRoom cr " +
-           "JOIN cr.members m WHERE m.user.userId = :userId " +
-           "ORDER BY cr.createdAt DESC")
-    List<ChatRoom> findChatRoomsByUserId(@Param("userId") Long userId);
+       Optional<ChatRoom> findByRoomId(Long roomId);
 
-    List<ChatRoom> findByType(ChatRoom.RoomType type);
+       // Tìm phòng chat 1-1 giữa 2 người
+       @Query("SELECT cr FROM ChatRoom cr " +
+                     "JOIN cr.members m1 JOIN cr.members m2 " +
+                     "WHERE cr.type = 'DIRECT' " +
+                     "AND m1.user.userId = :userId1 AND m2.user.userId = :userId2 " +
+                     "AND SIZE(cr.members) = 2")
+       Optional<ChatRoom> findDirectChatBetweenUsers(@Param("userId1") Long userId1,
+                     @Param("userId2") Long userId2);
+
+       // Lấy danh sách phòng chat của user
+       @Query("SELECT DISTINCT cr FROM ChatRoom cr " +
+                     "JOIN cr.members m WHERE m.user.userId = :userId " +
+                     "ORDER BY cr.createdAt DESC")
+       List<ChatRoom> findChatRoomsByUserId(@Param("userId") Long userId);
+
+       @Query("SELECT DISTINCT cr FROM ChatRoom cr " +
+                     "JOIN cr.members m WHERE m.user.userId = :userId " +
+                     "ORDER BY cr.createdAt DESC")
+       org.springframework.data.domain.Page<ChatRoom> findChatRoomsByUserIdPaginated(@Param("userId") Long userId,
+                     org.springframework.data.domain.Pageable pageable);
+
+       List<ChatRoom> findByType(ChatRoom.RoomType type);
 }
-
-

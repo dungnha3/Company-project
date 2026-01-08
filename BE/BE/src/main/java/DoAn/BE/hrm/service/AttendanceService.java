@@ -107,6 +107,19 @@ public class AttendanceService {
         return attendanceRepository.findByCompanyId(companyId);
     }
 
+    public org.springframework.data.domain.Page<Attendance> getAllAttendancePaged(User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
+            throw new ForbiddenException("Only HR/Accounting can view all attendance records");
+        }
+
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            return org.springframework.data.domain.Page.empty(pageable);
+        }
+        return attendanceRepository.findByCompanyId(companyId, pageable);
+    }
+
     public Attendance updateAttendance(Long id, AttendanceRequest request, User currentUser) {
 
         if (!accessControlService.isHRManager()) {
@@ -196,8 +209,31 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Attendance> getAttendanceByEmployeePaged(Long employeeId,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (employeeId == null)
+            throw new BadRequestException("Invalid Employee ID");
+
+        if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
+            Employee employee = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+            if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
+                throw new ForbiddenException("You can only view your own attendance records");
+            }
+        }
+
+        return attendanceRepository.findByEmployee_EmployeeIdOrderByAttendanceDateDesc(employeeId, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<Attendance> getAttendanceByDateRange(LocalDate startDate, LocalDate endDate) {
         return attendanceRepository.findByAttendanceDateBetween(startDate, endDate);
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Attendance> getAttendanceByDateRangePaged(LocalDate startDate,
+            LocalDate endDate, org.springframework.data.domain.Pageable pageable) {
+        return attendanceRepository.findByAttendanceDateBetween(startDate, endDate, pageable);
     }
 
     @Transactional(readOnly = true)

@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
@@ -145,11 +147,28 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ProjectDTO> getAllProjectsPaged(User currentUser, Pageable pageable) {
+        // Kiểm tra quyền truy cập dự án
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        // Tất cả user đều xem dự án mình tham gia
+        return getMyProjectsPaged(currentUser.getUserId(), pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<ProjectDTO> getMyProjects(Long userId) {
         List<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId);
         return memberships.stream()
                 .map(member -> convertToDTO(member.getProject()))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProjectDTO> getMyProjectsPaged(Long userId, Pageable pageable) {
+        Page<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId, pageable);
+        return memberships.map(member -> convertToDTO(member.getProject()));
     }
 
     @Transactional(readOnly = true)
@@ -160,6 +179,16 @@ public class ProjectService {
         }
 
         return getMyProjects(currentUser.getUserId());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProjectDTO> getMyProjectsPaged(User currentUser, Pageable pageable) {
+        // Admin và HR/Accounting không có quyền
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        return getMyProjectsPaged(currentUser.getUserId(), pageable);
     }
 
     @Transactional

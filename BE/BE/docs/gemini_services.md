@@ -17,6 +17,32 @@ http://localhost:8080/api
 
 ---
 
+## Pagination
+For endpoints returning lists of data, we use pagination to improve performance.
+**Request Parameters:**
+- `page`: Page number (0-indexed, default 0)
+- `size`: Items per page (default 20)
+- `sort`: Sorting criteria (format: `property,asc|desc`)
+
+**Response Structure (`Page<T>`):**
+```json
+{
+  "content": [ ... ],
+  "pageable": {
+    "pageNumber": 0,
+    "pageSize": 20
+  },
+  "totalPages": 10,
+  "totalElements": 200,
+  "last": false,
+  "first": true,
+  "empty": false
+}
+```
+All endpoints marked with **(Paginated)** return this structure.
+
+---
+
 ## 1. Authentication APIs
 
 ### AuthController (`/api/auth`)
@@ -134,13 +160,15 @@ http://localhost:8080/api
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List employees | MANAGER_HR+ |
+| GET | `/` | List employees (Paginated) | MANAGER_HR+ |
 | GET | `/{employeeId}` | Get employee details | Required |
 | POST | `/` | Create employee | MANAGER_HR+ |
 | PUT | `/{employeeId}` | Update employee | MANAGER_HR+ |
 | DELETE | `/{employeeId}` | Delete employee | MANAGER_HR+ |
-| GET | `/by-user/{userId}` | Get employee by user | Required |
-| GET | `/by-department/{deptId}` | Get by department | Required |
+| GET | `/search` | Search users (Paginated) | Required |
+| GET | `/department/{deptId}` | Filter by department (Paginated) | MANAGER_HR+ |
+| GET | `/position/{posId}` | Filter by position (Paginated) | MANAGER_HR+ |
+| GET | `/status/{status}` | Filter by status (Paginated) | MANAGER_HR+ |
 
 ### DepartmentController (`/api/departments`)
 
@@ -168,15 +196,21 @@ http://localhost:8080/api
 | POST | `/check-out` | Check out | Required |
 | GET | `/today` | Get today's record | Required |
 | GET | `/my-history` | Get personal history | Required |
-| GET | `/employee/{empId}` | Get employee attendance | MANAGER_HR+ |
+| GET | `/` | List all (Paginated) | MANAGER_HR+ |
+| GET | `/employee/{empId}` | Get employee attendance (Paginated) | MANAGER_HR+ |
+| GET | `/date-range` | Get by date range (Paginated) | MANAGER_HR+ |
 | GET | `/report` | Generate report | MANAGER_HR+ |
 
 ### LeaveRequestController (`/api/leave-requests`)
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List all leave requests | MANAGER_HR+ |
-| GET | `/my` | List my requests | Required |
+| GET | `/` | List all leave requests (Paginated) | MANAGER_HR+ |
+| GET | `/employee/{employeeId}` | Get employee requests (Paginated) | Required |
+| GET | `/date-range` | Get by date range (Paginated) | MANAGER_HR+ |
+| GET | `/pending` | Get pending requests (Paginated) | MANAGER_HR+ |
+| GET | `/approved` | Get approved requests (Paginated) | MANAGER_HR+ |
+| GET | `/rejected` | Get rejected requests (Paginated) | MANAGER_HR+ |
 | GET | `/{id}` | Get request details | Required |
 | POST | `/` | Create leave request | Required |
 | PUT | `/{id}` | Update request | Owner |
@@ -188,8 +222,10 @@ http://localhost:8080/api
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List salaries | MANAGER_ACCOUNTING+ |
-| GET | `/my` | Get my salaries | Required |
+| GET | `/` | List salaries (Paginated) | MANAGER_ACCOUNTING+ |
+| GET | `/employee/{employeeId}` | Get salaries (Paginated) | Required |
+| GET | `/period` | List by period (Paginated) | MANAGER_ACCOUNTING+ |
+| GET | `/status/{status}` | List by status (Paginated) | MANAGER_ACCOUNTING+ |
 | GET | `/{salaryId}` | Get salary details | Required |
 | POST | `/generate` | Generate monthly salaries | MANAGER_ACCOUNTING+ |
 | PUT | `/{salaryId}` | Update salary | MANAGER_ACCOUNTING+ |
@@ -232,8 +268,8 @@ http://localhost:8080/api
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List all projects | Required |
-| GET | `/my-projects` | List my projects | Required |
+| GET | `/` | List all projects (Paginated) | Required |
+| GET | `/my-projects` | List my projects (Paginated) | Required |
 | GET | `/{projectId}` | Get project details | Member |
 | POST | `/` | Create project | MANAGER_PROJECT+ |
 | PUT | `/{projectId}` | Update project | Project Admin |
@@ -259,10 +295,10 @@ http://localhost:8080/api
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | GET | `/{issueId}` | Get issue | Member |
-| GET | `/project/{projectId}` | List project issues | Member |
-| GET | `/project/{projectId}/backlog` | Get backlog issues | Member |
-| GET | `/sprint/{sprintId}` | Get sprint issues | Member |
-| GET | `/my-issues` | Get my assigned issues | Required |
+| GET | `/project/{projectId}` | List project issues (Paginated) | Member |
+| GET | `/project/{projectId}/backlog` | Get backlog issues (Paginated) | Member |
+| GET | `/sprint/{sprintId}` | Get sprint issues (Paginated) | Member |
+| GET | `/my-issues` | Get my assigned issues (Paginated) | Required |
 | GET | `/my-reported` | Get my reported issues | Required |
 | POST | `/` | Create issue | Member |
 | PUT | `/{issueId}` | Update issue | Member |
@@ -270,11 +306,12 @@ http://localhost:8080/api
 | PUT | `/{issueId}/status` | Update status | Member |
 | PUT | `/{issueId}/assign` | Assign issue | Project Admin |
 
-### IssueCommentController (`/api/issue-comments`)
+### IssueCommentController (`/api/comments`)
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/issue/{issueId}` | Get issue comments | Member |
+| GET | `/issue/{issueId}` | Get issue comments (Paginated) | Member |
+| GET | `/project/{projectId}` | Get project comments (Paginated) | Member |
 | POST | `/` | Create comment | Member |
 | PUT | `/{commentId}` | Update comment | Owner |
 | DELETE | `/{commentId}` | Delete comment | Owner/Admin |
@@ -286,6 +323,15 @@ http://localhost:8080/api
 | GET | `/phases` | Get project phases | Member |
 | GET | `/gantt` | Get Gantt chart data | Member |
 
+### IssueActivityController (`/api/activities`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/issue/{issueId}` | Issue history (Paginated) | Member |
+| GET | `/project/{projectId}` | Project activity feed (Paginated) | Member |
+| GET | `/project/{projectId}/my` | My activities (Paginated) | Required |
+| DELETE | `/{activityId}` | Delete activity | Project Manager |
+
 ---
 
 ## 6. Chat APIs
@@ -294,7 +340,7 @@ http://localhost:8080/api
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List my chat rooms | Required |
+| GET | `/` | List my chat rooms (Paginated) | Required |
 | GET | `/{roomId}` | Get room details | Member |
 | POST | `/` | Create room | Required |
 | POST | `/direct/{userId}` | Create direct chat | Required |
@@ -359,13 +405,15 @@ http://localhost:8080/api
 
 ## 9. Audit APIs
 
-### AuditLogController (`/api/audit`)
+### AuditLogController (`/api/audit-logs`)
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List audit logs | OWNER, ADMIN |
-| GET | `/user/{userId}` | Get user's actions | OWNER, ADMIN |
-| GET | `/entity/{type}/{id}` | Get entity history | OWNER, ADMIN |
+| GET | `/` | Recent logs (Paginated) | ADMIN |
+| GET | `/actor/{actorId}` | Logs by actor (Paginated) | ADMIN |
+| GET | `/target/{targetUserId}` | Logs by target (Paginated) | ADMIN |
+| GET | `/critical` | Critical logs (Paginated) | ADMIN |
+| GET | `/admin-on-managers` | Admin actions (Paginated) | ADMIN |
 
 ---
 

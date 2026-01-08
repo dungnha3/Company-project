@@ -137,6 +137,27 @@ public class IssueCommentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<IssueCommentDTO> getIssueCommentsPaged(Long issueId, User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+
+        if (issue.getProject() == null) {
+            throw new IllegalStateException("Issue không có dự án liên kết");
+        }
+
+        validateProjectAccess(issue.getProject().getProjectId(), currentUser.getUserId());
+
+        org.springframework.data.domain.Page<IssueComment> comments = issueCommentRepository
+                .findByIssue_IssueIdOrderByCreatedAtAsc(issueId, pageable);
+        return comments.map(comment -> convertToDTO(comment, currentUser));
+    }
+
     @Transactional
     public IssueCommentDTO updateComment(Long commentId, String newContent, User currentUser) {
         IssueComment comment = issueCommentRepository.findById(commentId)
@@ -202,6 +223,20 @@ public class IssueCommentService {
         return comments.stream()
                 .map(comment -> convertToDTO(comment, currentUser))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<IssueCommentDTO> getProjectCommentsPaged(Long projectId,
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canAccessProjects(currentUser)) {
+            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
+        }
+
+        validateProjectAccess(projectId, currentUser.getUserId());
+
+        org.springframework.data.domain.Page<IssueComment> comments = issueCommentRepository
+                .findByProjectIdOrderByCreatedAtDesc(projectId, pageable);
+        return comments.map(comment -> convertToDTO(comment, currentUser));
     }
 
     // Helper methods

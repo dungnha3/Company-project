@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/activities")
@@ -18,26 +18,32 @@ public class IssueActivityController {
     private final IssueActivityService issueActivityService;
 
     @GetMapping("/issue/{issueId}")
-    public ResponseEntity<List<IssueActivityDTO>> getIssueActivities(
+    public ResponseEntity<org.springframework.data.domain.Page<IssueActivityDTO>> getIssueActivities(
             @PathVariable Long issueId,
-            @AuthenticationPrincipal User currentUser) {
-        List<IssueActivityDTO> activities = issueActivityService.getIssueActivities(issueId, currentUser);
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<IssueActivityDTO> activities = issueActivityService
+                .getIssueActivitiesPaged(issueId, currentUser, pageable);
         return ResponseEntity.ok(activities);
     }
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<IssueActivityDTO>> getProjectActivities(
+    public ResponseEntity<org.springframework.data.domain.Page<IssueActivityDTO>> getProjectActivities(
             @PathVariable Long projectId,
-            @AuthenticationPrincipal User currentUser) {
-        List<IssueActivityDTO> activities = issueActivityService.getProjectActivities(projectId, currentUser);
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<IssueActivityDTO> activities = issueActivityService
+                .getProjectActivitiesPaged(projectId, currentUser, pageable);
         return ResponseEntity.ok(activities);
     }
 
     @GetMapping("/project/{projectId}/my")
-    public ResponseEntity<List<IssueActivityDTO>> getUserActivities(
+    public ResponseEntity<org.springframework.data.domain.Page<IssueActivityDTO>> getUserActivities(
             @PathVariable Long projectId,
-            @AuthenticationPrincipal User currentUser) {
-        List<IssueActivityDTO> activities = issueActivityService.getUserActivities(projectId, currentUser);
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<IssueActivityDTO> activities = issueActivityService
+                .getUserActivitiesPaged(projectId, currentUser, pageable);
         return ResponseEntity.ok(activities);
     }
 

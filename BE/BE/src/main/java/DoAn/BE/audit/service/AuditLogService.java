@@ -11,7 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 // Service quản lý audit logs
 
@@ -24,7 +25,7 @@ public class AuditLogService {
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
 
-// Log thao tác của user (async)
+    // Log thao tác của user (async)
     @Async
     @Transactional
     public void logAction(User actor, String action, String entityType, Long entityId,
@@ -58,7 +59,7 @@ public class AuditLogService {
         }
     }
 
-// Log thao tác Admin trên Manager account (CRITICAL)
+    // Log thao tác Admin trên Manager account (CRITICAL)
     @Async
     @Transactional
     public void logAdminActionOnManager(User admin, User targetManager, String action,
@@ -93,7 +94,7 @@ public class AuditLogService {
         }
     }
 
-// Log failed action
+    // Log failed action
     @Async
     @Transactional
     public void logFailedAction(User actor, String action, String entityType, Long entityId,
@@ -118,35 +119,33 @@ public class AuditLogService {
         }
     }
 
-// Lấy audit logs của actor
+    // Lấy audit logs của actor
     @Transactional(readOnly = true)
-    public List<AuditLog> getLogsByActor(Long actorId) {
-        return auditLogRepository.findByActor_UserId(actorId);
+    public Page<AuditLog> getLogsByActor(Long actorId, Pageable pageable) {
+        return auditLogRepository.findByActor_UserId(actorId, pageable);
     }
 
-// Lấy audit logs về target user
+    // Lấy audit logs về target user
     @Transactional(readOnly = true)
-    public List<AuditLog> getLogsByTargetUser(Long targetUserId) {
-        return auditLogRepository.findByTargetUser_UserId(targetUserId);
+    public Page<AuditLog> getLogsByTargetUser(Long targetUserId, Pageable pageable) {
+        return auditLogRepository.findByTargetUser_UserId(targetUserId, pageable);
     }
 
-// Lấy critical logs trong khoảng thời gian
+    // Lấy critical logs trong khoảng thời gian
     @Transactional(readOnly = true)
-    public List<AuditLog> getCriticalLogs(LocalDateTime startDate, LocalDateTime endDate) {
-        return auditLogRepository.findCriticalLogsBetween(startDate, endDate);
+    public Page<AuditLog> getCriticalLogs(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        return auditLogRepository.findCriticalLogsBetween(startDate, endDate, pageable);
     }
 
-// Lấy tất cả Admin actions trên Manager accounts
-
-// Lấy tất cả Admin actions trên Manager accounts
+    // Lấy tất cả Admin actions trên Manager accounts
     @Transactional(readOnly = true)
-    public List<AuditLog> getAdminActionsOnManagers() {
-        return auditLogRepository.findAdminActionsOnManagers();
+    public Page<AuditLog> getAdminActionsOnManagers(Pageable pageable) {
+        return auditLogRepository.findAdminActionsOnManagers(pageable);
     }
 
-// Lấy recent logs
+    // Lấy recent logs
     @Transactional(readOnly = true)
-    public List<AuditLog> getRecentLogs() {
-        return auditLogRepository.findRecentLogs();
+    public Page<AuditLog> getRecentLogs(Pageable pageable) {
+        return auditLogRepository.findAllLogs(pageable);
     }
 }

@@ -54,9 +54,12 @@ public class AttendanceController {
 
     // [Get all attendance] (Role: HR/Accounting)
     @GetMapping
-    public ResponseEntity<List<AttendanceDTO>> getAllAttendance(@AuthenticationPrincipal User currentUser) {
-        List<Attendance> attendances = attendanceService.getAllAttendance(currentUser);
-        return ResponseEntity.ok(attendanceMapper.toDTOList(attendances));
+    public ResponseEntity<org.springframework.data.domain.Page<AttendanceDTO>> getAllAttendance(
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Attendance> attendances = attendanceService
+                .getAllAttendancePaged(currentUser, pageable);
+        return ResponseEntity.ok(attendances.map(attendanceMapper::toDTO));
     }
 
     // [Update attendance] (Role: HR Manager)
@@ -84,20 +87,24 @@ public class AttendanceController {
 
     // [Get attendance by employee] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployee(
+    public ResponseEntity<org.springframework.data.domain.Page<AttendanceDTO>> getAttendanceByEmployee(
             @PathVariable Long employeeId,
-            @AuthenticationPrincipal User currentUser) {
-        List<Attendance> attendances = attendanceService.getAttendanceByEmployee(employeeId, currentUser);
-        return ResponseEntity.ok(attendanceMapper.toDTOList(attendances));
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Attendance> attendances = attendanceService
+                .getAttendanceByEmployeePaged(employeeId, currentUser, pageable);
+        return ResponseEntity.ok(attendances.map(attendanceMapper::toDTO));
     }
 
     // [Get attendance in date range] (Role: HR/Accounting)
     @GetMapping("/date-range")
-    public ResponseEntity<List<AttendanceDTO>> getAttendanceByDateRange(
+    public ResponseEntity<org.springframework.data.domain.Page<AttendanceDTO>> getAttendanceByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<Attendance> attendances = attendanceService.getAttendanceByDateRange(startDate, endDate);
-        return ResponseEntity.ok(attendanceMapper.toDTOList(attendances));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Attendance> attendances = attendanceService
+                .getAttendanceByDateRangePaged(startDate, endDate, pageable);
+        return ResponseEntity.ok(attendances.map(attendanceMapper::toDTO));
     }
 
     // [Get attendance by employee and month] (Role: HR/Self)

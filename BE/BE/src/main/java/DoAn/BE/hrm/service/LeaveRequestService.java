@@ -105,6 +105,14 @@ public class LeaveRequestService {
         return leaveRequestRepository.findAll();
     }
 
+    public org.springframework.data.domain.Page<LeaveRequest> getAllLeaveRequestsPaged(User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.canViewLeave(currentUser)) {
+            throw new ForbiddenException("You do not have permission to view leave requests");
+        }
+        return leaveRequestRepository.findAllRequests(pageable);
+    }
+
     public LeaveRequest updateLeaveRequest(Long id, LeaveRequestRequest request, User currentUser) {
         LeaveRequest leaveRequest = getLeaveRequestById(id, currentUser);
 
@@ -157,8 +165,18 @@ public class LeaveRequestService {
         return leaveRequestRepository.findByEmployee_EmployeeId(employeeId);
     }
 
+    public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsByEmployeePaged(Long employeeId,
+            org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByEmployee_EmployeeId(employeeId, pageable);
+    }
+
     public List<LeaveRequest> getLeaveRequestsInDateRange(LocalDate startDate, LocalDate endDate) {
         return leaveRequestRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(endDate, startDate);
+    }
+
+    public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsInDateRangePaged(LocalDate startDate,
+            LocalDate endDate, org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByStartDateBetween(startDate, endDate, pageable);
     }
 
     public LeaveRequest approvePM(Long id, String note, User currentUser) {
@@ -314,12 +332,27 @@ public class LeaveRequestService {
         return leaveRequestRepository.findByStatus(LeaveStatus.PENDING);
     }
 
+    public org.springframework.data.domain.Page<LeaveRequest> getPendingLeaveRequestsPaged(
+            org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByStatus(LeaveStatus.PENDING, pageable);
+    }
+
     public List<LeaveRequest> getApprovedLeaveRequests() {
         return leaveRequestRepository.findByStatus(LeaveStatus.APPROVED);
     }
 
+    public org.springframework.data.domain.Page<LeaveRequest> getApprovedLeaveRequestsPaged(
+            org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByStatus(LeaveStatus.APPROVED, pageable);
+    }
+
     public List<LeaveRequest> getRejectedLeaveRequests() {
         return leaveRequestRepository.findByStatus(LeaveStatus.REJECTED);
+    }
+
+    public org.springframework.data.domain.Page<LeaveRequest> getRejectedLeaveRequestsPaged(
+            org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByStatus(LeaveStatus.REJECTED, pageable);
     }
 
     public int getTotalLeaveDays(Long employeeId, int year) {

@@ -24,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
@@ -108,6 +110,14 @@ public class IssueService {
     }
 
     @Transactional(readOnly = true)
+    public Page<IssueDTO> getProjectIssuesPaginated(Long projectId, Long userId, Pageable pageable) {
+        // Validate access
+        validateProjectAccess(projectId, userId);
+        Page<Issue> issues = issueRepository.findByProject_ProjectId(projectId, pageable);
+        return issues.map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
     public List<IssueDTO> getProjectBacklog(Long projectId, Long userId) {
         // Validate access
         validateProjectAccess(projectId, userId);
@@ -116,6 +126,14 @@ public class IssueService {
         return issues.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<IssueDTO> getProjectBacklogPaginated(Long projectId, Long userId, Pageable pageable) {
+        // Validate access
+        validateProjectAccess(projectId, userId);
+        Page<Issue> issues = issueRepository.findByProject_ProjectIdAndSprintIsNull(projectId, pageable);
+        return issues.map(this::convertToDTO);
     }
 
     @Transactional(readOnly = true)
@@ -136,11 +154,31 @@ public class IssueService {
     }
 
     @Transactional(readOnly = true)
+    public Page<IssueDTO> getSprintIssuesPaginated(Long sprintId, Long userId, Pageable pageable) {
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+
+        if (sprint.getProject() == null) {
+            throw new IllegalStateException("Sprint không có dự án liên kết");
+        }
+
+        validateProjectAccess(sprint.getProject().getProjectId(), userId);
+        Page<Issue> issues = issueRepository.findBySprint_SprintId(sprintId, pageable);
+        return issues.map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
     public List<IssueDTO> getMyIssues(Long userId) {
         List<Issue> assignedIssues = issueRepository.findByAssignee_UserId(userId);
         return assignedIssues.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<IssueDTO> getMyIssuesPaginated(Long userId, Pageable pageable) {
+        Page<Issue> assignedIssues = issueRepository.findByAssignee_UserId(userId, pageable);
+        return assignedIssues.map(this::convertToDTO);
     }
 
     @Transactional(readOnly = true)

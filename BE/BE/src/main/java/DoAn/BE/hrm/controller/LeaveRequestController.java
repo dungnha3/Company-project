@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 // [Controller managing leave requests] (Role: HR/Employee)
@@ -53,9 +52,12 @@ public class LeaveRequestController {
 
     // [Get all leave requests] (Role: HR)
     @GetMapping
-    public ResponseEntity<List<LeaveRequestDTO>> getAllLeaveRequests(@AuthenticationPrincipal User currentUser) {
-        List<LeaveRequest> leaveRequests = leaveRequestService.getAllLeaveRequests(currentUser);
-        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaveRequests));
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getAllLeaveRequests(
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
+                .getAllLeaveRequestsPaged(currentUser, pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
     // [Update leave request] (Role: Self - only if pending)
@@ -81,41 +83,52 @@ public class LeaveRequestController {
 
     // [Get leave requests by employee] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<LeaveRequestDTO>> getLeaveRequestsByEmployee(@PathVariable Long employeeId) {
-        List<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsByEmployee(employeeId);
-        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaveRequests));
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getLeaveRequestsByEmployee(
+            @PathVariable Long employeeId,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
+                .getLeaveRequestsByEmployeePaged(employeeId, pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
     // [Get leave requests in date range] (Role: HR)
     @GetMapping("/date-range")
-    public ResponseEntity<List<LeaveRequestDTO>> getLeaveRequestsInDateRange(
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getLeaveRequestsInDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsInDateRange(startDate, endDate);
-        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaveRequests));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
+                .getLeaveRequestsInDateRangePaged(startDate, endDate, pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
     // ==================== STATUS FILTERS ====================
 
     // [Get pending leave requests] (Role: HR Manager)
     @GetMapping("/pending")
-    public ResponseEntity<List<LeaveRequestDTO>> getPendingLeaveRequests() {
-        List<LeaveRequest> leaveRequests = leaveRequestService.getPendingLeaveRequests();
-        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaveRequests));
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getPendingLeaveRequests(
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
+                .getPendingLeaveRequestsPaged(pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
     // [Get approved leave requests] (Role: HR)
     @GetMapping("/approved")
-    public ResponseEntity<List<LeaveRequestDTO>> getApprovedLeaveRequests() {
-        List<LeaveRequest> leaveRequests = leaveRequestService.getApprovedLeaveRequests();
-        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaveRequests));
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getApprovedLeaveRequests(
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
+                .getApprovedLeaveRequestsPaged(pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
     // [Get rejected leave requests] (Role: HR)
     @GetMapping("/rejected")
-    public ResponseEntity<List<LeaveRequestDTO>> getRejectedLeaveRequests() {
-        List<LeaveRequest> leaveRequests = leaveRequestService.getRejectedLeaveRequests();
-        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaveRequests));
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getRejectedLeaveRequests(
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
+                .getRejectedLeaveRequestsPaged(pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
     // ==================== APPROVAL ACTIONS ====================
