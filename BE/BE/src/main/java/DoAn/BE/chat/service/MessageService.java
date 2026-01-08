@@ -48,7 +48,7 @@ public class MessageService {
     private final UserRepository userRepository;
     private final WebSocketNotificationService webSocketNotificationService;
     private final ChatNotificationService chatNotificationService;
-    private final TypingIndicatorService typingIndicatorService;
+
     private final DoAn.BE.notification.service.FCMService fcmService;
     private final MessageReactionRepository reactionRepository;
 
@@ -59,7 +59,7 @@ public class MessageService {
             UserRepository userRepository,
             WebSocketNotificationService webSocketNotificationService,
             ChatNotificationService chatNotificationService,
-            TypingIndicatorService typingIndicatorService,
+
             MessageReactionRepository reactionRepository,
             DoAn.BE.notification.service.FCMService fcmService) {
         this.messageRepository = messageRepository;
@@ -69,7 +69,7 @@ public class MessageService {
         this.userRepository = userRepository;
         this.webSocketNotificationService = webSocketNotificationService;
         this.chatNotificationService = chatNotificationService;
-        this.typingIndicatorService = typingIndicatorService;
+
         this.reactionRepository = reactionRepository;
         this.fcmService = fcmService;
     }
@@ -190,7 +190,7 @@ public class MessageService {
             }
         }
 
-        typingIndicatorService.stopTyping(request.getRoomId(), senderId);
+        // Typing indicator handled via WebSocket, not REST
 
         // Detect and process mentions in message content
         processMentions(message, sender, chatRoom);

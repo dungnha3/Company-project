@@ -23,37 +23,12 @@ public class ProfileController {
     private final ProfileService profileService;
     private final UserMapper userMapper;
 
-    // ==================== READ ====================
-
-    // [Lấy thông tin profile của user hiện tại] (Role: Self)
-    @GetMapping
-    public ResponseEntity<UserDTO> getCurrentUserProfile() {
-        Long userId = getCurrentUserId();
-        User user = profileService.getCurrentUserProfile(userId);
-        return ResponseEntity.ok(userMapper.toDTO(user));
-    }
-
-    // [Lấy thông tin profile - alias endpoint] (Role: Self)
-    @GetMapping("/me")
-    public ResponseEntity<UserDTO> getMe() {
-        Long userId = getCurrentUserId();
-        User user = profileService.getCurrentUserProfile(userId);
-        return ResponseEntity.ok(userMapper.toDTO(user));
-    }
-
     // ==================== UPDATE ====================
+    // Note: GET profile removed - use /api/auth/me instead
 
     // [Cập nhật profile của user hiện tại] (Role: Self)
     @PutMapping
     public ResponseEntity<UserDTO> updateProfile(@Valid @RequestBody UpdateUserRequest request) {
-        Long userId = getCurrentUserId();
-        User user = profileService.updateProfile(userId, request);
-        return ResponseEntity.ok(userMapper.toDTO(user));
-    }
-
-    // [Cập nhật profile - alias endpoint] (Role: Self)
-    @PutMapping("/me")
-    public ResponseEntity<UserDTO> updateProfileMe(@Valid @RequestBody UpdateUserRequest request) {
         Long userId = getCurrentUserId();
         User user = profileService.updateProfile(userId, request);
         return ResponseEntity.ok(userMapper.toDTO(user));
