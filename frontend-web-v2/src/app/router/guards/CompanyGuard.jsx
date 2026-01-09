@@ -1,28 +1,21 @@
-import { Navigate } from 'react-router-dom';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useAuthStore } from '@shared/stores/authStore';
 
+/**
+ * CompanyGuard - Cho phép truy cập /app nếu user đã đăng nhập
+ * 
+ * [NEW FLOW] Dual Workspace Model:
+ * - User luôn có Personal Workspace (auto-created by Backend)
+ * - Không cần phải thuộc Company để sử dụng hệ thống
+ * - Guard này chỉ kiểm tra authentication, không check company membership
+ */
 export function CompanyGuard({ children }) {
-    const { currentCompany, companies } = useCompanyStore();
+    const { isAuthenticated } = useAuthStore();
 
-    // If user has companies but none selected, redirect to selection
-    if (companies.length > 0 && !currentCompany) {
-        return <Navigate to="/select-company" replace />;
+    // If not authenticated, they shouldn't be here (AuthGuard should catch this)
+    if (!isAuthenticated) {
+        return null; // Let AuthGuard handle redirect
     }
 
-    // If user has no companies at all, show error or redirect
-    if (companies.length === 0) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="card text-center max-w-md">
-                    <i className="fa-solid fa-building-circle-xmark text-4xl text-gray-400 mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">Chưa thuộc công ty nào</h2>
-                    <p className="text-gray-500 mb-4">
-                        Bạn chưa được mời vào công ty nào. Vui lòng liên hệ quản trị viên.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
+    // User is authenticated -> they have Personal Workspace -> allow access
     return children;
 }

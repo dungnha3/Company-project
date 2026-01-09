@@ -25,7 +25,6 @@ import DoAn.BE.user.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 
 // [Service xử lý authentication] (Role: System)
-// [Service xử lý authentication] (Role: System)
 @Service
 @Slf4j
 public class AuthService {
@@ -40,6 +39,7 @@ public class AuthService {
     private final CompanyMemberRepository companyMemberRepository;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final org.springframework.web.reactive.function.client.WebClient webClient;
+    private final DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository;
 
     // [Cấu hình bảo vệ brute force] (Role: Config)
     private final int maxLoginAttempts;
@@ -47,12 +47,15 @@ public class AuthService {
     private final String googleTokenInfoUrl;
     private final String defaultAvatarUrlPattern; // Configurable Avatar URL
 
-    public AuthService(UserService userService, JwtService jwtService, SessionService sessionService,
+    public AuthService(@org.springframework.context.annotation.Lazy UserService userService, JwtService jwtService,
+            @org.springframework.context.annotation.Lazy SessionService sessionService,
             PasswordEncoder passwordEncoder, RefreshTokenRepository refreshTokenRepository,
-            LoginAttemptRepository loginAttemptRepository, AuthNotificationService authNotificationService,
+            LoginAttemptRepository loginAttemptRepository,
+            @org.springframework.context.annotation.Lazy AuthNotificationService authNotificationService,
             CompanyMemberRepository companyMemberRepository,
             DoAn.BE.audit.service.AuditLogService auditLogService,
             org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder,
+            DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.max-attempts:5}") int maxLoginAttempts,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.lockout-minutes:15}") int lockoutDurationMinutes,
             @org.springframework.beans.factory.annotation.Value("${app.security.google.token-info-url:https://oauth2.googleapis.com/tokeninfo}") String googleTokenInfoUrl,
@@ -67,6 +70,7 @@ public class AuthService {
         this.companyMemberRepository = companyMemberRepository;
         this.auditLogService = auditLogService;
         this.webClient = webClientBuilder.build();
+        this.personalWorkspaceRepository = personalWorkspaceRepository;
         this.maxLoginAttempts = maxLoginAttempts;
         this.lockoutDurationMinutes = lockoutDurationMinutes;
         this.googleTokenInfoUrl = googleTokenInfoUrl;
@@ -102,6 +106,13 @@ public class AuthService {
 
         // [Cập nhật trạng thái user] (Role: Update)
         updateUserLoginStatus(user);
+
+        // [MIGRATION] Đảm bảo user cũ có Personal Workspace (Role: Create)
+        if (!personalWorkspaceRepository.existsByUser_UserId(user.getUserId())) {
+            DoAn.BE.user.entity.PersonalWorkspace pw = DoAn.BE.user.entity.PersonalWorkspace.createFor(user);
+            personalWorkspaceRepository.save(pw);
+            log.info("Đã tạo Personal Workspace cho user cũ: {}", user.getUsername());
+        }
 
         // [Tạo session] (Role: Session)
         sessionService.createSession(user, ipAddress, userAgent);
@@ -247,43 +258,13 @@ public class AuthService {
         }
 
         // 1. [Verify Token với Google] - NON-TRANSACTIONAL (Network Call)
+        // Calling external API before any DB transaction to avoid connection holding
         java.util.Map<String, Object> googleUser = verifyGoogleToken(idToken);
 
         String email = (String) googleUser.get("email");
         String picture = (String) googleUser.get("picture");
 
-        // 2. [Process DB Logic] - TRANSACTIONAL
-        // Gọi method nội bộ để xử lý DB.
-        // Lưu ý: Cần đảm bảo method này được quản lý bởi Transaction.
-        // Trong Spring, gọi method nội bộ (this.method) sẽ bypass AOP proxy -> Không có
-        // Transaction mới nếu gọi từ method không có @Transactional.
-        // Tuy nhiên, ta có thể inject chính bean này hoặc move logic sang Helper
-        // Service.
-        // Để đơn giản và giữ "Code 10 điểm", ta sẽ bọc logic DB vào một transaction
-        // programmatic hoặc chấp nhận gọi bypass (nếu repo đã có TX).
-        // Nhưng repo chỉ atomic từng lệnh. Logic "create user -> save session -> create
-        // token" cần atomic.
-        // => [Best Practice]: Gọi thông qua AOP Proxy hoặc move logic vào
-        // `UserAuthExecutor` class.
-        // => [Quick Win]: Đánh dấu method `processGoogleLoginDB` là @Transactional và
-        // gọi nó...
-        // Nhưng chờ đã, gọi `processLogin` từ `loginWithGoogle` (không TX) sẽ KHÔNG
-        // kích hoạt TX của `processLogin` nếu dùng `this.processLogin`.
-
-        // Giải pháp "10 điểm" mà không cần tạo class mới: Sử dụng TransactionTemplate
-        // (nếu có) hoặc tự inject context.
-        // Nhưng sửa constructor phức tạp.
-        // Cách nhanh nhất đạt chuẩn: Đặt logic DB vào block `synchronized` hoặc chấp
-        // nhận rủi ro race condition cực thấp? Không.
-
-        // Thôi, để đạt điểm 10 thực sự, ta chấp nhận method này @Transactional nhưng
-        // tối ưu `verifyGoogleToken`?
-        // Không, `verifyGoogleToken` KHÔNG ĐƯỢC nằm trong TX.
-
-        // Solution: Trả về dữ liệu Google user, và Controller gọi 2 bước? Không, lộ
-        // logic.
-
-        // Solution "Senior": Dùng self-injection (Bean tự gọi chính nó).
+        // 2. [Process DB Logic]
         return processGoogleLoginTransactional(email, picture, ipAddress, userAgent);
     }
 
@@ -401,6 +382,12 @@ public class AuthService {
         newUser = userService.save(newUser);
         log.info("Đã tạo tài khoản mới: {}", newUser.getUsername());
 
+        // [Auto-create Personal Workspace] (Role: Create)
+        DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
+                .createFor(newUser);
+        personalWorkspaceRepository.save(personalWorkspace);
+        log.info("Đã tạo Personal Workspace cho user: {}", newUser.getUsername());
+
         // [Cập nhật trạng thái login] (Role: Update)
         updateUserLoginStatus(newUser);
 
@@ -417,17 +404,13 @@ public class AuthService {
         return buildAuthResponse(accessToken, refreshToken, newUser, memberships, null);
     }
 
-    // Helper method for Google Login Flow (DB Part) - Call manually or via Service
     private AuthResponse processGoogleLoginTransactional(String email, String picture, String ipAddress,
             String userAgent) {
-        // NOTE: Since we removed @Transactional from class, and this is private called
-        // from non-transactional method,
-        // it runs WITHOUT a parent transaction.
-        // HOWEVER, userService.save() and sessionService.createSession() are likely
-        // transactional themselves.
-        // For "10/10", we should ensure atomicity.
-        // But for now, let's proceed with standard Repository transactions which is
-        // 9.5/10.
+        // [Note] This private method is called from inside loginWithGoogle (which has
+        // no Transaction)
+        // We rely on underlying Repository transactions for each operation.
+        // For stricter consistency, a TransactionTemplate or Self-Injection pattern
+        // could be used.
 
         // [Tìm hoặc tạo user] (Role: Upsert)
         User user = userService.findByEmail(email).orElseGet(() -> createGoogleUser(email, picture));
@@ -462,7 +445,15 @@ public class AuthService {
         newUser.setIsActive(true);
         newUser.setStatus(User.UserStatus.ACTIVE);
         newUser.setAvatarUrl(picture);
-        return userService.save(newUser);
+        newUser = userService.save(newUser);
+
+        // [Auto-create Personal Workspace for Google User] (Role: Create)
+        DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
+                .createFor(newUser);
+        personalWorkspaceRepository.save(personalWorkspace);
+        log.info("Đã tạo Personal Workspace cho Google user: {}", newUser.getEmail());
+
+        return newUser;
     }
 
     // [Xây dựng AuthResponse] (Role: DTO Builder)
@@ -482,7 +473,18 @@ public class AuthService {
         userInfo.setEmail(user.getEmail());
         userInfo.setIsActive(user.getIsActive());
         userInfo.setIsSystemAdmin(user.isSystemAdminAccount()); // [SAAS] System Admin flag
+        userInfo.setPersonalPlan(user.getPersonalPlan()); // [NEW] Personal plan
         response.setUser(userInfo);
+
+        // [Build Personal Workspace info] (Role: DTO)
+        personalWorkspaceRepository.findByUser_UserId(user.getUserId())
+                .ifPresent(pw -> {
+                    AuthResponse.PersonalWorkspaceInfo pwInfo = new AuthResponse.PersonalWorkspaceInfo();
+                    pwInfo.setWorkspaceId(pw.getWorkspaceId());
+                    pwInfo.setName(pw.getName());
+                    pwInfo.setPlan(user.getPersonalPlan());
+                    response.setPersonalWorkspace(pwInfo);
+                });
 
         // [Build Companies list] (Role: DTO)
         List<AuthResponse.CompanyDTO> companies = memberships.stream()
@@ -563,5 +565,96 @@ public class AuthService {
         sendSecurityAlert(userId, "Đổi mật khẩu", "Mật khẩu tài khoản của bạn đã được thay đổi");
 
         log.info("Password changed for user: {}", user.getUsername());
+    }
+
+    // ==================== PRIVATE METHODS ====================
+
+    // [Kiểm tra user active] (Role: Internal)
+    private void validateUserActive(User user, String username, String ipAddress) {
+        if (!user.getIsActive()) {
+            recordFailedLogin(username, ipAddress, "Tài khoản đã bị vô hiệu hóa");
+            sendSecurityAlert(user.getUserId(), "Tài khoản đã bị vô hiệu hóa",
+                    "Có người cố gắng đăng nhập vào tài khoản đã bị vô hiệu hóa từ IP: " + ipAddress);
+            throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+        }
+    }
+
+    // [Cập nhật trạng thái login của user] (Role: Internal)
+    private void updateUserLoginStatus(User user) {
+        user.setLastLogin(LocalDateTime.now());
+        user.setIsOnline(true);
+        userService.save(user);
+    }
+
+    // [Tạo refresh token] (Role: Internal)
+    private String createRefreshToken(User user) {
+        List<RefreshToken> existingTokens = refreshTokenRepository.findValidTokensByUser(user, LocalDateTime.now());
+        if (existingTokens != null && !existingTokens.isEmpty()) {
+            refreshTokenRepository.deleteAll(existingTokens);
+        }
+        String tokenString = jwtService.generateRefreshToken(user);
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setToken(tokenString);
+        refreshToken.setUser(user);
+        refreshToken.setExpiresAt(LocalDateTime.now().plusSeconds(jwtService.getRefreshExpiration() / 1000));
+        refreshToken.setIsRevoked(false);
+
+        refreshTokenRepository.save(refreshToken);
+        return tokenString;
+    }
+
+    // [Kiểm tra số lần đăng nhập thất bại] (Role: Security)
+    private void checkLoginAttempts(String username, String ipAddress) {
+        LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(this.lockoutDurationMinutes);
+        long recentAttempts = loginAttemptRepository.countRecentFailedAttempts(username, ipAddress, cutoffTime);
+
+        if (recentAttempts >= this.maxLoginAttempts) {
+            userService.findByUsername(username)
+                    .ifPresent(user -> sendSecurityAlert(user.getUserId(), "Tài khoản tạm thời bị khóa",
+                            String.format("Tài khoản bị khóa %d phút do đăng nhập sai %d lần từ IP: %s",
+                                    this.lockoutDurationMinutes, this.maxLoginAttempts, ipAddress)));
+            throw new UnauthorizedException("Tài khoản tạm thời bị khóa do đăng nhập sai quá nhiều lần");
+        }
+    }
+
+    // [Ghi lại login thất bại] (Role: Logging)
+    private void recordFailedLogin(String username, String ipAddress, String reason) {
+        LoginAttempt attempt = new LoginAttempt();
+        attempt.setUsername(username);
+        attempt.setIpAddress(ipAddress);
+        attempt.setAttemptedAt(LocalDateTime.now());
+        attempt.setSuccess(false);
+        attempt.setFailureReason(reason);
+        loginAttemptRepository.save(attempt);
+    }
+
+    // [Xóa các lần thử thất bại] (Role: Cleanup)
+    private void clearFailedAttempts(String username, String ipAddress) {
+        loginAttemptRepository.deleteByUsernameAndIpAddress(username, ipAddress);
+    }
+
+    // [Gửi cảnh báo bảo mật] (Role: Notification)
+    private void sendSecurityAlert(Long userId, String title, String message) {
+        try {
+            authNotificationService.createSecurityAlertNotification(userId, title, message);
+        } catch (Exception e) {
+            log.warn("Không thể gửi cảnh báo bảo mật: {}", e.getMessage());
+        }
+    }
+
+    // [Xác thực Google token] (Role: External API)
+    private java.util.Map<String, Object> verifyGoogleToken(String idToken) {
+        java.util.Map<String, Object> googleUser = webClient.get()
+                .uri(this.googleTokenInfoUrl + "?id_token=" + idToken)
+                .retrieve()
+                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<java.util.Map<String, Object>>() {
+                })
+                .block();
+
+        if (googleUser == null || googleUser.get("email") == null) {
+            throw new BadRequestException("Google token không hợp lệ");
+        }
+        return googleUser;
     }
 }

@@ -96,6 +96,16 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @Builder.Default
     private List<CompanyMember> memberships = new ArrayList<>();
 
+    // Personal Workspace (1:1) - Không gian làm việc cá nhân
+    @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY, cascade = jakarta.persistence.CascadeType.ALL)
+    private PersonalWorkspace personalWorkspace;
+
+    // Personal Plan - Gói cước cá nhân (independent of company plans)
+    @Column(name = "personal_plan", length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private DoAn.BE.company.entity.Plan personalPlan = DoAn.BE.company.entity.Plan.FREE;
+
     // Relation with Employee (New)
     @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY)
     private DoAn.BE.hrm.entity.Employee employee;

@@ -108,6 +108,62 @@ public class CompanyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
     }
 
+    // [Tạo công ty mới] (Role: Authenticated User)
+    @Transactional
+    public CompanyDto.CompanyResponse createCompany(CompanyDto.CompanyCreateRequest req, User currentUser) {
+        // [Validate input] (Role: Guard)
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new BadRequestException("Tên công ty không được để trống");
+        }
+
+        // [Tạo company] (Role: Create)
+        Company company = new Company();
+        company.setName(req.getName());
+        company.setDescription(req.getDescription());
+        company.setLogoUrl(req.getLogoUrl());
+        company.setAddress(req.getAddress());
+        company.setPhone(req.getPhone());
+        company.setEmail(req.getEmail());
+        company.setPlan(Plan.FREE);
+        company.setIsActive(true);
+
+        // [Tạo slug] (Role: Logic)
+        String normalized = java.text.Normalizer.normalize(req.getName(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\s]", "")
+                .replaceAll("\\s+", "-");
+        String slug = normalized + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        company.setSlug(slug);
+
+        company = companyRepository.save(company);
+
+        // [Tạo settings mặc định] (Role: Create)
+        CompanySettings settings = new CompanySettings();
+        settings.setCompany(company);
+        // Default settings are false/null, explicitly set generic defaults if needed
+        settings.setHrModuleEnabled(true); // Enable core modules by default for better UX
+        settings.setProjectModuleEnabled(true);
+        settings.setChatModuleEnabled(true);
+        settings.setStorageModuleEnabled(true);
+        companySettingsRepository.save(settings);
+
+        // [Tạo owner member] (Role: Create)
+        CompanyMember owner = new CompanyMember();
+        owner.setCompany(company);
+        owner.setUser(currentUser);
+        owner.setRole(CompanyRole.OWNER);
+        owner.setIsActive(true);
+        owner.setJoinedAt(java.time.LocalDateTime.now());
+        companyMemberRepository.save(owner);
+
+        log.info("User {} đã tạo công ty mới: {}", currentUser.getUsername(), company.getName());
+
+        // Return response with OWNER role
+        CompanyDto.CompanyResponse resp = mapToResponse(owner);
+        return resp;
+    }
+
     // [Cập nhật thông tin công ty] (Role: Owner only)
     @Transactional
     public Company updateCompany(Long companyId, CompanyDto.CompanyUpdateRequest req) {

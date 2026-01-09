@@ -60,7 +60,36 @@ export const useAuthStore = create(
                 }
             },
 
+            loginWithGoogle: async (idToken) => {
+                try {
+                    const response = await apiClient.post(ENDPOINTS.AUTH.GOOGLE_LOGIN, { token: idToken });
+                    const { accessToken, refreshToken, user, expiresIn } = response.data;
+
+                    const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
+
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('refreshToken', refreshToken);
+                    localStorage.setItem('expiresAt', String(expiresAt));
+
+                    set({
+                        user,
+                        accessToken,
+                        refreshToken,
+                        isAuthenticated: true,
+                    });
+
+                    return { success: true, user };
+                } catch (error) {
+                    console.error('Google Login error:', error);
+                    return {
+                        success: false,
+                        error: error.response?.data?.message || 'Đăng nhập Google thất bại'
+                    };
+                }
+            },
+
             register: async (userData) => {
+                set({ isLoading: true, error: null });
                 try {
                     const response = await apiClient.post(ENDPOINTS.AUTH.REGISTER, userData);
                     // Register usually returns AuthResponse same as login, or just success message

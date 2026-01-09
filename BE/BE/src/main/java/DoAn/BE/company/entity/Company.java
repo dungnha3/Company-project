@@ -32,6 +32,9 @@ public class Company extends DoAn.BE.common.entity.BaseEntity {
     @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
     private String name;
 
+    @Column(length = 1000, columnDefinition = "NVARCHAR(1000)")
+    private String description;
+
     @Column(unique = true, length = 100)
     private String slug; // Đường dẫn URL: /company/{slug}
 

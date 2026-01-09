@@ -18,6 +18,16 @@ public class CompanyDto {
     }
 
     @Data
+    public static class CompanyCreateRequest {
+        private String name;
+        private String description;
+        private String logoUrl;
+        private String address;
+        private String phone;
+        private String email;
+    }
+
+    @Data
     public static class CompanyUpdateRequest {
         private String name;
         private String logoUrl;

@@ -27,6 +27,15 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.getMyCompanies(user));
     }
 
+    // [Tạo công ty mới]
+    @PostMapping("")
+    public ResponseEntity<CompanyDto.CompanyResponse> createCompany(
+            @RequestBody CompanyDto.CompanyCreateRequest request,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(companyService.createCompany(request, user));
+    }
+
     // [SAAS] Lấy tất cả công ty trong hệ thống (System Admin only)
     @GetMapping("/admin/all")
     public ResponseEntity<List<CompanyDto.CompanyResponse>> getAllCompanies(Authentication authentication) {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import GoogleLoginButton from '../../components/auth/GoogleLoginButton';
 
 export default function RegisterPage() {
     const [form, setForm] = useState({
@@ -15,7 +15,6 @@ export default function RegisterPage() {
 
     const navigate = useNavigate();
     const { register } = useAuthStore();
-    const { createCompany, selectCompany, setCompanies } = useCompanyStore();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,33 +22,12 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
-            // 1. Register User
             const result = await register(form);
 
             if (result.success) {
-                // 2. Auto Create Default Workspace (Instant Onboarding)
-                try {
-                    const workspaceName = `${form.fullName}'s Workspace`;
-                    // Assume createCompany returns the new company object { companyId, ... }
-                    const newCompany = await createCompany({
-                        name: workspaceName,
-                        description: 'Không gian làm việc mặc định',
-                        logo: ''
-                    });
-
-                    if (newCompany) {
-                        // 3. Auto Enter Workspace
-                        await selectCompany(newCompany.companyId);
-                        navigate('/app', { replace: true });
-                    } else {
-                        // Fallback if auto-create fails
-                        navigate('/portal', { replace: true });
-                    }
-                } catch (createError) {
-                    console.error("Auto-create workspace failed:", createError);
-                    // Fallback to portal if auto-creation fails, let user create manually
-                    navigate('/portal', { replace: true });
-                }
+                // [NEW FLOW] Backend đã tự động tạo Personal Workspace
+                // Chỉ cần redirect đến /app
+                navigate('/app', { replace: true });
             } else {
                 setError(result.error || 'Đăng ký thất bại');
             }
@@ -164,29 +142,20 @@ export default function RegisterPage() {
                         </div>
                     </form>
 
-                    {/* Social Login - Feature Flag: DISABLED (Coming Soon)
                     <div className="mt-6">
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300" />
+                                <div className="w-full border-t border-gray-300"></div>
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">
-                                    Hoặc đăng nhập với
-                                </span>
+                                <span className="px-2 bg-white text-gray-500">Hoặc tiếp tục với</span>
                             </div>
                         </div>
 
-                        <div className="mt-6 grid grid-cols-2 gap-3">
-                            <button className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                <i className="fa-brands fa-google text-red-500 text-lg" />
-                            </button>
-                            <button className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                <i className="fa-brands fa-github text-gray-800 text-lg" />
-                            </button>
+                        <div className="mt-6 grid grid-cols-1 gap-3">
+                            <GoogleLoginButton text="Đăng ký bằng Google" />
                         </div>
                     </div>
-                    */}
                 </div>
             </div>
         </div>

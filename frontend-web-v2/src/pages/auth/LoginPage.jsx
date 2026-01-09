@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import GoogleLoginButton from '../../components/auth/GoogleLoginButton';
 
 export default function LoginPage() {
     const [form, setForm] = useState({ username: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
     const { login } = useAuthStore();
-    const { setCompanies, selectCompany, createCompany } = useCompanyStore(); // Auto-select & Auto-create needed
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -21,40 +19,14 @@ export default function LoginPage() {
             const result = await login(form);
 
             if (result.success) {
-                // Set companies from login response
-                const memberships = result.user?.companyMemberships || [];
-                setCompanies(memberships);
-
+                // [NEW FLOW] Backend đã tự động tạo Personal Workspace cho user
+                // Chỉ cần redirect đến đúng nơi
                 if (result.user.isSystemAdmin) {
                     navigate('/admin/companies', { replace: true });
                 } else {
-                    // SMART REDIRECT LOGIC + RETROACTIVE ONBOARDING
-                    if (memberships.length === 0) {
-                        // Case: Returning User but NO Workspace -> Auto Create One (Retroactive Fix)
-                        try {
-                            const newCompany = await createCompany({
-                                name: `${result.user.fullName || result.user.username}'s Workspace`,
-                                description: 'Default Workspace (Auto-created)',
-                                logo: ''
-                            });
-                            if (newCompany) {
-                                await selectCompany(newCompany.companyId);
-                                navigate('/app', { replace: true });
-                            } else {
-                                navigate('/portal', { replace: true });
-                            }
-                        } catch (err) {
-                            // If auto-create fails, fallback to portal
-                            navigate('/portal', { replace: true });
-                        }
-                    } else if (memberships.length === 1) {
-                        // Case: Single Workspace -> Direct Access (Zero Friction)
-                        await selectCompany(memberships[0].companyId);
-                        navigate('/app', { replace: true });
-                    } else {
-                        // Case: Multiple Workspaces -> Portal (Selection)
-                        navigate('/portal', { replace: true });
-                    }
+                    // User có Personal Workspace (tự động tạo bởi Backend)
+                    // Navigate đến /app (Personal Workspace context mặc định)
+                    navigate('/app', { replace: true });
                 }
             } else {
                 setError(result.error || 'Đăng nhập thất bại');
@@ -130,20 +102,33 @@ export default function LoginPage() {
             </form>
 
             {/* Footer */}
-            <div className="mt-6 text-center space-y-2">
-                <p className="text-sm text-gray-500">
-                    Chưa có tài khoản?{' '}
-                    <Link to="/register" className="text-primary hover:underline font-medium">
-                        Đăng ký ngay
-                    </Link>
-                </p>
-                <p className="text-sm text-gray-500">
-                    Quên mật khẩu?{' '}
-                    <Link to="/forgot-password" class="text-primary hover:underline">
-                        Đặt lại
-                    </Link>
-                </p>
+            <div className="mt-6">
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">Hoặc tiếp tục với</span>
+                    </div>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 gap-3">
+                    <GoogleLoginButton text="Đăng nhập bằng Google" />
+                </div>
             </div>
+
+            <div className="text-center mt-4">
+                <span className="text-sm text-gray-600">Chưa có tài khoản? </span>
+                <Link to="/register" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                    Đăng ký ngay
+                </Link>
+            </div>
+            <p className="text-sm text-gray-500">
+                Quên mật khẩu?{' '}
+                <Link to="/forgot-password" className="text-primary hover:underline">
+                    Đặt lại
+                </Link>
+            </p>
         </div>
     );
 }
