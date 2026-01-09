@@ -32,7 +32,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
         try {
             // POST /api/companies
             await apiClient.post(ENDPOINTS.COMPANIES.CREATE, formData);
-            toast.success('Tạo công ty thành công!');
+            toast.success('Tạo Workspace thành công!');
 
             // Refresh user memberships to show new company
             // Note: In real app, might need to call initAuth or specific refresh action
@@ -43,7 +43,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
             onClose();
         } catch (error) {
             console.error('Create company error:', error);
-            toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi tạo công ty');
+            toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi tạo Workspace');
         } finally {
             setLoading(false);
         }
@@ -55,7 +55,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800">Tạo công ty mới</h2>
+                        <h2 className="text-xl font-bold text-gray-800">Tạo Workspace mới</h2>
                         <p className="text-sm text-gray-500">Thiết lập không gian làm việc của bạn</p>
                     </div>
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
@@ -81,7 +81,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="label">Tên công ty <span className="text-red-500">*</span></label>
+                                    <label className="label">Tên Workspace <span className="text-red-500">*</span></label>
                                     <input
                                         type="text"
                                         name="name"
@@ -217,7 +217,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
                         <button
                             onClick={() => {
                                 if (!formData.name) {
-                                    toast.error('Vui lòng nhập tên công ty');
+                                    toast.error('Vui lòng nhập tên Workspace');
                                     return;
                                 }
                                 setStep(step + 1)

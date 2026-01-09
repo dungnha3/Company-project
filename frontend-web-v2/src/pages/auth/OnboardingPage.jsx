@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
+import { useToast } from '@app/providers/ToastProvider';
 
 export default function OnboardingPage() {
     const navigate = useNavigate();
-    const { createCompany, selectCompany } = useCompanyStore();
+    const { fetchWorkspaces, selectWorkspace } = useWorkspaceStore();
+    const toast = useToast();
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -18,21 +22,28 @@ export default function OnboardingPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.name.trim()) {
+            toast.error('Vui lòng nhập tên Workspace');
+            return;
+        }
+
         setLoading(true);
         try {
-            // 1. Create Company
-            const newCompany = await createCompany({
+            // 1. Create Company/Workspace
+            const response = await apiClient.post(ENDPOINTS.COMPANIES.CREATE, {
                 name: formData.name,
-                // Add other fields if backend supports them, otherwise just name/required ones
             });
 
-            if (newCompany) {
-                // 2. Auto select and go to dashboard
-                await selectCompany(newCompany.companyId);
+            if (response.data) {
+                toast.success('Tạo Workspace thành công!');
+                // 2. Refresh workspaces and select the new one
+                await fetchWorkspaces();
+                selectWorkspace(response.data);
                 navigate('/app', { replace: true });
             }
         } catch (error) {
             console.error('Setup failed:', error);
+            toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
         } finally {
             setLoading(false);
         }

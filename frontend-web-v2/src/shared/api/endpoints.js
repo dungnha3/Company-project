@@ -34,11 +34,19 @@ export const ENDPOINTS = {
         CREATE: '/api/companies',
         UPDATE: (id) => `/api/companies/${id}`,
         DELETE: (id) => `/api/companies/${id}`,
+        SETTINGS: (id) => `/api/companies/${id}/settings`,
+    },
+
+    // Workspaces (NEW - Dual Workspace Model)
+    WORKSPACES: {
+        LIST: '/api/workspaces',
+        PERSONAL: '/api/workspaces/personal',
+        ENSURE_PERSONAL: '/api/workspaces/personal/ensure',
     },
 
     // Invites
     INVITES: {
-        SEND: '/api/invites',
+        SEND: '/api/company/invite',  // POST - invites user to company
         PENDING: '/api/invites/pending',
         ACCEPT: '/api/invites/accept',
         CANCEL: (id) => `/api/invites/${id}`,

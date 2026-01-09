@@ -9,6 +9,8 @@ import AuthLayout from '@layouts/AuthLayout';
 import { AuthGuard } from './guards/AuthGuard';
 import { CompanyGuard } from './guards/CompanyGuard';
 import { RoleGuard } from './guards/RoleGuard';
+import SystemAdminGuard from './guards/SystemAdminGuard';
+import FeatureGuard from './guards/FeatureGuard';
 
 // Auth pages (not lazy - critical path)
 import LoginPage from '@pages/auth/LoginPage';
@@ -76,9 +78,11 @@ const router = createBrowserRouter([
         path: '/admin',
         element: (
             <AuthGuard>
-                <Suspense fallback={<PageLoader />}>
-                    <SystemAdminLayout />
-                </Suspense>
+                <SystemAdminGuard>
+                    <Suspense fallback={<PageLoader />}>
+                        <SystemAdminLayout />
+                    </Suspense>
+                </SystemAdminGuard>
             </AuthGuard>
         ),
         children: [
@@ -219,37 +223,45 @@ const router = createBrowserRouter([
             {
                 path: 'attendance',
                 element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AttendancePage />
-                    </Suspense>
+                    <FeatureGuard feature="attendance">
+                        <Suspense fallback={<PageLoader />}>
+                            <AttendancePage />
+                        </Suspense>
+                    </FeatureGuard>
                 ),
             },
             {
                 path: 'leave-requests',
                 element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <LeaveRequestsPage />
-                    </Suspense>
+                    <FeatureGuard feature="leave">
+                        <Suspense fallback={<PageLoader />}>
+                            <LeaveRequestsPage />
+                        </Suspense>
+                    </FeatureGuard>
                 ),
             },
             {
                 path: 'salaries',
                 element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <SalariesPage />
-                        </Suspense>
-                    </RoleGuard>
+                    <FeatureGuard feature="salary">
+                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING']}>
+                            <Suspense fallback={<PageLoader />}>
+                                <SalariesPage />
+                            </Suspense>
+                        </RoleGuard>
+                    </FeatureGuard>
                 ),
             },
             {
                 path: 'contracts',
                 element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <ContractsPage />
-                        </Suspense>
-                    </RoleGuard>
+                    <FeatureGuard feature="contract">
+                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                            <Suspense fallback={<PageLoader />}>
+                                <ContractsPage />
+                            </Suspense>
+                        </RoleGuard>
+                    </FeatureGuard>
                 ),
             },
 
@@ -315,10 +327,10 @@ const router = createBrowserRouter([
         ],
     },
 
-    // Catch all - redirect to home
+    // Catch all - redirect to landing page
     {
         path: '*',
-        element: <LoginPage />,
+        element: <Navigate to="/" replace />,
     },
 ]);
 

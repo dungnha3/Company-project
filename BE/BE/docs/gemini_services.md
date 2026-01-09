@@ -136,14 +136,33 @@ All endpoints marked with **(Paginated)** return this structure.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/` | List user's companies | Required |
+| GET | `/my` | List user's companies | Required |
 | GET | `/{companyId}` | Get company details | Required |
 | POST | `/` | Create new company | Required |
 | PUT | `/{companyId}` | Update company | OWNER |
-| DELETE | `/{companyId}` | Delete company | SYSTEM_ADMIN |
-| GET | `/admin/all` | List all companies | SYSTEM_ADMIN |
+| GET | `/{companyId}/limits` | Get plan limits | Required |
+| GET | `/{companyId}/settings` | Get company settings | Required |
+| PUT | `/{companyId}/settings` | Update company settings | OWNER, ADMIN |
 
-### InviteController (`/api/invites`)
+### System Admin APIs (`/api/companies/admin`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/all` | List all companies | SYSTEM_ADMIN |
+| PUT | `/{companyId}` | Update company | SYSTEM_ADMIN |
+| PUT | `/{companyId}/plan` | Change plan | SYSTEM_ADMIN |
+| PUT | `/{companyId}/status` | Toggle active status | SYSTEM_ADMIN |
+| DELETE | `/{companyId}` | Delete company | SYSTEM_ADMIN |
+
+### WorkspaceController (`/api/workspaces`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/` | List all workspaces (personal + companies) | Required |
+| GET | `/personal` | Get personal workspace | Required |
+| POST | `/personal/ensure` | Ensure personal workspace exists | Required |
+
+### InviteController (`/api/company/invite`)
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
@@ -465,7 +484,24 @@ All endpoints marked with **(Paginated)** return this structure.
 ## Security Headers
 
 All requests require:
-- `X-Company-Id`: Company context header (for multi-tenant APIs)
+- `Authorization`: `Bearer <token>` - JWT access token
+- `X-Workspace-Type`: `PERSONAL` or `COMPANY` - Context type
+- `X-Company-Id`: Company ID (only when `X-Workspace-Type=COMPANY`)
+
+## Feature Gating
+
+The backend uses `FeatureFlagService` to check if features are enabled:
+
+| Method | Description |
+|--------|-------------|
+| `requireHRModule()` | Throws 403 if HR module disabled |
+| `requireAttendanceFeature()` | Throws 403 if Attendance disabled |
+| `requireLeaveFeature()` | Throws 403 if Leave disabled |
+| `requireSalaryFeature()` | Throws 403 if Salary disabled |
+| `requireContractFeature()` | Throws 403 if Contract disabled |
+| `requireProjectModule()` | Throws 403 if Project module disabled |
+| `requireChatModule()` | Throws 403 if Chat module disabled |
+| `requireStorageModule()` | Throws 403 if Storage module disabled |
 
 Rate Limiting:
 - 50 requests per minute per IP

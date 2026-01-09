@@ -1,8 +1,9 @@
 package DoAn.BE.company.controller;
 
 import DoAn.BE.company.dto.CompanyDto;
+import DoAn.BE.company.dto.PlanLimitDto;
 import DoAn.BE.company.service.CompanyService;
-import DoAn.BE.company.service.CompanyMemberService; // Fixed import
+import DoAn.BE.company.service.CompanyMemberService;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ import java.util.Map;
 public class CompanyController {
 
     private final CompanyService companyService;
-    private final CompanyMemberService memberService; // Injected
+    private final CompanyMemberService memberService;
 
     // Lấy danh sách công ty của tôi
     @GetMapping("/my")
@@ -55,6 +56,12 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.getCompanyById(companyId, user));
     }
 
+    // [PLAN LIMITS] Lấy thông tin giới hạn plan
+    @GetMapping("/{companyId}/limits")
+    public ResponseEntity<PlanLimitDto> getPlanLimits(@PathVariable Long companyId) {
+        return ResponseEntity.ok(companyService.getPlanLimits(companyId));
+    }
+
     // Rời công ty
     @PostMapping("/{companyId}/leave")
     public ResponseEntity<?> leaveCompany(@PathVariable Long companyId, Authentication authentication) {
@@ -69,6 +76,12 @@ public class CompanyController {
             @RequestBody CompanyDto.CompanyUpdateRequest request) {
         companyService.updateCompany(companyId, request);
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật thông tin công ty thành công"));
+    }
+
+    // Lấy cài đặt module công ty (GET)
+    @GetMapping("/{companyId}/settings")
+    public ResponseEntity<?> getSettings(@PathVariable Long companyId) {
+        return ResponseEntity.ok(companyService.getSettingsCached(companyId));
     }
 
     // Cập nhật cài đặt module

@@ -5,13 +5,13 @@ import { useDebounce } from '@uidotdev/usehooks';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
 import EmployeeFormModal from './components/EmployeeFormModal';
 
 export default function EmployeesPage() {
     const navigate = useNavigate();
-    const { hasRole } = useCompanyStore();
+    const { hasRole } = useWorkspaceStore();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
 

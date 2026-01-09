@@ -58,7 +58,13 @@ public class SubscriptionService {
     public void checkStorageLimit(Long companyId, long newFileSizeInBytes) {
         Company company = getCompany(companyId);
         Plan plan = company.getPlan();
-        long maxBytes = plan.getMaxStorageGB() * 1024L * 1024L * 1024L;
+
+        // Handle unlimited storage
+        if (plan.isUnlimitedStorage()) {
+            return; // No limit
+        }
+
+        long maxBytes = plan.getMaxStorageBytes();
 
         // Calculate current usage from DB
         Long currentUsageBytes = fileRepository.sumFileSizeByCompany(companyId);
@@ -69,9 +75,9 @@ public class SubscriptionService {
         if (currentUsageBytes + newFileSizeInBytes > maxBytes) {
             throw new BadRequestException(
                     String.format(
-                            "[LIMIT_REACHED] Dung lượng hiện tại: %s. Bạn không thể upload thêm %s. Gói %s giới hạn %d GB.",
+                            "[LIMIT_REACHED] Dung lượng hiện tại: %s. Bạn không thể upload thêm %s. Gói %s giới hạn %s.",
                             formatSize(currentUsageBytes), formatSize(newFileSizeInBytes), plan.name(),
-                            plan.getMaxStorageGB()));
+                            plan.getMaxStorageDisplay()));
         }
     }
 

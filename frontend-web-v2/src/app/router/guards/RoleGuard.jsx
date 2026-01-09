@@ -1,8 +1,11 @@
 import { Navigate } from 'react-router-dom';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export function RoleGuard({ roles, children }) {
-    const { currentRole } = useCompanyStore();
+    const { currentWorkspace } = useWorkspaceStore();
+
+    // Get role from current workspace context
+    const currentRole = currentWorkspace?.role || 'MEMBER';
 
     // Check if user has required role
     if (!roles.includes(currentRole)) {

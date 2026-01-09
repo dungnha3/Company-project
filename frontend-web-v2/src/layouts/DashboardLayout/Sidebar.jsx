@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useUIStore } from '@shared/stores/uiStore';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useAuthStore } from '@shared/stores/authStore';
 import CompanySwitcher from './CompanySwitcher';
 
@@ -11,7 +11,7 @@ const NAV_CONFIG = [
         roles: ['*'],
         items: [
             { path: '/app', icon: 'fa-house', label: 'Dashboard', exact: true },
-            { path: '/app/settings/company', icon: 'fa-sliders', label: 'Cấu hình công ty', roles: ['OWNER', 'ADMIN'] },
+            { path: '/app/settings/workspace', icon: 'fa-sliders', label: 'Cài đặt Workspace', roles: ['OWNER', 'ADMIN'] },
         ],
     },
     {
@@ -19,7 +19,7 @@ const NAV_CONFIG = [
         title: 'Nhân sự',
         roles: ['OWNER', 'ADMIN', 'MANAGER_HR'],
         items: [
-            { path: '/app/employees', icon: 'fa-users', label: 'Nhân viên' },
+            { path: '/app/employees', icon: 'fa-users', label: 'Thành viên' },
             { path: '/app/departments', icon: 'fa-building', label: 'Phòng ban' },
             { path: '/app/positions', icon: 'fa-briefcase', label: 'Chức vụ' },
             { path: '/app/contracts', icon: 'fa-file-contract', label: 'Hợp đồng' },
@@ -63,16 +63,38 @@ const NAV_CONFIG = [
     },
 ];
 
+import { isSectionEnabled, isMenuItemEnabled } from '@shared/utils/featureHelper';
+
 export default function Sidebar() {
     const { sidebarCollapsed, toggleSidebar } = useUIStore();
-    const { currentRole } = useCompanyStore();
+    const { currentWorkspace } = useWorkspaceStore();
     const { logout } = useAuthStore();
     const location = useLocation();
 
-    // Filter nav items by role
-    const visibleSections = NAV_CONFIG.filter(section =>
-        section.roles.includes('*') || section.roles.includes(currentRole)
-    );
+    // Get current role, plan, and settings from workspace context
+    const currentRole = currentWorkspace?.role || 'OWNER';
+    const currentPlan = currentWorkspace?.plan || 'FREE';
+    const settings = currentWorkspace?.settings || null;
+
+    // Filter nav items by role, plan, AND company settings
+    const visibleSections = NAV_CONFIG.filter(section => {
+        // Role check
+        const hasRole = section.roles.includes('*') || section.roles.includes(currentRole);
+        if (!hasRole) return false;
+
+        // Plan + Settings check via featureHelper
+        if (!isSectionEnabled(section.key, currentPlan, settings)) {
+            return false;
+        }
+
+        return true;
+    }).map(section => ({
+        ...section,
+        // Filter individual items within section
+        items: section.items.filter(item =>
+            isMenuItemEnabled(item.path, currentPlan, settings)
+        )
+    })).filter(section => section.items.length > 0); // Remove empty sections
 
     return (
         <aside className={`sidebar fixed top-0 left-0 h-screen z-40 ${sidebarCollapsed ? 'collapsed' : ''}`}>

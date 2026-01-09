@@ -7,6 +7,7 @@ import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.company.dto.CompanyDto;
+import DoAn.BE.company.dto.PlanLimitDto;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
@@ -35,6 +36,7 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySettingsRepository companySettingsRepository;
+    private final DoAn.BE.project.repository.ProjectRepository projectRepository;
 
     // [Lấy danh sách công ty của user hiện tại] (Role: Authenticated User)
     @Transactional(readOnly = true)
@@ -271,6 +273,38 @@ public class CompanyService {
         resp.setOwner(member.getRole() == CompanyRole.OWNER);
         resp.setIsActive(company.getIsActive());
         return resp;
+    }
+
+    // [PLAN LIMITS] Lấy thông tin giới hạn plan của company
+    @Transactional(readOnly = true)
+    public PlanLimitDto getPlanLimits(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
+
+        Plan plan = company.getPlan();
+        long currentMembers = companyMemberRepository.countByCompany_CompanyIdAndIsActiveTrue(companyId);
+        long currentProjects = projectRepository.countByCompany_CompanyId(companyId);
+
+        int remainingUsers = plan.isUnlimitedUsers() ? -1 : Math.max(0, plan.getMaxUsers() - (int) currentMembers);
+        int remainingProjects = plan.isUnlimitedProjects() ? -1
+                : Math.max(0, plan.getMaxProjects() - (int) currentProjects);
+
+        return PlanLimitDto.builder()
+                .currentPlan(plan)
+                .planName(plan.name())
+                .maxUsers(plan.getMaxUsers())
+                .currentUsers(currentMembers)
+                .remainingUsers(remainingUsers)
+                .maxProjects(plan.getMaxProjects())
+                .currentProjects(currentProjects)
+                .remainingProjects(remainingProjects)
+                .maxStorageBytes(plan.getMaxStorageBytes())
+                .maxStorageDisplay(plan.getMaxStorageDisplay())
+                .hrEnabled(plan.isHrModuleEnabled())
+                .apiEnabled(plan.isApiAccessEnabled())
+                .canAddMember(remainingUsers != 0)
+                .canCreateProject(remainingProjects != 0)
+                .build();
     }
 
     // ==================== SYSTEM ADMIN METHODS ====================

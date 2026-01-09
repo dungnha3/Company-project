@@ -1,40 +1,51 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { getRoleLabel } from '@shared/utils/roleHelper';
+import { getPlanConfig } from '@shared/utils/planHelper';
 import PortalLayout from '@layouts/PortalLayout';
 
 export default function PortalPage() {
     const { user } = useAuthStore();
-    const { companies, fetchCompanies, setCurrentCompany } = useCompanyStore();
+    const {
+        workspaces,
+        personalWorkspace,
+        fetchWorkspaces,
+        selectWorkspace,
+        switchToPersonal
+    } = useWorkspaceStore();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const load = async () => {
-            if (companies.length === 0) {
-                await fetchCompanies();
-            }
+            await fetchWorkspaces();
             setLoading(false);
         };
         load();
-    }, [fetchCompanies, companies.length]);
+    }, [fetchWorkspaces]);
 
-    const handleEnterWorkspace = (company) => {
-        setCurrentCompany(company);
+    const handleEnterWorkspace = (workspace) => {
+        selectWorkspace(workspace);
+        navigate('/app');
+    };
+
+    const handleEnterPersonal = () => {
+        switchToPersonal();
         navigate('/app');
     };
 
     const handleAppClick = (path) => {
-        if (companies.length === 0) {
-            if (window.confirm("Bạn cần có Workspace để sử dụng tính năng này. Tạo mới ngay?")) {
-                navigate('/onboarding');
-            }
-        } else if (companies.length === 1) {
-            setCurrentCompany(companies[0]);
+        // If has personal workspace or company workspaces, enter first one
+        if (personalWorkspace) {
+            switchToPersonal();
+            navigate(`/app/${path}`);
+        } else if (workspaces.length > 0) {
+            selectWorkspace(workspaces[0]);
             navigate(`/app/${path}`);
         } else {
-            document.getElementById('workspaces-section')?.scrollIntoView({ behavior: 'smooth' });
+            navigate('/onboarding');
         }
     };
 
@@ -128,50 +139,83 @@ export default function PortalPage() {
                             Workspaces
                         </h2>
                         <span className="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600 font-medium">
-                            {companies.length} Active
+                            {workspaces.length + (personalWorkspace ? 1 : 0)} Active
                         </span>
                     </div>
 
-                    {companies.length === 0 ? (
-                        <div className="text-center py-12 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
-                            <p className="text-gray-500 mb-4 text-lg">Bạn chưa có không gian làm việc nào.</p>
-                            <button onClick={() => navigate('/onboarding')} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg">
-                                <i className="fa-solid fa-rocket mr-2" /> Khởi tạo ngay
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {companies.map(company => (
-                                <div
-                                    key={company.companyId}
-                                    onClick={() => handleEnterWorkspace(company)}
-                                    className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-200 hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
-                                >
-                                    <div className="relative z-10 flex items-start justify-between mb-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-110 transition-transform">
-                                            {company.name[0]}
-                                        </div>
-                                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border ${company.plan === 'PRO'
-                                                ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
-                                                : 'bg-gray-100 text-gray-500 border-gray-200'
-                                            }`}>
-                                            {company.plan}
-                                        </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Personal Workspace Card */}
+                        {personalWorkspace && (
+                            <div
+                                onClick={handleEnterPersonal}
+                                className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 shadow-sm hover:shadow-lg hover:border-indigo-400 hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+                            >
+                                <div className="relative z-10 flex items-start justify-between mb-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform">
+                                        <i className="fa-solid fa-user text-xl" />
                                     </div>
-                                    <h4 className="relative z-10 font-bold text-gray-800 text-lg truncate mb-1 group-hover:text-indigo-600 transition-colors">{company.name}</h4>
-                                    <p className="relative z-10 text-xs text-gray-500 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                        {company.role === 'OWNER' ? 'Owner' : 'Member'}
-                                    </p>
-
-                                    <div className="relative z-10 mt-5 pt-4 border-t border-gray-50 flex justify-between items-center">
-                                        <span className="text-xs text-gray-400">ID: #{company.companyId}</span>
-                                        <i className="fa-solid fa-arrow-right text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-                                    </div>
+                                    <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border bg-indigo-100 text-indigo-600 border-indigo-200">
+                                        Personal
+                                    </span>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <h4 className="relative z-10 font-bold text-gray-800 text-lg truncate mb-1 group-hover:text-indigo-600 transition-colors">
+                                    {personalWorkspace.name || 'Personal Workspace'}
+                                </h4>
+                                <p className="relative z-10 text-xs text-gray-500 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                    Owner
+                                </p>
+                                <div className="relative z-10 mt-5 pt-4 border-t border-indigo-100 flex justify-between items-center">
+                                    <span className="text-xs text-gray-400">Không gian cá nhân</span>
+                                    <i className="fa-solid fa-arrow-right text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Company Workspaces */}
+                        {workspaces.map(workspace => (
+                            <div
+                                key={workspace.id || workspace.companyId}
+                                onClick={() => handleEnterWorkspace(workspace)}
+                                className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-200 hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+                            >
+                                <div className="relative z-10 flex items-start justify-between mb-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-110 transition-transform">
+                                        {workspace.name?.[0] || 'W'}
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border ${['PROFESSIONAL', 'ENTERPRISE'].includes(workspace.plan)
+                                            ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
+                                            : workspace.plan === 'STARTER'
+                                                ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                                : 'bg-gray-100 text-gray-500 border-gray-200'
+                                        }`}>
+                                        {workspace.plan || 'FREE'}
+                                    </span>
+                                </div>
+                                <h4 className="relative z-10 font-bold text-gray-800 text-lg truncate mb-1 group-hover:text-indigo-600 transition-colors">
+                                    {workspace.name}
+                                </h4>
+                                <p className="relative z-10 text-xs text-gray-500 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                    {getRoleLabel(workspace.role)}
+                                </p>
+                                <div className="relative z-10 mt-5 pt-4 border-t border-gray-50 flex justify-between items-center">
+                                    <span className="text-xs text-gray-400">Team Workspace</span>
+                                    <i className="fa-solid fa-arrow-right text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Empty state - only if no workspaces at all */}
+                        {!personalWorkspace && workspaces.length === 0 && (
+                            <div className="col-span-full text-center py-12 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
+                                <p className="text-gray-500 mb-4 text-lg">Bạn chưa có không gian làm việc nào.</p>
+                                <button onClick={() => navigate('/onboarding')} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg">
+                                    <i className="fa-solid fa-rocket mr-2" /> Khởi tạo ngay
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* 5. Quick Apps (1x2) - Vertical */}

@@ -22,6 +22,15 @@
 | `isOnline` | `is_online` | Boolean | Online presence |
 | `lastSeen` | `last_seen` | LocalDateTime | Last activity |
 | `presenceStatus` | `presence_status` | Enum | ONLINE, BUSY, OFFLINE |
+| `personalPlan` | `personal_plan` | Enum | FREE, STARTER, PROFESSIONAL, ENTERPRISE |
+
+### Table: `personal_workspaces`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `workspaceId` | `workspace_id` | Long | Primary key |
+| `user` | `user_id` | FK→User (UNIQUE) | Owner user |
+| `name` | `name` | String | Workspace name |
+| `createdAt` | `created_at` | LocalDateTime | Creation time |
 
 ---
 
@@ -34,8 +43,26 @@
 | `name` | `name` | String | Company name |
 | `description` | `description` | String | Description |
 | `logoUrl` | `logo_url` | String | Logo URL |
-| `plan` | `plan` | Enum | FREE, BASIC, PRO |
+| `plan` | `plan` | Enum | FREE, STARTER, PROFESSIONAL, ENTERPRISE |
 | `isActive` | `is_active` | Boolean | Active status |
+
+### Table: `company_settings`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `companyId` | `company_id` | Long | Primary key (FK→Company) |
+| `hrModuleEnabled` | `hr_module_enabled` | Boolean | HR module toggle |
+| `projectModuleEnabled` | `project_module_enabled` | Boolean | Project module toggle |
+| `chatModuleEnabled` | `chat_module_enabled` | Boolean | Chat module toggle |
+| `storageModuleEnabled` | `storage_module_enabled` | Boolean | Storage module toggle |
+| `aiModuleEnabled` | `ai_module_enabled` | Boolean | AI module toggle |
+| `attendanceEnabled` | `attendance_enabled` | Boolean | Attendance sub-feature |
+| `leaveEnabled` | `leave_enabled` | Boolean | Leave sub-feature |
+| `salaryEnabled` | `salary_enabled` | Boolean | Salary sub-feature |
+| `contractEnabled` | `contract_enabled` | Boolean | Contract sub-feature |
+| `reviewEnabled` | `review_enabled` | Boolean | Review sub-feature |
+| `maxEmployees` | `max_employees` | Integer | Limit override |
+| `maxProjects` | `max_projects` | Integer | Limit override |
+| `maxStorageGB` | `max_storage_gb` | Integer | Storage limit |
 
 ### Table: `company_members`
 | Field | DB Column | Type | Description |

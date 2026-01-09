@@ -4,10 +4,10 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
-import { useCompanyStore } from '@shared/stores/companyStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function LeaveRequestsPage() {
-    const { hasRole } = useCompanyStore();
+    const { hasRole } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('my-requests');
     const [showCreateModal, setShowCreateModal] = useState(false);
 

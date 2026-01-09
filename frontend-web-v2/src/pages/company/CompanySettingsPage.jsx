@@ -1,29 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useCompanyStore } from '@shared/stores/companyStore';
-import { useAuthStore } from '@shared/stores/authStore';
-import ContentLayout from '@layouts/ContentLayout'; // We might need to create this reusable layout wrapper
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import InviteMemberModal from '@features/company/components/InviteMemberModal';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function CompanySettingsPage() {
-    const { currentCompany, members, fetchMembers, loading } = useCompanyStore();
-    const { user } = useAuthStore();
+    const { currentWorkspace } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('general');
 
-    useEffect(() => {
-        fetchMembers();
-    }, [fetchMembers]);
+    if (!currentWorkspace) return null;
 
-    if (!currentCompany) return null;
+    const isPersonal = currentWorkspace.type === 'PERSONAL';
 
     return (
         <div className="space-y-6">
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Cài đặt công ty</h1>
-                    <p className="text-gray-500">Quản lý thông tin và thành viên</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Cài đặt Workspace</h1>
+                    <p className="text-gray-500">Quản lý thông tin và cài đặt cho {currentWorkspace.name}</p>
                 </div>
             </div>
 
@@ -37,28 +34,32 @@ export default function CompanySettingsPage() {
                     >
                         Thông tin chung
                     </TabButton>
-                    <TabButton
-                        active={activeTab === 'members'}
-                        onClick={() => setActiveTab('members')}
-                        icon="fa-users"
-                    >
-                        Thành viên ({members.length})
-                    </TabButton>
-                    <TabButton
-                        active={activeTab === 'roles'}
-                        onClick={() => setActiveTab('roles')}
-                        icon="fa-shield-halved"
-                    >
-                        Phân quyền
-                    </TabButton>
+                    {!isPersonal && (
+                        <>
+                            <TabButton
+                                active={activeTab === 'members'}
+                                onClick={() => setActiveTab('members')}
+                                icon="fa-users"
+                            >
+                                Thành viên
+                            </TabButton>
+                            <TabButton
+                                active={activeTab === 'modules'}
+                                onClick={() => setActiveTab('modules')}
+                                icon="fa-puzzle-piece"
+                            >
+                                Modules
+                            </TabButton>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Tab Content */}
             <div className="py-4">
-                {activeTab === 'general' && <GeneralSettings company={currentCompany} />}
-                {activeTab === 'members' && <MembersSettings members={members} loading={loading} />}
-                {activeTab === 'roles' && <RolesSettings />}
+                {activeTab === 'general' && <GeneralSettings workspace={currentWorkspace} />}
+                {activeTab === 'members' && !isPersonal && <MembersSettings />}
+                {activeTab === 'modules' && !isPersonal && <ModulesSettings workspace={currentWorkspace} />}
             </div>
         </div>
     );
@@ -81,15 +82,9 @@ function TabButton({ children, active, onClick, icon }) {
     );
 }
 
-/* Sub-components will be ideally extracted to separate files */
-
-function GeneralSettings({ company }) {
+function GeneralSettings({ workspace }) {
     const [formData, setFormData] = useState({
-        name: company.companyName || '',
-        email: '', // Need specific endpoint to get details
-        phone: '',
-        address: '',
-        website: '',
+        name: workspace.name || '',
     });
     const toast = useToast();
     const [loading, setLoading] = useState(false);
@@ -98,45 +93,52 @@ function GeneralSettings({ company }) {
         e.preventDefault();
         setLoading(true);
         try {
-            // await apiClient.put(ENDPOINTS.COMPANIES.UPDATE(company.companyId), formData);
+            await apiClient.put(ENDPOINTS.COMPANIES.UPDATE(workspace.id), formData);
             toast.success('Cập nhật thông tin thành công');
         } catch (error) {
-            // toast.error...
+            toast.error('Lỗi: ' + (error.response?.data?.message || error.message));
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="card max-w-2xl">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Logo Upload Placeholder */}
+                {/* Logo */}
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-20 h-20 rounded-2xl bg-primary-100 flex items-center justify-center text-primary text-2xl font-bold">
-                        {company.companyName?.charAt(0)}
+                    <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl font-bold">
+                        {workspace.name?.charAt(0)}
                     </div>
                     <div>
-                        <button type="button" className="btn-secondary text-sm">Thay đổi logo</button>
-                        <p className="text-xs text-gray-500 mt-1">Hỗ trợ JPG, PNG tối đa 2MB</p>
+                        <button type="button" className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                            Thay đổi logo
+                        </button>
+                        <p className="text-xs text-gray-500 mt-1">JPG, PNG tối đa 2MB</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="label">Tên công ty</label>
-                        <input type="text" className="input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                    </div>
-                    <div>
-                        <label className="label">Mã số thuế</label>
-                        <input type="text" className="input bg-gray-50" disabled value="Wait for API" />
-                    </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tên Workspace</label>
+                    <input
+                        type="text"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    />
                 </div>
 
-                {/* More fields... */}
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                    <i className="fa-solid fa-crown text-amber-500" />
+                    <div>
+                        <p className="text-sm font-medium text-gray-900">Plan: {workspace.plan || 'FREE'}</p>
+                        <p className="text-xs text-gray-500">Liên hệ System Admin để nâng cấp plan</p>
+                    </div>
+                </div>
 
                 <div className="pt-4 flex justify-end">
-                    <button type="submit" className="btn-primary" disabled={loading}>
-                        Lưu thay đổi
+                    <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700" disabled={loading}>
+                        {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
                     </button>
                 </div>
             </form>
@@ -144,20 +146,18 @@ function GeneralSettings({ company }) {
     );
 }
 
-function MembersSettings({ members, loading }) {
-    const { inviteMember, removeMember } = useCompanyStore();
+function MembersSettings() {
+    const { currentWorkspace } = useWorkspaceStore();
     const [showInviteModal, setShowInviteModal] = useState(false);
     const toast = useToast();
 
-    const handleRemove = async (userId) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi công ty?')) return;
+    // TODO: Fetch members from API when endpoint is ready
+    const members = [];
+    const loading = false;
 
-        const success = await removeMember(userId);
-        if (success) {
-            toast.success('Đã xóa thành viên thành công');
-        } else {
-            toast.error('Không thể xóa thành viên');
-        }
+    const handleRemove = async (userId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa thành viên này?')) return;
+        toast.info('Chức năng đang phát triển');
     };
 
     return (
@@ -165,83 +165,196 @@ function MembersSettings({ members, loading }) {
             <div className="flex justify-between items-center">
                 <div className="w-full max-w-sm relative">
                     <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type="text" placeholder="Tìm kiếm thành viên..." className="input pl-10 py-2" />
+                    <input type="text" placeholder="Tìm kiếm thành viên..." className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl" />
                 </div>
-                <button onClick={() => setShowInviteModal(true)} className="btn-primary">
+                <button onClick={() => setShowInviteModal(true)} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2">
                     <i className="fa-solid fa-user-plus" />
                     Mời thành viên
                 </button>
             </div>
 
-            <div className="card p-0 overflow-hidden">
-                <div className="table-container border-0 rounded-none">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Thành viên</th>
-                                <th>Email</th>
-                                <th>Vai trò</th>
-                                <th>Trạng thái</th>
-                                <th className="w-10"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan="5" className="p-8 text-center text-gray-500">Đang tải...</td></tr>
-                            ) : members.length === 0 ? (
-                                <tr><td colSpan="5" className="p-8 text-center text-gray-500">Chưa có thành viên nào</td></tr>
-                            ) : (
-                                members.map(member => (
-                                    <tr key={member.id}>
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
-                                                    {member.username?.charAt(0)}
-                                                </div>
-                                                <span className="font-medium">{member.username}</span>
-                                            </div>
-                                        </td>
-                                        <td>{member.email}</td>
-                                        <td>
-                                            <span className={`badge ${member.role === 'OWNER' ? 'badge-danger' : 'badge-info'}`}>
-                                                {member.role}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className="badge badge-success">Active</span>
-                                        </td>
-                                        <td>
-                                            {member.role !== 'OWNER' && (
-                                                <button
-                                                    onClick={() => handleRemove(member.id)}
-                                                    className="w-8 h-8 rounded hover:bg-red-50 hover:text-red-500 flex items-center justify-center text-gray-500 transition-colors"
-                                                    title="Xóa thành viên"
-                                                >
-                                                    <i className="fa-solid fa-trash-can" />
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Thành viên</th>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Vai trò</th>
+                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {loading ? (
+                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Đang tải...</td></tr>
+                        ) : members.length === 0 ? (
+                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Chưa có thành viên nào. Hãy mời thêm!</td></tr>
+                        ) : null}
+                    </tbody>
+                </table>
             </div>
 
-            {/* Invite Modal Placeholder */}
-            {/* {showInviteModal && <InviteMemberModal ... />} */}
+            <InviteMemberModal
+                isOpen={showInviteModal}
+                onClose={() => setShowInviteModal(false)}
+                onSuccess={() => { }}
+            />
         </div>
     );
 }
 
-function RolesSettings() {
+function ModulesSettings({ workspace }) {
+    const toast = useToast();
+    const queryClient = useQueryClient();
+    const [settings, setSettings] = useState(workspace.settings || {});
+
+    // Update settings mutation
+    const updateMutation = useMutation({
+        mutationFn: async (newSettings) => {
+            return apiClient.put(ENDPOINTS.COMPANIES.SETTINGS(workspace.id), newSettings);
+        },
+        onSuccess: () => {
+            toast.success('Cập nhật cài đặt thành công');
+            queryClient.invalidateQueries(['workspace']);
+        },
+        onError: (err) => {
+            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
+        },
+    });
+
+    const handleToggle = (key) => {
+        const newSettings = { ...settings, [key]: !settings[key] };
+        setSettings(newSettings);
+        updateMutation.mutate(newSettings);
+    };
+
     return (
-        <div className="card">
-            <div className="empty-state">
-                <i className="fa-solid fa-shield-halved" />
-                <div>Tính năng quản lý Role & Permission đang được phát triển</div>
+        <div className="space-y-6 max-w-2xl">
+            {/* Info banner */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                <i className="fa-solid fa-info-circle text-blue-500 mt-0.5" />
+                <div>
+                    <p className="text-sm font-medium text-blue-800">Cài đặt Module</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                        Bật/tắt các tính năng cho workspace của bạn. Tính năng bị tắt sẽ ẩn khỏi menu và không thể truy cập.
+                    </p>
+                </div>
             </div>
+
+            {/* Module Toggles */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 border-b border-gray-100">
+                    <h3 className="font-semibold text-gray-900">Modules chính</h3>
+                </div>
+                <div className="divide-y divide-gray-100">
+                    <ToggleRow
+                        icon="fa-users"
+                        iconColor="text-blue-500"
+                        title="Module Nhân sự (HR)"
+                        description="Quản lý nhân viên, phòng ban, chức vụ"
+                        enabled={settings.hrModuleEnabled !== false}
+                        onToggle={() => handleToggle('hrModuleEnabled')}
+                        disabled={updateMutation.isPending}
+                    />
+                    <ToggleRow
+                        icon="fa-folder-open"
+                        iconColor="text-indigo-500"
+                        title="Module Dự án (Project)"
+                        description="Quản lý dự án, tasks, Kanban board"
+                        enabled={settings.projectModuleEnabled !== false}
+                        onToggle={() => handleToggle('projectModuleEnabled')}
+                        disabled={updateMutation.isPending}
+                    />
+                    <ToggleRow
+                        icon="fa-comments"
+                        iconColor="text-green-500"
+                        title="Module Chat"
+                        description="Trò chuyện nội bộ giữa các thành viên"
+                        enabled={settings.chatModuleEnabled !== false}
+                        onToggle={() => handleToggle('chatModuleEnabled')}
+                        disabled={updateMutation.isPending}
+                    />
+                    <ToggleRow
+                        icon="fa-folder"
+                        iconColor="text-amber-500"
+                        title="Module Lưu trữ (Storage)"
+                        description="Quản lý files và tài liệu"
+                        enabled={settings.storageModuleEnabled !== false}
+                        onToggle={() => handleToggle('storageModuleEnabled')}
+                        disabled={updateMutation.isPending}
+                    />
+                </div>
+            </div>
+
+            {/* HR Sub-features */}
+            {settings.hrModuleEnabled !== false && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100">
+                        <h3 className="font-semibold text-gray-900">Tính năng HR</h3>
+                        <p className="text-xs text-gray-500 mt-1">Bật/tắt các tính năng con trong module Nhân sự</p>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                        <ToggleRow
+                            icon="fa-clock"
+                            iconColor="text-cyan-500"
+                            title="Chấm công"
+                            description="Quản lý giờ làm việc, check-in/out"
+                            enabled={settings.attendanceEnabled !== false}
+                            onToggle={() => handleToggle('attendanceEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-calendar-check"
+                            iconColor="text-teal-500"
+                            title="Nghỉ phép"
+                            description="Quản lý đơn xin nghỉ phép"
+                            enabled={settings.leaveEnabled !== false}
+                            onToggle={() => handleToggle('leaveEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-money-bill-wave"
+                            iconColor="text-emerald-500"
+                            title="Bảng lương"
+                            description="Quản lý lương và thanh toán"
+                            enabled={settings.salaryEnabled !== false}
+                            onToggle={() => handleToggle('salaryEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-file-contract"
+                            iconColor="text-orange-500"
+                            title="Hợp đồng"
+                            description="Quản lý hợp đồng lao động"
+                            enabled={settings.contractEnabled !== false}
+                            onToggle={() => handleToggle('contractEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ToggleRow({ icon, iconColor, title, description, enabled, onToggle, disabled }) {
+    return (
+        <div className="flex items-center justify-between px-4 py-4">
+            <div className="flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center ${iconColor}`}>
+                    <i className={`fa-solid ${icon}`} />
+                </div>
+                <div>
+                    <p className="font-medium text-gray-900">{title}</p>
+                    <p className="text-sm text-gray-500">{description}</p>
+                </div>
+            </div>
+            <button
+                onClick={onToggle}
+                disabled={disabled}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 ${enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
+            >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
         </div>
     );
 }

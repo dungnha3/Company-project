@@ -36,7 +36,7 @@ export default function DashboardPage() {
                 <div className="relative z-10">
                     <h1 className="text-3xl font-bold mb-2">Xin chào, {user?.fullName || 'Admin'}! 👋</h1>
                     <p className="text-blue-100 max-w-2xl">
-                        Chào mừng bạn quay trở lại. Hãy cùng xem qua tình hình hoạt động của công ty hôm nay.
+                        Chào mừng bạn quay trở lại. Hãy cùng xem qua tình hình hoạt động của workspace hôm nay.
                     </p>
                 </div>
                 <div className="absolute right-0 top-0 h-full w-1/3 opacity-10">
@@ -47,7 +47,7 @@ export default function DashboardPage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
-                    title="Nhân viên"
+                    title="Thành viên"
                     value={stats?.totalEmployees || 120}
                     icon="fa-users"
                     color="bg-blue-500"

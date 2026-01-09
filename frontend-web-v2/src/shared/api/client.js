@@ -10,7 +10,7 @@ const apiClient = axios.create({
     },
 });
 
-// Request interceptor - Add auth token and company header
+// Request interceptor - Add auth token and workspace/company headers
 apiClient.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('accessToken');
@@ -18,16 +18,34 @@ apiClient.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Multi-tenant: Add company ID header
-        const companyStorage = localStorage.getItem('company-storage');
-        if (companyStorage) {
+        // NEW: Workspace context headers (Dual Workspace Model)
+        const workspaceStorage = localStorage.getItem('workspace-storage');
+        if (workspaceStorage) {
             try {
-                const { state } = JSON.parse(companyStorage);
-                if (state?.currentCompany?.companyId) {
-                    config.headers['X-Company-Id'] = state.currentCompany.companyId;
+                const { state } = JSON.parse(workspaceStorage);
+                if (state?.workspaceType) {
+                    config.headers['X-Workspace-Type'] = state.workspaceType;
+                }
+                // If in company context, also add company ID
+                if (state?.workspaceType === 'COMPANY' && state?.currentWorkspace?.id) {
+                    config.headers['X-Company-Id'] = state.currentWorkspace.id;
                 }
             } catch (e) {
-                console.warn('Failed to parse company storage', e);
+                console.warn('Failed to parse workspace storage', e);
+            }
+        } else {
+            // Fallback: Legacy company-storage support
+            const companyStorage = localStorage.getItem('company-storage');
+            if (companyStorage) {
+                try {
+                    const { state } = JSON.parse(companyStorage);
+                    if (state?.currentCompany?.companyId) {
+                        config.headers['X-Company-Id'] = state.currentCompany.companyId;
+                        config.headers['X-Workspace-Type'] = 'COMPANY';
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse company storage', e);
+                }
             }
         }
 
