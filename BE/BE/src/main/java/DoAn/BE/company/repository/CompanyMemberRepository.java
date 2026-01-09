@@ -66,4 +66,7 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
 
         // Check by Entity
         boolean existsByUserAndCompany(DoAn.BE.user.entity.User user, DoAn.BE.company.entity.Company company);
+
+        // [SAAS] Đếm tổng số user active trong công ty để check limit gói
+        long countByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 }

@@ -15,6 +15,10 @@ import LoginPage from '@pages/auth/LoginPage';
 import SelectCompanyPage from '@pages/auth/SelectCompanyPage';
 import LandingPage from '@pages/public/LandingPage';
 import OnboardingPage from '@pages/auth/OnboardingPage';
+import RegisterPage from '@pages/auth/RegisterPage';
+
+// Portal (User Hub)
+import PortalPage from '@pages/portal/PortalPage';
 
 // Lazy load feature pages
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
@@ -63,6 +67,7 @@ const router = createBrowserRouter([
         element: <AuthLayout />,
         children: [
             { path: '/login', element: <LoginPage /> },
+            { path: '/register', element: <RegisterPage /> },
         ],
     },
 
@@ -131,6 +136,16 @@ const router = createBrowserRouter([
         element: (
             <AuthGuard>
                 <OnboardingPage />
+            </AuthGuard>
+        ),
+    },
+
+    // User Portal (Hub)
+    {
+        path: '/portal',
+        element: (
+            <AuthGuard>
+                <PortalPage />
             </AuthGuard>
         ),
     },

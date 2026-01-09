@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
+import PricingTable from './components/PricingTable';
 
 export default function LandingPage() {
     const { isAuthenticated } = useAuthStore();
@@ -30,10 +31,10 @@ export default function LandingPage() {
                         <div className="flex items-center gap-4">
                             {isAuthenticated ? (
                                 <Link
-                                    to="/app"
+                                    to="/portal"
                                     className="btn-primary"
                                 >
-                                    Đến Dashboard
+                                    Vào Portal cá nhân
                                     <i className="fa-solid fa-arrow-right ml-2" />
                                 </Link>
                             ) : (
@@ -45,7 +46,7 @@ export default function LandingPage() {
                                         Đăng nhập
                                     </Link>
                                     <Link
-                                        to="/login" // TODO: Add Register page later
+                                        to="/register"
                                         className="btn-primary"
                                     >
                                         Dùng miễn phí
@@ -75,7 +76,7 @@ export default function LandingPage() {
                         Tối ưu hóa quy trình làm việc của bạn ngay hôm nay.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link to="/login" className="btn-primary px-8 py-4 text-lg w-full sm:w-auto">
+                        <Link to="/register" className="btn-primary px-8 py-4 text-lg w-full sm:w-auto">
                             Bắt đầu ngay miễn phí
                         </Link>
                         <button className="px-8 py-4 text-lg font-medium text-gray-600 hover:text-gray-900 w-full sm:w-auto flex items-center justify-center gap-2">
@@ -132,6 +133,9 @@ export default function LandingPage() {
                     </div>
                 </div>
             </section>
+
+            {/* Pricing Section */}
+            <PricingTable />
 
             {/* Footer */}
             <footer className="bg-gray-900 text-white py-12">

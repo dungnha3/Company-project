@@ -45,6 +45,23 @@ public class AuthController {
         }
     }
 
+    // [New] Đăng nhập bằng Google
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> loginWithGoogle(
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        try {
+            String idToken = request.get("token");
+            String ipAddress = getClientIpAddress(httpRequest);
+            String userAgent = httpRequest.getHeader("User-Agent");
+
+            AuthResponse response = authService.loginWithGoogle(idToken, ipAddress, userAgent);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new UnauthorizedException("Google Login thất bại: " + e.getMessage());
+        }
+    }
+
     // Lấy thông tin user hiện tại (cho initAuth FE)
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal User currentUser) {
@@ -142,6 +159,23 @@ public class AuthController {
         } catch (Exception e) {
             throw new BadRequestException("Đăng xuất tất cả thiết bị thất bại: " + e.getMessage());
         }
+    }
+
+    // [System Admin] Đăng nhập dưới danh nghĩa User khác
+    @PostMapping("/impersonate/{userId}")
+    public ResponseEntity<AuthResponse> impersonateUser(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal User currentUser,
+            HttpServletRequest httpRequest) {
+        if (currentUser == null) {
+            throw new UnauthorizedException("Chưa đăng nhập");
+        }
+
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        AuthResponse response = authService.impersonateUser(currentUser.getUserId(), userId, ipAddress, userAgent);
+        return ResponseEntity.ok(response);
     }
 
     // Kiểm tra token có hợp lệ không

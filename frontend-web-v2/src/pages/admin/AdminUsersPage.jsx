@@ -2,34 +2,58 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import useAuthStore from '@shared/stores/authStore';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdminUsersPage() {
-    // Using mock data for now as we haven't confirmed the exact Admin User Management endpoint
-    const { data: users = [], isLoading } = useQuery({
+    const { login } = useAuthStore();
+    const navigate = useNavigate();
+    const [isImpersonating, setIsImpersonating] = useState(false);
+
+    // Fetch real users data
+    const { data: users = [], isLoading, error } = useQuery({
         queryKey: ['admin-users'],
         queryFn: async () => {
-            // return (await apiClient.get(ENDPOINTS.ADMIN.USERS)).data;
-            return [
-                { id: 1, username: 'admin', email: 'admin@example.com', role: 'Owner', company: 'QLNV Demo', status: 'Active', lastLogin: '2024-03-20 10:30' },
-                { id: 2, username: 'hr', email: 'hr@example.com', role: 'HR Manager', company: 'QLNV Demo', status: 'Active', lastLogin: '2024-03-19 15:45' },
-                { id: 3, username: 'sysadmin', email: 'sys@System.com', role: 'System Admin', company: '-', status: 'Active', lastLogin: 'Now' },
-            ];
-        }
+            const res = await apiClient.get('/api/users'); // Use standard users endpoint which supports System Admin
+            return res.data;
+        },
     });
+
+    const handleImpersonate = async (userId, username) => {
+        if (!window.confirm(`Bạn có chắc muốn đăng nhập dưới danh nghĩa user: ${username}?`)) return;
+
+        try {
+            setIsImpersonating(true);
+            const res = await apiClient.post(ENDPOINTS.AUTH.IMPERSONATE(userId));
+            const authData = res.data;
+
+            // Login as the target user
+            login(authData);
+
+            // Force reload to clear all states and redirect to user dashboard
+            window.location.href = '/';
+        } catch (err) {
+            alert('Lỗi: ' + (err.response?.data?.message || err.message));
+            setIsImpersonating(false);
+        }
+    };
+
+    if (isLoading) return <div className="p-8 text-center text-gray-500">Đang tải danh sách user...</div>;
+    if (error) return <div className="p-8 text-center text-red-500">Lỗi: {error.message}</div>;
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Quản lý Người dùng (Global)</h1>
-                    <p className="text-gray-500 mt-1">Danh sách toàn bộ users trong hệ thống SaaS</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Quản lý User Global</h1>
+                    <p className="text-gray-500 mt-1">Danh sách {users.length} users trong hệ thống SaaS</p>
                 </div>
                 <div className="flex gap-2">
                     <button className="btn-secondary">Export CSV</button>
-                    <button className="btn-primary">
+                    {/* <button className="btn-primary">
                         <i className="fa-solid fa-plus mr-2" />
                         Tạo User
-                    </button>
+                    </button> */}
                 </div>
             </div>
 
@@ -41,52 +65,61 @@ export default function AdminUsersPage() {
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Vai trò</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Công ty</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Hành động</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {users.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                                <tr key={user.userId} className="hover:bg-gray-50/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold">
-                                                {user.username.charAt(0).toUpperCase()}
+                                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                                {user.username?.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-semibold text-gray-900">{user.username}</p>
-                                                <p className="text-xs text-gray-500">{user.email}</p>
+                                                <p className="text-xs text-gray-500">ID: {user.userId}</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${user.role === 'System Admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-50 text-blue-700'
-                                            }`}>
-                                            {user.role}
-                                        </span>
+                                        {user.isSystemAdmin ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                                System Admin
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                User
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
-                                        {user.company}
+                                        {user.email}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.status === 'Active'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-gray-100 text-gray-800'
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isActive
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
                                             }`}>
-                                            {user.status}
+                                            {user.isActive ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {user.lastLogin}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="text-gray-400 hover:text-indigo-600 transition-colors mr-3">
+                                    <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                        {!user.isSystemAdmin && (
+                                            <button
+                                                onClick={() => handleImpersonate(user.userId, user.username)}
+                                                disabled={isImpersonating}
+                                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
+                                                title="Đăng nhập dưới danh nghĩa user này"
+                                            >
+                                                <i className="fa-solid fa-user-secret mr-1" />
+                                                Login As
+                                            </button>
+                                        )}
+                                        <button className="text-gray-400 hover:text-indigo-600 transition-colors p-1">
                                             <i className="fa-solid fa-pen" />
-                                        </button>
-                                        <button className="text-gray-400 hover:text-red-600 transition-colors">
-                                            <i className="fa-solid fa-ban" />
                                         </button>
                                     </td>
                                 </tr>

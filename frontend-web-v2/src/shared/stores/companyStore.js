@@ -24,6 +24,33 @@ export const useCompanyStore = create(
                 }
             },
 
+            fetchCompanies: async () => {
+                set({ loading: true, error: null });
+                try {
+                    const response = await apiClient.get(ENDPOINTS.COMPANIES.LIST);
+                    set({ companies: response.data, loading: false });
+                    return response.data;
+                } catch (error) {
+                    console.error('Failed to fetch companies:', error);
+                    set({ loading: false, error: error.message });
+                    return [];
+                }
+            },
+
+            createCompany: async (data) => {
+                set({ loading: true, error: null });
+                try {
+                    const response = await apiClient.post(ENDPOINTS.COMPANIES.CREATE, data);
+                    // Refresh list to include new company
+                    await get().fetchCompanies();
+                    return response.data;
+                } catch (error) {
+                    console.error('Failed to create company:', error);
+                    set({ loading: false, error: error.message });
+                    throw error; // Re-throw so component knows it failed
+                }
+            },
+
             selectCompany: async (companyId) => {
                 const company = get().companies.find(c => c.companyId === companyId);
                 if (!company) return false;

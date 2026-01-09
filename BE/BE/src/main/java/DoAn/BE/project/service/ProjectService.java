@@ -48,11 +48,15 @@ public class ProjectService {
     private final DoAn.BE.notification.service.FCMService fcmService;
     private final DoAn.BE.storage.service.StorageProjectIntegrationService storageProjectIntegrationService;
     private final AccessControlService accessControlService;
+    private final DoAn.BE.company.service.SubscriptionService subscriptionService; // Injected
 
     @Transactional
     public ProjectDTO createProject(CreateProjectRequest request, User currentUser) {
         // [Granular Permission] Kiểm tra quyền tạo dự án
         accessControlService.checkProjectCreatePermission();
+
+        // [SAAS] Kiểm tra giới hạn gói cước
+        subscriptionService.checkProjectLimit(DoAn.BE.common.context.TenantContext.getCompanyId());
 
         log.info("User {} tạo dự án mới: {}", currentUser.getUsername(), request.getName());
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
 import { useCompanyStore } from '@shared/stores/companyStore';
 
@@ -10,7 +10,7 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuthStore();
-    const { setCompanies, companies } = useCompanyStore();
+    const { setCompanies, selectCompany, createCompany } = useCompanyStore(); // Auto-select & Auto-create needed
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -25,18 +25,36 @@ export default function LoginPage() {
                 const memberships = result.user?.companyMemberships || [];
                 setCompanies(memberships);
 
-                // Navigate based on company count
                 if (result.user.isSystemAdmin) {
                     navigate('/admin/companies', { replace: true });
-                } else if (memberships.length === 1) {
-                    // Single company - go directly to dashboard
-                    navigate(location.state?.from?.pathname || '/app', { replace: true });
-                } else if (memberships.length === 0) {
-                    // No companies - go to Onboarding
-                    navigate('/onboarding', { replace: true });
                 } else {
-                    // Multiple companies - go to selection
-                    navigate('/select-company', { replace: true });
+                    // SMART REDIRECT LOGIC + RETROACTIVE ONBOARDING
+                    if (memberships.length === 0) {
+                        // Case: Returning User but NO Workspace -> Auto Create One (Retroactive Fix)
+                        try {
+                            const newCompany = await createCompany({
+                                name: `${result.user.fullName || result.user.username}'s Workspace`,
+                                description: 'Default Workspace (Auto-created)',
+                                logo: ''
+                            });
+                            if (newCompany) {
+                                await selectCompany(newCompany.companyId);
+                                navigate('/app', { replace: true });
+                            } else {
+                                navigate('/portal', { replace: true });
+                            }
+                        } catch (err) {
+                            // If auto-create fails, fallback to portal
+                            navigate('/portal', { replace: true });
+                        }
+                    } else if (memberships.length === 1) {
+                        // Case: Single Workspace -> Direct Access (Zero Friction)
+                        await selectCompany(memberships[0].companyId);
+                        navigate('/app', { replace: true });
+                    } else {
+                        // Case: Multiple Workspaces -> Portal (Selection)
+                        navigate('/portal', { replace: true });
+                    }
                 }
             } else {
                 setError(result.error || 'Đăng nhập thất bại');
@@ -112,10 +130,20 @@ export default function LoginPage() {
             </form>
 
             {/* Footer */}
-            <p className="text-center text-sm text-gray-500 mt-6">
-                Quên mật khẩu?{' '}
-                <a href="#" className="text-primary hover:underline">Đặt lại</a>
-            </p>
+            <div className="mt-6 text-center space-y-2">
+                <p className="text-sm text-gray-500">
+                    Chưa có tài khoản?{' '}
+                    <Link to="/register" className="text-primary hover:underline font-medium">
+                        Đăng ký ngay
+                    </Link>
+                </p>
+                <p className="text-sm text-gray-500">
+                    Quên mật khẩu?{' '}
+                    <Link to="/forgot-password" class="text-primary hover:underline">
+                        Đặt lại
+                    </Link>
+                </p>
+            </div>
         </div>
     );
 }

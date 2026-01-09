@@ -41,6 +41,7 @@ public class UsersController {
     private final DoAn.BE.company.repository.CompanyRepository companyRepository;
     private final DoAn.BE.company.service.RoleTemplateService roleTemplateService;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
+    private final DoAn.BE.company.service.SubscriptionService subscriptionService;
 
     // ==================== CREATE ====================
 
@@ -59,15 +60,24 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
+        // [SAAS] Kiểm tra giới hạn user của gói cước
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            try {
+                subscriptionService.checkUserLimit(companyId);
+            } catch (DoAn.BE.common.exception.BadRequestException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
+            }
+        }
+
         try {
             String ipAddress = httpRequest.getRemoteAddr();
             String userAgent = httpRequest.getHeader("User-Agent");
             DoAn.BE.auth.dto.AuthResponse response = authService.register(request, ipAddress, userAgent);
 
-            // Lấy user mới tạo theo email
-            Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
             User newUser = null;
-            if (companyId != null) {
+            // Next line in file is 'if(companyId!=null)' which matches the structure
+            {
                 newUser = userService.findByEmail(request.getEmail())
                         .orElseThrow(() -> new RuntimeException("User not found after creation"));
                 DoAn.BE.company.entity.Company company = companyRepository.findById(companyId)

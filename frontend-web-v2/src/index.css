@@ -233,10 +233,54 @@
 /* Utilities Layer */
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent;
   }
 
-  .glass-effect {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl;
+  }
+
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:bg-white/90;
+  }
+
+  /* Gradients */
+  .bg-gradient-primary {
+    @apply bg-gradient-to-br from-indigo-600 to-purple-700;
+  }
+
+  .bg-gradient-accent {
+    @apply bg-gradient-to-br from-cyan-500 to-blue-600;
+  }
+
+  /* Bento Grid specific */
+  /* Moved to inline JSX */
+
+  .bento-card {
+    @apply relative overflow-hidden rounded-3xl p-6 flex flex-col;
+  }
+
+  /* Animations */
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+
+    100% {
+      transform: translateY(0px);
+    }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
   }
 }

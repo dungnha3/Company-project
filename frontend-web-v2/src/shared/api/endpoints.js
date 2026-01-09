@@ -7,11 +7,14 @@ export const ENDPOINTS = {
     // Auth
     AUTH: {
         LOGIN: '/api/auth/login',
+        GOOGLE_LOGIN: '/api/auth/google',
+        REGISTER: '/api/auth/register',
         LOGOUT: '/api/auth/logout',
         LOGOUT_ALL: '/api/auth/logout-all',
         REFRESH: '/api/auth/refresh-token',
         ME: '/api/auth/me',
         SELECT_COMPANY: '/api/auth/select-company',
+        IMPERSONATE: (userId) => `/api/auth/impersonate/${userId}`,
         FORGOT_PASSWORD: '/api/auth/forgot-password',
         RESET_PASSWORD: '/api/auth/reset-password',
         CHANGE_PASSWORD: '/api/auth/change-password',

@@ -60,6 +60,39 @@ export const useAuthStore = create(
                 }
             },
 
+            register: async (userData) => {
+                try {
+                    const response = await apiClient.post(ENDPOINTS.AUTH.REGISTER, userData);
+                    // Register usually returns AuthResponse same as login, or just success message
+                    // Let's assume it returns AuthResponse for auto-login
+                    const { accessToken, refreshToken, user, expiresIn } = response.data;
+
+                    if (accessToken) {
+                        const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
+
+                        localStorage.setItem('accessToken', accessToken);
+                        localStorage.setItem('refreshToken', refreshToken);
+                        localStorage.setItem('expiresAt', String(expiresAt));
+
+                        set({
+                            user,
+                            accessToken,
+                            refreshToken,
+                            isAuthenticated: true,
+                        });
+                        return { success: true, user };
+                    }
+
+                    return { success: true };
+                } catch (error) {
+                    console.error('Register error:', error);
+                    return {
+                        success: false,
+                        error: error.response?.data?.message || 'Đăng ký thất bại'
+                    };
+                }
+            },
+
             logout: async () => {
                 try {
                     const refreshToken = localStorage.getItem('refreshToken');
@@ -68,7 +101,19 @@ export const useAuthStore = create(
                     console.error('Logout error:', error);
                 } finally {
                     get().clearAuth();
+                    // Force reload to clear all memory states and let App Router handle redirect
                     window.location.href = '/login';
+                    // Wait, window.location.href = '/login' KEEPS the port if it's a relative path.
+                    // Why did user get localhost refused? Maybe their browser or some environment quirk?
+                    // Let's try explicit reload.
+                    // window.location.reload(); 
+                    // Actually, if I just clearAuth, existing components might react.
+                    // But to be safe vs the "port loss" issue, let's just use window.location.href but make sure it works.
+                    // If the user visited http://localhost/login (port 80) manually, then obviously it fails if server is on 5173.
+                    // But if they are on 5173, '/login' stays on 5173.
+
+                    // Let's try:
+                    window.location.assign('/login');
                 }
             },
 

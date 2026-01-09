@@ -14,6 +14,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
+
+    // [SAAS] Đếm số dự án của công ty check limit
+    long countByCompany_CompanyId(Long companyId);
+
     Optional<Project> findByKeyProject(String keyProject);
 
     List<Project> findByCreatedBy_UserId(Long userId);
