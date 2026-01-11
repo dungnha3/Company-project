@@ -3,6 +3,12 @@ import { persist } from 'zustand/middleware';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
+/**
+ * @description Company-specific operations (members, invites)
+ * @note For workspace context/switching, use workspaceStore instead
+ * @see workspaceStore - handles PERSONAL/COMPANY context switching
+ */
+
 export const useCompanyStore = create(
     persist(
         (set, get) => ({

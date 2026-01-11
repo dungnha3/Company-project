@@ -4,6 +4,7 @@ import DoAn.BE.company.dto.CompanyDto;
 import DoAn.BE.company.dto.PlanLimitDto;
 import DoAn.BE.company.service.CompanyService;
 import DoAn.BE.company.service.CompanyMemberService;
+import DoAn.BE.common.service.QuotaService;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ public class CompanyController {
 
     private final CompanyService companyService;
     private final CompanyMemberService memberService;
+    private final QuotaService quotaService;
 
     // Lấy danh sách công ty của tôi
     @GetMapping("/my")
@@ -60,6 +62,16 @@ public class CompanyController {
     @GetMapping("/{companyId}/limits")
     public ResponseEntity<PlanLimitDto> getPlanLimits(@PathVariable Long companyId) {
         return ResponseEntity.ok(companyService.getPlanLimits(companyId));
+    }
+
+    // [QUOTA USAGE] Lấy thông tin sử dụng quota hiện tại
+    @GetMapping("/quota")
+    public ResponseEntity<?> getQuotaUsage() {
+        var usage = quotaService.getQuotaUsage();
+        if (usage == null) {
+            return ResponseEntity.ok(java.util.Map.of("message", "No quota information available"));
+        }
+        return ResponseEntity.ok(usage);
     }
 
     // Rời công ty

@@ -3,6 +3,7 @@
 ## Quick Reference Guide
 
 > Tài liệu liệt kê tất cả entities với tên cột database thực tế.
+> **Updated: 2026-01-10** - Added TimeTracking, Calendar, Automation modules
 
 ---
 
@@ -15,7 +16,7 @@
 | `username` | `username` | String | Unique login name |
 | `email` | `email` | String | Unique email |
 | `phoneNumber` | `phone_number` | String | Phone number |
-| `avatarUrl` | `avatar_url` | String | Avatar image URL |
+| `avatarUrl` | `avatar_data` | String | Avatar image URL |
 | `isActive` | `is_active` | Boolean | Account active status |
 | `isDeleted` | `is_deleted` | Boolean | Soft delete flag |
 | `isSystemAdmin` | `is_system_admin` | Boolean | System-wide admin flag |
@@ -42,8 +43,12 @@
 | `companyId` | `company_id` | Long | Primary key |
 | `name` | `name` | String | Company name |
 | `description` | `description` | String | Description |
+| `slug` | `slug` | String | URL path |
 | `logoUrl` | `logo_url` | String | Logo URL |
-| `plan` | `plan` | Enum | FREE, STARTER, PROFESSIONAL, ENTERPRISE |
+| `address` | `address` | String | Address |
+| `phone` | `phone` | String | Phone |
+| `email` | `email` | String | Email |
+| `plan` | `subscription_plan` | Enum | FREE, STARTER, PROFESSIONAL, ENTERPRISE |
 | `isActive` | `is_active` | Boolean | Active status |
 
 ### Table: `company_settings`
@@ -60,9 +65,6 @@
 | `salaryEnabled` | `salary_enabled` | Boolean | Salary sub-feature |
 | `contractEnabled` | `contract_enabled` | Boolean | Contract sub-feature |
 | `reviewEnabled` | `review_enabled` | Boolean | Review sub-feature |
-| `maxEmployees` | `max_employees` | Integer | Limit override |
-| `maxProjects` | `max_projects` | Integer | Limit override |
-| `maxStorageGB` | `max_storage_gb` | Integer | Storage limit |
 
 ### Table: `company_members`
 | Field | DB Column | Type | Description |
@@ -70,7 +72,7 @@
 | `id` | `id` | Long | Primary key |
 | `user` | `user_id` | FK→User | Member user |
 | `company` | `company_id` | FK→Company | Parent company |
-| `role` | `role` | Enum | CompanyRole |
+| `role` | `role` | Enum | OWNER, ADMIN, MANAGER_HR, MANAGER_PROJECT, MANAGER_ACCOUNTING, EMPLOYEE |
 | `isActive` | `is_active` | Boolean | Membership active |
 | `joinedAt` | `joined_at` | LocalDateTime | Join date |
 
@@ -88,10 +90,14 @@
 | `position` | `position_id` | FK→Position | Position |
 | `fullName` | `full_name` | String | Full name |
 | `dateOfBirth` | `date_of_birth` | LocalDate | DOB |
-| `gender` | `gender` | Enum | MALE, FEMALE |
+| `gender` | `gender` | Enum | MALE, FEMALE, OTHER |
 | `idCard` | `id_card` | String | ID card number |
+| `address` | `address` | String | Address |
+| `phone` | `phone` | String | Phone |
+| `hireDate` | `hire_date` | LocalDate | Hire date |
 | `baseSalary` | `base_salary` | BigDecimal | Base salary |
-| `status` | `status` | Enum | ACTIVE, INACTIVE |
+| `allowance` | `allowance` | BigDecimal | Allowance |
+| `status` | `status` | Enum | ACTIVE, RESIGNED, ON_LEAVE |
 
 ### Table: `departments`
 | Field | DB Column | Type | Description |
@@ -107,44 +113,100 @@
 |-------|-----------|------|-------------|
 | `positionId` | `position_id` | Long | Primary key |
 | `name` | `name` | String | Position name |
-| `salaryCoefficient` | `salary_coefficient` | BigDecimal | Salary multiplier |
+| `description` | `description` | String | Description |
+| `icon` | `icon` | String | Icon |
+| `salaryCoefficient` | `salary_coefficient` | Double | Salary multiplier |
 | `level` | `level` | Integer | Position level |
-| `company` | `company_id` | FK→Company | Tenant |
 
 ### Table: `attendances`
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
 | `attendanceId` | `attendance_id` | Long | Primary key |
 | `employee` | `employee_id` | FK→Employee | Employee |
+| `company` | `company_id` | FK→Company | Tenant |
 | `attendanceDate` | `attendance_date` | LocalDate | Date |
 | `checkInTime` | `check_in_time` | LocalTime | Check-in |
 | `checkOutTime` | `check_out_time` | LocalTime | Check-out |
 | `workingHours` | `working_hours` | BigDecimal | Hours worked |
-| `status` | `status` | Enum | LATE, FULL_DAY |
-| `company` | `company_id` | FK→Company | Tenant |
+| `status` | `status` | Enum | LATE, EARLY_LEAVE, FULL_DAY, ON_LEAVE, ABSENT |
+| `note` | `note` | String | Note |
+| `latitude` | `latitude` | Double | GPS lat |
+| `longitude` | `longitude` | Double | GPS lng |
+| `checkInAddress` | `check_in_address` | String | Address |
+| `distance` | `distance` | Double | Distance from office |
+| `checkInMethod` | `check_in_method` | Enum | GPS, MANUAL, QR_CODE, FACE_ID |
+| `shiftType` | `shift_type` | Enum | MORNING, AFTERNOON, EVENING, FULL |
 
 ### Table: `leave_requests`
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
 | `leaveRequestId` | `leave_request_id` | Long | Primary key |
 | `employee` | `employee_id` | FK→Employee | Requester |
-| `leaveType` | `leave_type` | Enum | ANNUAL, SICK |
+| `company` | `company_id` | FK→Company | Tenant |
+| `leaveType` | `leave_type` | Enum | ANNUAL, SICK, UNPAID, OTHER |
 | `startDate` | `start_date` | LocalDate | Start |
 | `endDate` | `end_date` | LocalDate | End |
-| `status` | `status` | Enum | PENDING, APPROVED |
-| `company` | `company_id` | FK→Company | Tenant |
+| `totalDays` | `total_days` | Integer | Calculated |
+| `reason` | `reason` | String | Reason |
+| `status` | `status` | Enum | PENDING, PM_APPROVED, APPROVED, REJECTED |
 
 ### Table: `salaries`
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
 | `salaryId` | `salary_id` | Long | Primary key |
 | `employee` | `employee_id` | FK→Employee | Employee |
+| `company` | `company_id` | FK→Company | Tenant |
 | `year` | `year` | Integer | Year |
 | `month` | `month` | Integer | Month |
-| `baseSalary` | `base_salary` | BigDecimal | Base |
+| `baseSalary` | `base_salary` | BigDecimal | Base salary |
+| `workingDays` | `working_days` | Integer | Actual days |
+| `standardWorkingDays` | `standard_working_days` | Integer | Standard (26) |
+| `proratedSalary` | `prorated_salary` | BigDecimal | Prorated |
+| `allowance` | `allowance` | BigDecimal | Allowance |
+| `bonus` | `bonus` | BigDecimal | Bonus |
+| `overtimeHours` | `overtime_hours` | Integer | OT hours |
+| `overtimePay` | `overtime_pay` | BigDecimal | OT pay |
+| `socialInsurance` | `social_insurance` | BigDecimal | 8% |
+| `healthInsurance` | `health_insurance` | BigDecimal | 1.5% |
+| `unemploymentInsurance` | `unemployment_insurance` | BigDecimal | 1% |
+| `personalIncomeTax` | `personal_income_tax` | BigDecimal | Tax |
+| `otherDeductions` | `other_deductions` | BigDecimal | Other |
+| `grossSalary` | `gross_salary` | BigDecimal | Gross |
+| `totalDeductions` | `total_deductions` | BigDecimal | Total deductions |
 | `netSalary` | `net_salary` | BigDecimal | Net |
-| `status` | `status` | Enum | PENDING, PAID |
-| `company` | `company_id` | FK→Company | Tenant |
+| `paymentStatus` | `payment_status` | Enum | UNPAID, PAID, CANCELLED |
+| `note` | `note` | String | Note |
+
+### Table: `contracts`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `contractId` | `contract_id` | Long | Primary key |
+| `employee` | `employee_id` | FK→Employee | Employee |
+| `company` | `company_id` | FK→Company | Tenant (from TenantScopedEntity) |
+| `contractType` | `contract_type` | Enum | PROBATION, FIXED_TERM, INDEFINITE |
+| `startDate` | `start_date` | LocalDate | Start date |
+| `endDate` | `end_date` | LocalDate | End date |
+| `salary` | `salary` | BigDecimal | Salary amount |
+| `content` | `content` | String | Contract content |
+| `status` | `status` | Enum | ACTIVE, EXPIRED, CANCELLED |
+
+### Table: `reviews`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `reviewId` | `review_id` | Long | Primary key |
+| `employee` | `employee_id` | FK→Employee | Employee being reviewed |
+| `reviewer` | `reviewer_id` | FK→Employee | Reviewer |
+| `reviewPeriod` | `review_period` | String | Q1-2024, Q2-2024 |
+| `reviewType` | `review_type` | Enum | QUARTERLY, ANNUAL, PROBATION, PROMOTION |
+| `technicalScore` | `technical_score` | BigDecimal | 0.0-10.0 |
+| `attitudeScore` | `attitude_score` | BigDecimal | 0.0-10.0 |
+| `softSkillsScore` | `soft_skills_score` | BigDecimal | 0.0-10.0 |
+| `teamworkScore` | `teamwork_score` | BigDecimal | 0.0-10.0 |
+| `totalScore` | `total_score` | BigDecimal | Calculated |
+| `rating` | `rating` | Enum | EXCELLENT, GOOD, SATISFACTORY, AVERAGE, POOR |
+| `comments` | `comments` | String | Feedback comments |
+| `nextGoals` | `next_goals` | String | Goals for next period |
+| `status` | `status` | Enum | IN_PROGRESS, PENDING, APPROVED, REJECTED |
 
 ---
 
@@ -154,32 +216,25 @@
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
 | `projectId` | `project_id` | Long | Primary key |
-| `keyProject` | `key_project` | String | Unique key |
+| `keyProject` | `key_project` | String | Unique key (HRMS, CRM) |
 | `name` | `name` | String | Project name |
 | `description` | `description` | String | Description |
-| `status` | `status` | Enum | ACTIVE, COMPLETED |
+| `status` | `status` | Enum | ACTIVE, ON_HOLD, OVERDUE, COMPLETED, CANCELLED |
+| `startDate` | `start_date` | LocalDate | Start date |
+| `endDate` | `end_date` | LocalDate | End date |
+| `budget` | `budget` | BigDecimal | Budget |
 | `createdBy` | `created_by` | FK→User | Creator |
+| `department` | `department_id` | FK→Department | Dept |
 | `isActive` | `is_active` | Boolean | Active |
 | `company` | `company_id` | FK→Company | Tenant |
 
 ### Table: `project_members`
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
-| `memberId` | `member_id` | Long | Primary key |
+| `id` | `id` | Long | Primary key |
 | `project` | `project_id` | FK→Project | Project |
 | `user` | `user_id` | FK→User | Member |
-| `role` | `role` | Enum | LEAD, MEMBER |
-
-### Table: `issues`
-| Field | DB Column | Type | Description |
-|-------|-----------|------|-------------|
-| `issueId` | `issue_id` | Long | Primary key |
-| `issueKey` | `issue_key` | String | Unique key |
-| `project` | `project_id` | FK→Project | Project |
-| `assignee` | `assignee_id` | FK→User | Assignee |
-| `reporter` | `reporter_id` | FK→User | Reporter |
-| `sprint` | `sprint_id` | FK→Sprint | Sprint |
-| `dueDate` | `due_date` | LocalDate | Due date |
+| `role` | `role` | Enum | OWNER, MANAGER, MEMBER |
 
 ### Table: `sprints`
 | Field | DB Column | Type | Description |
@@ -187,9 +242,63 @@
 | `sprintId` | `sprint_id` | Long | Primary key |
 | `project` | `project_id` | FK→Project | Project |
 | `name` | `name` | String | Sprint name |
+| `goal` | `goal` | String | Goal |
 | `startDate` | `start_date` | LocalDate | Start |
 | `endDate` | `end_date` | LocalDate | End |
-| `status` | `status` | Enum | PLANNING, ACTIVE |
+| `status` | `status` | Enum | PLANNING, ACTIVE, COMPLETED, CANCELLED |
+| `createdBy` | `created_by` | FK→User | Creator |
+
+### Table: `issue_statuses` (GLOBAL - not per project)
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `statusId` | `status_id` | Integer | Primary key |
+| `name` | `name` | String | To Do, In Progress, Done |
+| `orderIndex` | `order_index` | Integer | Display order |
+| `color` | `color` | String | Hex color (#4BADE8) |
+
+### Table: `issues`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `issueId` | `issue_id` | Long | Primary key |
+| `issueKey` | `issue_key` | String | Unique key (HRMS-1) |
+| `project` | `project_id` | FK→Project | Project |
+| `sprint` | `sprint_id` | FK→Sprint | Sprint (nullable) |
+| `phase` | `phase_id` | FK→Phase | Phase |
+| `title` | `title` | String | Title |
+| `description` | `description` | String | Description |
+| `issueStatus` | `status_id` | FK→IssueStatus | Status |
+| `priority` | `priority` | Enum | LOW, MEDIUM, HIGH, CRITICAL |
+| `reporter` | `reporter_id` | FK→User | Reporter |
+| `assignee` | `assignee_id` | FK→User | Assignee |
+| `estimatedHours` | `estimated_hours` | BigDecimal | Estimate |
+| `actualHours` | `actual_hours` | BigDecimal | Actual |
+| `dueDate` | `due_date` | LocalDate | Due date |
+
+### Table: `project_phases`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `phaseId` | `phase_id` | Long | Primary key |
+| `project` | `project_id` | FK→Project | Project |
+| `name` | `name` | String | Phase name |
+| `description` | `description` | String | Description |
+| `startDate` | `start_date` | LocalDate | Start date |
+| `endDate` | `end_date` | LocalDate | End date |
+| `status` | `status` | Enum | PLANNING, IN_PROGRESS, COMPLETED, ON_HOLD |
+| `orderIndex` | `order_index` | Integer | Display order |
+| `createdBy` | `created_by` | FK→User | Creator |
+
+### Table: `issue_activities`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `activityId` | `activity_id` | Long | Primary key |
+| `issue` | `issue_id` | FK→Issue | Issue |
+| `user` | `user_id` | FK→User | Who made change |
+| `activityType` | `activity_type` | Enum | CREATED, STATUS_CHANGED, ASSIGNEE_CHANGED, etc |
+| `fieldName` | `field_name` | String | Changed field |
+| `oldValue` | `old_value` | String | Previous value |
+| `newValue` | `new_value` | String | New value |
+| `description` | `description` | String | Auto-generated description |
+| `createdAt` | `created_at` | LocalDateTime | Timestamp |
 
 ---
 
@@ -240,6 +349,106 @@
 
 ---
 
+## 9. Time Tracking Module
+
+### Table: `time_logs`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `logId` | `log_id` | Long | Primary key |
+| `issue` | `issue_id` | FK→Issue | Linked issue |
+| `user` | `user_id` | FK→User | Who logged |
+| `company` | `company_id` | FK→Company | Tenant |
+| `loggedHours` | `logged_hours` | BigDecimal | Hours worked |
+| `workDate` | `work_date` | LocalDate | Work date |
+| `description` | `description` | String | Description |
+| `createdAt` | `created_at` | LocalDateTime | Created |
+| `updatedAt` | `updated_at` | LocalDateTime | Updated |
+
+---
+
+## 10. Calendar Module
+
+### Table: `calendar_events`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `eventId` | `event_id` | Long | Primary key |
+| `title` | `title` | String | Event title |
+| `description` | `description` | String | Description |
+| `startTime` | `start_time` | LocalDateTime | Start time |
+| `endTime` | `end_time` | LocalDateTime | End time |
+| `allDay` | `all_day` | Boolean | All day event |
+| `eventType` | `event_type` | Enum | MEETING, DEADLINE, REMINDER, HOLIDAY, OTHER |
+| `location` | `location` | String | Location |
+| `meetingLink` | `meeting_link` | String | Meeting URL |
+| `recurrenceRule` | `recurrence_rule` | String | RRULE format |
+| `createdBy` | `created_by` | FK→User | Creator |
+| `project` | `project_id` | FK→Project | Project link |
+| `issue` | `issue_id` | FK→Issue | Issue link |
+| `company` | `company_id` | FK→Company | Tenant |
+| `createdAt` | `created_at` | LocalDateTime | Created |
+| `updatedAt` | `updated_at` | LocalDateTime | Updated |
+
+### Table: `event_attendees`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `id` | `id` | Long | Primary key |
+| `event` | `event_id` | FK→CalendarEvent | Event |
+| `user` | `user_id` | FK→User | Attendee |
+| `responseStatus` | `response_status` | Enum | PENDING, ACCEPTED, DECLINED, TENTATIVE |
+
+---
+
+## 11. Automation Module
+
+### Table: `automation_rules`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `ruleId` | `rule_id` | Long | Primary key |
+| `project` | `project_id` | FK→Project | Target project |
+| `name` | `name` | String | Rule name |
+| `description` | `description` | String | Description |
+| `triggerType` | `trigger_type` | Enum | See trigger types below |
+| `triggerConfig` | `trigger_config` | String | JSON config |
+| `isActive` | `is_active` | Boolean | Active flag |
+| `createdBy` | `created_by` | FK→User | Creator |
+| `company` | `company_id` | FK→Company | Tenant |
+| `createdAt` | `created_at` | LocalDateTime | Created |
+| `updatedAt` | `updated_at` | LocalDateTime | Updated |
+
+**Trigger Types:**
+`ISSUE_CREATED`, `ISSUE_UPDATED`, `STATUS_CHANGED`, `ASSIGNEE_CHANGED`, `PRIORITY_CHANGED`, `COMMENT_ADDED`, `DUE_DATE_APPROACHING`, `SPRINT_STARTED`, `SPRINT_COMPLETED`
+
+### Table: `automation_conditions`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `conditionId` | `condition_id` | Long | Primary key |
+| `rule` | `rule_id` | FK→AutomationRule | Parent rule |
+| `field` | `field` | String | Field to check (status, priority, assignee) |
+| `operator` | `operator` | Enum | EQUALS, NOT_EQUALS, CONTAINS, IS_EMPTY, IS_NOT_EMPTY |
+| `value` | `value` | String | Expected value |
+
+### Table: `automation_actions`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `actionId` | `action_id` | Long | Primary key |
+| `rule` | `rule_id` | FK→AutomationRule | Parent rule |
+| `actionType` | `action_type` | Enum | UPDATE_FIELD, ADD_COMMENT, SEND_NOTIFICATION, SEND_WEBHOOK |
+| `actionConfig` | `action_config` | String | JSON config |
+| `orderIndex` | `order_index` | Integer | Execution order |
+
+### Table: `automation_logs`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `logId` | `log_id` | Long | Primary key |
+| `rule` | `rule_id` | FK→AutomationRule | Executed rule |
+| `issue` | `issue_id` | FK→Issue | Target issue |
+| `status` | `status` | Enum | SUCCESS, FAILED, SKIPPED, PARTIAL |
+| `message` | `message` | String | Execution message |
+| `actionsExecuted` | `actions_executed` | Integer | Count of actions run |
+| `createdAt` | `created_at` | LocalDateTime | Execution time |
+
+---
+
 ## 7. Storage Module
 
 ### Table: `files`
@@ -264,15 +473,22 @@
 
 ---
 
-## 8. Audit Module
+## 12. Audit Module
 
 ### Table: `audit_logs`
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
-| `logId` | `log_id` | Long | Primary key |
+| `id` | `id` | Long | Primary key |
 | `actor` | `actor_id` | FK→User | Actor user |
 | `action` | `action` | String | Action type |
+| `targetUser` | `target_user_id` | FK→User | Target user |
 | `entityType` | `entity_type` | String | Entity name |
 | `entityId` | `entity_id` | Long | Entity ID |
-| `severity` | `severity` | Enum | INFO, CRITICAL |
+| `oldValue` | `old_value` | String | Data before change |
+| `newValue` | `new_value` | String | Data after change |
+| `ipAddress` | `ip_address` | String | IP address |
+| `reason` | `reason` | String | Reason |
+| `severity` | `severity` | Enum | INFO, WARNING, CRITICAL |
+| `status` | `status` | Enum | SUCCESS, FAILED |
+| `errorMessage` | `error_message` | String | Error details |
 | `createdAt` | `created_at` | LocalDateTime | Timestamp |

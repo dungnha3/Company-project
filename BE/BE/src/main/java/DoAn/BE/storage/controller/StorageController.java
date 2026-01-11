@@ -20,9 +20,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 @RestController
 @RequestMapping("/api/storage")
 @RequiredArgsConstructor
+@FeatureFlag("STORAGE")
 public class StorageController {
 
     private final FileStorageService fileStorageService;

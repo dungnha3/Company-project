@@ -3,6 +3,7 @@ package DoAn.BE.project.controller;
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.ProjectMember.ProjectRole;
 import DoAn.BE.project.service.ProjectService;
+import DoAn.BE.project.service.ProjectMemberService;
 import DoAn.BE.storage.service.StorageProjectIntegrationService;
 import DoAn.BE.storage.service.StorageProjectIntegrationService.ProjectFileStats;
 import DoAn.BE.storage.entity.File;
@@ -20,13 +21,17 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 // [Controller quản lý dự án] (Role: Project Members)
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectMemberService projectMemberService;
     private final StorageProjectIntegrationService storageProjectIntegrationService;
 
     // ==================== PROJECT CRUD ====================
@@ -94,7 +99,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody AddMemberRequest request,
             @AuthenticationPrincipal User currentUser) {
-        ProjectMemberDTO member = projectService.addMember(projectId, request, currentUser.getUserId());
+        ProjectMemberDTO member = projectMemberService.addMember(projectId, request, currentUser.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(member);
     }
 
@@ -103,7 +108,7 @@ public class ProjectController {
     public ResponseEntity<List<ProjectMemberDTO>> getProjectMembers(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
-        List<ProjectMemberDTO> members = projectService.getProjectMembers(projectId, currentUser.getUserId());
+        List<ProjectMemberDTO> members = projectMemberService.getProjectMembers(projectId, currentUser.getUserId());
         return ResponseEntity.ok(members);
     }
 
@@ -113,7 +118,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @PathVariable Long memberId,
             @AuthenticationPrincipal User currentUser) {
-        projectService.removeMember(projectId, memberId, currentUser.getUserId());
+        projectMemberService.removeMember(projectId, memberId, currentUser.getUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -124,7 +129,8 @@ public class ProjectController {
             @PathVariable Long memberId,
             @RequestParam ProjectRole role,
             @AuthenticationPrincipal User currentUser) {
-        ProjectMemberDTO member = projectService.updateMemberRole(projectId, memberId, role, currentUser.getUserId());
+        ProjectMemberDTO member = projectMemberService.updateMemberRole(projectId, memberId, role,
+                currentUser.getUserId());
         return ResponseEntity.ok(member);
     }
 

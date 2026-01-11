@@ -17,7 +17,6 @@ import DoAn.BE.project.entity.ProjectMember.ProjectRole;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.user.entity.User;
-import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +25,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 
-// [Service quản lý dự án - CRUD, members, phòng ban] (Role: Project Manager/Employee)
+// [Service quản lý dự án - CRUD, phân quyền] (Role: Project Manager/Employee)
+// Member operations delegated to ProjectMemberService
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -39,16 +37,17 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ProjectChatIntegrationService projectChatIntegrationService;
     private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
-    private final DoAn.BE.notification.service.FCMService fcmService;
     private final DoAn.BE.storage.service.StorageProjectIntegrationService storageProjectIntegrationService;
     private final AccessControlService accessControlService;
-    private final DoAn.BE.company.service.SubscriptionService subscriptionService; // Injected
+    private final DoAn.BE.company.service.SubscriptionService subscriptionService;
+
+    // [REFACTOR] Delegate member operations to specialized service
+    private final ProjectMemberService projectMemberService;
 
     @Transactional
     public ProjectDTO createProject(CreateProjectRequest request, User currentUser) {
@@ -310,195 +309,36 @@ public class ProjectService {
         }
     }
 
+    /**
+     * @deprecated Use ProjectMemberService.addMember() directly
+     */
     @Transactional
     public ProjectMemberDTO addMember(Long projectId, AddMemberRequest request, Long userId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
-
-        // Kiểm tra quyền quản lý dự án
-        validateProjectManagement(projectId, userId);
-
-        // Validate thành viên mới tồn tại
-        User newMember = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
-
-        // Kiểm tra xem user đã là thành viên chưa
-        if (projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, request.getUserId()).isPresent()) {
-            throw new DuplicateException("Người dùng đã là thành viên của dự án");
-        }
-
-        // Thêm thành viên
-        ProjectMember projectMember = new ProjectMember(project, newMember, request.getRole());
-        projectMember = projectMemberRepository.save(projectMember);
-
-        // Đồng bộ với project chat room
-        List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
-        if (!projectChats.isEmpty()) {
-            ChatRoom projectChatRoom = projectChats.get(0);
-
-            // Kiểm tra nếu chưa trong chat
-            boolean alreadyInChat = chatRoomMemberRepository
-                    .existsByChatRoom_RoomIdAndUser_UserId(projectChatRoom.getRoomId(), request.getUserId());
-
-            if (!alreadyInChat) {
-                ChatRoomMember chatMember = new ChatRoomMember();
-                // Tạo composite key trước
-                ChatRoomMemberId chatMemberId = new ChatRoomMemberId();
-                chatMemberId.setRoomId(projectChatRoom.getRoomId());
-                chatMemberId.setUserId(newMember.getUserId());
-                chatMember.setId(chatMemberId);
-                chatMember.setChatRoom(projectChatRoom);
-                chatMember.setUser(newMember);
-                // OWNER/MANAGER = ADMIN, khác = MEMBER
-                chatMember.setRole(request.getRole() == ProjectRole.OWNER || request.getRole() == ProjectRole.MANAGER
-                        ? ChatRoomMember.MemberRole.ADMIN
-                        : ChatRoomMember.MemberRole.MEMBER);
-                chatMember.setJoinedAt(LocalDateTime.now());
-                chatRoomMemberRepository.save(chatMember);
-
-                log.info("Đã thêm user {} vào project chat room {}", request.getUserId(), projectChatRoom.getRoomId());
-            }
-        }
-
-        // Tạo thư mục dự án cho thành viên mới
-        try {
-            storageProjectIntegrationService.getOrCreateProjectFolder(project, newMember);
-            log.info("Created project folder for new member {} in project {}", newMember.getUserId(), projectId);
-        } catch (Exception e) {
-            log.error("Failed to create project folder for member {}: {}", newMember.getUserId(), e.getMessage());
-            // Không fail toàn bộ operation nếu tạo folder thất bại
-        }
-
-        // Gửi tin nhắn hệ thống
-        projectChatIntegrationService.notifyMemberAdded(project, newMember.getUsername(), request.getRole().toString());
-
-        // Gửi thông báo đến thành viên mới
-        projectNotificationService.createProjectMemberAddedNotification(
-                newMember.getUserId(),
-                project.getName(),
-                project.getProjectId());
-
-        // 📱 Push FCM notification đến thành viên mới
-        try {
-            if (newMember.getFcmToken() != null) {
-                Map<String, String> data = new HashMap<>();
-                data.put("type", "PROJECT_MEMBER_ADDED");
-                data.put("projectId", project.getProjectId().toString());
-                data.put("link", "/projects/" + project.getProjectId());
-                fcmService.sendToDevice(
-                        newMember.getFcmToken(),
-                        "📁 Được thêm vào dự án",
-                        "Bạn đã được thêm vào dự án \"" + project.getName() + "\"",
-                        data);
-            }
-        } catch (Exception e) {
-            log.warn("Không thể gửi FCM notification: {}", e.getMessage());
-        }
-
-        return convertToMemberDTO(projectMember);
+        return projectMemberService.addMember(projectId, request, userId);
     }
 
+    /**
+     * @deprecated Use ProjectMemberService.removeMember() directly
+     */
     @Transactional
     public void removeMember(Long projectId, Long memberId, Long userId) {
-        // Kiểm tra dự án tồn tại
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
-
-        // Kiểm tra quyền quản lý dự án
-        validateProjectManagement(projectId, userId);
-
-        ProjectMember memberToRemove = projectMemberRepository
-                .findByProject_ProjectIdAndUser_UserId(projectId, memberId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thành viên trong dự án"));
-
-        // Không thể xóa OWNER
-        if (memberToRemove.isOwner()) {
-            throw new ForbiddenException("Không thể xóa chủ dự án");
-        }
-
-        projectMemberRepository.delete(memberToRemove);
-
-        // Đồng bộ với project chat room
-        Project project = projectRepository.findById(projectId).orElse(null);
-        if (project != null) {
-            List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
-            if (!projectChats.isEmpty()) {
-                ChatRoom projectChatRoom = projectChats.get(0);
-
-                java.util.Optional<ChatRoomMember> chatMemberOpt = chatRoomMemberRepository
-                        .findByChatRoom_RoomIdAndUser_UserId(projectChatRoom.getRoomId(), memberId);
-
-                if (chatMemberOpt.isPresent()) {
-                    chatRoomMemberRepository.delete(chatMemberOpt.get());
-                    log.info("Đã xóa user {} khỏi project chat room {}", memberId, projectChatRoom.getRoomId());
-                }
-            }
-
-            // Gửi tin nhắn hệ thống
-            projectChatIntegrationService.notifyMemberRemoved(project, memberToRemove.getUser().getUsername());
-
-            // Gửi thông báo đến thành viên bị xóa
-            if (memberToRemove.getUser() != null) {
-                projectNotificationService.createProjectMemberRemovedNotification(
-                        memberToRemove.getUser().getUserId(),
-                        project.getName());
-
-                // 📱 Push FCM notification đến thành viên bị xóa
-                try {
-                    if (memberToRemove.getUser().getFcmToken() != null) {
-                        Map<String, String> data = new HashMap<>();
-                        data.put("type", "PROJECT_MEMBER_REMOVED");
-                        data.put("link", "/projects");
-                        fcmService.sendToDevice(
-                                memberToRemove.getUser().getFcmToken(),
-                                "📁 Đã bị xóa khỏi dự án",
-                                "Bạn đã bị xóa khỏi dự án \"" + project.getName() + "\"",
-                                data);
-                    }
-                } catch (Exception e) {
-                    log.warn("Không thể gửi FCM notification: {}", e.getMessage());
-                }
-            }
-        }
+        projectMemberService.removeMember(projectId, memberId, userId);
     }
 
+    /**
+     * @deprecated Use ProjectMemberService.getProjectMembers() directly
+     */
     @Transactional(readOnly = true)
     public List<ProjectMemberDTO> getProjectMembers(Long projectId, Long userId) {
-        // Kiểm tra quyền truy cập
-        validateProjectAccess(projectId, userId);
-
-        List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
-        return members.stream()
-                .map(this::convertToMemberDTO)
-                .collect(Collectors.toList());
+        return projectMemberService.getProjectMembers(projectId, userId);
     }
 
+    /**
+     * @deprecated Use ProjectMemberService.updateMemberRole() directly
+     */
     @Transactional
     public ProjectMemberDTO updateMemberRole(Long projectId, Long memberId, ProjectRole newRole, Long userId) {
-        // Kiểm tra quyền quản lý dự án
-        validateProjectManagement(projectId, userId);
-
-        ProjectMember member = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, memberId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thành viên trong dự án"));
-
-        // Không thể thay đổi role của OWNER
-        if (member.isOwner()) {
-            throw new ForbiddenException("Không thể thay đổi vai trò của chủ dự án");
-        }
-
-        member.setRole(newRole);
-        member = projectMemberRepository.save(member);
-
-        // Gửi thông báo đến thành viên
-        if (member.getUser() != null && member.getProject() != null) {
-            projectNotificationService.createProjectRoleChangedNotification(
-                    member.getUser().getUserId(),
-                    member.getProject().getName(),
-                    newRole.toString(),
-                    member.getProject().getProjectId());
-        }
-
-        return convertToMemberDTO(member);
+        return projectMemberService.updateMemberRole(projectId, memberId, newRole, userId);
     }
 
     // Helper methods
@@ -536,22 +376,6 @@ public class ProjectService {
             dto.setPhongbanName(project.getDepartment().getName());
         }
 
-        return dto;
-    }
-
-    private ProjectMemberDTO convertToMemberDTO(ProjectMember member) {
-        ProjectMemberDTO dto = new ProjectMemberDTO();
-        dto.setId(member.getId());
-
-        if (member.getUser() != null) {
-            dto.setUserId(member.getUser().getUserId());
-            dto.setUsername(member.getUser().getUsername());
-            dto.setEmail(member.getUser().getEmail());
-            dto.setAvatarUrl(member.getUser().getAvatarUrl());
-        }
-
-        dto.setRole(member.getRole());
-        dto.setJoinedAt(member.getCreatedAt());
         return dto;
     }
 }

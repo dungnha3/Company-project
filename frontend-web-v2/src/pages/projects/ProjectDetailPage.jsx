@@ -1,29 +1,70 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, lazy, Suspense, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import ProjectBoard from './tabs/ProjectBoard';
 import ProjectGantt from './tabs/ProjectGantt';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { isProjectFeatureEnabled } from '@shared/utils/featureHelper';
+import EditProjectModal from './components/EditProjectModal';
+import ExportDropdown from './components/ExportDropdown';
+
+// Lazy load new feature tabs
+const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
+const AutomationPage = lazy(() => import('../automation/AutomationPage'));
+const SprintTab = lazy(() => import('./tabs/SprintTab'));
+const PhaseTab = lazy(() => import('./tabs/PhaseTab'));
+
+const PageLoader = () => <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-2xl text-primary" /></div>;
 
 export default function ProjectDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('overview'); // overview, board, list, gantt, settings
+    const [activeTab, setActiveTab] = useState('overview');
+    const [showEditModal, setShowEditModal] = useState(false);
+    const { currentWorkspace } = useWorkspaceStore();
+    const settings = currentWorkspace?.settings || null;
 
     const { data: project, isLoading } = useQuery({
         queryKey: ['project', id],
         queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.BY_ID(id))).data,
     });
 
+    // Filter tabs based on feature settings
+    const tabs = useMemo(() => {
+        const baseTabs = [
+            { id: 'overview', label: 'Tổng quan', icon: 'fa-chart-simple' },
+            { id: 'board', label: 'Bảng (Kanban)', icon: 'fa-columns' },
+            { id: 'sprints', label: 'Sprints', icon: 'fa-layer-group' },
+            { id: 'phases', label: 'Giai đoạn', icon: 'fa-diagram-project' },
+            { id: 'list', label: 'Danh sách việc', icon: 'fa-list-check' },
+            { id: 'gantt', label: 'Gantt Chart', icon: 'fa-timeline' },
+        ];
+
+        if (isProjectFeatureEnabled(settings, 'analytics')) {
+            baseTabs.push({ id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' });
+        }
+        if (isProjectFeatureEnabled(settings, 'automation')) {
+            baseTabs.push({ id: 'automation', label: 'Automation', icon: 'fa-bolt' });
+        }
+        baseTabs.push({ id: 'settings', label: 'Cài đặt', icon: 'fa-gear' });
+
+        return baseTabs;
+    }, [settings]);
+
     if (isLoading) return <div className="p-8 text-center"><i className="fa-solid fa-spinner fa-spin text-3xl text-primary" /></div>;
     if (!project) return <div className="p-8 text-center text-red-500">Không tìm thấy dự án</div>;
+
+    // Check if calendar/timelogs are enabled for quick links
+    const showCalendar = isProjectFeatureEnabled(settings, 'calendar');
+    const showTimelogs = isProjectFeatureEnabled(settings, 'timeTracking');
 
     return (
         <div className="space-y-6">
             {/* Header with Breadcrumb and Actions */}
             <div className="flex flex-col gap-4">
-                <button onClick={() => navigate('/projects')} className="text-gray-500 hover:text-gray-900 w-fit flex items-center gap-1">
+                <button onClick={() => navigate('/app/projects')} className="text-gray-500 hover:text-gray-900 w-fit flex items-center gap-1">
                     <i className="fa-solid fa-arrow-left" /> Quay lại danh sách
                 </button>
 
@@ -33,12 +74,19 @@ export default function ProjectDetailPage() {
                         <p className="text-gray-500 mt-1 max-w-2xl">{project.description}</p>
                     </div>
                     <div className="flex gap-2">
-                        {/* Example Actions */}
-                        <button className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                            <i className="fa-solid fa-user-plus mr-2" /> Thành viên
-                        </button>
-                        <button className="btn-primary">
-                            <i className="fa-solid fa-pen mr-2" /> Chỉnh sửa
+                        {showCalendar && (
+                            <Link to="/app/calendar" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <i className="fa-solid fa-calendar mr-2" />Lịch
+                            </Link>
+                        )}
+                        {showTimelogs && (
+                            <Link to="/app/my-timelogs" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <i className="fa-solid fa-clock mr-2" />Time Logs
+                            </Link>
+                        )}
+                        <ExportDropdown projectId={project.projectId} projectName={project.name} />
+                        <button onClick={() => setShowEditModal(true)} className="btn-primary">
+                            <i className="fa-solid fa-pen mr-2" />Chỉnh sửa
                         </button>
                     </div>
                 </div>
@@ -63,13 +111,7 @@ export default function ProjectDetailPage() {
             {/* Tabs Navigation */}
             <div className="border-b border-gray-200">
                 <nav className="flex space-x-8" aria-label="Tabs">
-                    {[
-                        { id: 'overview', label: 'Tổng quan', icon: 'fa-chart-simple' },
-                        { id: 'board', label: 'Bảng (Kanban)', icon: 'fa-columns' },
-                        { id: 'list', label: 'Danh sách việc', icon: 'fa-list-check' },
-                        { id: 'gantt', label: 'Gantt Chart', icon: 'fa-timeline' },
-                        { id: 'settings', label: 'Cài đặt', icon: 'fa-gear' },
-                    ].map((tab) => (
+                    {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
@@ -91,10 +133,39 @@ export default function ProjectDetailPage() {
             <div className="min-h-[500px]">
                 {activeTab === 'overview' && <OverviewTab project={project} />}
                 {activeTab === 'board' && <ProjectBoard project={project} />}
+                {activeTab === 'sprints' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <SprintTab projectId={project.projectId} />
+                    </Suspense>
+                )}
+                {activeTab === 'phases' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <PhaseTab projectId={project.projectId} />
+                    </Suspense>
+                )}
                 {activeTab === 'list' && <div className="text-center py-10 text-gray-400">Issue List coming soon...</div>}
                 {activeTab === 'gantt' && <ProjectGantt project={project} />}
+                {activeTab === 'analytics' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <AnalyticsPage />
+                    </Suspense>
+                )}
+                {activeTab === 'automation' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <AutomationPage />
+                    </Suspense>
+                )}
                 {activeTab === 'settings' && <div className="text-center py-10 text-gray-400">Project Settings coming soon...</div>}
             </div>
+
+            {/* Edit Project Modal */}
+            {showEditModal && (
+                <EditProjectModal
+                    project={project}
+                    onClose={() => setShowEditModal(false)}
+                    onSuccess={() => setShowEditModal(false)}
+                />
+            )}
         </div>
     );
 }

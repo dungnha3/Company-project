@@ -19,10 +19,17 @@ const NAV_CONFIG = [
         title: 'Nhân sự',
         roles: ['OWNER', 'ADMIN', 'MANAGER_HR'],
         items: [
+            { path: '/app/hr-dashboard', icon: 'fa-gauge-high', label: 'Tổng quan HR' },
+            { path: '/app/org-chart', icon: 'fa-sitemap', label: 'Sơ đồ tổ chức' },
             { path: '/app/employees', icon: 'fa-users', label: 'Thành viên' },
             { path: '/app/departments', icon: 'fa-building', label: 'Phòng ban' },
             { path: '/app/positions', icon: 'fa-briefcase', label: 'Chức vụ' },
             { path: '/app/contracts', icon: 'fa-file-contract', label: 'Hợp đồng' },
+            { path: '/app/reviews', icon: 'fa-star', label: 'Đánh giá' },
+            { path: '/app/okr', icon: 'fa-bullseye', label: 'OKR/KPI' },
+            { path: '/app/skills-matrix', icon: 'fa-chart-bar', label: 'Ma trận kỹ năng' },
+            { path: '/app/onboarding', icon: 'fa-user-plus', label: 'Onboarding' },
+            { path: '/app/resource-planning', icon: 'fa-calendar-check', label: 'Nguồn lực' },
         ],
     },
     {
@@ -49,6 +56,8 @@ const NAV_CONFIG = [
         items: [
             { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án' },
             { path: '/app/my-issues', icon: 'fa-list-check', label: 'Công việc' },
+            { path: '/app/my-timelogs', icon: 'fa-stopwatch', label: 'Time Logs' },
+            { path: '/app/calendar', icon: 'fa-calendar-days', label: 'Lịch' },
         ],
     },
     {
@@ -59,6 +68,17 @@ const NAV_CONFIG = [
             { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu' },
             { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện' },
             { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },
+        ],
+    },
+    {
+        key: 'company',
+        title: 'Quản lý công ty',
+        roles: ['OWNER', 'ADMIN'],
+        items: [
+            { path: '/app/company/dashboard', icon: 'fa-building', label: 'Tổng quan' },
+            { path: '/app/company/activity', icon: 'fa-history', label: 'Nhật ký' },
+            { path: '/app/company/billing', icon: 'fa-credit-card', label: 'Thanh toán' },
+            { path: '/app/company/settings', icon: 'fa-cog', label: 'Cài đặt' },
         ],
     },
 ];

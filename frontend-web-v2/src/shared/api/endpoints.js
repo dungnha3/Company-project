@@ -11,7 +11,7 @@ export const ENDPOINTS = {
         REGISTER: '/api/auth/register',
         LOGOUT: '/api/auth/logout',
         LOGOUT_ALL: '/api/auth/logout-all',
-        REFRESH: '/api/auth/refresh-token',
+        REFRESH: '/api/auth/refresh',
         ME: '/api/auth/me',
         SELECT_COMPANY: '/api/auth/select-company',
         IMPERSONATE: (userId) => `/api/auth/impersonate/${userId}`,
@@ -35,6 +35,7 @@ export const ENDPOINTS = {
         UPDATE: (id) => `/api/companies/${id}`,
         DELETE: (id) => `/api/companies/${id}`,
         SETTINGS: (id) => `/api/companies/${id}/settings`,
+        QUOTA: '/api/companies/quota', // GET - current quota usage
     },
 
     // Workspaces (NEW - Dual Workspace Model)
@@ -113,6 +114,14 @@ export const ENDPOINTS = {
         REPORT: '/api/attendance/report',
     },
 
+    // Export to Excel
+    EXPORT: {
+        EMPLOYEES: '/api/export/employees/excel',
+        ATTENDANCE: '/api/export/attendance/excel', // params: month, year
+        SALARY: '/api/export/salary/excel', // params: month, year
+        LEAVES: '/api/export/leaves/excel', // params: startDate, endDate
+    },
+
     // Leave Requests
     LEAVE_REQUESTS: {
         LIST: '/api/leave-requests',
@@ -148,11 +157,19 @@ export const ENDPOINTS = {
         EXPIRING: '/api/contracts/expiring',
     },
 
-    // Reviews
+    // Reviews (Performance Evaluations)
     REVIEWS: {
         LIST: '/api/reviews',
+        LIST_PAGE: '/api/reviews/page',
+        CREATE: '/api/reviews',
         BY_ID: (id) => `/api/reviews/${id}`,
+        UPDATE: (id) => `/api/reviews/${id}`,
+        DELETE: (id) => `/api/reviews/${id}`,
         BY_EMPLOYEE: (empId) => `/api/reviews/employee/${empId}`,
+        PENDING: '/api/reviews/pending',
+        SUBMIT: (id) => `/api/reviews/${id}/submit`,
+        APPROVE: (id) => `/api/reviews/${id}/approve`,
+        REJECT: (id) => `/api/reviews/${id}/reject`,
     },
 
     // Dashboard
@@ -161,29 +178,16 @@ export const ENDPOINTS = {
         MONTHLY: '/api/dashboard/monthly',
     },
 
-    // Chat
-    CHAT: {
-        ROOMS: '/api/chat-rooms',
-        MESSAGES: (roomId) => `/api/chat-rooms/${roomId}/messages`,
-        CREATE_ROOM: '/api/chat-rooms',
-        MARK_READ: (roomId) => `/api/chat-rooms/${roomId}/read`,
+    // HR Dashboard (matches BE DashboardController at /api/dashboard)
+    HR_DASHBOARD: {
+        OVERVIEW: '/api/dashboard/overview',
+        STATS: '/api/dashboard/stats',
+        MONTHLY: '/api/dashboard/monthly',
+        ATTENDANCE_BY_DEPT: '/api/dashboard/attendance-by-department',
+        SALARY_BY_MONTH: '/api/dashboard/salary-by-month',
+        EMPLOYEE_BY_AGE: '/api/dashboard/employee-by-age',
+        EMPLOYEE_BY_GENDER: '/api/dashboard/employee-by-gender',
     },
-
-    // Notifications
-    NOTIFICATIONS: {
-        LIST: '/api/notifications',
-        MARK_READ: (id) => `/api/notifications/${id}/read`,
-        READ_ALL: '/api/notifications/read-all',
-        UNREAD_COUNT: '/api/notifications/unread-count',
-    },
-
-    // File Storage
-    STORAGE: {
-        UPLOAD: '/api/files/upload',
-        LIST: '/api/files', // Assuming list
-        DOWNLOAD: (id) => `/api/files/${id}`,
-    },
-
     // Projects
     PROJECTS: {
         LIST: '/api/projects',
@@ -195,13 +199,34 @@ export const ENDPOINTS = {
         PHASES: (id) => `/api/projects/${id}/phases`,
         GANTT: (id) => `/api/projects/${id}/gantt`,
     },
+    // Project Dashboard & Export
+    PROJECT_DASHBOARD: {
+        STATS: (projectId) => `/api/project-dashboard/project/${projectId}/stats`,
+        BURNDOWN: (sprintId) => `/api/project-dashboard/sprint/${sprintId}/burndown`,
+        MY_PROJECTS_STATS: '/api/project-dashboard/my-projects',
+    },
+
+    PROJECT_EXPORT: {
+        ISSUES_CSV: (projectId) => `/api/project-export/${projectId}/issues/csv`,
+        GANTT_CSV: (projectId) => `/api/project-export/${projectId}/gantt/csv`,
+    },
+
+    // Project Phases
+    PHASES: {
+        BY_PROJECT: (projectId) => `/api/projects/${projectId}/phases`,
+        BY_ID: (phaseId) => `/api/projects/phases/${phaseId}`,
+    },
+
 
     // Sprints
     SPRINTS: {
+        LIST: '/api/sprints',
         BY_ID: (id) => `/api/sprints/${id}`,
         BY_PROJECT: (projectId) => `/api/sprints/project/${projectId}`,
         START: (id) => `/api/sprints/${id}/start`,
         COMPLETE: (id) => `/api/sprints/${id}/complete`,
+        ADD_ISSUE: (sprintId, issueId) => `/api/sprints/${sprintId}/issues/${issueId}`,
+        REMOVE_ISSUE: (sprintId, issueId) => `/api/sprints/${sprintId}/issues/${issueId}`,
     },
 
     // Issues
@@ -232,39 +257,35 @@ export const ENDPOINTS = {
         MY_ACTIVITIES: (projectId) => `/api/activities/project/${projectId}/my`,
     },
 
-    // Chat
-    CHAT: {
-        ROOMS: '/api/chat/rooms',
-        ROOM_BY_ID: (id) => `/api/chat/rooms/${id}`,
-        DIRECT: (userId) => `/api/chat/rooms/direct/${userId}`,
-        ROOM_MEMBERS: (id) => `/api/chat/rooms/${id}/members`,
-        MESSAGES: (roomId) => `/api/chat/messages/room/${roomId}`,
-        SEND_MESSAGE: '/api/chat/messages',
-        EDIT_MESSAGE: (id) => `/api/chat/messages/${id}`,
-        DELETE_MESSAGE: (id) => `/api/chat/messages/${id}`,
-        REACT: (id) => `/api/chat/messages/${id}/react`,
-    },
 
     // Storage
     STORAGE: {
+        LIST: '/api/storage/files',
         FILES: '/api/storage/files',
         FILE_BY_ID: (id) => `/api/storage/files/${id}`,
         DOWNLOAD: (id) => `/api/storage/files/${id}/download`,
         MY_FILES: '/api/storage/files/my-files',
         UPLOAD: '/api/storage/files/upload',
+        DELETE: (id) => `/api/storage/files/${id}`,
+        // Folders
         FOLDERS: '/api/storage/folders',
         FOLDER_BY_ID: (id) => `/api/storage/folders/${id}`,
+        CREATE_FOLDER: '/api/storage/folders',
         MY_FOLDERS: '/api/storage/folders/my-folders',
+        // Sharing
+        SHARE: (id) => `/api/storage/files/${id}/share`,
+        SHARED_WITH_ME: '/api/storage/shared-with-me',
+        GENERATE_LINK: (id) => `/api/storage/files/${id}/public-link`,
+        // Stats
         STATS: '/api/storage/stats',
     },
 
-    // Notifications
+    // Notifications (matches BE NotificationController at /api/notifications)
     NOTIFICATIONS: {
         LIST: '/api/notifications',
-        UNREAD: '/api/notifications/unread',
-        COUNT: '/api/notifications/count',
+        UNREAD_COUNT: '/api/notifications/unread-count',
         MARK_READ: (id) => `/api/notifications/${id}/read`,
-        MARK_ALL_READ: '/api/notifications/read-all',
+        MARK_ALL_READ: '/api/notifications/mark-all-read',
         DELETE: (id) => `/api/notifications/${id}`,
     },
 
@@ -274,6 +295,78 @@ export const ENDPOINTS = {
         BY_ACTOR: (actorId) => `/api/audit-logs/actor/${actorId}`,
         BY_TARGET: (targetId) => `/api/audit-logs/target/${targetId}`,
         CRITICAL: '/api/audit-logs/critical',
+    },
+
+    // Time Tracking (NEW)
+    TIMELOGS: {
+        CREATE: '/api/timelogs',
+        BY_ISSUE: (issueId) => `/api/timelogs/issue/${issueId}`,
+        TOTAL_BY_ISSUE: (issueId) => `/api/timelogs/issue/${issueId}/total`,
+        MY_LOGS: '/api/timelogs/my',
+        UPDATE: (id) => `/api/timelogs/${id}`,
+        DELETE: (id) => `/api/timelogs/${id}`,
+    },
+
+    // Analytics (NEW)
+    ANALYTICS: {
+        BURNDOWN: (projectId) => `/api/analytics/projects/${projectId}/burndown`,
+        VELOCITY: (projectId) => `/api/analytics/projects/${projectId}/velocity`,
+        STATUS: (projectId) => `/api/analytics/projects/${projectId}/status`,
+        WORKLOAD: (projectId) => `/api/analytics/projects/${projectId}/workload`,
+    },
+
+    // Calendar (NEW)
+    CALENDAR: {
+        EVENTS: '/api/calendar/events',
+        EVENT_BY_ID: (id) => `/api/calendar/events/${id}`,
+        RESPOND: (id) => `/api/calendar/events/${id}/respond`,
+    },
+
+    // Automations (NEW)
+    AUTOMATIONS: {
+        CREATE: '/api/automations',
+        BY_PROJECT: (projectId) => `/api/automations/project/${projectId}`,
+        BY_ID: (id) => `/api/automations/${id}`,
+        TOGGLE: (id) => `/api/automations/${id}/toggle`,
+        DELETE: (id) => `/api/automations/${id}`,
+        LOGS: (id) => `/api/automations/${id}/logs`,
+    },
+
+    // Chat (merged from duplicates)
+    CHAT: {
+        // Rooms
+        ROOMS: '/api/chat/rooms',
+        CREATE_ROOM: '/api/chat/rooms',
+        ROOM_BY_ID: (roomId) => `/api/chat/rooms/${roomId}`,
+        DIRECT: (userId) => `/api/chat/rooms/direct/${userId}`,
+        ROOM_MEMBERS: (roomId) => `/api/chat/rooms/${roomId}/members`,
+        ADD_MEMBER: (roomId) => `/api/chat/rooms/${roomId}/members`,
+        REMOVE_MEMBER: (roomId, userId) => `/api/chat/rooms/${roomId}/members/${userId}`,
+        LEAVE_ROOM: (roomId) => `/api/chat/rooms/${roomId}/leave`,
+
+        // Messages
+        MESSAGES: (roomId) => `/api/chat/rooms/${roomId}/messages`,
+        MESSAGE_BY_ID: (msgId) => `/api/chat/messages/${msgId}`,
+        EDIT_MESSAGE: (msgId) => `/api/chat/messages/${msgId}`,
+        DELETE_MESSAGE: (msgId) => `/api/chat/messages/${msgId}`,
+        PIN_MESSAGE: (msgId) => `/api/chat/messages/${msgId}/pin`,
+        PINNED_MESSAGES: (roomId) => `/api/chat/rooms/${roomId}/pinned`,
+
+        // Reactions
+        ADD_REACTION: (msgId) => `/api/chat/messages/${msgId}/reactions`,
+        REMOVE_REACTION: (msgId, reactionId) => `/api/chat/messages/${msgId}/reactions/${reactionId}`,
+
+        // Read Status
+        MARK_READ: (roomId) => `/api/chat/rooms/${roomId}/read`,
+
+        // Search
+        SEARCH: (roomId) => `/api/chat/rooms/${roomId}/search`,
+
+        // Files
+        UPLOAD_FILE: (roomId) => `/api/chat/rooms/${roomId}/files`,
+
+        // Typing
+        TYPING: (roomId) => `/api/chat/rooms/${roomId}/typing`,
     },
 
 };

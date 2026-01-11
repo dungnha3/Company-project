@@ -17,10 +17,29 @@ export default function CompanySwitcher({ collapsed }) {
     } = useWorkspaceStore();
 
     useEffect(() => {
+        // [HOTFIX] Force clear storage if user ID is missing (Stale data corrupting requests)
+        const checkStaleAuth = () => {
+            const storage = localStorage.getItem('auth-storage');
+            if (storage) {
+                try {
+                    const { state } = JSON.parse(storage);
+                    if (state?.user?.username === 'admin' && !state?.user?.id && !state?.user?.userId) {
+                        console.error('🚨 DETECTED STALE AUTH DATA (Missing ID). CLEARING...', state.user);
+                        localStorage.clear();
+                        window.location.href = '/login';
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+        checkStaleAuth();
+
+        console.log('Current Workspaces:', workspaces); // DEBUG
         if (workspaces.length === 0) {
             fetchWorkspaces();
         }
-    }, []);
+    }, [workspaces]);
 
     const handleSelect = async (workspace) => {
         selectWorkspace(workspace);
@@ -79,12 +98,12 @@ export default function CompanySwitcher({ collapsed }) {
                         {workspaceType === 'PERSONAL' ? 'Personal Workspace' : getDisplayRole()}
                     </div>
                 </div>
-                {workspaces.length > 1 && (
+                {workspaces.length >= 1 && (
                     <i className={`fa-solid fa-chevron-${isOpen ? 'up' : 'down'} text-gray-400`} />
                 )}
             </div>
 
-            {isOpen && workspaces.length > 0 && (
+            {isOpen && (
                 <div className="company-switcher-dropdown">
                     {/* Personal Workspace Section */}
                     <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">

@@ -66,6 +66,22 @@ public class CompanySettings extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "review_enabled", nullable = false)
     private boolean reviewEnabled = true;
 
+    // ===== HR Competitive Features (Tính năng cạnh tranh) =====
+    @Column(name = "okr_enabled", nullable = false)
+    private boolean okrEnabled = true;
+
+    @Column(name = "skills_matrix_enabled", nullable = false)
+    private boolean skillsMatrixEnabled = true;
+
+    @Column(name = "onboarding_enabled", nullable = false)
+    private boolean onboardingEnabled = true;
+
+    @Column(name = "resource_planning_enabled", nullable = false)
+    private boolean resourcePlanningEnabled = true;
+
+    @Column(name = "org_chart_enabled", nullable = false)
+    private boolean orgChartEnabled = true;
+
     // ===== Limits (Giới hạn theo gói dịch vụ) =====
     @Column(name = "max_employees", nullable = false)
     private int maxEmployees = 50;
@@ -92,4 +108,30 @@ public class CompanySettings extends DoAn.BE.common.entity.BaseEntity {
 
     @Column(name = "max_leave_days_per_year")
     private Integer maxLeaveDaysPerYear = 12; // mặc định 12 ngày
+
+    // ===== Project sub-features (Tính năng con của Project) =====
+    @Column(name = "time_tracking_enabled", nullable = false)
+    private boolean timeTrackingEnabled = true;
+
+    @Column(name = "analytics_enabled", nullable = false)
+    private boolean analyticsEnabled = true;
+
+    @Column(name = "calendar_enabled", nullable = false)
+    private boolean calendarEnabled = true;
+
+    @Column(name = "automation_enabled", nullable = false)
+    private boolean automationEnabled = false; // Mặc định tắt - tính năng premium
+
+    // ===== Chat sub-features (Tính năng con của Chat) =====
+    @Column(name = "chat_reactions_enabled", nullable = false)
+    private boolean chatReactionsEnabled = true;
+
+    @Column(name = "chat_file_share_enabled", nullable = false)
+    private boolean chatFileShareEnabled = true;
+
+    @Column(name = "chat_threads_enabled", nullable = false)
+    private boolean chatThreadsEnabled = true;
+
+    @Column(name = "chat_search_enabled", nullable = false)
+    private boolean chatSearchEnabled = true;
 }

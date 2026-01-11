@@ -332,6 +332,54 @@ function ModulesSettings({ workspace }) {
                     </div>
                 </div>
             )}
+
+            {/* Project Sub-features */}
+            {settings.projectModuleEnabled !== false && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100">
+                        <h3 className="font-semibold text-gray-900">Tính năng Dự án</h3>
+                        <p className="text-xs text-gray-500 mt-1">Bật/tắt các tính năng nâng cao trong module Dự án</p>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                        <ToggleRow
+                            icon="fa-stopwatch"
+                            iconColor="text-cyan-500"
+                            title="Time Tracking"
+                            description="Log time làm việc cho từng issue"
+                            enabled={settings.timeTrackingEnabled !== false}
+                            onToggle={() => handleToggle('timeTrackingEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-chart-line"
+                            iconColor="text-indigo-500"
+                            title="Analytics"
+                            description="Biểu đồ burndown, velocity, status"
+                            enabled={settings.analyticsEnabled !== false}
+                            onToggle={() => handleToggle('analyticsEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-calendar-days"
+                            iconColor="text-blue-500"
+                            title="Lịch"
+                            description="Quản lý sự kiện, cuộc họp"
+                            enabled={settings.calendarEnabled !== false}
+                            onToggle={() => handleToggle('calendarEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-bolt"
+                            iconColor="text-amber-500"
+                            title="Automation"
+                            description="Tự động hóa workflow dự án (Premium)"
+                            enabled={settings.automationEnabled === true}
+                            onToggle={() => handleToggle('automationEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -171,6 +171,15 @@ All endpoints marked with **(Paginated)** return this structure.
 | POST | `/accept` | Accept invitation | Required |
 | DELETE | `/{inviteId}` | Cancel invitation | OWNER, ADMIN |
 
+### CompanyMemberController (`/api/companies/{companyId}/members`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/` | List company members | Required |
+| PUT | `/{userId}/role` | Change member role | OWNER, ADMIN |
+| DELETE | `/{userId}` | Remove member | OWNER, ADMIN |
+| PUT | `/{userId}/permissions` | Update fine-grained permissions | OWNER, ADMIN |
+
 ---
 
 ## 4. HRM APIs
@@ -290,12 +299,15 @@ All endpoints marked with **(Paginated)** return this structure.
 | GET | `/` | List all projects (Paginated) | Required |
 | GET | `/my-projects` | List my projects (Paginated) | Required |
 | GET | `/{projectId}` | Get project details | Member |
-| POST | `/` | Create project | MANAGER_PROJECT+ |
-| PUT | `/{projectId}` | Update project | Project Admin |
+| POST | `/` | Create project | Required |
+| PUT | `/{projectId}` | Update project | Project Owner/Manager |
 | DELETE | `/{projectId}` | Delete project | Project Owner |
 | GET | `/{projectId}/members` | List members | Member |
-| POST | `/{projectId}/members` | Add member | Project Admin |
-| DELETE | `/{projectId}/members/{userId}` | Remove member | Project Admin |
+| POST | `/{projectId}/members` | Add member | Project Owner/Manager |
+| DELETE | `/{projectId}/members/{memberId}` | Remove member | Project Owner/Manager |
+| PATCH | `/{projectId}/members/{memberId}/role` | Update member role | Project Owner |
+| GET | `/{projectId}/files` | List project files | Member |
+| GET | `/{projectId}/files/stats` | Get file stats | Member |
 
 ### SprintController (`/api/sprints`)
 
@@ -322,8 +334,8 @@ All endpoints marked with **(Paginated)** return this structure.
 | POST | `/` | Create issue | Member |
 | PUT | `/{issueId}` | Update issue | Member |
 | DELETE | `/{issueId}` | Delete issue | Reporter/Admin |
-| PUT | `/{issueId}/status` | Update status | Member |
-| PUT | `/{issueId}/assign` | Assign issue | Project Admin |
+| PATCH | `/{issueId}/assign/{assigneeId}` | Assign issue | Project Manager |
+| PATCH | `/{issueId}/status/{statusId}` | Change status | Member |
 
 ### IssueCommentController (`/api/comments`)
 
@@ -342,6 +354,21 @@ All endpoints marked with **(Paginated)** return this structure.
 | GET | `/phases` | Get project phases | Member |
 | GET | `/gantt` | Get Gantt chart data | Member |
 
+### ProjectDashboardController (`/api/project-dashboard`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/project/{projectId}/stats` | Get project stats | Member |
+| GET | `/sprint/{sprintId}/burndown` | Get sprint burndown | Member |
+| GET | `/my-projects` | Get user projects stats | Required |
+
+### ProjectExportController (`/api/project-export`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/{projectId}/issues/csv` | Export issues to CSV | Member |
+| GET | `/{projectId}/gantt/csv` | Export Gantt to CSV | Member |
+
 ### IssueActivityController (`/api/activities`)
 
 | Method | Endpoint | Description | Auth |
@@ -350,6 +377,103 @@ All endpoints marked with **(Paginated)** return this structure.
 | GET | `/project/{projectId}` | Project activity feed (Paginated) | Member |
 | GET | `/project/{projectId}/my` | My activities (Paginated) | Required |
 | DELETE | `/{activityId}` | Delete activity | Project Manager |
+
+---
+
+## 10. Time Tracking APIs
+
+### TimeLogController (`/api/timelogs`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/` | Log time for an issue | Member |
+| GET | `/issue/{issueId}` | Get time logs for issue | Member |
+| GET | `/my` | Get my time logs (Paginated) | Required |
+| PUT | `/{logId}` | Update time log | Owner |
+| DELETE | `/{logId}` | Delete time log | Owner |
+| GET | `/issue/{issueId}/total` | Get total hours for issue | Member |
+
+---
+
+## 11. Calendar APIs
+
+### CalendarController (`/api/calendar`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/events` | Create calendar event | Required |
+| GET | `/events` | Get events in date range | Required |
+| GET | `/events/{eventId}` | Get event by ID | Required |
+| PUT | `/events/{eventId}` | Update event | Creator |
+| DELETE | `/events/{eventId}` | Delete event | Creator |
+| POST | `/events/{eventId}/respond` | RSVP to event | Attendee |
+
+**Query Parameters for Get Events:**
+- `start`: ISO DateTime (e.g., `2024-01-01T00:00:00`)
+- `end`: ISO DateTime (e.g., `2024-01-31T23:59:59`)
+
+**RSVP Status Values:**
+- `PENDING`, `ACCEPTED`, `DECLINED`, `TENTATIVE`
+
+---
+
+## 12. Automation APIs
+
+### AutomationController (`/api/automations`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/` | Create automation rule | Project Admin |
+| GET | `/project/{projectId}` | Get project rules | Member |
+| GET | `/{ruleId}` | Get rule by ID | Member |
+| POST | `/{ruleId}/toggle` | Toggle rule active/inactive | Project Admin |
+| DELETE | `/{ruleId}` | Delete rule | Project Admin |
+| GET | `/{ruleId}/logs` | Get execution logs (Paginated) | Member |
+
+**Trigger Types:**
+- `ISSUE_CREATED`, `ISSUE_UPDATED`, `STATUS_CHANGED`
+- `ASSIGNEE_CHANGED`, `PRIORITY_CHANGED`, `COMMENT_ADDED`
+- `DUE_DATE_APPROACHING`, `SPRINT_STARTED`, `SPRINT_COMPLETED`
+
+**Action Types:**
+- `UPDATE_FIELD`, `ADD_COMMENT`, `SEND_NOTIFICATION`, `SEND_WEBHOOK`
+
+---
+
+## 13. Analytics APIs
+
+### AnalyticsController (`/api/analytics`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/projects/{projectId}/burndown?sprintId=123` | Burndown chart data | Member |
+| GET | `/projects/{projectId}/velocity?sprintCount=5` | Velocity chart data | Member |
+| GET | `/projects/{projectId}/status` | Issue status distribution | Member |
+| GET | `/projects/{projectId}/workload` | Team workload summary | Member |
+
+---
+
+## 14. AI Assistant APIs
+
+### AIController (`/api/ai`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/status` | Check AI service status | Required |
+| POST | `/chat` | Chat with AI assistant | Required |
+| GET | `/projects/{projectId}/summary` | Summarize project | Member |
+| GET | `/projects/{projectId}/sprint/summary` | Summarize current sprint | Member |
+| GET | `/projects/{projectId}/suggest-tasks` | Suggest priority tasks | Member |
+| GET | `/projects/{projectId}/analyze-progress` | Analyze progress | Member |
+| GET | `/projects/{projectId}/report` | Generate report | Member |
+| GET | `/conversations` | Get user conversations (Paginated) | Required |
+| GET | `/conversations/{conversationId}` | Get conversation details | Required |
+| DELETE | `/conversations/{conversationId}` | Delete conversation | Required |
+| GET | `/help` | Get usage help | Required |
+| POST | `/actions` | Execute AI action | Required |
+| POST | `/actions/batch` | Execute multiple actions | Required |
+
+> **Note**: Requires `GEMINI_API_KEY` to be configured. Returns 503 if AI service unavailable.
 
 ---
 
@@ -470,6 +594,16 @@ All endpoints marked with **(Paginated)** return this structure.
 | `SprintService` | Sprint management |
 | `IssueService` | Issue tracking |
 | `ProjectDashboardService` | Project statistics |
+| `ProjectAnalyticsService` | Burndown, velocity charts |
+| `TimeTrackingService` | Time log management |
+
+### Calendar & Automation Services
+
+| Service | Responsibility |
+|---------|----------------|
+| `CalendarService` | Event CRUD, RSVP |
+| `AutomationService` | Rule management |
+| `AutomationEngine` | Rule execution engine |
 
 ### Notification Services
 
@@ -478,6 +612,13 @@ All endpoints marked with **(Paginated)** return this structure.
 | `NotificationService` | Notification CRUD |
 | `EmailNotificationService` | Email sending |
 | `FCMService` | Push notifications |
+
+### AI Services
+
+| Service | Responsibility |
+|---------|----------------|
+| `GeminiService` | Gemini API integration |
+| `AIProjectAssistantService` | Project context AI |
 
 ---
 

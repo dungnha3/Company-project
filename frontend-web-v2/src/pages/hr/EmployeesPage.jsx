@@ -5,6 +5,7 @@ import { useDebounce } from '@uidotdev/usehooks';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
+import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
 import EmployeeFormModal from './components/EmployeeFormModal';
@@ -193,14 +194,23 @@ export default function EmployeesPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Danh sách nhân viên</h1>
                     <p className="text-gray-500 text-sm">Quản lý hồ sơ và thông tin nhân sự</p>
                 </div>
-                {hasRole('MANAGER_HR') && (
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="btn-primary shadow-lg shadow-primary/20"
-                    >
-                        <i className="fa-solid fa-plus" /> Thêm nhân viên
-                    </button>
-                )}
+                <div className="flex gap-3">
+                    {hasRole('MANAGER_HR') && (
+                        <ExportButton
+                            endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
+                            filename={`NhanVien_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                            label="Xuất Excel"
+                        />
+                    )}
+                    {hasRole('MANAGER_HR') && (
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="btn-primary shadow-lg shadow-primary/20"
+                        >
+                            <i className="fa-solid fa-plus" /> Thêm nhân viên
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Create/Edit Modal */}

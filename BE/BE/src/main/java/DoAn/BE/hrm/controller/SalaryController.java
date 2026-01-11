@@ -19,11 +19,14 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 // [Controller managing salaries] (Role: Accounting/HR)
 @RestController
 @RequestMapping("/api/salaries")
 @RequiredArgsConstructor
 @Slf4j
+@FeatureFlag("SALARY")
 public class SalaryController {
 
     private final SalaryService salaryService;

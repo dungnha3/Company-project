@@ -1,18 +1,31 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
+import CreateProjectModal from './components/CreateProjectModal';
+import CreateIssueModal from './components/CreateIssueModal';
 
 export default function ProjectsPage() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'card'
+    const [showProjectModal, setShowProjectModal] = useState(false);
+    const [showIssueModal, setShowIssueModal] = useState(false);
 
     const { data: projects, isLoading } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.LIST)).data,
     });
+
+    const handleProjectCreated = (project) => {
+        queryClient.invalidateQueries(['projects']);
+    };
+
+    const handleIssueCreated = (issue) => {
+        queryClient.invalidateQueries(['myIssues']);
+    };
 
     return (
         <div className="space-y-6">
@@ -36,8 +49,17 @@ export default function ProjectsPage() {
                             <i className="fa-solid fa-grid-2 mr-1" /> Card
                         </button>
                     </div>
-                    <button className="btn-primary shadow-lg shadow-primary/20">
-                        <i className="fa-solid fa-plus" /> Tạo dự án
+                    <button
+                        onClick={() => setShowIssueModal(true)}
+                        className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                        <i className="fa-solid fa-plus mr-1" /> Task
+                    </button>
+                    <button
+                        onClick={() => setShowProjectModal(true)}
+                        className="btn-primary shadow-lg shadow-primary/20"
+                    >
+                        <i className="fa-solid fa-folder-plus mr-1" /> Tạo dự án
                     </button>
                 </div>
             </div>
@@ -53,6 +75,18 @@ export default function ProjectsPage() {
             ) : (
                 <ProjectCardView projects={projects} navigate={navigate} />
             )}
+
+            {/* Modals */}
+            <CreateProjectModal
+                isOpen={showProjectModal}
+                onClose={() => setShowProjectModal(false)}
+                onSuccess={handleProjectCreated}
+            />
+            <CreateIssueModal
+                isOpen={showIssueModal}
+                onClose={() => setShowIssueModal(false)}
+                onSuccess={handleIssueCreated}
+            />
         </div>
     );
 }

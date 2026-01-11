@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
     timeout: 30000,
+    withCredentials: true, // Enable httpOnly cookie support
     headers: {
         'Content-Type': 'application/json',
     },
@@ -54,11 +55,38 @@ apiClient.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle token refresh
+// Response interceptor - Handle token refresh and feature/quota errors
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+
+        // Handle Feature Disabled (403 with specific message)
+        if (error.response?.status === 403) {
+            const message = error.response?.data?.message || '';
+            if (message.includes('disabled') || message.includes('Feature')) {
+                // Feature is disabled for this company
+                console.warn('[Feature Disabled]', message);
+                // Dispatch custom event for UI to show toast
+                window.dispatchEvent(new CustomEvent('feature-disabled', {
+                    detail: { message }
+                }));
+                return Promise.reject(error);
+            }
+        }
+
+        // Handle Quota Exceeded (400 with quota info)
+        if (error.response?.status === 400) {
+            const message = error.response?.data?.message || '';
+            if (message.includes('quota') || message.includes('limit') || message.includes('exceeded')) {
+                console.warn('[Quota Exceeded]', message);
+                // Dispatch custom event for UI to show toast
+                window.dispatchEvent(new CustomEvent('quota-exceeded', {
+                    detail: { message }
+                }));
+                return Promise.reject(error);
+            }
+        }
 
         // If 401 and haven't tried refresh yet
         // SKIP if the request is for login (let the component handle the error)
@@ -66,11 +94,10 @@ apiClient.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                const refreshToken = localStorage.getItem('refreshToken');
-                if (!refreshToken) throw new Error('No refresh token');
-
-                const response = await axios.post(`${API_BASE_URL}/api/auth/refresh-token`, {
-                    refreshToken,
+                // RefreshToken is now in httpOnly cookie - just make the request
+                // The cookie will be sent automatically with withCredentials: true
+                const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {}, {
+                    withCredentials: true, // Send the httpOnly cookie
                 });
 
                 const { accessToken, expiresIn } = response.data;
@@ -82,7 +109,6 @@ apiClient.interceptors.response.use(
             } catch (refreshError) {
                 // Refresh failed - clear auth and redirect
                 localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
                 localStorage.removeItem('expiresAt');
                 window.location.href = '/login';
                 return Promise.reject(refreshError);

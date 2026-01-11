@@ -16,7 +16,6 @@ import DoAn.BE.auth.service.JwtService;
 import DoAn.BE.auth.service.SessionService;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.user.entity.User;
-import DoAn.BE.user.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,12 +26,14 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserService userService;
+    private final DoAn.BE.user.repository.UserRepository userRepository;
+    @SuppressWarnings("unused") // Kept for session activity tracking (currently disabled)
     private final SessionService sessionService;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserService userService, SessionService sessionService) {
+    public JwtAuthenticationFilter(JwtService jwtService, DoAn.BE.user.repository.UserRepository userRepository,
+            SessionService sessionService) {
         this.jwtService = jwtService;
-        this.userService = userService;
+        this.userRepository = userRepository;
         this.sessionService = sessionService;
     }
 
@@ -60,7 +61,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             username = jwtService.extractUsername(jwt);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userService.findByUsername(username).orElse(null);
+                System.out.println(">>> JwtFilter: Querying User: " + username);
+                User user = userRepository.findByUsername(username).orElse(null);
+                System.out.println(">>> JwtFilter: User found: " + (user != null));
 
                 if (user != null && jwtService.validateToken(jwt)) {
                     // [DEBUG] Log isSystemAdmin value
@@ -108,10 +111,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
 
                     // Cập nhật session activity
-                    String sessionId = request.getHeader("X-Session-ID");
-                    if (sessionId != null && !sessionId.trim().isEmpty()) {
-                        sessionService.updateSessionActivity(sessionId);
-                    }
+                    /*
+                     * [DEBUG] Disabled to prevent lock contention
+                     * String sessionId = request.getHeader("X-Session-ID");
+                     * if (sessionId != null && !sessionId.trim().isEmpty()) {
+                     * sessionService.updateSessionActivity(sessionId);
+                     * }
+                     */
                 }
             }
         } catch (io.jsonwebtoken.ExpiredJwtException | io.jsonwebtoken.MalformedJwtException

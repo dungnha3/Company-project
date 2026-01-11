@@ -45,6 +45,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
+    @ExceptionHandler(QuotaExceededException.class)
+    public ResponseEntity<ErrorResponse> handleQuotaExceeded(QuotaExceededException ex) {
+        log.warn("Quota exceeded: {} - {}/{}", ex.getQuotaType(), ex.getCurrentValue(), ex.getMaxValue());
+        ErrorResponse error = new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(FeatureDisabledException.class)
+    public ResponseEntity<ErrorResponse> handleFeatureDisabled(FeatureDisabledException ex) {
+        log.warn("Feature disabled access attempt: {}", ex.getFeatureCode());
+        ErrorResponse error = new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(ProjectAccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleProjectAccessDenied(ProjectAccessDeniedException ex) {
         ErrorResponse error = new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value());

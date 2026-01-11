@@ -21,11 +21,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 // [Controller managing employees] (Role: HR Manager)
 // NOTE: Create employee via InviteService.inviteUser() - no manual create endpoint
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
+@FeatureFlag("HR")
 public class EmployeeController {
 
     private final EmployeeService employeeService;

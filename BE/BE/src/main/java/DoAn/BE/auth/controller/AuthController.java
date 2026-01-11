@@ -10,7 +10,9 @@ import DoAn.BE.common.exception.UnauthorizedException;
 import DoAn.BE.user.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,11 +27,37 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // Cookie Configuration
+    private static final String REFRESH_TOKEN_COOKIE = "refreshToken";
+    private static final int REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
+
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
 
-    // Đăng nhập - trả về token và danh sách công ty
+    // Helper: Create httpOnly cookie for refreshToken
+    private ResponseCookie createRefreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(true) // Use HTTPS in production
+                .path("/api/auth")
+                .maxAge(REFRESH_TOKEN_MAX_AGE)
+                .sameSite("Strict")
+                .build();
+    }
+
+    // Helper: Create cookie to clear refreshToken
+    private ResponseCookie clearRefreshTokenCookie() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/auth")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+    }
+
+    // Đăng nhập - trả về token và set refreshToken cookie
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
@@ -39,7 +67,16 @@ public class AuthController {
             String userAgent = httpRequest.getHeader("User-Agent");
 
             AuthResponse response = authService.login(request, ipAddress, userAgent);
-            return ResponseEntity.ok(response);
+
+            // Set refreshToken as httpOnly cookie
+            ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+
+            // Remove refreshToken from JSON response (keep only in cookie)
+            response.setRefreshToken(null);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(response);
         } catch (Exception e) {
             throw new UnauthorizedException("Đăng nhập thất bại: " + e.getMessage());
         }
@@ -77,7 +114,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Đăng ký tài khoản mới
+    // Đăng ký tài khoản mới - set refreshToken cookie
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @Valid @RequestBody RegisterRequest request,
@@ -87,7 +124,13 @@ public class AuthController {
             String userAgent = httpRequest.getHeader("User-Agent");
 
             AuthResponse response = authService.register(request, ipAddress, userAgent);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+            ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+            response.setRefreshToken(null);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(response);
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
@@ -112,36 +155,59 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Refresh token
+    // Refresh token - read from httpOnly cookie
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refreshToken(@RequestBody Map<String, String> request) {
+    public ResponseEntity<AuthResponse> refreshToken(
+            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
+            @RequestBody(required = false) Map<String, String> request) {
         try {
-            String refreshToken = request.get("refreshToken");
+            // Priority: cookie > request body (backward compatibility)
+            String refreshToken = cookieRefreshToken;
+            if ((refreshToken == null || refreshToken.trim().isEmpty()) && request != null) {
+                refreshToken = request.get("refreshToken");
+            }
+
             if (refreshToken == null || refreshToken.trim().isEmpty()) {
                 throw new BadRequestException("Refresh token không được để trống");
             }
 
             AuthResponse response = authService.refreshToken(refreshToken);
-            return ResponseEntity.ok(response);
+
+            // Set new refreshToken cookie
+            ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+            response.setRefreshToken(null);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(response);
         } catch (UnauthorizedException | BadRequestException e) {
             throw e;
         }
     }
 
-    // Đăng xuất
+    // Đăng xuất - clear cookie
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(
+            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
             @RequestBody(required = false) Map<String, String> request,
             HttpServletRequest httpRequest) {
         try {
-            String refreshToken = request != null ? request.get("refreshToken") : null;
+            String refreshToken = cookieRefreshToken;
+            if ((refreshToken == null || refreshToken.isEmpty()) && request != null) {
+                refreshToken = request.get("refreshToken");
+            }
             String sessionId = request != null ? request.get("sessionId") : null;
 
             authService.logout(refreshToken, sessionId);
 
+            // Clear the refreshToken cookie
+            ResponseCookie clearCookie = clearRefreshTokenCookie();
+
             Map<String, String> response = new HashMap<>();
             response.put("message", "Đăng xuất thành công");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(response);
         } catch (Exception e) {
             throw new BadRequestException("Đăng xuất thất bại: " + e.getMessage());
         }

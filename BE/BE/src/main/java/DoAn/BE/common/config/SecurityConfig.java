@@ -2,6 +2,7 @@ package DoAn.BE.common.config;
 
 import DoAn.BE.auth.filter.JwtAuthenticationFilter;
 import DoAn.BE.common.filter.RateLimitFilter;
+import DoAn.BE.common.filter.SecurityHeadersFilter;
 import DoAn.BE.common.filter.TenantFilter;
 import DoAn.BE.common.util.AppConstants;
 import DoAn.BE.company.entity.CompanyRole;
@@ -63,6 +64,9 @@ public class SecurityConfig {
         @Autowired
         private RateLimitFilter rateLimitFilter;
 
+        @Autowired
+        private SecurityHeadersFilter securityHeadersFilter;
+
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
@@ -73,124 +77,148 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(authz -> authz
                                                 // ===== PUBLIC ENDPOINTS =====
                                                 .requestMatchers(AppConstants.PUBLIC_ENDPOINTS).permitAll()
+                                                .requestMatchers("/api/debug/**").hasRole(SYSTEM_ADMIN) // DEBUG -
+                                                                                                        // Secured
 
                                                 // ===== SYSTEM ADMIN ENDPOINTS =====
-                                                .requestMatchers("/api/companies/admin// ").hasRole(SYSTEM_ADMIN)
+                                                .requestMatchers("/api/companies/admin/**").hasRole(SYSTEM_ADMIN)
 
                                                 // ===== ADMIN ENDPOINTS =====
-                                                .requestMatchers("/api/admin// ").hasAnyRole(COMPANY_ADMINS)
+                                                .requestMatchers("/api/admin/**").hasAnyRole(COMPANY_ADMINS)
                                                 .requestMatchers(HttpMethod.GET, "/api/users")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
                                                                 CompanyRole.MANAGER_HR.name())
                                                 .requestMatchers(HttpMethod.GET, "/api/users/active")
                                                 .hasAnyRole(ALL_EMPLOYEES)
                                                 .requestMatchers(HttpMethod.GET, "/api/users/search").authenticated()
-                                                .requestMatchers("/api/users// ").hasAnyRole(COMPANY_ADMINS)
+                                                .requestMatchers("/api/users/**").hasAnyRole(COMPANY_ADMINS)
                                                 .requestMatchers(HttpMethod.POST, "/api/accounts/with-employee")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
                                                                 CompanyRole.MANAGER_HR.name())
-                                                .requestMatchers("/api/accounts// ")
+                                                .requestMatchers("/api/accounts/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
                                                                 SYSTEM_ADMIN)
-                                                .requestMatchers("/api/audit-logs// ").hasAnyRole(COMPANY_ADMINS)
+                                                .requestMatchers("/api/audit-logs/**").hasAnyRole(COMPANY_ADMINS)
 
                                                 // ===== HR MANAGER ENDPOINTS =====
-                                                .requestMatchers("/api/nhan-vien/user// ").hasAnyRole(ALL_EMPLOYEES)
-                                                .requestMatchers("/api/nhan-vien// ")
+                                                .requestMatchers("/api/employees/user/**").hasAnyRole(ALL_EMPLOYEES)
+                                                .requestMatchers("/api/employees/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
                                                                 CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/phong-ban// ")
-                                                .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.MANAGER_HR.name())
-                                                .requestMatchers("/api/chuc-vu// ")
-                                                .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.MANAGER_HR.name())
-                                                .requestMatchers("/api/hop-dong/nhan-vien// ")
+                                                .requestMatchers("/api/departments/**")
+                                                .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
+                                                                CompanyRole.MANAGER_HR.name())
+                                                .requestMatchers("/api/positions/**")
+                                                .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
+                                                                CompanyRole.MANAGER_HR.name())
+                                                .requestMatchers("/api/contracts/employee/**")
                                                 .hasAnyRole(CompanyRole.EMPLOYEE.name(), CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name())
-                                                .requestMatchers("/api/hop-dong// ")
+                                                .requestMatchers("/api/contracts/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.MANAGER_HR.name())
-                                                .requestMatchers("/api/hr/role-change-request// ")
+                                                .requestMatchers("/api/hr/role-change-request/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.MANAGER_HR.name())
-                                                .requestMatchers("/api/danh-gia// ")
+                                                .requestMatchers("/api/reviews/**")
                                                 .hasAnyRole(CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
 
                                                 // ===== ACCOUNTING MANAGER ENDPOINTS =====
-                                                .requestMatchers("/api/bang-luong/tinh-tu-dong// ")
+                                                .requestMatchers("/api/salaries/generate/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/bang-luong/export// ")
+                                                .requestMatchers("/api/salaries/export/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/bang-luong/nhan-vien// ")
+                                                .requestMatchers("/api/salaries/employee/**")
                                                 .hasAnyRole(ALL_EMPLOYEES)
-                                                .requestMatchers("/api/cham-cong/manage// ")
+                                                .requestMatchers("/api/attendance/manage/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/cham-cong/nhan-vien// ")
+                                                .requestMatchers("/api/attendance/employee/**")
                                                 .hasAnyRole(CompanyRole.EMPLOYEE.name(), CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name())
-                                                .requestMatchers("/api/nghi-phep/approve// ")
+                                                .requestMatchers("/api/leave-requests/approve/**")
                                                 .hasAnyRole(CompanyRole.MANAGER_ACCOUNTING.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name())
-                                                .requestMatchers("/api/hr/salary-proposal// ")
+                                                .requestMatchers("/api/hr/salary-proposal/**")
                                                 .hasAnyRole(CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/export// ")
+                                                .requestMatchers("/api/export/**")
                                                 .hasAnyRole(CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/dashboard// ").hasAnyRole(ALL_MANAGERS)
+                                                .requestMatchers("/api/dashboard/**").hasAnyRole(ALL_MANAGERS)
 
                                                 // ===== PROJECT ENDPOINTS =====
-                                                .requestMatchers("/api/projects// ")
+                                                .requestMatchers("/api/projects/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
-                                                .requestMatchers("/api/issues// ")
+                                                .requestMatchers("/api/issues/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
-                                                .requestMatchers("/api/sprints// ")
+                                                .requestMatchers("/api/sprints/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
-                                                .requestMatchers("/api/comments// ")
+                                                .requestMatchers("/api/comments/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
-                                                .requestMatchers("/api/activities// ")
+                                                .requestMatchers("/api/activities/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
-                                                .requestMatchers("/api/project-dashboard// ")
+                                                .requestMatchers("/api/project-dashboard/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
 
+                                                // ===== TIME TRACKING =====
+                                                .requestMatchers("/api/timelogs/**")
+                                                .hasAnyRole(CompanyRole.OWNER.name(),
+                                                                CompanyRole.MANAGER_PROJECT.name(),
+                                                                CompanyRole.EMPLOYEE.name())
+
+                                                // ===== ANALYTICS =====
+                                                .requestMatchers("/api/analytics/**")
+                                                .hasAnyRole(CompanyRole.OWNER.name(),
+                                                                CompanyRole.MANAGER_PROJECT.name(),
+                                                                CompanyRole.EMPLOYEE.name())
+
+                                                // ===== AUTOMATIONS =====
+                                                .requestMatchers("/api/automations/**")
+                                                .hasAnyRole(CompanyRole.OWNER.name(),
+                                                                CompanyRole.MANAGER_PROJECT.name())
+
                                                 // ===== EMPLOYEE ENDPOINTS =====
-                                                .requestMatchers("/api/profile// ").authenticated()
-                                                .requestMatchers("/api/cham-cong/gps")
+                                                .requestMatchers("/api/profile/**").authenticated()
+                                                .requestMatchers("/api/attendance/gps")
                                                 .hasAnyRole(CompanyRole.EMPLOYEE.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/cham-cong/my// ").authenticated()
-                                                .requestMatchers("/api/bang-luong/my// ").authenticated()
-                                                .requestMatchers("/api/nghi-phep/my// ").authenticated()
-                                                .requestMatchers("/api/nghi-phep// ")
+                                                .requestMatchers("/api/attendance/my/**").authenticated()
+                                                .requestMatchers("/api/salaries/my/**").authenticated()
+                                                .requestMatchers("/api/leave-requests/my/**").authenticated()
+                                                .requestMatchers("/api/leave-requests/**")
                                                 .hasAnyRole(CompanyRole.EMPLOYEE.name(), CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name())
 
                                                 // ===== CHAT & MEETINGS =====
-                                                .requestMatchers("/api/chat// ").hasAnyRole(ALL_EMPLOYEES)
-                                                .requestMatchers("/api/meetings// ").hasAnyRole(ALL_EMPLOYEES)
+                                                .requestMatchers("/api/chat/**").hasAnyRole(ALL_EMPLOYEES)
+                                                .requestMatchers("/api/meetings/**").hasAnyRole(ALL_EMPLOYEES)
+
+                                                // ===== CALENDAR =====
+                                                .requestMatchers("/api/calendar/**").hasAnyRole(ALL_EMPLOYEES)
 
                                                 // ===== STORAGE (with SYSTEM_ADMIN for logo upload) =====
-                                                .requestMatchers("/api/storage// ")
+                                                .requestMatchers("/api/storage/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
                                                                 CompanyRole.EMPLOYEE.name(),
                                                                 CompanyRole.MANAGER_HR.name(),
@@ -198,17 +226,17 @@ public class SecurityConfig {
                                                                 CompanyRole.MANAGER_PROJECT.name(), SYSTEM_ADMIN)
 
                                                 // ===== AI CHATBOT =====
-                                                .requestMatchers("/api/ai// ").hasAnyRole(ALL_EMPLOYEES)
+                                                .requestMatchers("/api/ai/**").hasAnyRole(ALL_EMPLOYEES)
 
                                                 // ===== NOTIFICATIONS =====
-                                                .requestMatchers("/api/notifications// ").authenticated()
-                                                .requestMatchers("/api/thong-bao// ").authenticated()
+                                                .requestMatchers("/api/notifications/**").authenticated()
 
                                                 // All other requests require authentication
                                                 .anyRequest().authenticated())
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
                                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(securityHeadersFilter, RateLimitFilter.class)
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(tenantFilter, jwtAuthenticationFilter.getClass());
 
@@ -237,7 +265,7 @@ public class SecurityConfig {
                 configuration.setAllowCredentials(true);
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("// ", configuration);
+                source.registerCorsConfiguration("/**", configuration);
                 return source;
         }
 }

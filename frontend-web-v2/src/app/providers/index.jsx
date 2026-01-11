@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './AuthProvider';
 import { CompanyProvider } from './CompanyProvider';
 import { ToastProvider } from './ToastProvider';
+import { ApiErrorListener } from './ApiErrorListener';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -18,6 +19,7 @@ export function Providers({ children }) {
             <AuthProvider>
                 <CompanyProvider>
                     <ToastProvider>
+                        <ApiErrorListener />
                         {children}
                     </ToastProvider>
                 </CompanyProvider>

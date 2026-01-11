@@ -14,6 +14,12 @@
     min-height: 100vh;
     color: #1e293b;
     line-height: 1.6;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  .dark body {
+    background: linear-gradient(135deg, #1e1e2e 0%, #1a1a2e 100%);
+    color: #e2e8f0;
   }
 
   ::-webkit-scrollbar {
@@ -52,7 +58,7 @@
 
   /* Sidebar */
   .sidebar {
-    @apply w-64 min-h-screen bg-white/95 backdrop-blur-sm border-r border-gray-100 shadow-2xl flex flex-col transition-all duration-300;
+    @apply w-64 min-h-screen bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-r border-gray-100 dark:border-gray-800 shadow-2xl flex flex-col transition-all duration-300;
   }
 
   .sidebar.collapsed {
@@ -64,11 +70,11 @@
   }
 
   .menu-title {
-    @apply text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3;
+    @apply text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-3;
   }
 
   .menu-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl mb-1 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 cursor-pointer;
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl mb-1 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 cursor-pointer;
   }
 
   .menu-item.active {
@@ -81,15 +87,15 @@
 
   /* Header */
   .header {
-    @apply flex items-center justify-between px-8 py-4 bg-white/80 backdrop-blur-sm border-b border-gray-100;
+    @apply flex items-center justify-between px-8 py-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800;
   }
 
   .header-title h1 {
-    @apply text-2xl font-bold text-gray-800;
+    @apply text-2xl font-bold text-gray-800 dark:text-gray-100;
   }
 
   .header-title p {
-    @apply text-sm text-gray-500;
+    @apply text-sm text-gray-500 dark:text-gray-400;
   }
 
   /* Buttons */
@@ -282,5 +288,56 @@
 
   .animate-float {
     animation: float 6s ease-in-out infinite;
+  }
+
+  /* Org Chart Styles */
+  .org-chart-container {
+    min-width: max-content;
+    padding: 2rem;
+  }
+
+  .org-node {
+    @apply flex flex-col items-center p-4 bg-white rounded-xl border border-gray-100 min-w-[140px];
+  }
+
+  .org-node-company {
+    @apply bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200;
+  }
+
+  .org-node-dept {
+    @apply hover:border-blue-300;
+  }
+
+  .org-node-manager {
+    @apply bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200;
+  }
+
+  /* Command Palette */
+  .command-palette {
+    @apply fixed inset-0 z-50 flex items-start justify-center pt-[15vh];
+  }
+
+  .command-palette-backdrop {
+    @apply absolute inset-0 bg-black/50 backdrop-blur-sm;
+  }
+
+  .command-palette-content {
+    @apply relative bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-gray-200;
+  }
+
+  .command-palette-input {
+    @apply w-full px-5 py-4 text-lg border-b border-gray-100 outline-none;
+  }
+
+  .command-palette-results {
+    @apply max-h-[400px] overflow-y-auto;
+  }
+
+  .command-palette-item {
+    @apply flex items-center gap-3 px-5 py-3 hover:bg-gray-50 cursor-pointer transition-colors;
+  }
+
+  .command-palette-item.selected {
+    @apply bg-indigo-50;
   }
 }

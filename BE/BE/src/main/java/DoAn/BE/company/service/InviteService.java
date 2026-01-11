@@ -34,6 +34,7 @@ public class InviteService {
     private final CompanyRepository companyRepository;
     private final EmailNotificationService emailService;
     private final RoleTemplateService roleTemplateService;
+    private final DoAn.BE.common.service.QuotaService quotaService;
 
     @Value("${app.client.url:http://localhost:3000}")
     private String clientUrl;
@@ -46,6 +47,9 @@ public class InviteService {
         if (companyId == null) {
             throw new BadRequestException("Không tìm thấy thông tin công ty trong ngữ cảnh");
         }
+
+        // [QUOTA CHECK] Kiểm tra giới hạn nhân viên trước khi mời
+        quotaService.validateEmployeeQuota();
 
         // [Validate request] (Role: Guard)
         validateInviteRequest(request);

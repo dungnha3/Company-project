@@ -24,14 +24,23 @@ export default function AttendancePage() {
                         onClick={() => setActiveTab('my-history')}
                         className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'my-history' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
-                        Lịch sử của tôi
+                        <i className="fa-solid fa-list mr-2" />
+                        Lịch sử
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('calendar')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'calendar' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    >
+                        <i className="fa-solid fa-calendar-days mr-2" />
+                        Lịch
                     </button>
                     {hasRole('MANAGER_HR', 'OWNER', 'ADMIN') && (
                         <button
                             onClick={() => setActiveTab('manager-report')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'manager-report' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                         >
-                            Quản lý chấm công
+                            <i className="fa-solid fa-chart-bar mr-2" />
+                            Quản lý
                         </button>
                     )}
                 </nav>
@@ -40,6 +49,7 @@ export default function AttendancePage() {
             {/* Content */}
             <div className="min-h-[400px]">
                 {activeTab === 'my-history' && <MyAttendanceHistory />}
+                {activeTab === 'calendar' && <AttendanceCalendar />}
                 {activeTab === 'manager-report' && <ManagerAttendanceReport />}
             </div>
         </div>
@@ -237,6 +247,164 @@ function ManagerAttendanceReport() {
             </div>
 
             <DataTable columns={columns} data={report?.content || report || []} loading={isLoading} />
+        </div>
+    );
+}
+
+function AttendanceCalendar() {
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    const { data: monthData = [] } = useQuery({
+        queryKey: ['my-attendance-month', currentMonth.getMonth(), currentMonth.getFullYear()],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.MY_HISTORY)).data || [],
+    });
+
+    // Build attendance map by date
+    const attendanceMap = {};
+    monthData.forEach(record => {
+        const dateKey = new Date(record.date).toDateString();
+        attendanceMap[dateKey] = record;
+    });
+
+    // Get calendar grid data
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPadding = firstDay.getDay(); // 0 = Sunday
+    const daysInMonth = lastDay.getDate();
+
+    const days = [];
+    // Add padding for days before month starts
+    for (let i = 0; i < startPadding; i++) {
+        days.push({ day: null, record: null });
+    }
+    // Add actual days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const record = attendanceMap[date.toDateString()];
+        days.push({ day: d, date, record });
+    }
+
+    const goToPrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+    const goToNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+    const goToToday = () => setCurrentMonth(new Date());
+
+    const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                    <button onClick={goToPrevMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <i className="fa-solid fa-chevron-left text-gray-500" />
+                    </button>
+                    <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
+                        {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                    </h3>
+                    <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <i className="fa-solid fa-chevron-right text-gray-500" />
+                    </button>
+                </div>
+                <button onClick={goToToday} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+                    Hôm nay
+                </button>
+            </div>
+
+            {/* Weekday Headers */}
+            <div className="grid grid-cols-7 mb-2">
+                {WEEKDAYS.map(day => (
+                    <div key={day} className="text-center text-xs font-semibold text-gray-400 py-2">
+                        {day}
+                    </div>
+                ))}
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1">
+                {days.map((item, idx) => {
+                    if (!item.day) {
+                        return <div key={idx} className="h-20 bg-gray-50 rounded-lg" />;
+                    }
+
+                    const isToday = item.date.toDateString() === new Date().toDateString();
+                    const isWeekend = item.date.getDay() === 0 || item.date.getDay() === 6;
+                    const record = item.record;
+
+                    let statusColor = 'bg-gray-50';
+                    let statusIcon = null;
+
+                    if (record) {
+                        if (record.status === 'PRESENT') {
+                            statusColor = 'bg-green-50 border-green-200';
+                            statusIcon = <i className="fa-solid fa-check text-green-500" />;
+                        } else if (record.status === 'LATE') {
+                            statusColor = 'bg-yellow-50 border-yellow-200';
+                            statusIcon = <i className="fa-solid fa-clock text-yellow-500" />;
+                        } else if (record.status === 'ABSENT') {
+                            statusColor = 'bg-red-50 border-red-200';
+                            statusIcon = <i className="fa-solid fa-xmark text-red-500" />;
+                        }
+                    } else if (isWeekend) {
+                        statusColor = 'bg-gray-100';
+                    }
+
+                    return (
+                        <div
+                            key={idx}
+                            className={`
+                                h-20 p-2 rounded-lg border transition-all
+                                ${statusColor}
+                                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : 'border-gray-100'}
+                            `}
+                        >
+                            <div className="flex justify-between items-start">
+                                <span className={`text-sm font-medium ${isToday ? 'text-blue-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    {item.day}
+                                </span>
+                                {statusIcon}
+                            </div>
+                            {record && (
+                                <div className="mt-1 text-xs text-gray-500">
+                                    {record.checkInTime && (
+                                        <div className="truncate">
+                                            <i className="fa-solid fa-arrow-right-to-bracket text-green-500 mr-1" />
+                                            {new Date(record.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    )}
+                                    {record.checkOutTime && (
+                                        <div className="truncate">
+                                            <i className="fa-solid fa-arrow-right-from-bracket text-orange-500 mr-1" />
+                                            {new Date(record.checkOutTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex gap-6 mt-6 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="w-4 h-4 rounded bg-green-100 border border-green-200" />
+                    Đúng giờ
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="w-4 h-4 rounded bg-yellow-100 border border-yellow-200" />
+                    Đi trễ
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
+                    Vắng mặt
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="w-4 h-4 rounded bg-gray-100" />
+                    Cuối tuần
+                </div>
+            </div>
         </div>
     );
 }

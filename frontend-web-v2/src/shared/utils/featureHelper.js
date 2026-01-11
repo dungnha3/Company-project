@@ -24,12 +24,39 @@ const FEATURE_SETTINGS_MAP = {
     'salary': 'salaryEnabled',
     'contract': 'contractEnabled',
     'review': 'reviewEnabled',
+
+    // HR Competitive features (NEW)
+    'okr': 'okrEnabled',
+    'skillsMatrix': 'skillsMatrixEnabled',
+    'onboarding': 'onboardingEnabled',
+    'resourcePlanning': 'resourcePlanningEnabled',
+    'orgChart': 'orgChartEnabled',
+
+    // Project Sub-features (NEW)
+    'timeTracking': 'timeTrackingEnabled',
+    'analytics': 'analyticsEnabled',
+    'calendar': 'calendarEnabled',
+    'automation': 'automationEnabled',
+
+    // Chat Sub-features (NEW)
+    'chatReactions': 'chatReactionsEnabled',
+    'chatFileShare': 'chatFileShareEnabled',
+    'chatThreads': 'chatThreadsEnabled',
+    'chatSearch': 'chatSearchEnabled',
 };
 
 /**
  * Check xem feature có yêu cầu HR module không
  */
-const HR_DEPENDENT_FEATURES = ['attendance', 'leave', 'salary', 'contract', 'review'];
+const HR_DEPENDENT_FEATURES = [
+    'attendance', 'leave', 'salary', 'contract', 'review',
+    'okr', 'skillsMatrix', 'onboarding', 'resourcePlanning', 'orgChart'
+];
+
+/**
+ * Check xem feature có yêu cầu Project module không
+ */
+const PROJECT_DEPENDENT_FEATURES = ['timeTracking', 'analytics', 'automation'];
 
 /**
  * Kiểm tra feature có được bật không
@@ -41,7 +68,10 @@ const HR_DEPENDENT_FEATURES = ['attendance', 'leave', 'salary', 'contract', 'rev
 export function isFeatureEnabled(plan, settings, feature) {
     // 1. Kiểm tra Plan trước
     // HR sub-features đều phụ thuộc vào 'hr' plan feature
-    const planFeature = HR_DEPENDENT_FEATURES.includes(feature) ? 'hr' : feature;
+    let planFeature = feature;
+    if (HR_DEPENDENT_FEATURES.includes(feature)) planFeature = 'hr';
+    if (PROJECT_DEPENDENT_FEATURES.includes(feature)) planFeature = 'project';
+
     if (!planHasFeature(plan, planFeature)) {
         return false;
     }
@@ -61,6 +91,13 @@ export function isFeatureEnabled(plan, settings, feature) {
     // 4. HR sub-features cần check cả hrModuleEnabled
     if (HR_DEPENDENT_FEATURES.includes(feature)) {
         if (!settings.hrModuleEnabled) {
+            return false;
+        }
+    }
+
+    // 5. Project sub-features cần check cả projectModuleEnabled
+    if (PROJECT_DEPENDENT_FEATURES.includes(feature)) {
+        if (!settings.projectModuleEnabled) {
             return false;
         }
     }
@@ -106,9 +143,19 @@ export function isMenuItemEnabled(itemPath, plan, settings) {
         '/app/employees': 'hr',
         '/app/departments': 'hr',
         '/app/positions': 'hr',
+        '/app/reviews': 'review',
         '/app/projects': 'project',
         '/app/chat': 'chat',
         '/app/storage': 'storage',
+        // New competitive features
+        '/app/my-timelogs': 'timeTracking',
+        '/app/calendar': 'calendar',
+        '/app/hr-dashboard': 'hr',
+        '/app/org-chart': 'orgChart',
+        '/app/okr': 'okr',
+        '/app/skills-matrix': 'skillsMatrix',
+        '/app/onboarding': 'onboarding',
+        '/app/resource-planning': 'resourcePlanning',
     };
 
     const feature = pathFeatureMap[itemPath];
@@ -116,3 +163,22 @@ export function isMenuItemEnabled(itemPath, plan, settings) {
 
     return isFeatureEnabled(plan, settings, feature);
 }
+
+/**
+ * Check if specific project feature is enabled (for tabs/buttons in project pages)
+ */
+export function isProjectFeatureEnabled(settings, feature) {
+    const map = {
+        'timeTracking': 'timeTrackingEnabled',
+        'analytics': 'analyticsEnabled',
+        'calendar': 'calendarEnabled',
+        'automation': 'automationEnabled',
+    };
+
+    if (!settings) return true; // Personal workspace
+    if (!settings.projectModuleEnabled) return false;
+
+    const key = map[feature];
+    return key ? settings[key] !== false : true;
+}
+

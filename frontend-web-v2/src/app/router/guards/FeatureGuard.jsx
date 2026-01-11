@@ -10,6 +10,30 @@ import { useToast } from '@app/providers/ToastProvider';
 import { useEffect, useRef } from 'react';
 
 /**
+ * Feature display names for user-friendly messages
+ */
+const FEATURE_NAMES = {
+    'hr': 'Nhân sự',
+    'project': 'Dự án',
+    'chat': 'Trò chuyện',
+    'storage': 'Tài liệu',
+    'attendance': 'Chấm công',
+    'leave': 'Nghỉ phép',
+    'salary': 'Bảng lương',
+    'contract': 'Hợp đồng',
+    'review': 'Đánh giá',
+    'okr': 'OKR/KPI',
+    'skillsMatrix': 'Ma trận kỹ năng',
+    'onboarding': 'Onboarding',
+    'resourcePlanning': 'Quản lý nguồn lực',
+    'orgChart': 'Sơ đồ tổ chức',
+    'timeTracking': 'Time Tracking',
+    'analytics': 'Phân tích',
+    'calendar': 'Lịch',
+    'automation': 'Tự động hóa',
+};
+
+/**
  * Props:
  * - feature: Feature key cần check (attendance, leave, salary, hr, project, etc.)
  * - children: Component con sẽ render nếu được phép
@@ -19,6 +43,7 @@ export default function FeatureGuard({ feature, children, fallbackPath = '/app' 
     const { currentWorkspace } = useWorkspaceStore();
     const toast = useToast();
     const location = useLocation();
+    const lastFeatureRef = useRef(feature);
     const hasShownToast = useRef(false);
 
     const plan = currentWorkspace?.plan || 'FREE';
@@ -26,12 +51,30 @@ export default function FeatureGuard({ feature, children, fallbackPath = '/app' 
 
     const enabled = isFeatureEnabled(plan, settings, feature);
 
+    // Reset toast flag when feature changes
+    useEffect(() => {
+        if (lastFeatureRef.current !== feature) {
+            lastFeatureRef.current = feature;
+            hasShownToast.current = false;
+        }
+    }, [feature]);
+
     useEffect(() => {
         if (!enabled && !hasShownToast.current) {
             hasShownToast.current = true;
-            toast.warning('Tính năng này đã bị vô hiệu hóa cho workspace của bạn');
+            const featureName = FEATURE_NAMES[feature] || feature;
+            toast.warning(`Tính năng "${featureName}" chưa được kích hoạt cho workspace của bạn`);
         }
-    }, [enabled, toast]);
+    }, [enabled, feature, toast]);
+
+    // Show nothing while workspace is loading
+    if (!currentWorkspace) {
+        return (
+            <div className="flex items-center justify-center h-full min-h-[200px]">
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
 
     if (!enabled) {
         return <Navigate to={fallbackPath} replace state={{ from: location }} />;

@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import jakarta.persistence.EntityManager;
+import org.hibernate.Session;
 
 /**
  * Service quản lý workspace context (Personal + Company)
@@ -25,6 +27,7 @@ public class WorkspaceService {
 
     private final PersonalWorkspaceRepository personalWorkspaceRepository;
     private final CompanyMemberRepository companyMemberRepository;
+    private final EntityManager entityManager;
 
     /**
      * Lấy tất cả workspaces của user (Personal + Company memberships)
@@ -45,8 +48,22 @@ public class WorkspaceService {
                         .build()));
 
         // 2. Company Workspaces
+        // [FIX] Disable tenant filter to see ALL memberships
+        Session session = entityManager.unwrap(Session.class);
+        boolean filterEnabled = session.getEnabledFilter("tenantFilter") != null;
+        log.info("🔍 WorkspaceService: UserID={}, TenantFilterEnabled={}", user.getUserId(), filterEnabled);
+
+        if (filterEnabled) {
+            session.disableFilter("tenantFilter");
+            log.info("🔓 Disabled tenantFilter for workspace list");
+        }
+
         List<CompanyMember> memberships = companyMemberRepository
                 .findByUser_UserIdAndIsActiveTrue(user.getUserId());
+
+        log.info("📊 Found {} memberships for user {}", memberships.size(), user.getUserId());
+        memberships.forEach(m -> log.info("   - Company: {}, Role: {}, Active: {}",
+                m.getCompany().getName(), m.getRole(), m.getCompany().getIsActive()));
 
         for (CompanyMember m : memberships) {
             workspaces.add(WorkspaceDto.WorkspaceResponse.builder()

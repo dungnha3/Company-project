@@ -20,11 +20,14 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 // [Controller managing leave requests] (Role: HR/Employee)
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
 @Slf4j
+@FeatureFlag("LEAVE")
 public class LeaveRequestController {
 
     private final LeaveRequestService leaveRequestService;

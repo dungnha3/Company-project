@@ -17,10 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 // [Controller quản lý phòng chat - CRUD, members, settings] (Role: Chat Users)
 @RestController
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
+@FeatureFlag("CHAT")
 public class ChatRoomController {
 
     private final ChatRoomService chatRoomService;

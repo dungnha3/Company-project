@@ -7,6 +7,7 @@ export default function LoginPage() {
     const [form, setForm] = useState({ username: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuthStore();
 
@@ -19,13 +20,9 @@ export default function LoginPage() {
             const result = await login(form);
 
             if (result.success) {
-                // [NEW FLOW] Backend đã tự động tạo Personal Workspace cho user
-                // Chỉ cần redirect đến đúng nơi
                 if (result.user.isSystemAdmin) {
                     navigate('/admin/companies', { replace: true });
                 } else {
-                    // User có Personal Workspace (tự động tạo bởi Backend)
-                    // Navigate đến /app (Personal Workspace context mặc định)
                     navigate('/app', { replace: true });
                 }
             } else {
@@ -39,96 +36,187 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="card-glass w-full max-w-md p-8">
-            {/* Logo */}
-            <div className="text-center mb-8">
-                <div className="w-16 h-16 mx-auto bg-primary rounded-2xl flex items-center justify-center mb-4">
-                    <i className="fa-solid fa-building text-white text-2xl" />
+        <div className="min-h-screen flex">
+            {/* Left Side - Hero */}
+            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-white blur-3xl" />
+                    <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full bg-white blur-3xl" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-800">Company Portal</h1>
-                <p className="text-gray-500 mt-1">Đăng nhập để tiếp tục</p>
-            </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                    <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
-                        <i className="fa-solid fa-circle-exclamation mr-2" />
-                        {error}
+                {/* Content */}
+                <div className="relative z-10 flex flex-col justify-center p-12 text-white">
+                    <div className="mb-8">
+                        <Link to="/" className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
+                                S
+                            </div>
+                            <span className="text-2xl font-bold">SaaS Enterprise</span>
+                        </Link>
                     </div>
-                )}
 
-                <div>
-                    <label className="label">Tên đăng nhập</label>
-                    <input
-                        type="text"
-                        className="input"
-                        placeholder="Nhập tên đăng nhập"
-                        value={form.username}
-                        onChange={(e) => setForm({ ...form, username: e.target.value })}
-                        required
-                    />
-                </div>
+                    <h1 className="text-4xl font-bold mb-6 leading-tight">
+                        Chào mừng trở lại! <br />
+                        <span className="text-indigo-200">Sẵn sàng làm việc hiệu quả.</span>
+                    </h1>
 
-                <div>
-                    <label className="label">Mật khẩu</label>
-                    <input
-                        type="password"
-                        className="input"
-                        placeholder="Nhập mật khẩu"
-                        value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        required
-                    />
-                </div>
+                    <p className="text-lg text-indigo-100 mb-8 max-w-md">
+                        Đăng nhập để truy cập dashboard, quản lý dự án và theo dõi tiến độ công việc của bạn.
+                    </p>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-primary w-full py-3"
-                >
-                    {loading ? (
-                        <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Đang đăng nhập...
-                        </>
-                    ) : (
-                        <>
-                            <i className="fa-solid fa-right-to-bracket" />
-                            Đăng nhập
-                        </>
-                    )}
-                </button>
-            </form>
-
-            {/* Footer */}
-            <div className="mt-6">
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
+                    {/* Stats */}
+                    <div className="flex gap-8">
+                        <div>
+                            <div className="text-3xl font-bold">10K+</div>
+                            <div className="text-indigo-200 text-sm">Người dùng</div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-bold">500+</div>
+                            <div className="text-indigo-200 text-sm">Doanh nghiệp</div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-bold">99.9%</div>
+                            <div className="text-indigo-200 text-sm">Uptime</div>
+                        </div>
                     </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">Hoặc tiếp tục với</span>
-                    </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-1 gap-3">
-                    <GoogleLoginButton text="Đăng nhập bằng Google" />
                 </div>
             </div>
 
-            <div className="text-center mt-4">
-                <span className="text-sm text-gray-600">Chưa có tài khoản? </span>
-                <Link to="/register" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                    Đăng ký ngay
-                </Link>
+            {/* Right Side - Form */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+                <div className="w-full max-w-md">
+                    {/* Mobile Logo */}
+                    <div className="lg:hidden text-center mb-8">
+                        <Link to="/" className="inline-flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold">
+                                S
+                            </div>
+                            <span className="text-xl font-bold text-gray-900">SaaS Enterprise</span>
+                        </Link>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                        {/* Header */}
+                        <div className="text-center mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900">Đăng nhập</h2>
+                            <p className="text-gray-500 mt-2">Nhập thông tin để tiếp tục</p>
+                        </div>
+
+                        {/* Error */}
+                        {error && (
+                            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                                <i className="fa-solid fa-circle-exclamation" />
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Form */}
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Tên đăng nhập
+                                </label>
+                                <div className="relative">
+                                    <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                        placeholder="Nhập tên đăng nhập"
+                                        value={form.username}
+                                        onChange={(e) => setForm({ ...form, username: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Mật khẩu
+                                    </label>
+                                    <Link to="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
+                                        Quên mật khẩu?
+                                    </Link>
+                                </div>
+                                <div className="relative">
+                                    <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                        placeholder="••••••••"
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="remember"
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                />
+                                <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
+                                    Ghi nhớ đăng nhập
+                                </label>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Đang đăng nhập...
+                                    </>
+                                ) : (
+                                    <>
+                                        Đăng nhập
+                                        <i className="fa-solid fa-arrow-right" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        {/* Divider */}
+                        <div className="my-6 flex items-center">
+                            <div className="flex-1 border-t border-gray-200" />
+                            <span className="px-4 text-sm text-gray-400">hoặc</span>
+                            <div className="flex-1 border-t border-gray-200" />
+                        </div>
+
+                        {/* Social Login */}
+                        <GoogleLoginButton text="Tiếp tục với Google" />
+
+                        {/* Register Link */}
+                        <p className="text-center mt-6 text-gray-600">
+                            Chưa có tài khoản?{' '}
+                            <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-500">
+                                Đăng ký miễn phí
+                            </Link>
+                        </p>
+                    </div>
+
+                    {/* Footer */}
+                    <p className="text-center text-xs text-gray-400 mt-6">
+                        Bằng việc đăng nhập, bạn đồng ý với{' '}
+                        <a href="#" className="text-indigo-600 hover:underline">Điều khoản</a>
+                        {' '}và{' '}
+                        <a href="#" className="text-indigo-600 hover:underline">Chính sách bảo mật</a>
+                    </p>
+                </div>
             </div>
-            <p className="text-sm text-gray-500">
-                Quên mật khẩu?{' '}
-                <Link to="/forgot-password" className="text-primary hover:underline">
-                    Đặt lại
-                </Link>
-            </p>
         </div>
     );
 }

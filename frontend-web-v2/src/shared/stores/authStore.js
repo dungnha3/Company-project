@@ -37,10 +37,15 @@ export const useAuthStore = create(
                     const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
                     const { accessToken, refreshToken, user, expiresIn } = response.data;
 
+                    // [FIX] Normalize User ID (BE sends 'userId', FE sometimes expects 'id')
+                    if (user && user.userId) {
+                        user.id = user.userId;
+                    }
+
                     const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
 
                     localStorage.setItem('accessToken', accessToken);
-                    localStorage.setItem('refreshToken', refreshToken);
+                    // refreshToken now stored in httpOnly cookie by backend
                     localStorage.setItem('expiresAt', String(expiresAt));
 
                     set({
@@ -65,10 +70,15 @@ export const useAuthStore = create(
                     const response = await apiClient.post(ENDPOINTS.AUTH.GOOGLE_LOGIN, { token: idToken });
                     const { accessToken, refreshToken, user, expiresIn } = response.data;
 
+                    // [FIX] Normalize User ID
+                    if (user && user.userId) {
+                        user.id = user.userId;
+                    }
+
                     const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
 
                     localStorage.setItem('accessToken', accessToken);
-                    localStorage.setItem('refreshToken', refreshToken);
+                    // refreshToken now stored in httpOnly cookie by backend
                     localStorage.setItem('expiresAt', String(expiresAt));
 
                     set({
@@ -97,10 +107,14 @@ export const useAuthStore = create(
                     const { accessToken, refreshToken, user, expiresIn } = response.data;
 
                     if (accessToken) {
+                        // [FIX] Normalize User ID
+                        if (user && user.userId) {
+                            user.id = user.userId;
+                        }
                         const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
 
                         localStorage.setItem('accessToken', accessToken);
-                        localStorage.setItem('refreshToken', refreshToken);
+                        // refreshToken now stored in httpOnly cookie by backend
                         localStorage.setItem('expiresAt', String(expiresAt));
 
                         set({
@@ -148,7 +162,7 @@ export const useAuthStore = create(
 
             clearAuth: () => {
                 localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
+                // refreshToken is cleared by backend via Set-Cookie with maxAge=0
                 localStorage.removeItem('expiresAt');
                 set({
                     user: null,

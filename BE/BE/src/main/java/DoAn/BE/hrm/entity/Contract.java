@@ -1,4 +1,4 @@
-package DoAn.BE.hrm.entity;
+  package DoAn.BE.hrm.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

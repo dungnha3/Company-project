@@ -22,11 +22,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 // [Controller managing attendance] (Role: HR/Employee)
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
 @Slf4j
+@FeatureFlag("ATTENDANCE")
 public class AttendanceController {
 
     private final AttendanceService attendanceService;

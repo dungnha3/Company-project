@@ -2,7 +2,15 @@ import { Navigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export function RoleGuard({ roles, children }) {
-    const { currentWorkspace } = useWorkspaceStore();
+    const { currentWorkspace, workspaceType } = useWorkspaceStore();
+
+    // In Personal Workspace, user is always the OWNER
+    if (workspaceType === 'PERSONAL') {
+        // Personal workspace users have full access if OWNER is in allowed roles
+        if (roles.includes('OWNER')) {
+            return children;
+        }
+    }
 
     // Get role from current workspace context
     const currentRole = currentWorkspace?.role || 'MEMBER';

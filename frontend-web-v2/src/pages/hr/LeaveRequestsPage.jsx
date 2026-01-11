@@ -4,6 +4,7 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
+import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function LeaveRequestsPage() {
@@ -18,9 +19,22 @@ export default function LeaveRequestsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Nghỉ phép</h1>
                     <p className="text-gray-500 text-sm">Quản lý đơn xin nghỉ phép</p>
                 </div>
-                <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-                    <i className="fa-solid fa-plus mr-2" /> Tạo đơn xin nghỉ
-                </button>
+                <div className="flex gap-2">
+                    {hasRole('MANAGER_HR', 'OWNER', 'ADMIN') && (
+                        <ExportButton
+                            endpoint={ENDPOINTS.EXPORT.LEAVES}
+                            params={{
+                                startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+                                endDate: new Date().toISOString().split('T')[0]
+                            }}
+                            filename={`NghiPhep_${new Date().getFullYear()}.xlsx`}
+                            label="Xuất Excel"
+                        />
+                    )}
+                    <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+                        <i className="fa-solid fa-plus mr-2" /> Tạo đơn xin nghỉ
+                    </button>
+                </div>
             </div>
 
             {/* Tabs */}
@@ -30,14 +44,23 @@ export default function LeaveRequestsPage() {
                         onClick={() => setActiveTab('my-requests')}
                         className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'my-requests' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
+                        <i className="fa-solid fa-list mr-2" />
                         Đơn của tôi
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('calendar')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'calendar' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    >
+                        <i className="fa-solid fa-calendar-days mr-2" />
+                        Lịch nghỉ
                     </button>
                     {hasRole('MANAGER_HR', 'OWNER', 'ADMIN', 'MANAGER_PROJECT') && (
                         <button
                             onClick={() => setActiveTab('pending-approval')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending-approval' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                         >
-                            Cần duyệt <span className="ml-2 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">!</span>
+                            <i className="fa-solid fa-gavel mr-2" />
+                            Cần duyệt <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">!</span>
                         </button>
                     )}
                 </nav>
@@ -46,6 +69,7 @@ export default function LeaveRequestsPage() {
             {/* Content */}
             <div className="min-h-[400px]">
                 {activeTab === 'my-requests' && <MyLeaveRequests />}
+                {activeTab === 'calendar' && <LeaveCalendar />}
                 {activeTab === 'pending-approval' && <PendingLeaveRequests />}
             </div>
 
@@ -271,4 +295,147 @@ function StatusBadge({ status }) {
     };
     const s = styles[status] || styles.PENDING;
     return <span className={`badge ${s.bg} ${s.text}`}>{s.label}</span>;
+}
+
+function LeaveCalendar() {
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    // Fetch all approved leave requests
+    const { data: leaveRequests = [] } = useQuery({
+        queryKey: ['leave-calendar', currentMonth.getMonth(), currentMonth.getFullYear()],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'APPROVED' } })).data?.content || [],
+    });
+
+    // Build leave map by date range
+    const leaveDays = {};
+    leaveRequests.forEach(req => {
+        const start = new Date(req.startDate);
+        const end = new Date(req.endDate);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const key = d.toDateString();
+            if (!leaveDays[key]) leaveDays[key] = [];
+            leaveDays[key].push(req);
+        }
+    });
+
+    // Calendar grid
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPadding = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+
+    const days = [];
+    for (let i = 0; i < startPadding; i++) {
+        days.push({ day: null });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        days.push({ day: d, date, leaves: leaveDays[date.toDateString()] || [] });
+    }
+
+    const goToPrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+    const goToNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+
+    const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+    const LEAVE_COLORS = {
+        ANNUAL: 'bg-blue-100 text-blue-700 border-blue-200',
+        SICK: 'bg-red-100 text-red-700 border-red-200',
+        UNPAID: 'bg-gray-100 text-gray-700 border-gray-200',
+        MATERNITY: 'bg-pink-100 text-pink-700 border-pink-200',
+        OTHER: 'bg-purple-100 text-purple-700 border-purple-200',
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                    <button onClick={goToPrevMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <i className="fa-solid fa-chevron-left text-gray-500" />
+                    </button>
+                    <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
+                        {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                    </h3>
+                    <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <i className="fa-solid fa-chevron-right text-gray-500" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Weekdays */}
+            <div className="grid grid-cols-7 mb-2">
+                {WEEKDAYS.map(day => (
+                    <div key={day} className="text-center text-xs font-semibold text-gray-400 py-2">
+                        {day}
+                    </div>
+                ))}
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1">
+                {days.map((item, idx) => {
+                    if (!item.day) {
+                        return <div key={idx} className="h-24 bg-gray-50 rounded-lg" />;
+                    }
+
+                    const isToday = item.date.toDateString() === new Date().toDateString();
+                    const isWeekend = item.date.getDay() === 0 || item.date.getDay() === 6;
+
+                    return (
+                        <div
+                            key={idx}
+                            className={`
+                                h-24 p-2 rounded-lg border transition-all overflow-hidden
+                                ${isWeekend ? 'bg-gray-50' : 'bg-white'}
+                                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : 'border-gray-100'}
+                            `}
+                        >
+                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {item.day}
+                            </div>
+                            <div className="space-y-0.5">
+                                {item.leaves.slice(0, 2).map((leave, i) => (
+                                    <div
+                                        key={i}
+                                        className={`text-xs px-1.5 py-0.5 rounded truncate border ${LEAVE_COLORS[leave.leaveType || leave.type] || LEAVE_COLORS.OTHER}`}
+                                        title={`${leave.employee?.fullName || 'User'} - ${leave.leaveType || leave.type}`}
+                                    >
+                                        {leave.employee?.fullName?.split(' ').pop() || 'User'}
+                                    </div>
+                                ))}
+                                {item.leaves.length > 2 && (
+                                    <div className="text-xs text-gray-400 px-1">
+                                        +{item.leaves.length - 2} khác
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 rounded bg-blue-100 border border-blue-200" />
+                    <span className="text-gray-600">Nghỉ phép</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
+                    <span className="text-gray-600">Nghỉ ốm</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200" />
+                    <span className="text-gray-600">Không lương</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 rounded bg-pink-100 border border-pink-200" />
+                    <span className="text-gray-600">Thai sản</span>
+                </div>
+            </div>
+        </div>
+    );
 }

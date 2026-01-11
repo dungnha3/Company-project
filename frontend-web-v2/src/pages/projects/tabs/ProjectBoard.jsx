@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import IssueDetailModal from '../components/IssueDetailModal';
 
 // Map status to columns
 const COLUMNS = {
@@ -35,6 +36,7 @@ export default function ProjectBoard({ project }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const [activeId, setActiveId] = useState(null);
+    const [selectedIssue, setSelectedIssue] = useState(null);
 
     // Fetch Issues (Assuming active sprint or all issues for now)
     // Ideally we filter by active sprint. For now let's fetch all project issues.
@@ -112,35 +114,51 @@ export default function ProjectBoard({ project }) {
         }
     };
 
+    const handleIssueClick = (issue) => {
+        setSelectedIssue(issue);
+    };
+
     if (isLoading) return <LoadingBoard />;
 
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-        >
-            <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-250px)]">
-                {Object.values(COLUMNS).map(col => (
-                    <BoardColumn
-                        key={col.id}
-                        column={col}
-                        issues={boardData[col.id] || []}
-                    />
-                ))}
-            </div>
+        <>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+            >
+                <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-250px)]">
+                    {Object.values(COLUMNS).map(col => (
+                        <BoardColumn
+                            key={col.id}
+                            column={col}
+                            issues={boardData[col.id] || []}
+                            onIssueClick={handleIssueClick}
+                        />
+                    ))}
+                </div>
 
-            <DragOverlay>
-                {activeId ? (
-                    <IssueCard issue={issues.find(i => i.issueId === activeId)} isOverlay />
-                ) : null}
-            </DragOverlay>
-        </DndContext>
+                <DragOverlay>
+                    {activeId ? (
+                        <IssueCard issue={issues.find(i => i.issueId === activeId)} isOverlay />
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
+
+            {/* Issue Detail Modal */}
+            {selectedIssue && (
+                <IssueDetailModal
+                    issue={selectedIssue}
+                    onClose={() => setSelectedIssue(null)}
+                    onUpdate={() => queryClient.invalidateQueries(['issues', project.projectId])}
+                />
+            )}
+        </>
     );
 }
 
-function BoardColumn({ column, issues }) {
+function BoardColumn({ column, issues, onIssueClick }) {
     const { setNodeRef } = useSortable({ id: column.id, data: { type: 'Container', id: column.id } });
 
     return (
@@ -155,7 +173,7 @@ function BoardColumn({ column, issues }) {
             <div ref={setNodeRef} className="flex-1 p-3 overflow-y-auto custom-scrollbar space-y-3 min-h-[100px]">
                 <SortableContext items={issues.map(i => i.issueId)} strategy={verticalListSortingStrategy}>
                     {issues.map(issue => (
-                        <SortableIssue key={issue.issueId} issue={issue} />
+                        <SortableIssue key={issue.issueId} issue={issue} onClick={() => onIssueClick?.(issue)} />
                     ))}
                 </SortableContext>
                 {issues.length === 0 && (
@@ -168,7 +186,7 @@ function BoardColumn({ column, issues }) {
     );
 }
 
-function SortableIssue({ issue }) {
+function SortableIssue({ issue, onClick }) {
     const {
         attributes,
         listeners,
@@ -186,26 +204,33 @@ function SortableIssue({ issue }) {
 
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            <IssueCard issue={issue} />
+            <IssueCard issue={issue} onClick={onClick} />
         </div>
     );
 }
 
-function IssueCard({ issue, isOverlay }) {
+function IssueCard({ issue, isOverlay, onClick }) {
     if (!issue) return null;
 
     return (
-        <div className={`
-            bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group
-            ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-primary ring-opacity-50' : ''}
-        `}>
+        <div
+            className={`
+                bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group
+                ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-primary ring-opacity-50' : ''}
+            `}
+            onDoubleClick={onClick}
+        >
             <div className="flex justify-between items-start mb-2">
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getPriorityColor(issue.priority)}`}>
                     {issue.priority || 'NORMAL'}
                 </span>
-                {/* <button className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <i className="fa-solid fa-ellipsis" />
-                 </button> */}
+                <button
+                    className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+                    title="Xem chi tiết"
+                >
+                    <i className="fa-solid fa-expand" />
+                </button>
             </div>
 
             <h4 className="text-sm font-medium text-gray-800 mb-2 line-clamp-2">{issue.subject}</h4>

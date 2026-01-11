@@ -6,18 +6,45 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useNavigate } from 'react-router-dom';
 
+const NOTIFICATION_TYPES = [
+    { key: 'all', label: 'Tất cả', icon: 'fa-bell' },
+    { key: 'task', label: 'Công việc', icon: 'fa-list-check' },
+    { key: 'leave', label: 'Nghỉ phép', icon: 'fa-calendar-check' },
+    { key: 'mention', label: 'Mentions', icon: 'fa-at' },
+    { key: 'system', label: 'Hệ thống', icon: 'fa-cog' },
+];
+
 export default function NotificationsPage() {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const navigate = useNavigate();
     const { subscribe, unsubscribe } = useWebSocketStore();
+    const [activeTab, setActiveTab] = useState('all');
+    const [showPreferences, setShowPreferences] = useState(false);
 
     // Fetch notifications
     const { data: notifications = [], isLoading } = useQuery({
         queryKey: ['notifications'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST)).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST);
+            const data = response.data;
+            return Array.isArray(data) ? data : (data?.content || data?.notifications || []);
+        },
     });
 
+    // Filter notifications by type
+    const filteredNotifications = notifications.filter(n => {
+        if (activeTab === 'all') return true;
+        if (activeTab === 'task') return ['TASK_ASSIGNED', 'TASK_COMPLETED', 'TASK_COMMENT'].includes(n.type);
+        if (activeTab === 'leave') return ['LEAVE_APPROVED', 'LEAVE_REJECTED', 'LEAVE_REQUEST'].includes(n.type);
+        if (activeTab === 'mention') return n.type === 'MENTION';
+        if (activeTab === 'system') return ['SYSTEM', 'PAYROLL_READY', 'ANNOUNCEMENT'].includes(n.type);
+        return true;
+    });
+
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+
+    // Mutations
     const readAllMutation = useMutation({
         mutationFn: () => apiClient.put(ENDPOINTS.NOTIFICATIONS.READ_ALL),
         onSuccess: () => {
@@ -35,10 +62,18 @@ export default function NotificationsPage() {
         }
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: (id) => apiClient.delete(ENDPOINTS.NOTIFICATIONS.DELETE?.(id) || `/api/notifications/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['notifications']);
+            showToast('Đã xóa thông báo', 'success');
+        }
+    });
+
+    // Real-time subscription
     useEffect(() => {
-        // Subscribe to real-time updates
         const topic = '/user/queue/notifications';
-        subscribe(topic, () => {
+        subscribe(topic, (message) => {
             queryClient.invalidateQueries(['notifications']);
             queryClient.invalidateQueries(['unread-count']);
             showToast('Bạn có thông báo mới', 'info');
@@ -50,93 +85,376 @@ export default function NotificationsPage() {
         if (!notification.isRead) {
             markReadMutation.mutate(notification.id);
         }
-
-        // Handle navigation based on type
-        if (notification.type === 'TASK_ASSIGNED' && notification.referenceId) {
-            navigate(`/projects/task/${notification.referenceId}`); // Adjust route as needed
-        } else if (notification.type === 'LEAVE_APPROVED') {
-            navigate('/leave-requests');
+        // Navigate based on type
+        const routes = {
+            'TASK_ASSIGNED': `/app/projects/${notification.referenceId}`,
+            'LEAVE_APPROVED': '/app/leave-requests',
+            'LEAVE_REJECTED': '/app/leave-requests',
+            'PAYROLL_READY': '/app/salaries',
+            'MENTION': `/app/chat`,
+        };
+        if (routes[notification.type]) {
+            navigate(routes[notification.type]);
         }
-        // Add more logic
     };
 
-    if (isLoading) return <div className="p-8 text-center">Đang tải thông báo...</div>;
-
     return (
-        <div className="max-w-3xl mx-auto space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h1 className="text-2xl font-bold text-gray-900">Thông báo</h1>
-                <button
-                    onClick={() => readAllMutation.mutate()}
-                    disabled={readAllMutation.isPending || notifications.length === 0}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium disabled:text-gray-400"
-                >
-                    Đánh dấu tất cả đã đọc
-                </button>
+        <div className="p-6 max-w-4xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Thông báo</h1>
+                    <p className="text-gray-500 text-sm">
+                        {unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : 'Không có thông báo mới'}
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowPreferences(true)}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+                    >
+                        <i className="fa-solid fa-cog mr-2" />
+                        Cài đặt
+                    </button>
+                    <button
+                        onClick={() => readAllMutation.mutate()}
+                        disabled={readAllMutation.isPending || unreadCount === 0}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                    >
+                        <i className="fa-solid fa-check-double mr-2" />
+                        Đọc tất cả
+                    </button>
+                </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {notifications.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500">
-                        <i className="fa-regular fa-bell-slash text-4xl mb-3 text-gray-300" />
-                        <p>Không có thông báo nào</p>
-                    </div>
-                ) : (
-                    <div className="divide-y divide-gray-50">
-                        {notifications.map(notification => (
-                            <div
-                                key={notification.id}
-                                onClick={() => handleNotificationClick(notification)}
-                                className={`
-                                    p-4 hover:bg-gray-50 transition-colors cursor-pointer flex gap-4
-                                    ${!notification.isRead ? 'bg-blue-50/50' : 'bg-white'}
-                                `}
-                            >
-                                <div className={`
-                                    w-10 h-10 rounded-full flex items-center justify-center shrink-0
-                                    ${getIconColors(notification.type)}
-                                `}>
-                                    <i className={getIconClass(notification.type)} />
-                                </div>
+            {/* Tabs */}
+            <div className="flex gap-2 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+                {NOTIFICATION_TYPES.map(type => {
+                    const count = type.key === 'all'
+                        ? notifications.length
+                        : notifications.filter(n => {
+                            if (type.key === 'task') return ['TASK_ASSIGNED', 'TASK_COMPLETED'].includes(n.type);
+                            if (type.key === 'leave') return ['LEAVE_APPROVED', 'LEAVE_REJECTED'].includes(n.type);
+                            return n.type === type.key.toUpperCase();
+                        }).length;
 
-                                <div className="flex-1">
-                                    <h4 className={`text-sm mb-1 ${!notification.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
-                                        {notification.title}
-                                    </h4>
-                                    <p className="text-sm text-gray-600">{notification.message}</p>
-                                    <span className="text-xs text-gray-400 mt-2 block">
-                                        {new Date(notification.createdAt).toLocaleString('vi-VN')}
-                                    </span>
-                                </div>
+                    return (
+                        <button
+                            key={type.key}
+                            onClick={() => setActiveTab(type.key)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeTab === type.key
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            <i className={`fa-solid ${type.icon}`} />
+                            {type.label}
+                            {count > 0 && (
+                                <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeTab === type.key ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'
+                                    }`}>
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
 
-                                {!notification.isRead && (
-                                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                                )}
+            {/* Loading */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-12">
+                    <i className="fa-solid fa-spinner fa-spin text-2xl text-blue-500" />
+                </div>
+            )}
+
+            {/* Notification List */}
+            {!isLoading && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    {filteredNotifications.length === 0 ? (
+                        <div className="p-12 text-center">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="fa-solid fa-bell-slash text-2xl text-gray-400" />
                             </div>
-                        ))}
+                            <h3 className="text-lg font-semibold text-gray-800">Không có thông báo</h3>
+                            <p className="text-gray-500 text-sm mt-1">Bạn sẽ nhận thông báo khi có hoạt động mới</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-50">
+                            {filteredNotifications.map(notification => (
+                                <NotificationItem
+                                    key={notification.id}
+                                    notification={notification}
+                                    onClick={() => handleNotificationClick(notification)}
+                                    onDelete={() => deleteMutation.mutate(notification.id)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Preferences Modal */}
+            {showPreferences && (
+                <NotificationPreferencesModal onClose={() => setShowPreferences(false)} />
+            )}
+        </div>
+    );
+}
+
+function NotificationItem({ notification, onClick, onDelete }) {
+    const [showActions, setShowActions] = useState(false);
+
+    return (
+        <div
+            className={`
+                relative p-4 hover:bg-gray-50 transition-colors cursor-pointer flex gap-4
+                ${!notification.isRead ? 'bg-blue-50/50' : 'bg-white'}
+            `}
+            onClick={onClick}
+            onMouseEnter={() => setShowActions(true)}
+            onMouseLeave={() => setShowActions(false)}
+        >
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${getIconColors(notification.type)}`}>
+                <i className={getIconClass(notification.type)} />
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <h4 className={`text-sm mb-1 ${!notification.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+                    {notification.title}
+                </h4>
+                <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
+                <div className="flex items-center gap-3 mt-2">
+                    <span className="text-xs text-gray-400">
+                        {formatTimeAgo(notification.createdAt)}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${getTypeBadgeColor(notification.type)}`}>
+                        {getTypeLabel(notification.type)}
+                    </span>
+                </div>
+            </div>
+
+            {!notification.isRead && (
+                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full mt-2 shrink-0" />
+            )}
+
+            {/* Actions */}
+            {showActions && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-1">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        className="p-2 bg-white shadow rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                        <i className="fa-solid fa-trash text-sm" />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function NotificationPreferencesModal({ onClose }) {
+    const { showToast } = useToast();
+    const [preferences, setPreferences] = useState({
+        emailEnabled: true,
+        pushEnabled: true,
+        taskNotifications: true,
+        leaveNotifications: true,
+        mentionNotifications: true,
+        systemNotifications: true,
+        digestFrequency: 'daily',
+    });
+
+    const togglePref = (key) => {
+        setPreferences({ ...preferences, [key]: !preferences[key] });
+    };
+
+    const handleSave = () => {
+        // API call to save preferences
+        showToast('Đã lưu cài đặt thông báo', 'success');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95">
+                <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900">Cài đặt thông báo</h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                            <i className="fa-solid fa-xmark" />
+                        </button>
                     </div>
-                )}
+                </div>
+
+                <div className="p-6 space-y-6">
+                    {/* Delivery Methods */}
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Phương thức nhận</h4>
+                        <div className="space-y-3">
+                            <ToggleRow
+                                icon="fa-envelope"
+                                label="Email"
+                                desc="Gửi thông báo qua email"
+                                enabled={preferences.emailEnabled}
+                                onToggle={() => togglePref('emailEnabled')}
+                            />
+                            <ToggleRow
+                                icon="fa-bell"
+                                label="Push Notification"
+                                desc="Thông báo trên trình duyệt"
+                                enabled={preferences.pushEnabled}
+                                onToggle={() => togglePref('pushEnabled')}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Notification Types */}
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Loại thông báo</h4>
+                        <div className="space-y-3">
+                            <ToggleRow
+                                icon="fa-list-check"
+                                label="Công việc"
+                                desc="Tasks, dự án, deadlines"
+                                enabled={preferences.taskNotifications}
+                                onToggle={() => togglePref('taskNotifications')}
+                            />
+                            <ToggleRow
+                                icon="fa-calendar-check"
+                                label="Nghỉ phép"
+                                desc="Đơn nghỉ phép, phê duyệt"
+                                enabled={preferences.leaveNotifications}
+                                onToggle={() => togglePref('leaveNotifications')}
+                            />
+                            <ToggleRow
+                                icon="fa-at"
+                                label="Mentions"
+                                desc="Khi ai đó @mention bạn"
+                                enabled={preferences.mentionNotifications}
+                                onToggle={() => togglePref('mentionNotifications')}
+                            />
+                            <ToggleRow
+                                icon="fa-cog"
+                                label="Hệ thống"
+                                desc="Thông báo từ hệ thống"
+                                enabled={preferences.systemNotifications}
+                                onToggle={() => togglePref('systemNotifications')}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Digest Frequency */}
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Tần suất tổng hợp</h4>
+                        <select
+                            value={preferences.digestFrequency}
+                            onChange={(e) => setPreferences({ ...preferences, digestFrequency: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl"
+                        >
+                            <option value="realtime">Tức thì</option>
+                            <option value="daily">Hàng ngày</option>
+                            <option value="weekly">Hàng tuần</option>
+                            <option value="none">Không gửi</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        Hủy
+                    </button>
+                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Lưu thay đổi
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
 
+function ToggleRow({ icon, label, desc, enabled, onToggle }) {
+    return (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                    <i className={`fa-solid ${icon} text-gray-500`} />
+                </div>
+                <div>
+                    <div className="font-medium text-gray-800 text-sm">{label}</div>
+                    <div className="text-xs text-gray-500">{desc}</div>
+                </div>
+            </div>
+            <button
+                onClick={onToggle}
+                className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-blue-500' : 'bg-gray-300'}`}
+            >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${enabled ? 'left-6' : 'left-1'}`} />
+            </button>
+        </div>
+    );
+}
+
 function getIconClass(type) {
-    switch (type) {
-        case 'TASK_ASSIGNED': return 'fa-solid fa-tasks';
-        case 'LEAVE_APPROVED': return 'fa-solid fa-check-double';
-        case 'LEAVE_REJECTED': return 'fa-solid fa-xmark';
-        case 'PAYROLL_READY': return 'fa-solid fa-money-bill-wave';
-        default: return 'fa-solid fa-bell';
-    }
+    const icons = {
+        'TASK_ASSIGNED': 'fa-solid fa-list-check',
+        'TASK_COMPLETED': 'fa-solid fa-check-circle',
+        'TASK_COMMENT': 'fa-solid fa-comment',
+        'LEAVE_APPROVED': 'fa-solid fa-check-double',
+        'LEAVE_REJECTED': 'fa-solid fa-xmark',
+        'LEAVE_REQUEST': 'fa-solid fa-calendar-plus',
+        'PAYROLL_READY': 'fa-solid fa-money-bill-wave',
+        'MENTION': 'fa-solid fa-at',
+        'SYSTEM': 'fa-solid fa-cog',
+    };
+    return icons[type] || 'fa-solid fa-bell';
 }
 
 function getIconColors(type) {
-    switch (type) {
-        case 'TASK_ASSIGNED': return 'bg-blue-100 text-blue-600';
-        case 'LEAVE_APPROVED': return 'bg-green-100 text-green-600';
-        case 'LEAVE_REJECTED': return 'bg-red-100 text-red-600';
-        case 'PAYROLL_READY': return 'bg-yellow-100 text-yellow-600';
-        default: return 'bg-gray-100 text-gray-600';
-    }
+    const colors = {
+        'TASK_ASSIGNED': 'bg-blue-100 text-blue-600',
+        'TASK_COMPLETED': 'bg-green-100 text-green-600',
+        'LEAVE_APPROVED': 'bg-green-100 text-green-600',
+        'LEAVE_REJECTED': 'bg-red-100 text-red-600',
+        'LEAVE_REQUEST': 'bg-orange-100 text-orange-600',
+        'PAYROLL_READY': 'bg-yellow-100 text-yellow-600',
+        'MENTION': 'bg-purple-100 text-purple-600',
+        'SYSTEM': 'bg-gray-100 text-gray-600',
+    };
+    return colors[type] || 'bg-gray-100 text-gray-600';
+}
+
+function getTypeBadgeColor(type) {
+    if (type?.includes('TASK')) return 'bg-blue-100 text-blue-600';
+    if (type?.includes('LEAVE')) return 'bg-green-100 text-green-600';
+    if (type === 'MENTION') return 'bg-purple-100 text-purple-600';
+    return 'bg-gray-100 text-gray-600';
+}
+
+function getTypeLabel(type) {
+    const labels = {
+        'TASK_ASSIGNED': 'Công việc',
+        'TASK_COMPLETED': 'Hoàn thành',
+        'LEAVE_APPROVED': 'Đã duyệt',
+        'LEAVE_REJECTED': 'Từ chối',
+        'PAYROLL_READY': 'Lương',
+        'MENTION': 'Mention',
+        'SYSTEM': 'Hệ thống',
+    };
+    return labels[type] || 'Thông báo';
+}
+
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
 }
