@@ -27,4 +27,8 @@ public interface SprintRepository extends JpaRepository<Sprint, Long> {
 
     @Query("SELECT COUNT(s) FROM Sprint s WHERE s.project.projectId = :projectId AND s.status = :status")
     long countByProjectIdAndStatus(@Param("projectId") Long projectId, @Param("status") SprintStatus status);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Sprint s SET s.status = :status WHERE s.project.projectId = :projectId AND s.status != :status")
+    void updateStatusByProjectId(@Param("projectId") Long projectId, @Param("status") SprintStatus status);
 }

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import DoAn.BE.company.entity.CompanyMember;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,6 +52,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     private String username;
 
     @Column(name = "password_hash", nullable = false, length = 255)
+    @JsonIgnore
     private String passwordHash;
 
     @Column(name = "email", unique = true, length = 100, columnDefinition = "NVARCHAR(100)")
@@ -153,13 +155,16 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "activation_token", length = 100)
+    @JsonIgnore
     private String activationToken;
 
     // Reset password
     @Column(name = "reset_password_token", length = 100)
+    @JsonIgnore
     private String resetPasswordToken;
 
     @Column(name = "reset_password_token_expiry")
+    @JsonIgnore
     private LocalDateTime resetPasswordTokenExpiry;
 
     // Enum trạng thái user

@@ -26,8 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 
 // [Service quản lý Issue/Công việc trong dự án] (Role: Project Member)
@@ -44,25 +42,24 @@ public class IssueService {
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final IssueActivityRepository issueActivityRepository;
-    private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
-    private final DoAn.BE.notification.service.FCMService fcmService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public IssueDTO createIssue(CreateIssueRequest request, Long userId) {
         User reporter = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
         Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
         validateProjectAccess(request.getProjectId(), userId);
 
         // Nếu không có statusId, mặc định là To Do (id: 1)
         Integer statusId = request.getStatusId() != null ? request.getStatusId() : 1;
         IssueStatus status = issueStatusRepository.findById(statusId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạng thái"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái"));
         User assignee = null;
         if (request.getAssigneeId() != null) {
             assignee = userRepository.findById(request.getAssigneeId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người được giao việc"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
             validateProjectAccess(request.getProjectId(), request.getAssigneeId());
         }
         String issueKey = generateIssueKey(project);
@@ -80,14 +77,31 @@ public class IssueService {
         issue.setEstimatedHours(request.getEstimatedHours());
         issue.setDueDate(request.getDueDate());
 
+        if (request.getSprintId() != null) {
+            Sprint sprint = sprintRepository.findById(request.getSprintId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
+            if (sprint.getProject() == null || !sprint.getProject().getProjectId().equals(project.getProjectId())) {
+                throw new BadRequestException("Sprint không thuộc dự án này");
+            }
+            // Zombie Sprint Check
+            if (sprint.isCompleted()) {
+                throw new BadRequestException("Không thể tạo issue trong Sprint đã kết thúc");
+            }
+            issue.setSprint(sprint);
+        }
+
         issue = issueRepository.save(issue);
+
+        // 🔗 Dispatch webhook event
+        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
+
         return convertToDTO(issue);
     }
 
     @Transactional(readOnly = true)
     public IssueDTO getIssueById(Long issueId, Long userId) {
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -139,7 +153,7 @@ public class IssueService {
     @Transactional(readOnly = true)
     public List<IssueDTO> getSprintIssues(Long sprintId, Long userId) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -156,7 +170,7 @@ public class IssueService {
     @Transactional(readOnly = true)
     public Page<IssueDTO> getSprintIssuesPaginated(Long sprintId, Long userId, Pageable pageable) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -192,7 +206,7 @@ public class IssueService {
     @Transactional
     public IssueDTO updateIssue(Long issueId, UpdateIssueRequest request, Long userId) {
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -200,8 +214,9 @@ public class IssueService {
 
         validateProjectAccess(issue.getProject().getProjectId(), userId);
 
-        User updater = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+        // User updater = userRepository.findById(userId)
+        // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người
+        // dùng"));
 
         StringBuilder changes = new StringBuilder();
 
@@ -214,7 +229,7 @@ public class IssueService {
         }
         if (request.getStatusId() != null) {
             IssueStatus status = issueStatusRepository.findById(request.getStatusId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạng thái"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái"));
             issue.setIssueStatus(status);
         }
         if (request.getPriority() != null) {
@@ -226,7 +241,7 @@ public class IssueService {
         }
         if (request.getAssigneeId() != null) {
             User assignee = userRepository.findById(request.getAssigneeId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người được giao việc"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
             validateProjectAccess(issue.getProject().getProjectId(), request.getAssigneeId());
             issue.setAssignee(assignee);
         }
@@ -245,13 +260,8 @@ public class IssueService {
 
         issue = issueRepository.save(issue);
 
-        // Notify assignee nếu có thay đổi quan trọng (priority, deadline)
-        if (changes.length() > 0 && issue.getAssignee() != null && !issue.getAssignee().getUserId().equals(userId)) {
-            projectNotificationService.createIssueUpdatedNotification(
-                    issue.getAssignee().getUserId(),
-                    issue.getTitle(),
-                    updater.getUsername(),
-                    changes.toString());
+        if (changes.length() > 0) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
         }
 
         return convertToDTO(issue);
@@ -260,7 +270,7 @@ public class IssueService {
     @Transactional
     public void deleteIssue(Long issueId, Long userId) {
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         // Check if user can manage the project or is the reporter
         Long projectId = issue.getProject().getProjectId();
@@ -272,13 +282,16 @@ public class IssueService {
             throw new ForbiddenException("Bạn không có quyền xóa issue này");
         }
 
+        // 🔗 Dispatch webhook event
+        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.DELETED, issue, userId);
+
         issueRepository.delete(issue);
     }
 
     @Transactional
     public IssueDTO assignIssue(Long issueId, Long assigneeId, Long userId) {
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -287,35 +300,14 @@ public class IssueService {
         validateProjectManagement(issue.getProject().getProjectId(), userId);
 
         User assignee = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người được giao việc"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
         validateProjectAccess(issue.getProject().getProjectId(), assigneeId);
 
         issue.assignTo(assignee);
         issue = issueRepository.save(issue);
 
-        // Send notification to assignee
-        projectNotificationService.createIssueAssignedNotification(
-                assigneeId,
-                issue.getTitle(),
-                issue.getProject().getName());
-
-        // 📱 Push FCM notification to assignee
-        try {
-            if (assignee.getFcmToken() != null) {
-                Map<String, String> data = new HashMap<>();
-                data.put("type", "ISSUE_ASSIGNED");
-                data.put("issueId", issue.getIssueId().toString());
-                data.put("link", "/projects/" + issue.getProject().getProjectId() + "/issues/" + issue.getIssueId());
-                fcmService.sendToDevice(
-                        assignee.getFcmToken(),
-                        "📝 Issue mới được giao",
-                        "Bạn được giao issue \"" + issue.getTitle() + "\" trong dự án " + issue.getProject().getName(),
-                        data);
-            }
-        } catch (Exception e) {
-            // Log but don't fail the operation
-        }
+        // 🔗 Dispatch webhook event
+        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
 
         return convertToDTO(issue);
     }
@@ -323,7 +315,7 @@ public class IssueService {
     @Transactional
     public IssueDTO changeIssueStatus(Long issueId, Integer statusId, Long userId) {
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -333,11 +325,11 @@ public class IssueService {
 
         // Validate status
         IssueStatus status = issueStatusRepository.findById(statusId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạng thái"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái"));
 
         // Get user for activity log
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         // Save old status for activity log
         String oldStatus = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : "";
@@ -360,34 +352,11 @@ public class IssueService {
             issueActivityRepository.save(activity);
         }
 
-        // Notify assignee về status change
-        if (issue.getAssignee() != null && !issue.getAssignee().getUserId().equals(userId)) {
-            projectNotificationService.createIssueStatusChangedNotification(
-                    issue.getAssignee().getUserId(),
-                    issue.getTitle(),
-                    status.getName());
-
-            // 📱 Push FCM notification to assignee
-            try {
-                if (issue.getAssignee().getFcmToken() != null) {
-                    Map<String, String> data = new HashMap<>();
-                    data.put("type", "ISSUE_STATUS_CHANGED");
-                    data.put("issueId", issue.getIssueId().toString());
-                    data.put("link",
-                            "/projects/" + issue.getProject().getProjectId() + "/issues/" + issue.getIssueId());
-                    fcmService.sendToDevice(
-                            issue.getAssignee().getFcmToken(),
-                            "🔄 Trạng thái issue thay đổi",
-                            "Issue \"" + issue.getTitle() + "\" chuyển sang " + status.getName(),
-                            data);
-                }
-            } catch (Exception e) {
-                // Log but don't fail the operation
-            }
-        }
-
         // 🤖 Auto Phase Status Update
         updatePhaseStatusIfNeeded(issue);
+
+        // 🔗 Dispatch webhook event
+        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
 
         return convertToDTO(issue);
     }
@@ -426,7 +395,6 @@ public class IssueService {
         // Update phase status if needed
         if (allDone && phase.getStatus() != DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED) {
             phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED);
-            // Note: We need ProjectPhaseRepository here. For simplicity, we'll just update
             // directly.
             // In production, inject ProjectPhaseRepository and save.
         } else if (anyInProgress && phase.getStatus() == DoAn.BE.project.entity.ProjectPhase.PhaseStatus.PLANNING) {
@@ -502,5 +470,32 @@ public class IssueService {
         dto.setIsOverdue(issue.isOverdue());
 
         return dto;
+    }
+
+    /**
+     * Dispatch webhook event for issue changes
+     */
+    /**
+     * Publish async event for issue changes
+     */
+    private void publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType eventType, Issue issue, Long actorId) {
+        try {
+            eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, issue, eventType, actorId));
+        } catch (Exception e) {
+            log.warn("Failed to publish issue event {}: {}", eventType, e.getMessage());
+        }
+    }
+
+    // ==================== EDGE CASE HANDLERS ====================
+
+    // [Global Ghost Cleanup] Khi User bị xóa khỏi hệ thống => Unassign tất cả
+    // issues của user này
+    @org.springframework.context.event.EventListener
+    @org.springframework.scheduling.annotation.Async
+    public void handleUserDeletedGlobally(DoAn.BE.common.event.UserDeletedEvent event) {
+        if (event.getUser() != null) {
+            log.warn("User {} deleted globally. Unassigning all issues.", event.getUser().getUsername());
+            issueRepository.unassignByGlobalUser(event.getUser().getUserId());
+        }
     }
 }

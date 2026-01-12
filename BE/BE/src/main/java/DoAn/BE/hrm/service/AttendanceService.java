@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.DuplicateException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.util.GPSUtil;
 import DoAn.BE.common.service.AccessControlService;
@@ -37,17 +37,17 @@ public class AttendanceService {
     private final CompanyService companyService;
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
-    private final DoAn.BE.notification.service.AttendanceNotificationService attendanceNotificationService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
 
     public AttendanceService(AttendanceRepository attendanceRepository,
             EmployeeRepository employeeRepository,
-            DoAn.BE.notification.service.AttendanceNotificationService attendanceNotificationService,
+            org.springframework.context.ApplicationEventPublisher eventPublisher,
             CompanyService companyService,
             AccessControlService accessControlService) {
         this.attendanceRepository = attendanceRepository;
         this.employeeRepository = employeeRepository;
-        this.attendanceNotificationService = attendanceNotificationService;
+        this.eventPublisher = eventPublisher;
         this.companyService = companyService;
         this.accessControlService = accessControlService;
     }
@@ -66,7 +66,7 @@ public class AttendanceService {
         log.info("HR Manager {} creating manual attendance for employee ID: {}", currentUser.getUsername(), employeeId);
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         Attendance attendance = new Attendance();
         attendance.setEmployee(employee);
@@ -82,7 +82,7 @@ public class AttendanceService {
 
     public Attendance getAttendanceById(Long id, User currentUser) {
         Attendance attendance = attendanceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Attendance record not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
 
         if (accessControlService.isHRManager() || accessControlService.isAccountingManager()) {
             return attendance;
@@ -129,7 +129,7 @@ public class AttendanceService {
         log.info("HR Manager {} updating attendance ID: {}", currentUser.getUsername(), id);
 
         Attendance attendance = attendanceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Attendance record not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
 
         if (request.getEmployeeId() != null &&
                 !request.getEmployeeId().equals(attendance.getEmployee().getEmployeeId())) {
@@ -160,25 +160,49 @@ public class AttendanceService {
 
     public Attendance checkIn(Long employeeId, LocalDate attendanceDate) {
         User currentUser = employeeRepository.findById(employeeId).map(Employee::getUser).orElseThrow();
-        AttendanceGPSRequest req = new AttendanceGPSRequest();
-        req.setEmployeeId(employeeId);
-        req.setLatitude(0.0);
-        req.setLongitude(0.0);
-        req.setCheckInAddress("Legacy CheckIn");
-        checkInGPS(req, currentUser);
-        return attendanceRepository.findByEmployee_EmployeeIdAndAttendanceDate(employeeId, attendanceDate).get(0);
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
+
+        if (!accessControlService.isHRManager()) {
+            if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
+                throw new ForbiddenException("You can only check-in for yourself");
+            }
+        }
+
+        LocalDate today = LocalDate.now();
+        Optional<Attendance> existingOpt = attendanceRepository
+                .findByEmployee_EmployeeIdAndAttendanceDate(employeeId, today)
+                .stream().findFirst();
+
+        if (existingOpt.isPresent()) {
+            throw new BadRequestException("You have already checked in for today");
+        }
+
+        Attendance attendance = new Attendance();
+        attendance.setEmployee(employee);
+        attendance.setAttendanceDate(today);
+        attendance.setCheckInTime(LocalTime.now());
+        attendance.setCheckInMethod(CheckInMethod.MANUAL); // Explicitly MANUAL
+
+        attendance = attendanceRepository.save(attendance);
+        sendAttendanceNotification(employee, attendance, true);
+
+        return attendance;
     }
 
     public Attendance checkOut(Long attendanceId) {
-        Attendance cc = attendanceRepository.findById(attendanceId).orElseThrow();
-        User currentUser = cc.getEmployee().getUser();
-        AttendanceGPSRequest req = new AttendanceGPSRequest();
-        req.setEmployeeId(cc.getEmployee().getEmployeeId());
-        req.setLatitude(0.0);
-        req.setLongitude(0.0);
-        req.setCheckInAddress("Legacy CheckOut");
-        checkInGPS(req, currentUser);
-        return cc;
+        Attendance attendance = attendanceRepository.findById(attendanceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
+
+        if (attendance.getCheckOutTime() != null) {
+            throw new BadRequestException("You have already checked out");
+        }
+
+        attendance.setCheckOutTime(LocalTime.now());
+        attendance = attendanceRepository.save(attendance);
+
+        sendAttendanceNotification(attendance.getEmployee(), attendance, false);
+        return attendance;
     }
 
     public void deleteAttendance(Long id, User currentUser) {
@@ -188,7 +212,7 @@ public class AttendanceService {
         }
 
         Attendance attendance = attendanceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Attendance record not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
         attendanceRepository.delete(attendance);
     }
 
@@ -199,7 +223,7 @@ public class AttendanceService {
 
         if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
             Employee employee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
             if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
                 throw new ForbiddenException("You can only view your own attendance records");
             }
@@ -216,7 +240,7 @@ public class AttendanceService {
 
         if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
             Employee employee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
             if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
                 throw new ForbiddenException("You can only view your own attendance records");
             }
@@ -270,7 +294,7 @@ public class AttendanceService {
         Long employeeId = request.getEmployeeId();
         if (employeeId == null) {
             Employee employee = employeeRepository.findByUser_UserId(currentUser.getUserId())
-                    .orElseThrow(() -> new EntityNotFoundException(
+                    .orElseThrow(() -> new ResourceNotFoundException(
                             "No employee profile found linked to this account"));
             employeeId = employee.getEmployeeId();
         } else {
@@ -283,7 +307,7 @@ public class AttendanceService {
         }
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee profile not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
 
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)
@@ -358,15 +382,13 @@ public class AttendanceService {
         try {
             if (isCheckIn) {
                 if (attendance.getStatus() == AttendanceStatus.LATE) {
-                    attendanceNotificationService.createCheckinLateNotification(userId, timeStr);
-                } else {
-                    attendanceNotificationService.createCheckinSuccessNotification(userId, timeStr, "GPS");
+                    eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(
+                            this,
+                            DoAn.BE.hrm.event.HrmEvent.Type.ATTENDANCE_LATE,
+                            timeStr,
+                            userId,
+                            "Late Check-in at " + timeStr));
                 }
-            } else {
-                String hoursWorked = attendance.getWorkingHours() != null
-                        ? String.format("%.2f", attendance.getWorkingHours())
-                        : "0";
-                attendanceNotificationService.createCheckoutSuccessNotification(userId, timeStr, hoursWorked);
             }
         } catch (Exception e) {
             log.warn("Failed to send attendance notification: {}", e.getMessage());

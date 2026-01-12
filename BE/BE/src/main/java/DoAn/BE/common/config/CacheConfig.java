@@ -30,6 +30,7 @@ public class CacheConfig {
     public static final String CACHE_DEPARTMENT = "department";
     public static final String CACHE_POSITIONS = "positions";
     public static final String CACHE_PROJECTS = "projects";
+    public static final String CACHE_INTEGRATIONS = "integrations";
 
     /**
      * Simple in-memory CacheManager
@@ -45,6 +46,7 @@ public class CacheConfig {
                 CACHE_DEPARTMENTS,
                 CACHE_DEPARTMENT,
                 CACHE_POSITIONS,
-                CACHE_PROJECTS);
+                CACHE_PROJECTS,
+                CACHE_INTEGRATIONS);
     }
 }

@@ -24,7 +24,6 @@ import java.util.Map;
 import DoAn.BE.common.annotation.FeatureFlag;
 
 // [Controller managing employees] (Role: HR Manager)
-// NOTE: Create employee via InviteService.inviteUser() - no manual create endpoint
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor

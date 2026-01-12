@@ -22,12 +22,10 @@ public class UserSyncListener {
     public void handleUserUpdated(UserUpdatedEvent event) {
         User user = event.getUser();
         // Sync to firebase on any user update (profile, role, or status)
-        // Note: Async listeners might lose ThreadLocal context if not handled
         // carefully.
         // For TenantContext, we might need to pass the companyId in the event if it's
         // tenant-specific.
         // However, User entity is global but Firebase sync might depend on context.
-        // Assuming global sync or current thread context propagation is handled by
         // TaskDecorator.
 
         Long companyId = TenantContext.getCompanyId();

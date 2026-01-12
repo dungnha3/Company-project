@@ -22,6 +22,9 @@ public class TenantFilter extends OncePerRequestFilter {
     @org.springframework.beans.factory.annotation.Autowired
     private DoAn.BE.company.repository.CompanyMemberRepository companyMemberRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private DoAn.BE.company.repository.CompanyRepository companyRepository;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -58,7 +61,16 @@ public class TenantFilter extends OncePerRequestFilter {
                             TenantContext.setCompanyId(companyId);
                             log.debug("System Admin {} accessing company {} via bypass", userId, companyId);
                         } else {
-                            // Check if user is active member of this company
+                            // [SAAS SECURITY] Step 1: Check if Company is Active (Kill Switch)
+                            boolean isCompanyActive = companyRepository.existsByCompanyIdAndIsActiveTrue(companyId);
+                            if (!isCompanyActive) {
+                                log.warn("Access denied: Company {} is INACTIVE/LOCKED", companyId);
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                                        "Công ty này đang bị khóa hoặc tạm ngưng hoạt động.");
+                                return;
+                            }
+
+                            // [SAAS SECURITY] Step 2: Check if User is Active Member
                             boolean isMember = companyMemberRepository
                                     .existsByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(userId, companyId);
 
@@ -69,7 +81,6 @@ public class TenantFilter extends OncePerRequestFilter {
                                 log.warn("Unauthorized tenant access attempt: User {} tried to access Company {}",
                                         userId,
                                         companyId);
-                                // Optional: Block request immediately
                                 response.sendError(HttpServletResponse.SC_FORBIDDEN,
                                         "Bạn không có quyền truy cập công ty này");
                                 return;
@@ -106,7 +117,6 @@ public class TenantFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         for (String publicEndpoint : DoAn.BE.common.util.AppConstants.PUBLIC_ENDPOINTS) {
             // Simple ant-style match simulation or exact match prefix
-            // Note: AntPathRequestMatcher is better but for simple prefix check:
             String prefix = publicEndpoint.replace("// ", "");
             if (path.startsWith(prefix)) {
                 return true;

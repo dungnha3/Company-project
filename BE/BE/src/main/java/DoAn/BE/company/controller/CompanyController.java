@@ -64,10 +64,10 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.getPlanLimits(companyId));
     }
 
-    // [QUOTA USAGE] Lấy thông tin sử dụng quota hiện tại
+    // [QUOTA USAGE] Lấy thông tin sử dụng quota hiện tại với mức cảnh báo
     @GetMapping("/quota")
     public ResponseEntity<?> getQuotaUsage() {
-        var usage = quotaService.getQuotaUsage();
+        var usage = quotaService.getQuotaUsageWithLevels();
         if (usage == null) {
             return ResponseEntity.ok(java.util.Map.of("message", "No quota information available"));
         }
@@ -160,5 +160,19 @@ public class CompanyController {
         }
         companyService.deleteCompany(companyId);
         return ResponseEntity.ok().body(Map.of("message", "Đã xóa công ty thành công"));
+    }
+
+    // [SAAS] Cập nhật cài đặt công ty (System Admin only - Bao gồm GPS)
+    @PutMapping("/admin/{companyId}/settings")
+    public ResponseEntity<?> updateSettingsByAdmin(
+            @PathVariable Long companyId,
+            @RequestBody CompanyDto.SettingsUpdateRequest request,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        if (!user.isSystemAdminAccount()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+        companyService.updateSettingsBySystemAdmin(companyId, request);
+        return ResponseEntity.ok().body(Map.of("message", "Cập nhật cài đặt (System Admin) thành công"));
     }
 }

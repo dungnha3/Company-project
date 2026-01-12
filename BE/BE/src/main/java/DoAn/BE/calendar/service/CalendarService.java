@@ -35,6 +35,7 @@ public class CalendarService {
     private final ProjectRepository projectRepository;
     private final IssueRepository issueRepository;
     private final UserRepository userRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * Create a new calendar event
@@ -88,7 +89,15 @@ public class CalendarService {
 
         log.info("Created calendar event: {} by user {}", event.getTitle(), currentUser.getUserId());
 
-        return toDTO(event);
+        log.info("Created calendar event: {} by user {}", event.getTitle(), currentUser.getUserId());
+
+        CalendarEventDTO dto = toDTO(event);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.calendar.event.CalendarAppEvent(this,
+                DoAn.BE.calendar.event.CalendarAppEvent.Type.EVENT_CREATED, dto, currentUser.getUserId()));
+
+        return dto;
     }
 
     /**

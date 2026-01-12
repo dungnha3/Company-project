@@ -41,7 +41,7 @@ public class ProjectDashboardService {
         validateProjectAccess(projectId, currentUser.getUserId());
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
         log.info("Generating stats for project {} by user {}", projectId, currentUser.getUsername());
 
@@ -153,7 +153,7 @@ public class ProjectDashboardService {
         }
 
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -232,3 +232,4 @@ public class ProjectDashboardService {
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
     }
 }
+

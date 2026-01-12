@@ -14,7 +14,7 @@ import DoAn.BE.chat.repository.MessageReactionRepository;
 import DoAn.BE.chat.repository.MessageRepository;
 import DoAn.BE.chat.websocket.service.WebSocketNotificationService;
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 
@@ -45,11 +45,11 @@ public class ReactionService {
 
         // Kiểm tra message tồn tại
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
 
         // Kiểm tra user tồn tại
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
         // Kiểm tra đã react emoji này chưa
         if (reactionRepository.existsByMessage_MessageIdAndUser_UserIdAndEmoji(messageId, userId, emoji)) {
@@ -77,7 +77,7 @@ public class ReactionService {
         // Kiểm tra reaction tồn tại
         MessageReaction reaction = reactionRepository
                 .findByMessage_MessageIdAndUser_UserIdAndEmoji(messageId, userId, emoji)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy reaction"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy reaction"));
 
         Long roomId = reaction.getMessage().getChatRoom().getRoomId();
         String username = reaction.getUser().getUsername();
@@ -119,3 +119,4 @@ public class ReactionService {
         webSocketNotificationService.sendNotificationToRoom(roomId, eventType, username + " " + emoji, data);
     }
 }
+

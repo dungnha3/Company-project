@@ -82,7 +82,7 @@ public class FileStorageService {
 
         // Validate user
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         // ✅ SECURITY: Validate file (extension, MIME type, size, malicious content)
         fileValidator.validateFile(file);
@@ -96,7 +96,7 @@ public class FileStorageService {
         Folder folder = null;
         if (folderId != null) {
             folder = folderRepository.findById(folderId)
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục"));
 
             // Check permission: owner OR project member
             if (!canAccessFolder(folder, userId)) {
@@ -168,12 +168,7 @@ public class FileStorageService {
 
             fileEntity = fileRepository.save(fileEntity);
 
-            // Gửi notification cho user về file upload thành công
             log.info("File uploaded successfully: {} by user {}", originalFilename, userId);
-            storageNotificationService.createFileUploadNotification(
-                    userId,
-                    originalFilename,
-                    fileEntity.getFileSizeFormatted());
 
             // Notify project members if this is a project file
             projectFileUploadListener.notifyProjectMembersOnFileUpload(fileEntity);
@@ -202,7 +197,7 @@ public class FileStorageService {
                 .orElseThrow(() -> new StorageFileNotFoundException("Không tìm thấy file"));
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         // Check permission: owner OR project member
         if (!canAccessFile(file, userId)) {
@@ -282,7 +277,7 @@ public class FileStorageService {
     @Transactional(readOnly = true)
     public List<FileDTO> getFiles(Long userId, String filter) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         List<File> files;
 
@@ -400,7 +395,7 @@ public class FileStorageService {
     public List<FileDTO> getFolderFiles(Long folderId, Long userId) {
         // Validate folder
         Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục"));
 
         // Check permission: owner OR project member
         if (!canAccessFolder(folder, userId)) {
@@ -489,7 +484,7 @@ public class FileStorageService {
     public StorageStatsDTO getStorageStats(Long userId) {
         // user variable was unused
         if (!userRepository.existsById(userId)) {
-            throw new EntityNotFoundException("Không tìm thấy người dùng");
+            throw new ResourceNotFoundException("Không tìm thấy người dùng");
         }
 
         // Get ALL accessible folders (owned + project)
@@ -577,7 +572,7 @@ public class FileStorageService {
     private void checkStorageQuota(Long userId, long fileSize) {
         // user variable was unused
         if (!userRepository.existsById(userId)) {
-            throw new EntityNotFoundException("Không tìm thấy người dùng");
+            throw new ResourceNotFoundException("Không tìm thấy người dùng");
         }
 
         // OPTIMIZED: Use SUM query instead of loading all files
@@ -658,9 +653,9 @@ public class FileStorageService {
         return String.format("%.2f %s", size, units[unitIndex]);
     }
 
-// Check if user can access folder (owner or project member)
+    // Check if user can access folder (owner or project member)
 
-// Also checks parent folder recursively for subfolders in project folders
+    // Also checks parent folder recursively for subfolders in project folders
     private boolean canAccessFolder(Folder folder, Long userId) {
         // Owner can always access
         if (folder.getOwner().getUserId().equals(userId)) {
@@ -687,9 +682,9 @@ public class FileStorageService {
         return false;
     }
 
-// Check if user can access file (owner or project member if file in project
+    // Check if user can access file (owner or project member if file in project
 
-// folder)
+    // folder)
     private boolean canAccessFile(File file, Long userId) {
         // [SAAS] System Admin can access all files
         User user = userRepository.findById(userId).orElse(null);

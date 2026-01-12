@@ -19,7 +19,6 @@ import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.UnauthorizedException;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.repository.CompanyMemberRepository;
-import DoAn.BE.notification.service.AuthNotificationService;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +34,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptRepository loginAttemptRepository;
-    private final AuthNotificationService authNotificationService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final CompanyMemberRepository companyMemberRepository;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final org.springframework.web.reactive.function.client.WebClient webClient;
@@ -51,7 +50,7 @@ public class AuthService {
             @org.springframework.context.annotation.Lazy SessionService sessionService,
             PasswordEncoder passwordEncoder, RefreshTokenRepository refreshTokenRepository,
             LoginAttemptRepository loginAttemptRepository,
-            @org.springframework.context.annotation.Lazy AuthNotificationService authNotificationService,
+            org.springframework.context.ApplicationEventPublisher eventPublisher,
             CompanyMemberRepository companyMemberRepository,
             DoAn.BE.audit.service.AuditLogService auditLogService,
             org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder,
@@ -66,7 +65,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenRepository = refreshTokenRepository;
         this.loginAttemptRepository = loginAttemptRepository;
-        this.authNotificationService = authNotificationService;
+        this.eventPublisher = eventPublisher;
         this.companyMemberRepository = companyMemberRepository;
         this.auditLogService = auditLogService;
         this.webClient = webClientBuilder.build();
@@ -512,9 +511,14 @@ public class AuthService {
         userService.save(user);
 
         // Gửi email thông báo (sử dụng AuthNotificationService)
-        authNotificationService.sendPasswordResetNotification(
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.auth.event.AuthEvent(
+                this,
+                DoAn.BE.auth.event.AuthEvent.Type.PASSWORD_RESET_REQUESTED,
                 user.getUserId(),
-                "Reset Token: " + resetToken); // Thực tế nên gửi link chứa token
+                user.getUsername(),
+                "Password Reset Requested",
+                "Reset Token: " + resetToken));
 
         log.info("Sent password reset email to: {}", email);
     }
@@ -637,7 +641,14 @@ public class AuthService {
     // [Gửi cảnh báo bảo mật] (Role: Notification)
     private void sendSecurityAlert(Long userId, String title, String message) {
         try {
-            authNotificationService.createSecurityAlertNotification(userId, title, message);
+            eventPublisher.publishEvent(new DoAn.BE.auth.event.AuthEvent(
+                    this,
+                    DoAn.BE.auth.event.AuthEvent.Type.SECURITY_ALERT,
+                    userId,
+                    null, // username not always available here easily without lookup, but ok to be null
+                          // if mostly for ID-based notification
+                    title,
+                    message));
         } catch (Exception e) {
             log.warn("Không thể gửi cảnh báo bảo mật: {}", e.getMessage());
         }

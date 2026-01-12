@@ -14,7 +14,7 @@ import DoAn.BE.user.repository.UserRepository;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.chat.websocket.service.WebSocketNotificationService;
@@ -84,7 +84,7 @@ public class ChatRoomService {
             // Handle project chat creation
             if (request.getProjectId() != null) {
                 Project project = projectRepository.findById(request.getProjectId())
-                        .orElseThrow(() -> new EntityNotFoundException("Project không tồn tại"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Project không tồn tại"));
                 chatRoom.setProject(project);
                 chatRoom.setType(ChatRoom.RoomType.PROJECT);
                 log.info("Tạo project chat room cho project {}", project.getName());
@@ -167,7 +167,7 @@ public class ChatRoomService {
         }
         // Validate phòng chat tồn tại
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         // Kiểm tra user có trong phòng không
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
@@ -185,9 +185,9 @@ public class ChatRoomService {
             throw new BadRequestException("User ID không được để trống");
         }
         User user1 = userRepository.findById(userId1)
-                .orElseThrow(() -> new EntityNotFoundException("User 1 không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("User 1 không tồn tại"));
         User user2 = userRepository.findById(userId2)
-                .orElseThrow(() -> new EntityNotFoundException("User 2 không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("User 2 không tồn tại"));
 
         // Use optimized repository query instead of looping through all rooms
         Optional<ChatRoom> existingRoom = chatRoomRepository.findDirectChatBetweenUsers(userId1, userId2);
@@ -228,7 +228,7 @@ public class ChatRoomService {
         }
         // Validate phòng chat tồn tại
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         // Kiểm tra admin có quyền thêm thành viên không
         boolean isAdmin = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserIdAndRole(
@@ -239,7 +239,7 @@ public class ChatRoomService {
 
         // Validate user tồn tại
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
 
         // Kiểm tra user đã trong phòng chưa
         boolean alreadyMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
@@ -277,7 +277,7 @@ public class ChatRoomService {
             throw new BadRequestException("Room ID, User ID và Admin ID không được để trống");
         }
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isAdmin = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserIdAndRole(
                 roomId, adminId, ChatRoomMember.MemberRole.ADMIN);
@@ -286,22 +286,12 @@ public class ChatRoomService {
         }
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("User không phải thành viên của phòng chat này"));
+                .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
 
         User removedUser = member.getUser();
         chatRoomMemberRepository.delete(member);
 
         webSocketNotificationService.notifyUserLeft(roomId, removedUser);
-
-        List<ChatRoomMember> remainingMembers = chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
-        for (ChatRoomMember remainingMember : remainingMembers) {
-            if (remainingMember.getUser() != null && removedUser != null) {
-                chatNotificationService.createMemberLeftNotification(
-                        remainingMember.getUser().getUserId(),
-                        removedUser.getUsername(),
-                        roomId);
-            }
-        }
 
         return convertToChatRoomDTO(chatRoom);
     }
@@ -311,25 +301,16 @@ public class ChatRoomService {
             throw new BadRequestException("Room ID và User ID không được để trống");
         }
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("User không phải thành viên của phòng chat này"));
+                .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
 
         User leavingUser = member.getUser();
         chatRoomMemberRepository.delete(member);
 
         webSocketNotificationService.notifyUserLeft(roomId, leavingUser);
 
-        List<ChatRoomMember> remainingMembers = chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
-        for (ChatRoomMember remainingMember : remainingMembers) {
-            if (remainingMember.getUser() != null && leavingUser != null) {
-                chatNotificationService.createMemberLeftNotification(
-                        remainingMember.getUser().getUserId(),
-                        leavingUser.getUsername(),
-                        roomId);
-            }
-        }
     }
 
     public ChatRoomDTO changeMemberRole(Long roomId, Long userId, ChatRoomMember.MemberRole newRole, Long adminId) {
@@ -337,7 +318,7 @@ public class ChatRoomService {
             throw new BadRequestException("Room ID, User ID, Admin ID và Role không được để trống");
         }
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
 
         boolean isAdmin = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserIdAndRole(
                 roomId, adminId, ChatRoomMember.MemberRole.ADMIN);
@@ -346,7 +327,7 @@ public class ChatRoomService {
         }
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("User không phải thành viên của phòng chat này"));
+                .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
 
         member.setRole(newRole);
         chatRoomMemberRepository.save(member);
@@ -359,7 +340,7 @@ public class ChatRoomService {
             throw new BadRequestException("Room ID và Admin ID không được để trống");
         }
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
 
         boolean isAdmin = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserIdAndRole(
                 roomId, adminId, ChatRoomMember.MemberRole.ADMIN);
@@ -398,7 +379,7 @@ public class ChatRoomService {
             throw new BadRequestException("Room ID và User ID không được để trống");
         }
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
         if (!isMember) {
@@ -416,12 +397,12 @@ public class ChatRoomService {
 
         // Validate project exists
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Project không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Project không tồn tại"));
 
         // Get project chat room
         List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
         if (projectChats.isEmpty()) {
-            throw new EntityNotFoundException("Project chat room không tồn tại");
+            throw new ResourceNotFoundException("Project chat room không tồn tại");
         }
 
         ChatRoom chatRoom = projectChats.get(0);

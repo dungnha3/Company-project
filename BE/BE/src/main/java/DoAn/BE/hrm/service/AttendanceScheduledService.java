@@ -4,9 +4,10 @@ import DoAn.BE.hrm.entity.Attendance;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.repository.AttendanceRepository;
 import DoAn.BE.hrm.repository.EmployeeRepository;
-import DoAn.BE.notification.service.AttendanceNotificationService;
+import DoAn.BE.hrm.event.HrmEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,7 @@ public class AttendanceScheduledService {
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
-    private final AttendanceNotificationService attendanceNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final DoAn.BE.notification.service.FCMService fcmService;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -54,8 +55,9 @@ public class AttendanceScheduledService {
                     // Has check-in but no check-out
                     if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() == null) {
                         if (employee.getUser() != null) {
-                            attendanceNotificationService.createCheckoutReminderNotification(
-                                    employee.getUser().getUserId());
+                            eventPublisher.publishEvent(new HrmEvent(
+                                    this, HrmEvent.Type.CHECKOUT_REMINDER, null,
+                                    employee.getUser().getUserId(), "Checkout Reminder"));
 
                             // 📱 Push FCM notification
                             if (employee.getUser().getFcmToken() != null) {
@@ -104,9 +106,9 @@ public class AttendanceScheduledService {
                 if (todayAttendance.isEmpty()) {
                     // No attendance record - send notification
                     if (employee.getUser() != null) {
-                        attendanceNotificationService.createMissingAttendanceNotification(
-                                employee.getUser().getUserId(),
-                                dateStr);
+                        eventPublisher.publishEvent(new HrmEvent(
+                                this, HrmEvent.Type.MISSING_ATTENDANCE, dateStr,
+                                employee.getUser().getUserId(), "Missing Attendance"));
                         missingCount++;
                         log.debug("⚠️ Sent missing attendance notification for: {}", employee.getFullName());
                     }
@@ -116,9 +118,9 @@ public class AttendanceScheduledService {
                     // Has check-in but no check-out
                     if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() == null) {
                         if (employee.getUser() != null) {
-                            attendanceNotificationService.createMissingAttendanceNotification(
-                                    employee.getUser().getUserId(),
-                                    dateStr + " (Missing Checkout)");
+                            eventPublisher.publishEvent(new HrmEvent(
+                                    this, HrmEvent.Type.MISSING_ATTENDANCE, dateStr + " (Missing Checkout)",
+                                    employee.getUser().getUserId(), "Missing Checkout"));
 
                             // 📱 Push FCM notification
                             if (employee.getUser().getFcmToken() != null) {
@@ -180,12 +182,9 @@ public class AttendanceScheduledService {
                 int absentDays = Math.max(0, workingDays - totalDays);
 
                 if (employee.getUser() != null) {
-                    attendanceNotificationService.createMonthlyAttendanceSummaryNotification(
-                            employee.getUser().getUserId(),
-                            monthStr,
-                            totalDays,
-                            lateDays,
-                            absentDays);
+                    eventPublisher.publishEvent(new HrmEvent(
+                            this, HrmEvent.Type.MONTHLY_SUMMARY, new int[] { totalDays, lateDays, absentDays },
+                            employee.getUser().getUserId(), monthStr));
                     summaryCount++;
                 }
             } catch (Exception e) {

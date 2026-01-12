@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.event.UserUpdatedEvent;
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
@@ -95,7 +95,7 @@ public class UserSaasService {
                 currentUser.getUsername(), userId, companyId);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
 
         // Parse role
         CompanyRole newRole;
@@ -127,7 +127,7 @@ public class UserSaasService {
         } else {
             // Create new membership
             Company company = companyRepository.findById(companyId)
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy công ty"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
 
             CompanyMember newMember = new CompanyMember();
             newMember.setUser(user);
@@ -155,7 +155,7 @@ public class UserSaasService {
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
         user.setIsSystemAdmin(isSystemAdmin);
         userRepository.save(user);
 
@@ -165,3 +165,4 @@ public class UserSaasService {
                 user.getUsername());
     }
 }
+

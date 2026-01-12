@@ -21,8 +21,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
 // Filter xác thực JWT token và set TenantContext cho mỗi request
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -61,16 +64,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             username = jwtService.extractUsername(jwt);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                System.out.println(">>> JwtFilter: Querying User: " + username);
+                log.debug("JWT Filter: Processing authentication for user: {}", username);
                 User user = userRepository.findByUsername(username).orElse(null);
-                System.out.println(">>> JwtFilter: User found: " + (user != null));
 
                 if (user != null && jwtService.validateToken(jwt)) {
-                    // [DEBUG] Log isSystemAdmin value
-                    System.out.println("=== DEBUG JwtFilter ===");
-                    System.out.println("User loaded: " + user.getUsername());
-                    System.out.println("isSystemAdmin from DB: " + user.isSystemAdminAccount());
-                    System.out.println("isSystemAdmin field: " + user.getIsSystemAdmin());
 
                     if (!user.getIsActive()) {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -94,7 +91,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // [SAAS] System Admin gets special authority, bypassing company role checks
                     if (user.isSystemAdminAccount()) {
                         authorities.add(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
-                        System.out.println("✅ Added ROLE_SYSTEM_ADMIN authority for: " + user.getUsername());
+                        log.debug("Granted SYSTEM_ADMIN authority to user: {}", user.getUsername());
                     }
 
                     if (role != null && !role.isEmpty()) {

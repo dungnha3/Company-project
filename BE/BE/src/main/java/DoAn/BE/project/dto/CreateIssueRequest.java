@@ -33,4 +33,5 @@ public class CreateIssueRequest {
     private Long assigneeId;
     private BigDecimal estimatedHours;
     private LocalDate dueDate;
+    private Long sprintId;
 }

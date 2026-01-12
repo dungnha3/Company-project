@@ -398,7 +398,10 @@
 
 ---
 
-## 11. Automation Module
+## 11. ~~Automation Module~~ (REMOVED)
+
+> **Note**: This module has been deleted from the codebase as it was an incomplete placeholder.
+> Tables `automation_rules`, `automation_conditions`, `automation_actions`, `automation_logs` are no longer used.
 
 ### Table: `automation_rules`
 | Field | DB Column | Type | Description |

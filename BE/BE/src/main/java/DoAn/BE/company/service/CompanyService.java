@@ -37,6 +37,7 @@ public class CompanyService {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySettingsRepository companySettingsRepository;
     private final DoAn.BE.project.repository.ProjectRepository projectRepository;
+    private final DoAn.BE.hrm.repository.EmployeeRepository employeeRepository;
 
     // [Lấy danh sách công ty của user hiện tại] (Role: Authenticated User)
     @Transactional(readOnly = true)
@@ -140,11 +141,10 @@ public class CompanyService {
 
         company = companyRepository.save(company);
 
-        // [Tạo settings mặc định] (Role: Create)
+        // [Tạo settings mặc định dựa vào Plan] (Role: Create)
         CompanySettings settings = new CompanySettings();
         settings.setCompany(company);
-        // Default settings are false/null, explicitly set generic defaults if needed
-        settings.setHrModuleEnabled(true); // Enable core modules by default for better UX
+        settings.initFromPlan(company.getPlan());
         settings.setProjectModuleEnabled(true);
         settings.setChatModuleEnabled(true);
         settings.setStorageModuleEnabled(true);
@@ -206,8 +206,12 @@ public class CompanyService {
         // [Cập nhật module settings] (Role: Update)
         updateModuleSettings(settings, req);
 
-        // [Cập nhật GPS settings] (Role: Update)
-        updateGpsSettings(settings, req);
+        // [Cập nhật module settings] (Role: Update)
+        updateModuleSettings(settings, req);
+
+        // [GPS Settings] - RESTRICTED: Chỉ System Admin mới được sửa GPS (đã chuyển
+        // sang updateSettingsBySystemAdmin)
+        // updateGpsSettings(settings, req); -> REMOVED
 
         log.info("Đã cập nhật cài đặt công ty: {}", companyId);
         return companySettingsRepository.save(settings);
@@ -229,7 +233,10 @@ public class CompanyService {
     }
 
     // [Cập nhật module settings] (Role: Internal)
+    // [Cập nhật module settings] (Role: Internal)
     private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
+        DoAn.BE.company.entity.Plan plan = settings.getCompany().getPlan();
+
         if (req.getHrModuleEnabled() != null) {
             settings.setHrModuleEnabled(req.getHrModuleEnabled());
         }
@@ -239,9 +246,22 @@ public class CompanyService {
         if (req.getChatModuleEnabled() != null) {
             settings.setChatModuleEnabled(req.getChatModuleEnabled());
         }
+
+        // [SAAS CHECK] Chỉ gói ENTERPRISE mới được bật AI & Automation
         if (req.getAiModuleEnabled() != null) {
+            if (req.getAiModuleEnabled() && !plan.isApiAccessEnabled()) { // Using apiAccessEnabled as proxy for
+                                                                          // "Premium/Enterprise" features
+                throw new DoAn.BE.common.exception.ForbiddenException(
+                        "Gói " + plan.name() + " không hỗ trợ tính năng AI");
+            }
             settings.setAiModuleEnabled(req.getAiModuleEnabled());
         }
+
+        // Automation check (Assuming similar restriction)
+        // locally yet,
+        // if it's there update it similarly. For now securing AI is the priority
+        // requested.
+
         if (req.getStorageModuleEnabled() != null) {
             settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
         }
@@ -338,14 +358,53 @@ public class CompanyService {
         try {
             Plan newPlan = Plan.valueOf(planName.toUpperCase());
             Plan oldPlan = company.getPlan();
+
+            // [DOWNGRADE VALIDATION] Kiểm tra nếu hạ gói có vượt quá giới hạn mới
+            if (newPlan.isLowerThan(oldPlan)) {
+                validateDowngrade(companyId, newPlan);
+            }
+
             company.setPlan(newPlan);
             companyRepository.save(company);
+
+            // [SYNC] Cập nhật CompanySettings từ Plan
+            CompanySettings settings = companySettingsRepository.findById(companyId).orElse(null);
+            if (settings != null) {
+                settings.initFromPlan(newPlan);
+                settings.applyDependencies();
+                companySettingsRepository.save(settings);
+                log.info("[Sync] Đã cập nhật CompanySettings cho công ty {} theo gói {}", companyId, newPlan);
+            }
+
             log.info("[System Admin] Đã đổi plan công ty {} từ {} sang {}",
                     company.getName(), oldPlan, newPlan);
             return company;
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Plan không hợp lệ: " + planName +
                     ". Các plan hợp lệ: FREE, STARTER, PROFESSIONAL, ENTERPRISE");
+        }
+    }
+
+    // [SAAS] Kiểm tra downgrade có vượt quá giới hạn mới không
+    private void validateDowngrade(Long companyId, Plan newPlan) {
+        long employeeCount = employeeRepository.countByCompanyId(companyId);
+        long projectCount = projectRepository.countByCompany_CompanyId(companyId);
+
+        StringBuilder errors = new StringBuilder();
+
+        if (!newPlan.isUnlimitedUsers() && employeeCount > newPlan.getMaxUsers()) {
+            errors.append(String.format("Nhân viên: %d/%d (vượt %d). ",
+                    employeeCount, newPlan.getMaxUsers(), employeeCount - newPlan.getMaxUsers()));
+        }
+
+        if (!newPlan.isUnlimitedProjects() && projectCount > newPlan.getMaxProjects()) {
+            errors.append(String.format("Dự án: %d/%d (vượt %d). ",
+                    projectCount, newPlan.getMaxProjects(), projectCount - newPlan.getMaxProjects()));
+        }
+
+        if (errors.length() > 0) {
+            throw new BadRequestException("Không thể hạ gói. " + errors.toString() +
+                    "Vui lòng giảm số lượng trước khi hạ gói.");
         }
     }
 
@@ -390,5 +449,23 @@ public class CompanyService {
         companyRepository.delete(company);
 
         log.info("[System Admin] Đã xóa công ty: {}", companyName);
+    }
+
+    // [SAAS] Cập nhật cài đặt công ty bởi System Admin (Bao gồm cả GPS)
+    @Transactional
+    public CompanySettings updateSettingsBySystemAdmin(Long companyId, CompanyDto.SettingsUpdateRequest req) {
+        if (companyId == null) {
+            throw new BadRequestException("ID công ty không được để trống");
+        }
+
+        CompanySettings settings = companySettingsRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));
+
+        // System Admin được quyền sửa tất cả
+        updateModuleSettings(settings, req);
+        updateGpsSettings(settings, req); // GPS update allowed here
+
+        log.info("[System Admin] Đã cập nhật cài đặt (bao gồm GPS) cho công ty: {}", companyId);
+        return companySettingsRepository.save(settings);
     }
 }

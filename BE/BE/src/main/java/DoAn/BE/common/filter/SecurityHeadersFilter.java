@@ -63,7 +63,6 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
 
         // HSTS - Force HTTPS (only in production)
         // Set max-age to 1 year (31536000 seconds)
-        // Note: Only effective when served over HTTPS
         if (request.isSecure()) {
             response.setHeader("Strict-Transport-Security",
                     "max-age=31536000; includeSubDomains; preload");

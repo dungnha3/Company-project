@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.DuplicateException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.hrm.dto.EmployeeRequest;
@@ -49,7 +49,7 @@ public class EmployeeService {
         log.info("HR Manager {} is creating new employee profile", currentUser.getUsername());
 
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User account not found"));
 
         if (employeeRepository.findByUser_UserId(request.getUserId()).isPresent()) {
             throw new DuplicateException("This account is already linked to another employee profile");
@@ -73,13 +73,13 @@ public class EmployeeService {
 
         if (request.getDepartmentId() != null) {
             Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new EntityNotFoundException("Department not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
             employee.setDepartment(department);
         }
 
         if (request.getPositionId() != null) {
             Position position = positionRepository.findById(request.getPositionId())
-                    .orElseThrow(() -> new EntityNotFoundException("Position not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
             employee.setPosition(position);
         }
 
@@ -92,7 +92,7 @@ public class EmployeeService {
             throw new BadRequestException("Invalid Employee ID");
 
         Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Employee profile not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
 
         if (accessControlService.isHRManager() || accessControlService.isAccountingManager()) {
             return employee;
@@ -108,7 +108,7 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public Employee getEmployeeById(Long id) {
         return employeeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Employee profile not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
     }
 
     @Transactional(readOnly = true)
@@ -171,13 +171,13 @@ public class EmployeeService {
 
         if (request.getDepartmentId() != null) {
             Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new EntityNotFoundException("Department not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
             employee.setDepartment(department);
         }
 
         if (request.getPositionId() != null) {
             Position position = positionRepository.findById(request.getPositionId())
-                    .orElseThrow(() -> new EntityNotFoundException("Position not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
             employee.setPosition(position);
         }
 
@@ -239,10 +239,11 @@ public class EmployeeService {
 
     public Employee getEmployeeByUserId(Long userId) {
         return employeeRepository.findByUser_UserId(userId)
-                .orElseThrow(() -> new EntityNotFoundException("No employee profile found for this User"));
+                .orElseThrow(() -> new ResourceNotFoundException("No employee profile found for this User"));
     }
 
     public boolean hasEmployeeProfile(Long userId) {
         return employeeRepository.findByUser_UserId(userId).isPresent();
     }
 }
+

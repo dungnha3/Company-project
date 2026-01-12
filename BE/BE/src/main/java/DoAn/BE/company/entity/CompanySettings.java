@@ -92,6 +92,12 @@ public class CompanySettings extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "max_storage_bytes", nullable = false)
     private long maxStorageBytes = 1_073_741_824L; // 1GB
 
+    @Column(name = "max_file_upload_bytes", nullable = false)
+    private long maxFileUploadBytes = 10_485_760L; // 10MB default
+
+    @Column(name = "webhook_enabled", nullable = false)
+    private boolean webhookEnabled = false;
+
     // ===== GPS settings (Cài đặt định vị văn phòng cho chấm công) =====
     @Column(name = "office_latitude")
     private Double officeLatitude;
@@ -119,8 +125,7 @@ public class CompanySettings extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "calendar_enabled", nullable = false)
     private boolean calendarEnabled = true;
 
-    @Column(name = "automation_enabled", nullable = false)
-    private boolean automationEnabled = false; // Mặc định tắt - tính năng premium
+    // ===== automationEnabled removed (module deleted) =====
 
     // ===== Chat sub-features (Tính năng con của Chat) =====
     @Column(name = "chat_reactions_enabled", nullable = false)
@@ -134,4 +139,31 @@ public class CompanySettings extends DoAn.BE.common.entity.BaseEntity {
 
     @Column(name = "chat_search_enabled", nullable = false)
     private boolean chatSearchEnabled = true;
+
+    // ===== Helper: Initialize settings from Plan =====
+    public void initFromPlan(Plan plan) {
+        this.hrModuleEnabled = plan.isHrModuleEnabled();
+        this.aiModuleEnabled = plan.isAiModuleEnabled();
+        this.webhookEnabled = plan.isWebhookEnabled();
+        this.maxEmployees = plan.getMaxUsers();
+        this.maxProjects = plan.getMaxProjects();
+        this.maxStorageBytes = plan.getMaxStorageBytes();
+        this.maxFileUploadBytes = plan.getMaxFileUploadBytes();
+    }
+
+    // ===== Helper: Apply feature dependencies =====
+    public void applyDependencies() {
+        // Salary requires Attendance
+        if (this.salaryEnabled && !this.attendanceEnabled) {
+            this.attendanceEnabled = true;
+        }
+        // HR sub-features require HR module
+        if (!this.hrModuleEnabled) {
+            this.attendanceEnabled = false;
+            this.leaveEnabled = false;
+            this.salaryEnabled = false;
+            this.contractEnabled = false;
+            this.reviewEnabled = false;
+        }
+    }
 }

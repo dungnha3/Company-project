@@ -6,7 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.hrm.dto.ContractRequest;
 import DoAn.BE.hrm.entity.Contract;
@@ -24,13 +24,16 @@ public class ContractService {
 
     private final ContractRepository contractRepository;
     private final EmployeeRepository employeeRepository;
-    private final AccessControlService accessControlService;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public ContractService(ContractRepository contractRepository, EmployeeRepository employeeRepository,
-            AccessControlService accessControlService) {
+            AccessControlService accessControlService,
+            org.springframework.context.ApplicationEventPublisher eventPublisher) {
         this.contractRepository = contractRepository;
         this.employeeRepository = employeeRepository;
         this.accessControlService = accessControlService;
+        this.eventPublisher = eventPublisher;
     }
 
     public Contract createContract(ContractRequest request) {
@@ -41,7 +44,7 @@ public class ContractService {
         accessControlService.checkHrContractsPermission();
 
         Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (request.getEndDate() != null && request.getStartDate() != null &&
                 request.getEndDate().isBefore(request.getStartDate())) {
@@ -57,7 +60,14 @@ public class ContractService {
         contract.setContent(request.getContent());
         contract.setStatus(ContractStatus.ACTIVE);
 
-        return contractRepository.save(contract);
+        contract = contractRepository.save(contract);
+
+        // Publish Event
+        eventPublisher
+                .publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.CONTRACT_CREATED,
+                        contract, null, "New Contract for " + employee.getFullName()));
+
+        return contract;
     }
 
     public Contract getContractById(Long id) {
@@ -65,7 +75,7 @@ public class ContractService {
             throw new BadRequestException("Invalid Contract ID");
         }
         return contractRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
     }
 
     public List<Contract> getAllContracts() {
@@ -126,7 +136,7 @@ public class ContractService {
 
         return contractRepository.findFirstByEmployee_EmployeeIdAndStatusOrderByStartDateDesc(
                 employeeId, ContractStatus.ACTIVE)
-                .orElseThrow(() -> new EntityNotFoundException("No active contract found for this employee"));
+                .orElseThrow(() -> new ResourceNotFoundException("No active contract found for this employee"));
     }
 
     public List<Contract> getContractsByStatus(ContractStatus status) {
@@ -161,7 +171,14 @@ public class ContractService {
         }
 
         contract.setEndDate(newEndDate);
-        return contractRepository.save(contract);
+        contract = contractRepository.save(contract);
+
+        // Publish Event
+        eventPublisher
+                .publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.CONTRACT_RENEWED,
+                        contract, null, "Contract Renewed for " + contract.getEmployee().getFullName()));
+
+        return contract;
     }
 
     public List<Contract> getExpiringContracts(int daysAhead) {
@@ -188,3 +205,4 @@ public class ContractService {
                 employeeId, ContractStatus.ACTIVE).isPresent();
     }
 }
+

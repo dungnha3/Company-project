@@ -4,7 +4,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.user.dto.UpdatePasswordRequest;
@@ -36,7 +36,7 @@ public class ProfileService {
 
     public User getCurrentUserProfile(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public User updateProfile(Long userId, UpdateUserRequest request) {
@@ -118,3 +118,4 @@ public class ProfileService {
         userRepository.save(user);
     }
 }
+

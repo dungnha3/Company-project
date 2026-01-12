@@ -44,8 +44,5 @@ public class UserNotificationListener {
                 break;
         }
     }
-
-    // Note: Activation/Deactivation notifications can be added here if we create
     // specific events for them
-    // For now, we are covering the main creation flow.
 }

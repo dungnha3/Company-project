@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.DuplicateException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 
@@ -45,6 +45,7 @@ public class SalaryService {
     private final HRNotificationService hrNotificationService;
     private final FCMService fcmService;
     private final AccessControlService accessControlService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public SalaryService(SalaryRepository salaryRepository,
             EmployeeRepository employeeRepository,
@@ -52,7 +53,8 @@ public class SalaryService {
             AttendanceRepository attendanceRepository,
             HRNotificationService hrNotificationService,
             FCMService fcmService,
-            AccessControlService accessControlService) {
+            AccessControlService accessControlService,
+            org.springframework.context.ApplicationEventPublisher eventPublisher) {
         this.salaryRepository = salaryRepository;
         this.employeeRepository = employeeRepository;
         this.contractRepository = contractRepository;
@@ -60,6 +62,7 @@ public class SalaryService {
         this.hrNotificationService = hrNotificationService;
         this.fcmService = fcmService;
         this.accessControlService = accessControlService;
+        this.eventPublisher = eventPublisher;
     }
 
     public Salary createSalary(CreateSalaryRequest request, User currentUser) {
@@ -72,7 +75,7 @@ public class SalaryService {
                 request.getEmployeeId());
 
         Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (salaryRepository.existsByEmployee_EmployeeIdAndMonthAndYear(request.getEmployeeId(), request.getMonth(),
                 request.getYear())) {
@@ -102,7 +105,7 @@ public class SalaryService {
 
     public Salary getSalaryById(Long id, User currentUser) {
         Salary salary = salaryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Salary record not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Salary record not found"));
 
         if (accessControlService.isAccountingManager()) {
             return salary;
@@ -139,7 +142,7 @@ public class SalaryService {
 
     public Salary getSalaryById(Long id) {
         return salaryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Salary not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Salary not found"));
     }
 
     public List<Salary> getAllSalaries(User currentUser) {
@@ -152,7 +155,6 @@ public class SalaryService {
         // Since findByCompanyId(Long) is native query returning List<Salary>, we need
         // to implement it in repo or use existing findAll() if it respects tenant by
         // default (via aspects or criteria).
-        // Assuming findAll() is safe or using repo.findAll() which is JPA standard.
         // However, we added findByCompanyId in previous step? Wait, let me check. No,
         // we added findByCompanyId(Long, Pageable).
         // We should add a List method if we want to support this List method correctly
@@ -231,7 +233,7 @@ public class SalaryService {
         }
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You can only view your own salary history");
@@ -247,7 +249,7 @@ public class SalaryService {
         }
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You can only view your own salary history");
@@ -282,6 +284,10 @@ public class SalaryService {
         Salary saved = salaryRepository.save(salary);
 
         sendPaymentNotification(saved);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.SALARY_PAID,
+                saved, currentUser.getUserId(), "Salary Paid: " + saved.getMonth() + "/" + saved.getYear()));
 
         return saved;
     }
@@ -376,7 +382,7 @@ public class SalaryService {
                 employeeId);
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (salaryRepository.existsByEmployee_EmployeeIdAndMonthAndYear(employeeId, month, year)) {
             throw new DuplicateException("Salary for this period already exists");
@@ -384,7 +390,7 @@ public class SalaryService {
 
         Contract contract = contractRepository
                 .findFirstByEmployee_EmployeeIdAndStatusOrderByStartDateDesc(employeeId, ContractStatus.ACTIVE)
-                .orElseThrow(() -> new EntityNotFoundException("Employee does not have an active contract"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee does not have an active contract"));
 
         // Get attendance data
         YearMonth yearMonth = YearMonth.of(year, month);
@@ -451,3 +457,4 @@ public class SalaryService {
         return results;
     }
 }
+

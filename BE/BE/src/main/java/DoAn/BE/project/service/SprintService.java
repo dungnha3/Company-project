@@ -20,8 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,9 +31,8 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueRepository issueRepository;
-    private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
-    private final DoAn.BE.notification.service.FCMService fcmService;
     private final AccessControlService accessControlService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SprintDTO createSprint(CreateSprintRequest request, User currentUser) {
@@ -46,7 +43,7 @@ public class SprintService {
 
         log.info("User {} tạo sprint mới cho project {}", currentUser.getUsername(), request.getProjectId());
         Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
         validateProjectManagement(request.getProjectId(), currentUser.getUserId());
 
         // Validate dates
@@ -74,8 +71,13 @@ public class SprintService {
         sprint.setStatus(SprintStatus.PLANNING);
 
         sprint = sprintRepository.save(sprint);
+        SprintDTO sprintDTO = convertToDTO(sprint);
 
-        return convertToDTO(sprint);
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.project.event.SprintEvent(this,
+                DoAn.BE.project.event.SprintEvent.Type.CREATED, sprintDTO, currentUser.getUserId()));
+
+        return sprintDTO;
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +87,7 @@ public class SprintService {
         }
 
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -114,7 +116,7 @@ public class SprintService {
     @Transactional
     public SprintDTO updateSprint(Long sprintId, UpdateSprintRequest request, User currentUser) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -155,7 +157,7 @@ public class SprintService {
     @Transactional
     public void deleteSprint(Long sprintId, User currentUser) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -181,7 +183,7 @@ public class SprintService {
     @Transactional
     public SprintDTO startSprint(Long sprintId, User currentUser) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -203,46 +205,21 @@ public class SprintService {
         sprint.setStatus(SprintStatus.ACTIVE);
         sprint = sprintRepository.save(sprint);
 
-        // Notify all project members
-        List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(
-                sprint.getProject().getProjectId());
-        for (ProjectMember member : members) {
-            if (member.getUser() != null) {
-                projectNotificationService.createSprintStartedNotification(
-                        member.getUser().getUserId(),
-                        sprint.getName(),
-                        sprint.getProject().getProjectId());
+        log.info("Sprint {} started", sprint.getName());
 
-                // 📱 Push FCM notification
-                try {
-                    if (member.getUser().getFcmToken() != null) {
-                        Map<String, String> data = new HashMap<>();
-                        data.put("type", "SPRINT_STARTED");
-                        data.put("sprintId", sprint.getSprintId().toString());
-                        data.put("projectId", sprint.getProject().getProjectId().toString());
-                        data.put("link",
-                                "/projects/" + sprint.getProject().getProjectId() + "/sprints/" + sprint.getSprintId());
-                        fcmService.sendToDevice(
-                                member.getUser().getFcmToken(),
-                                "🚀 Sprint bắt đầu",
-                                "Sprint \"" + sprint.getName() + "\" đã bắt đầu",
-                                data);
-                    }
-                } catch (Exception e) {
-                    // Log but don't fail
-                }
-            }
-        }
+        SprintDTO sprintDTO = convertToDTO(sprint);
 
-        log.info("Sprint {} started, notified {} members", sprint.getName(), members.size());
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.project.event.SprintEvent(this,
+                DoAn.BE.project.event.SprintEvent.Type.STARTED, sprintDTO, currentUser.getUserId()));
 
-        return convertToDTO(sprint);
+        return sprintDTO;
     }
 
     @Transactional
     public SprintDTO completeSprint(Long sprintId, User currentUser) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -264,53 +241,26 @@ public class SprintService {
                 .filter(Issue::isDone)
                 .count();
 
-        // Thông báo đến tất cả thành viên dự án
-        List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(
-                sprint.getProject().getProjectId());
-        for (ProjectMember member : members) {
-            if (member.getUser() != null) {
-                projectNotificationService.createSprintCompletedNotification(
-                        member.getUser().getUserId(),
-                        sprint.getName(),
-                        completedIssues,
-                        totalIssues,
-                        sprint.getProject().getProjectId());
+        log.info("Sprint {} completed", sprint.getName());
 
-                // 📱 Push FCM notification
-                try {
-                    if (member.getUser().getFcmToken() != null) {
-                        Map<String, String> data = new HashMap<>();
-                        data.put("type", "SPRINT_COMPLETED");
-                        data.put("sprintId", sprint.getSprintId().toString());
-                        data.put("projectId", sprint.getProject().getProjectId().toString());
-                        data.put("link",
-                                "/projects/" + sprint.getProject().getProjectId() + "/sprints/" + sprint.getSprintId());
-                        fcmService.sendToDevice(
-                                member.getUser().getFcmToken(),
-                                "✅ Sprint hoàn thành",
-                                "Sprint \"" + sprint.getName() + "\" đã hoàn thành: " + completedIssues + "/"
-                                        + totalIssues + " issues",
-                                data);
-                    }
-                } catch (Exception e) {
-                    // Log but don't fail
-                }
-            }
-        }
+        SprintDTO sprintDTO = convertToDTO(sprint);
+        sprintDTO.setTotalIssues(totalIssues);
+        sprintDTO.setCompletedIssues(completedIssues);
 
-        log.info("Sprint {} completed: {}/{} issues done, notified {} members",
-                sprint.getName(), completedIssues, totalIssues, members.size());
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.project.event.SprintEvent(this,
+                DoAn.BE.project.event.SprintEvent.Type.COMPLETED, sprintDTO, currentUser.getUserId()));
 
-        return convertToDTO(sprint);
+        return sprintDTO;
     }
 
     @Transactional
     public void addIssueToSprint(Long sprintId, Long issueId, User currentUser) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");
@@ -338,10 +288,10 @@ public class SprintService {
     @Transactional
     public void removeIssueFromSprint(Long sprintId, Long issueId, User currentUser) {
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sprint"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (sprint.getProject() == null) {
             throw new IllegalStateException("Sprint không có dự án liên kết");

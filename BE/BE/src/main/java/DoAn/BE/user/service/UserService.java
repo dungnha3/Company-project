@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +30,7 @@ import DoAn.BE.hrm.repository.DepartmentRepository;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.DuplicateException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.user.dto.CreateAccountWithEmployeeRequest;
 import DoAn.BE.user.dto.CreateUserRequest;
 import DoAn.BE.user.dto.UpdatePasswordRequest;
@@ -105,7 +104,7 @@ public class UserService {
     @Cacheable(value = CacheConfig.CACHE_USERS, key = "#id")
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public List<User> getAllUsers() {
@@ -303,7 +302,7 @@ public class UserService {
         Long companyId = TenantContext.getCompanyId();
         if (companyId != null) {
             DoAn.BE.company.entity.Company company = companyRepository.findById(companyId)
-                    .orElseThrow(() -> new EntityNotFoundException("Company not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
 
             CompanyRole role = CompanyRole.EMPLOYEE;
             if (request.getRole() != null) {
@@ -341,13 +340,13 @@ public class UserService {
 
         if (request.getPhongBanId() != null) {
             Department department = departmentRepository.findById(request.getPhongBanId())
-                    .orElseThrow(() -> new EntityNotFoundException("Department not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
             employee.setDepartment(department);
         }
 
         if (request.getChucVuId() != null) {
             Position position = positionRepository.findById(request.getChucVuId())
-                    .orElseThrow(() -> new EntityNotFoundException("Position not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
             employee.setPosition(position);
         }
 
@@ -371,7 +370,6 @@ public class UserService {
 
     public User updateUser(Long id, UserDTO userDTO, User currentUser) {
         // ... implementation (same as before but simplified/optimized if needed)
-        // For now, I'll reuse the logic from previous block or just keep it minimal if
         // the method above is the main one.
         // Wait, there are TWO updateUser methods in original file. The one with DTO is
         // used by Controller likely.
@@ -516,3 +514,4 @@ public class UserService {
         return userRepository.findByResetPasswordToken(token);
     }
 }
+

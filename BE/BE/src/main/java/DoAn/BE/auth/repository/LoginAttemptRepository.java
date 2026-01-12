@@ -39,5 +39,3 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, Long
     void deleteByUsernameAndIpAddress(String username, String ipAddress);
 }
 
-
-

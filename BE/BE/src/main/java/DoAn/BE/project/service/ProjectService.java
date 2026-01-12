@@ -12,12 +12,17 @@ import DoAn.BE.chat.repository.ChatRoomMemberRepository;
 import lombok.extern.slf4j.Slf4j;
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.Project;
+import DoAn.BE.project.entity.Project.ProjectStatus;
 import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.entity.ProjectMember.ProjectRole;
+import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.ProjectRepository;
+import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,10 +46,13 @@ public class ProjectService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ProjectChatIntegrationService projectChatIntegrationService;
-    private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
     private final DoAn.BE.storage.service.StorageProjectIntegrationService storageProjectIntegrationService;
     private final AccessControlService accessControlService;
     private final DoAn.BE.company.service.SubscriptionService subscriptionService;
+    private final SprintRepository sprintRepository;
+    private final IssueRepository issueRepository;
+    private final IssueStatusRepository issueStatusRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // [REFACTOR] Delegate member operations to specialized service
     private final ProjectMemberService projectMemberService;
@@ -65,7 +73,7 @@ public class ProjectService {
         Department department = null;
         if (request.getPhongbanId() != null) {
             department = departmentRepository.findById(request.getPhongbanId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phòng ban"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng ban"));
         }
 
         // Validate dates
@@ -119,7 +127,13 @@ public class ProjectService {
         storageProjectIntegrationService.getOrCreateProjectFolder(project, currentUser);
         log.info("Đã tạo project storage folder cho project {}", project.getProjectId());
 
-        return convertToDTO(project);
+        ProjectDTO projectDTO = convertToDTO(project);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
+                DoAn.BE.project.event.ProjectEvent.Type.CREATED, projectDTO, currentUser.getUserId()));
+
+        return projectDTO;
     }
 
     @Transactional(readOnly = true)
@@ -130,7 +144,7 @@ public class ProjectService {
         }
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
         // Kiểm tra xem user có quyền truy cập dự án này không
         validateProjectAccess(projectId, currentUser.getUserId());
@@ -197,7 +211,7 @@ public class ProjectService {
     @Transactional
     public ProjectDTO updateProject(Long projectId, UpdateProjectRequest request, Long userId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
         // Kiểm tra quyền quản lý dự án
         validateProjectManagement(projectId, userId);
@@ -215,37 +229,21 @@ public class ProjectService {
 
             // Gửi tin nhắn hệ thống nếu trạng thái thay đổi
             if (oldStatus != request.getStatus()) {
-                if (request.getStatus() == Project.ProjectStatus.COMPLETED) {
-                    projectChatIntegrationService.notifyProjectCompleted(project);
+                projectChatIntegrationService.notifyProjectStatusChanged(
+                        project,
+                        oldStatus != null ? oldStatus.toString() : "N/A",
+                        request.getStatus().toString());
 
-                    // Gửi thông báo đến tất cả thành viên
-                    List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
-                    for (ProjectMember member : members) {
-                        if (member.getUser() != null) {
-                            projectNotificationService.createProjectCompletedNotification(
-                                    member.getUser().getUserId(),
-                                    project.getName(),
-                                    project.getProjectId());
-                        }
-                    }
-                } else {
-                    projectChatIntegrationService.notifyProjectStatusChanged(
-                            project,
-                            oldStatus != null ? oldStatus.toString() : "N/A",
-                            request.getStatus().toString());
+                // Publish Event for Status Changed or Completed
+                DoAn.BE.project.event.ProjectEvent.Type eventType = request
+                        .getStatus() == Project.ProjectStatus.COMPLETED
+                                ? DoAn.BE.project.event.ProjectEvent.Type.COMPLETED
+                                : DoAn.BE.project.event.ProjectEvent.Type.STATUS_CHANGED;
 
-                    // Gửi thông báo đến tất cả thành viên
-                    List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
-                    for (ProjectMember member : members) {
-                        if (member.getUser() != null) {
-                            projectNotificationService.createProjectStatusChangedNotification(
-                                    member.getUser().getUserId(),
-                                    project.getName(),
-                                    request.getStatus().toString(),
-                                    project.getProjectId());
-                        }
-                    }
-                }
+                eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
+                        eventType,
+                        convertToDTO(project),
+                        userId));
             }
         }
         if (request.getStartDate() != null) {
@@ -256,7 +254,7 @@ public class ProjectService {
         }
         if (request.getPhongbanId() != null) {
             Department dept = departmentRepository.findById(request.getPhongbanId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phòng ban"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng ban"));
             project.setDepartment(dept);
         }
 
@@ -268,13 +266,19 @@ public class ProjectService {
         }
 
         project = projectRepository.save(project);
-        return convertToDTO(project);
+        ProjectDTO projectDTO = convertToDTO(project);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
+                DoAn.BE.project.event.ProjectEvent.Type.UPDATED, projectDTO, userId));
+
+        return projectDTO;
     }
 
     @Transactional
     public void deleteProject(Long projectId, Long userId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
         // Chỉ OWNER mới được xóa dự án
         ProjectMember member = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
@@ -286,6 +290,7 @@ public class ProjectService {
 
         // Xóa mềm (Soft delete)
         project.setIsActive(false);
+        project.setStatus(ProjectStatus.CANCELLED); // Set status to CANCELLED as well
         projectRepository.save(project);
 
         // Lưu trữ chat dự án - set inactive nhưng giữ lịch sử
@@ -294,19 +299,29 @@ public class ProjectService {
             ChatRoom projectChatRoom = projectChats.get(0);
             // Gửi tin nhắn hệ thống cuối cùng
             projectChatIntegrationService.postSystemMessage(project,
-                    " Dự án đã được đóng. Chat room sẽ chuyển sang chế độ chỉ đọc.");
+                    " Dự án đã được hủy. Chat room sẽ chuyển sang chế độ chỉ đọc.");
             log.info("Archived project chat room {} for project {}", projectChatRoom.getRoomId(), projectId);
         }
 
-        // Gửi thông báo đến tất cả thành viên
-        List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
-        for (ProjectMember projectMember : members) {
-            if (projectMember.getUser() != null) {
-                projectNotificationService.createProjectArchivedNotification(
-                        projectMember.getUser().getUserId(),
-                        project.getName());
-            }
-        }
+        // --- CASCADE SOFT DELETE LOGIC ---
+        // 1. Cancel active Sprints
+        sprintRepository.updateStatusByProjectId(projectId, DoAn.BE.project.entity.Sprint.SprintStatus.CANCELLED);
+
+        // 2. Mark Issues as "Cancelled" (or Done if Cancelled doesn't exist)
+        DoAn.BE.project.entity.IssueStatus cancelledStatus = issueStatusRepository.findByName("Cancelled")
+                .orElseGet(() -> {
+                    // Create if not exists
+                    DoAn.BE.project.entity.IssueStatus newStatus = new DoAn.BE.project.entity.IssueStatus();
+                    newStatus.setName("Cancelled");
+                    newStatus.setColor("#808080"); // Grey
+                    newStatus.setOrderIndex(99);
+                    return issueStatusRepository.save(newStatus);
+                });
+        issueRepository.updateStatusByProjectId(projectId, cancelledStatus);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
+                DoAn.BE.project.event.ProjectEvent.Type.DELETED, convertToDTO(project), userId));
     }
 
     /**

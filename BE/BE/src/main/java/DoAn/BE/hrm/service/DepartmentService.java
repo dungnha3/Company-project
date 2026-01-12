@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.DuplicateException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.hrm.dto.DepartmentRequest;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Department;
@@ -47,7 +47,7 @@ public class DepartmentService {
 
         if (request.getManagerId() != null) {
             Employee manager = employeeRepository.findById(request.getManagerId())
-                    .orElseThrow(() -> new EntityNotFoundException("Manager employee not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Manager employee not found"));
             department.setManager(manager);
         }
 
@@ -57,7 +57,7 @@ public class DepartmentService {
     @Cacheable(value = "department", key = "#id")
     public Department getDepartmentById(Long id) {
         return departmentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Department not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
     }
 
     @Cacheable(value = "department", key = "'all'")
@@ -82,7 +82,7 @@ public class DepartmentService {
 
         if (request.getManagerId() != null) {
             Employee manager = employeeRepository.findById(request.getManagerId())
-                    .orElseThrow(() -> new EntityNotFoundException("Manager employee not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Manager employee not found"));
             department.setManager(manager);
         }
 
@@ -95,3 +95,4 @@ public class DepartmentService {
         departmentRepository.delete(department);
     }
 }
+

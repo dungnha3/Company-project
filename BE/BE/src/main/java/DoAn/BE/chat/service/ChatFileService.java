@@ -11,7 +11,7 @@ import DoAn.BE.storage.entity.File;
 import DoAn.BE.storage.repository.FileRepository;
 import DoAn.BE.storage.service.FileStorageService;
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -112,7 +112,7 @@ public class ChatFileService {
         validateRoomAccess(roomId, senderId);
 
         File file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new EntityNotFoundException("File không tồn tại trong Storage"));
+                .orElseThrow(() -> new ResourceNotFoundException("File không tồn tại trong Storage"));
 
         // Kiểm tra user có quyền truy cập file không (người upload hoặc file public)
         if (!file.getOwner().getUserId().equals(senderId) && !file.getIsPublic()) {
@@ -166,7 +166,7 @@ public class ChatFileService {
         }
 
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, senderId);
         if (!isMember) {
@@ -176,7 +176,7 @@ public class ChatFileService {
 
     private void validateRoomAccess(Long roomId, Long userId) {
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
         if (!isMember) {
@@ -204,3 +204,4 @@ public class ChatFileService {
         return Message.MessageType.FILE;
     }
 }
+

@@ -4,7 +4,7 @@ import DoAn.BE.chat.entity.MessageStatus;
 import DoAn.BE.chat.entity.MessageStatusId;
 import DoAn.BE.chat.repository.MessageRepository;
 import DoAn.BE.chat.repository.MessageStatusRepository;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +27,7 @@ public class MessageStatusService {
     // Đánh dấu tin nhắn đã gửi
     public void markMessageAsDelivered(@NonNull Long messageId, @NonNull Long userId) {
         messageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
 
         Optional<MessageStatus> statusOpt = messageStatusRepository.findById(
                 new MessageStatusId(messageId, userId));
@@ -43,7 +43,7 @@ public class MessageStatusService {
     // Đánh dấu tin nhắn đã đọc
     public void markMessageAsSeen(@NonNull Long messageId, @NonNull Long userId) {
         messageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
 
         Optional<MessageStatus> statusOpt = messageStatusRepository.findById(
                 new MessageStatusId(messageId, userId));
@@ -66,3 +66,4 @@ public class MessageStatusService {
         return messageStatusRepository.countUnreadMessagesInRoom(roomId, userId);
     }
 }
+

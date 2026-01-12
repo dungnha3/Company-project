@@ -20,8 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,8 +31,7 @@ public class IssueCommentService {
     private final IssueRepository issueRepository;
     private final IssueActivityRepository issueActivityRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
-    private final DoAn.BE.notification.service.FCMService fcmService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
 
     @Transactional
@@ -46,7 +43,7 @@ public class IssueCommentService {
 
         log.info("User {} tạo comment cho issue {}", currentUser.getUsername(), request.getIssueId());
         Issue issue = issueRepository.findById(request.getIssueId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -61,57 +58,9 @@ public class IssueCommentService {
                 "đã thêm comment");
         issueActivityRepository.save(activity);
 
-        // Notify assignee và reporter về comment mới (trừ người comment)
-        if (issue.getAssignee() != null && !issue.getAssignee().getUserId().equals(currentUser.getUserId())) {
-            projectNotificationService.createIssueCommentNotification(
-                    issue.getAssignee().getUserId(),
-                    currentUser.getUsername(),
-                    issue.getTitle());
-
-            // 📱 Push FCM notification to assignee
-            try {
-                if (issue.getAssignee().getFcmToken() != null) {
-                    Map<String, String> data = new HashMap<>();
-                    data.put("type", "ISSUE_COMMENT");
-                    data.put("issueId", issue.getIssueId().toString());
-                    data.put("link",
-                            "/projects/" + issue.getProject().getProjectId() + "/issues/" + issue.getIssueId());
-                    fcmService.sendToDevice(
-                            issue.getAssignee().getFcmToken(),
-                            "💬 Comment mới trên issue",
-                            currentUser.getUsername() + " đã bình luận trên \"" + issue.getTitle() + "\"",
-                            data);
-                }
-            } catch (Exception e) {
-                // Log but don't fail
-            }
-        }
-        if (issue.getReporter() != null && !issue.getReporter().getUserId().equals(currentUser.getUserId())
-                && (issue.getAssignee() == null
-                        || !issue.getReporter().getUserId().equals(issue.getAssignee().getUserId()))) {
-            projectNotificationService.createIssueCommentNotification(
-                    issue.getReporter().getUserId(),
-                    currentUser.getUsername(),
-                    issue.getTitle());
-
-            // 📱 Push FCM notification to reporter
-            try {
-                if (issue.getReporter().getFcmToken() != null) {
-                    Map<String, String> data = new HashMap<>();
-                    data.put("type", "ISSUE_COMMENT");
-                    data.put("issueId", issue.getIssueId().toString());
-                    data.put("link",
-                            "/projects/" + issue.getProject().getProjectId() + "/issues/" + issue.getIssueId());
-                    fcmService.sendToDevice(
-                            issue.getReporter().getFcmToken(),
-                            "💬 Comment mới trên issue",
-                            currentUser.getUsername() + " đã bình luận trên \"" + issue.getTitle() + "\"",
-                            data);
-                }
-            } catch (Exception e) {
-                // Log but don't fail
-            }
-        }
+        // Publish Event for Comment Added
+        eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, issue,
+                DoAn.BE.project.event.IssueEvent.EventType.COMMENT_ADDED, currentUser.getUserId()));
 
         return convertToDTO(comment, currentUser);
     }
@@ -123,7 +72,7 @@ public class IssueCommentService {
         }
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -145,7 +94,7 @@ public class IssueCommentService {
         }
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -161,7 +110,7 @@ public class IssueCommentService {
     @Transactional
     public IssueCommentDTO updateComment(Long commentId, String newContent, User currentUser) {
         IssueComment comment = issueCommentRepository.findById(commentId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy comment"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy comment"));
 
         // Kiểm tra quyền sửa comment (chỉ author)
         if (!comment.canBeEditedBy(currentUser)) {
@@ -182,13 +131,17 @@ public class IssueCommentService {
                 "đã sửa comment");
         issueActivityRepository.save(activity);
 
+        // Publish Event for Comment Edited
+        eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, comment.getIssue(),
+                DoAn.BE.project.event.IssueEvent.EventType.COMMENT_EDITED, currentUser.getUserId()));
+
         return convertToDTO(comment, currentUser);
     }
 
     @Transactional
     public void deleteComment(Long commentId, User currentUser) {
         IssueComment comment = issueCommentRepository.findById(commentId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy comment"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy comment"));
 
         if (comment.getIssue() == null || comment.getIssue().getProject() == null) {
             throw new IllegalStateException("Comment không có issue hoặc dự án liên kết");
@@ -208,7 +161,13 @@ public class IssueCommentService {
                 "đã xóa comment");
         issueActivityRepository.save(activity);
 
+        // Publish Event for Comment Deleted (Need to capture issue before delete)
+        Issue issue = comment.getIssue();
+
         issueCommentRepository.delete(comment);
+
+        eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, issue,
+                DoAn.BE.project.event.IssueEvent.EventType.COMMENT_DELETED, currentUser.getUserId()));
     }
 
     @Transactional(readOnly = true)

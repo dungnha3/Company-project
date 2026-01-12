@@ -21,4 +21,3 @@ public class ChatRoomMemberId implements Serializable {
     private Long userId;
 }
 
-

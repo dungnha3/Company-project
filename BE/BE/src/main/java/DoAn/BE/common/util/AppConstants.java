@@ -7,8 +7,13 @@ public class AppConstants {
             "/api/auth/**",
             "/api/public/**",
             "/api/app/**",
-            "/actuator/**",
-            "/ws/**"
+            "/api/app/**",
+            "/ws/**",
+            // Swagger/OpenAPI documentation
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml"
     };
 
     private AppConstants() {

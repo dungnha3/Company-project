@@ -33,13 +33,13 @@ public class FolderService {
     public FolderDTO createFolder(CreateFolderRequest request, Long userId) {
         // Validate user
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         // Validate parent folder if provided
         Folder parentFolder = null;
         if (request.getParentFolderId() != null) {
             parentFolder = folderRepository.findById(request.getParentFolderId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục cha"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục cha"));
 
             // Check if user owns the parent folder
             if (!parentFolder.getOwner().getUserId().equals(userId)) {
@@ -51,7 +51,7 @@ public class FolderService {
         Project project = null;
         if (request.getProjectId() != null) {
             project = projectRepository.findById(request.getProjectId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
         }
 
         // Create folder
@@ -69,7 +69,7 @@ public class FolderService {
     @Transactional(readOnly = true)
     public FolderDTO getFolderById(Long folderId, Long userId) {
         Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục"));
 
         // Check permission: owner OR project member
         if (!canAccessFolder(folder, userId)) {
@@ -185,7 +185,7 @@ public class FolderService {
     public List<FolderDTO> getSubFolders(Long parentFolderId, Long userId) {
         // Validate parent folder
         Folder parentFolder = folderRepository.findById(parentFolderId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục cha"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục cha"));
 
         // Check permission: owner OR project member
         if (!canAccessFolder(parentFolder, userId)) {
@@ -202,7 +202,7 @@ public class FolderService {
     public List<FolderDTO> getProjectFolders(Long projectId, Long userId) {
         // Validate project exists
         projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dự án"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
         // Check if user is project member
         if (projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId).isEmpty()) {
@@ -218,7 +218,7 @@ public class FolderService {
     @Transactional
     public FolderDTO updateFolder(Long folderId, String newName, Long userId) {
         Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục"));
 
         // Check permission: owner OR project member
         if (!canAccessFolder(folder, userId)) {
@@ -234,7 +234,7 @@ public class FolderService {
     @Transactional
     public void deleteFolder(Long folderId, Long userId) {
         Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thư mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thư mục"));
 
         // Check permission: owner OR project member
         if (!canAccessFolder(folder, userId)) {
@@ -272,3 +272,4 @@ public class FolderService {
         return dto;
     }
 }
+

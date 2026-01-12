@@ -2,8 +2,11 @@ package DoAn.BE.hrm.controller;
 
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
-import DoAn.BE.hrm.service.ExportService;
+import DoAn.BE.common.service.PdfExportService;
+import DoAn.BE.hrm.service.HrmExportService;
 import DoAn.BE.user.entity.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -16,19 +19,23 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-// [Controller for exporting reports to Excel] (Role: Manager/Admin)
+/**
+ * Controller for exporting reports to Excel and PDF
+ */
 @RestController
 @RequestMapping("/api/export")
 @RequiredArgsConstructor
+@Tag(name = "Export", description = "Export reports to Excel and PDF")
 public class ExportController {
 
-        private final ExportService exportService;
+        private final HrmExportService exportService;
         private final AccessControlService accessControlService;
+        private final PdfExportService pdfExportService;
 
         // ==================== EXCEL EXPORTS ====================
 
-        // [Export employee list to Excel] (Role: HR Manager)
         @GetMapping("/employees/excel")
+        @Operation(summary = "Export employee list to Excel")
         public ResponseEntity<byte[]> exportEmployeesToExcel(@AuthenticationPrincipal User currentUser)
                         throws IOException {
                 accessControlService.checkHRPermission(currentUser);
@@ -40,8 +47,8 @@ public class ExportController {
                 return createExcelResponse(excelData, filename);
         }
 
-        // [Export attendance by month to Excel] (Role: HR/Accounting/Admin)
         @GetMapping("/attendance/excel")
+        @Operation(summary = "Export attendance by month to Excel")
         public ResponseEntity<byte[]> exportAttendanceToExcel(
                         @RequestParam int month,
                         @RequestParam int year) throws IOException {
@@ -57,8 +64,8 @@ public class ExportController {
                 return createExcelResponse(excelData, filename);
         }
 
-        // [Export salary by month to Excel] (Role: HR/Accounting/Admin)
         @GetMapping("/salary/excel")
+        @Operation(summary = "Export salary by month to Excel")
         public ResponseEntity<byte[]> exportSalaryToExcel(
                         @RequestParam int month,
                         @RequestParam int year) throws IOException {
@@ -74,8 +81,8 @@ public class ExportController {
                 return createExcelResponse(excelData, filename);
         }
 
-        // [Export leave requests to Excel] (Role: Manager/Admin)
         @GetMapping("/leaves/excel")
+        @Operation(summary = "Export leave requests to Excel")
         public ResponseEntity<byte[]> exportLeavesToExcel(
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate)
@@ -91,14 +98,51 @@ public class ExportController {
                 return createExcelResponse(excelData, filename);
         }
 
+        // ==================== PDF EXPORTS ====================
+
+        @GetMapping("/employees/pdf")
+        @Operation(summary = "Export employee list to PDF")
+        public ResponseEntity<byte[]> exportEmployeesToPdf(@AuthenticationPrincipal User currentUser) {
+                accessControlService.checkHRPermission(currentUser);
+
+                byte[] pdfData = exportService.exportEmployeesToPdf(pdfExportService);
+                String filename = "EmployeeList_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"))
+                                + ".pdf";
+
+                return createPdfResponse(pdfData, filename);
+        }
+
+        @GetMapping("/salary/pdf")
+        @Operation(summary = "Export salary report to PDF")
+        public ResponseEntity<byte[]> exportSalaryToPdf(
+                        @RequestParam int month,
+                        @RequestParam int year) {
+                if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()
+                                && !accessControlService.isOwnerOrAdmin()) {
+                        throw new ForbiddenException(
+                                        "Only HR Manager, Accounting Manager and Admin can export salary");
+                }
+
+                byte[] pdfData = exportService.exportSalaryToPdf(pdfExportService, month, year);
+                String filename = "SalaryReport_" + String.format("%02d%d", month, year) + ".pdf";
+
+                return createPdfResponse(pdfData, filename);
+        }
+
         // ==================== HELPER METHODS ====================
 
-        // [Create Excel response with headers] (Role: Internal)
         private ResponseEntity<byte[]> createExcelResponse(byte[] data, String filename) {
                 return ResponseEntity.ok()
                                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                                 .contentType(MediaType.parseMediaType(
                                                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                                .body(data);
+        }
+
+        private ResponseEntity<byte[]> createPdfResponse(byte[] data, String filename) {
+                return ResponseEntity.ok()
+                                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                                .contentType(MediaType.APPLICATION_PDF)
                                 .body(data);
         }
 }

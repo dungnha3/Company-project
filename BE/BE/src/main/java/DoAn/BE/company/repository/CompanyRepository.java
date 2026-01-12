@@ -18,4 +18,7 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
     // Tìm company theo tên
     Optional<Company> findByName(String name);
+
+    // [SAAS] Kiểm tra công ty có đang hoạt động không
+    boolean existsByCompanyIdAndIsActiveTrue(Long companyId);
 }

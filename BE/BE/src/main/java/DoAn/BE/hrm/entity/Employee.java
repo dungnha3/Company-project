@@ -1,6 +1,7 @@
 package DoAn.BE.hrm.entity;
 
 import DoAn.BE.common.entity.TenantScopedEntity;
+import DoAn.BE.common.converter.EncryptedStringConverter;
 import org.hibernate.annotations.Filter;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
@@ -42,8 +43,9 @@ public class Employee extends TenantScopedEntity {
     @Column(name = "full_name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")
     private String fullName;
 
-    @Column(name = "id_card", unique = true, length = 20)
-    private String idCard; // CCCD
+    @Column(name = "id_card", unique = true, length = 200) // Increased for encrypted data
+    @Convert(converter = EncryptedStringConverter.class)
+    private String idCard; // CCCD - Encrypted
 
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
@@ -55,8 +57,9 @@ public class Employee extends TenantScopedEntity {
     @Column(name = "address", length = 255, columnDefinition = "NVARCHAR(255)")
     private String address;
 
-    @Column(name = "phone", length = 20)
-    private String phone;
+    @Column(name = "phone", length = 200) // Increased for encrypted data
+    @Convert(converter = EncryptedStringConverter.class)
+    private String phone; // Encrypted
 
     @Column(name = "hire_date", nullable = false)
     private LocalDate hireDate;

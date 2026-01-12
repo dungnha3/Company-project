@@ -1,7 +1,7 @@
 package DoAn.BE.hrm.service;
 
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.hrm.dto.ReviewRequest;
@@ -31,6 +31,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final EmployeeRepository employeeRepository;
     private final AccessControlService accessControlService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public Review createReview(ReviewRequest request, User currentUser) {
         if (!accessControlService.isHRManager() && !accessControlService.isProjectManager()) {
@@ -40,7 +41,7 @@ public class ReviewService {
 
         log.info("User {} creating review for employee ID: {}", currentUser.getUsername(), request.getEmployeeId());
         Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         Optional<Review> existingReview = reviewRepository.findByEmployeeAndPeriodAndType(
                 request.getEmployeeId(), request.getReviewPeriod(), request.getReviewType());
@@ -50,7 +51,7 @@ public class ReviewService {
         }
 
         Employee reviewer = employeeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("Reviewer employee profile not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Reviewer employee profile not found"));
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException("End date must be after start date");
@@ -74,12 +75,18 @@ public class ReviewService {
         review.setStartDate(request.getStartDate());
         review.setEndDate(request.getEndDate());
 
-        return reviewRepository.save(review);
+        review = reviewRepository.save(review);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.REVIEW_CREATED,
+                review, currentUser.getUserId(), "New Review for " + employee.getFullName()));
+
+        return review;
     }
 
     public Review getReviewById(Long id, User currentUser) {
         Review review = reviewRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Review not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
         if (accessControlService.isHRManager() || accessControlService.isProjectManager()) {
             return review;
@@ -164,7 +171,14 @@ public class ReviewService {
             review.setComments(review.getComments() + "\n\nHR Note: " + note);
         }
 
-        return reviewRepository.save(review);
+        review = reviewRepository.save(review);
+
+        // Publish Event
+        eventPublisher
+                .publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.REVIEW_APPROVED,
+                        review, currentUser.getUserId(), "Review Approved for " + review.getEmployee().getFullName()));
+
+        return review;
     }
 
     public Review rejectReview(Long id, String reason, User currentUser) {
@@ -212,7 +226,7 @@ public class ReviewService {
         }
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You can only view your own reviews");
@@ -243,3 +257,4 @@ public class ReviewService {
         reviewRepository.delete(review);
     }
 }
+

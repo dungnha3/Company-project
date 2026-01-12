@@ -21,4 +21,3 @@ public class MessageStatusId implements Serializable {
     private Long userId;
 }
 
-

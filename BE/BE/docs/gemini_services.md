@@ -417,28 +417,9 @@ All endpoints marked with **(Paginated)** return this structure.
 
 ---
 
-## 12. Automation APIs
+## 12. ~~Automation APIs~~ (REMOVED)
 
-### AutomationController (`/api/automations`)
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/` | Create automation rule | Project Admin |
-| GET | `/project/{projectId}` | Get project rules | Member |
-| GET | `/{ruleId}` | Get rule by ID | Member |
-| POST | `/{ruleId}/toggle` | Toggle rule active/inactive | Project Admin |
-| DELETE | `/{ruleId}` | Delete rule | Project Admin |
-| GET | `/{ruleId}/logs` | Get execution logs (Paginated) | Member |
-
-> **Note**: There is no PUT endpoint to update an existing rule. To modify a rule, delete and recreate it.
-
-**Trigger Types:**
-- `ISSUE_CREATED`, `ISSUE_UPDATED`, `STATUS_CHANGED`
-- `ASSIGNEE_CHANGED`, `PRIORITY_CHANGED`, `COMMENT_ADDED`
-- `DUE_DATE_APPROACHING`, `SPRINT_STARTED`, `SPRINT_COMPLETED`
-
-**Action Types:**
-- `UPDATE_FIELD`, `ADD_COMMENT`, `SEND_NOTIFICATION`, `SEND_WEBHOOK`
+> **Note**: The Automation module has been removed from the codebase as it was an incomplete placeholder.
 
 ---
 
@@ -599,13 +580,14 @@ All endpoints marked with **(Paginated)** return this structure.
 | `ProjectAnalyticsService` | Burndown, velocity charts |
 | `TimeTrackingService` | Time log management |
 
-### Calendar & Automation Services
+### ~~Calendar & Automation Services~~ → Event-Driven Services
 
 | Service | Responsibility |
 |---------|----------------|
 | `CalendarService` | Event CRUD, RSVP |
-| `AutomationService` | Rule management |
-| `AutomationEngine` | Rule execution engine |
+| `InternalNotificationListener` | **Central notification handler** (listens to ALL events) |
+
+> **Note**: `AutomationService` and `AutomationEngine` have been removed.
 
 ### Notification Services
 

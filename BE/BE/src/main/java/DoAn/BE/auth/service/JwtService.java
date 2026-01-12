@@ -18,7 +18,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 // Service xử lý JWT token (tạo, validate, extract claims)
-// Note: jwt.secret should be set in application.properties/yml for production
 //       Default key is for development only!
 @Service
 public class JwtService {
@@ -35,6 +34,15 @@ public class JwtService {
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
+    }
+
+    @javax.annotation.PostConstruct
+    public void init() {
+        // Enforce strong key in production (implied by lack of "dev" profile context,
+        // but broadly a warning is good)
+        if (secretKey.length() < 32) {
+            System.err.println("WARNING: JWT Secret key is too short! It should be at least 32 characters (256 bits).");
+        }
     }
 
     // Lấy username từ token

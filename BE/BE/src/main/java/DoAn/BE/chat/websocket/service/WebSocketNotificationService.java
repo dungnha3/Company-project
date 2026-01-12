@@ -151,7 +151,6 @@ public class WebSocketNotificationService {
 
         // Check User Status? (This method takes raw username, might need DB lookup if
         // strict checking is needed)
-        // For now, assuming this specific method is for targeted high-priority or we
         // rely on caller to check
         messagingTemplate.convertAndSendToUser(username, "/queue/notifications", wsMessage);
     }

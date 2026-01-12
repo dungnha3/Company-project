@@ -7,7 +7,7 @@ import DoAn.BE.storage.entity.Folder;
 import DoAn.BE.storage.repository.FileRepository;
 import DoAn.BE.storage.repository.FolderRepository;
 import DoAn.BE.user.entity.User;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +56,7 @@ public class StorageProjectIntegrationService {
     @Transactional(readOnly = true)
     public List<File> getProjectFiles(Long projectId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new EntityNotFoundException("Project không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Project không tồn tại"));
 
         // Lấy project folder
         List<Folder> projectFolders = folderRepository.findByProject(project);
@@ -143,3 +143,4 @@ public class StorageProjectIntegrationService {
         }
     }
 }
+

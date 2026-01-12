@@ -18,7 +18,7 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.dto.UserDTO;
 import DoAn.BE.user.repository.UserRepository;
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.chat.websocket.service.WebSocketNotificationService;
 import DoAn.BE.notification.service.ChatNotificationService;
 import org.springframework.lang.NonNull;
@@ -80,10 +80,10 @@ public class MessageService {
             throw new BadRequestException("Room ID không được null");
         }
         User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new EntityNotFoundException("Người gửi không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người gửi không tồn tại"));
 
         ChatRoom chatRoom = chatRoomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(request.getRoomId(),
                 senderId);
@@ -102,7 +102,7 @@ public class MessageService {
         Message replyToMessage = null;
         if (request.getReplyToMessageId() != null) {
             replyToMessage = messageRepository.findById(request.getReplyToMessageId())
-                    .orElseThrow(() -> new EntityNotFoundException("Tin nhắn được reply không tồn tại"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn được reply không tồn tại"));
 
             if (!replyToMessage.getChatRoom().getRoomId().equals(request.getRoomId())) {
                 throw new BadRequestException("Không thể reply tin nhắn từ phòng khác");
@@ -271,7 +271,7 @@ public class MessageService {
     public List<MessDTO> getMessagesByRoomId(@NonNull Long roomId, @NonNull Long userId, int page, int size) {
         // Validate phòng chat tồn tại
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         // Kiểm tra user có trong phòng không
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
@@ -292,7 +292,7 @@ public class MessageService {
     public void markMessageAsSeen(@NonNull Long messageId, @NonNull Long userId) {
         // Validate message tồn tại
         messageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
 
         // Tìm MessageStatus
         Optional<MessageStatus> statusOpt = messageStatusRepository.findById(
@@ -399,7 +399,7 @@ public class MessageService {
     public List<MessDTO> searchMessages(@NonNull Long roomId, String keyword, @NonNull Long userId, Pageable pageable) {
         // Validate phòng chat tồn tại
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         // Kiểm tra user có trong phòng không
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
@@ -424,7 +424,7 @@ public class MessageService {
     public MessDTO editMessage(@NonNull Long messageId, String newContent, @NonNull Long userId) {
         // Validate message tồn tại
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
 
         // Kiểm tra quyền sửa (chỉ người gửi mới được sửa)
         if (!message.getSender().getUserId().equals(userId)) {
@@ -448,19 +448,6 @@ public class MessageService {
         webSocketNotificationService.notifyMessageEdited(message.getChatRoom().getRoomId(), messageDTO);
 
         // Gửi notification cho các thành viên khác
-        final Message finalMessage = message;
-        List<ChatRoomMember> otherMembers = chatRoomMemberRepository
-                .findByChatRoom_RoomId(finalMessage.getChatRoom().getRoomId())
-                .stream()
-                .filter(member -> !member.getUser().getUserId().equals(finalMessage.getSender().getUserId()))
-                .toList();
-
-        for (ChatRoomMember member : otherMembers) {
-            chatNotificationService.createMessageEditedNotification(
-                    member.getUser().getUserId(),
-                    finalMessage.getSender().getUsername(),
-                    finalMessage.getChatRoom().getRoomId());
-        }
 
         return messageDTO;
     }
@@ -469,7 +456,7 @@ public class MessageService {
     public void deleteMessage(@NonNull Long messageId, @NonNull Long userId) {
         // Validate message tồn tại
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Tin nhắn không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
 
         // Kiểm tra quyền xóa (chỉ người gửi mới được xóa)
         if (!message.getSender().getUserId().equals(userId)) {
@@ -486,19 +473,6 @@ public class MessageService {
         // Gửi notification cho các thành viên khác
         User deleter = userRepository.findById(userId).orElse(null);
         if (deleter != null) {
-            final Message finalMessage = message;
-            List<ChatRoomMember> otherMembers = chatRoomMemberRepository
-                    .findByChatRoom_RoomId(finalMessage.getChatRoom().getRoomId())
-                    .stream()
-                    .filter(member -> !member.getUser().getUserId().equals(deleter.getUserId()))
-                    .toList();
-
-            for (ChatRoomMember member : otherMembers) {
-                chatNotificationService.createMessageDeletedNotification(
-                        member.getUser().getUserId(),
-                        deleter.getUsername(),
-                        finalMessage.getChatRoom().getRoomId());
-            }
         }
     }
 }

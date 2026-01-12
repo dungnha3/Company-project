@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.DuplicateException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.hrm.dto.PositionRequest;
 import DoAn.BE.hrm.entity.Position;
 import DoAn.BE.hrm.repository.PositionRepository;
@@ -50,7 +50,7 @@ public class PositionService {
     @Cacheable(value = "position", key = "#id")
     public Position getPositionById(Long id) {
         return positionRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Position not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
     }
 
     @Cacheable(value = "position", key = "'all'")
@@ -94,3 +94,4 @@ public class PositionService {
         positionRepository.delete(position);
     }
 }
+

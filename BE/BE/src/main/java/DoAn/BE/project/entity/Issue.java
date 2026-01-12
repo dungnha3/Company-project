@@ -3,6 +3,8 @@ package DoAn.BE.project.entity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -77,8 +79,17 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "actual_hours", precision = 5, scale = 2)
     private BigDecimal actualHours;
 
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
     @Column(name = "due_date")
     private LocalDate dueDate;
+
+    /**
+     * Custom field values for this issue
+     */
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<IssueCustomFieldValue> customFieldValues = new ArrayList<>();
 
     // Helper methods
     public boolean isOverdue() {

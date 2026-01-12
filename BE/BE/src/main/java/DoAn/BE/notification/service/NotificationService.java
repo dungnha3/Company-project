@@ -4,7 +4,7 @@ import DoAn.BE.notification.entity.Notification;
 import DoAn.BE.notification.repository.NotificationRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -43,7 +43,7 @@ public class NotificationService {
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
 
         NotificationTemplate template = NotificationTemplate.fromType(type);
         String title = template.getTitlePattern();
@@ -141,3 +141,4 @@ public class NotificationService {
         });
     }
 }
+

@@ -14,10 +14,6 @@ public class AttendanceNotificationService {
     private final NotificationService notificationService;
 
     // [Thông báo check-in thành công] (Role: System)
-    public Notification createCheckinSuccessNotification(Long userId, String time, String method) {
-        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.HR_ATTENDANCE_CHECKIN,
-                "/hr/attendance", time, method);
-    }
 
     // [Thông báo check-in trễ] (Role: System)
     public Notification createCheckinLateNotification(Long userId, String time) {
@@ -26,10 +22,6 @@ public class AttendanceNotificationService {
     }
 
     // [Thông báo checkout thành công] (Role: System)
-    public Notification createCheckoutSuccessNotification(Long userId, String time, String hoursWorked) {
-        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.HR_ATTENDANCE_CHECKOUT,
-                "/hr/attendance", time, hoursWorked);
-    }
 
     // [Thông báo quên chấm công] (Role: System)
     public Notification createMissingAttendanceNotification(Long userId, String date) {

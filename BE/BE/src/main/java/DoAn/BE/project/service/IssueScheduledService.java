@@ -2,7 +2,7 @@ package DoAn.BE.project.service;
 
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.repository.IssueRepository;
-import DoAn.BE.notification.service.ProjectNotificationService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -11,9 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
-import java.util.Map;
-import java.util.HashMap;
-
 // [Service scheduled jobs cho Issue - check overdue, send reminders] (Role: System)
 @Service
 @RequiredArgsConstructor
@@ -21,8 +18,7 @@ import java.util.HashMap;
 public class IssueScheduledService {
 
     private final IssueRepository issueRepository;
-    private final ProjectNotificationService projectNotificationService;
-    private final DoAn.BE.notification.service.FCMService fcmService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // [Check overdue issues - 9:00 AM hàng ngày] (Role: Scheduled)
     @Scheduled(cron = "0 0 9 * * *")
@@ -41,25 +37,9 @@ public class IssueScheduledService {
 
             for (Issue issue : issuePage.getContent()) {
                 try {
-                    // Send notification
-                    projectNotificationService.createIssueOverdueNotification(
-                            issue.getAssignee().getUserId(),
-                            issue.getTitle(),
-                            issue.getIssueKey());
-
-                    // 📱 Push FCM notification
-                    if (issue.getAssignee().getFcmToken() != null) {
-                        Map<String, String> data = new HashMap<>();
-                        data.put("type", "ISSUE_OVERDUE");
-                        data.put("issueId", issue.getIssueId().toString());
-                        data.put("link",
-                                "/projects/" + issue.getProject().getProjectId() + "/issues/" + issue.getIssueId());
-                        fcmService.sendToDevice(
-                                issue.getAssignee().getFcmToken(),
-                                "⚠️ Issue Overdue",
-                                "Issue \"" + issue.getTitle() + "\" (đã quá hạn",
-                                data);
-                    }
+                    // Publish Event for Overdue
+                    eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(
+                            this, issue, DoAn.BE.project.event.IssueEvent.EventType.OVERDUE, null));
 
                     overdueCount++;
                     log.debug("⚠️ Sent overdue notification for issue: {}", issue.getIssueKey());
@@ -92,25 +72,9 @@ public class IssueScheduledService {
 
             for (Issue issue : issuePage.getContent()) {
                 try {
-                    projectNotificationService.createIssueUpdatedNotification(
-                            issue.getAssignee().getUserId(),
-                            issue.getTitle(),
-                            "System",
-                            "Deadline sắp tới: " + issue.getDueDate());
-
-                    // 📱 Push FCM notification
-                    if (issue.getAssignee().getFcmToken() != null) {
-                        Map<String, String> data = new HashMap<>();
-                        data.put("type", "ISSUE_DEADLINE_REMINDER");
-                        data.put("issueId", issue.getIssueId().toString());
-                        data.put("link",
-                                "/projects/" + issue.getProject().getProjectId() + "/issues/" + issue.getIssueId());
-                        fcmService.sendToDevice(
-                                issue.getAssignee().getFcmToken(),
-                                "📅 Deadline sắp tới",
-                                "Issue \"" + issue.getTitle() + "\" hết hạn trong 3 ngày nữa",
-                                data);
-                    }
+                    // Publish Event for Deadline Approaching
+                    eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(
+                            this, issue, DoAn.BE.project.event.IssueEvent.EventType.DEADLINE_APPROACHING, null));
 
                     reminderCount++;
                     log.debug("🔔 Sent deadline reminder for issue: {}", issue.getIssueKey());

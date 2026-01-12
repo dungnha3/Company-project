@@ -38,5 +38,3 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     long countActiveTokensByUser(@Param("user") User user);
 }
 
-
-

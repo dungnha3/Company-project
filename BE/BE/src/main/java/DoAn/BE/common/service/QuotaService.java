@@ -154,9 +154,63 @@ public class QuotaService {
                 storageUsed, settings.getMaxStorageBytes());
     }
 
-    /**
-     * DTO for quota usage information
-     */
+    // [NEW] Get quota usage with warning levels for FE dashboard
+    public QuotaUsageWithLevels getQuotaUsageWithLevels() {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null)
+            return null;
+
+        CompanySettings settings = companyService.getSettingsCached(companyId);
+        if (settings == null)
+            return null;
+
+        long employeeCount = employeeRepository.countByCompanyId(companyId);
+        long projectCount = projectRepository.countByCompany_CompanyId(companyId);
+        Long storageUsed = fileRepository.sumFileSizeByCompany(companyId);
+        if (storageUsed == null)
+            storageUsed = 0L;
+
+        return new QuotaUsageWithLevels(
+                new QuotaItem("employees", employeeCount, settings.getMaxEmployees()),
+                new QuotaItem("projects", projectCount, settings.getMaxProjects()),
+                new QuotaItem("storage", storageUsed, settings.getMaxStorageBytes()));
+    }
+
+    // Quota warning levels
+    public enum QuotaLevel {
+        OK, // < 80%
+        WARNING, // 80-99%
+        CRITICAL // 100%
+    }
+
+    // Individual quota item with level
+    public record QuotaItem(String name, long used, long max) {
+        public QuotaLevel getLevel() {
+            if (max <= 0)
+                return QuotaLevel.OK; // Unlimited
+            double percentage = (double) used / max * 100;
+            if (percentage >= 100)
+                return QuotaLevel.CRITICAL;
+            if (percentage >= 80)
+                return QuotaLevel.WARNING;
+            return QuotaLevel.OK;
+        }
+
+        public int getPercentage() {
+            if (max <= 0)
+                return 0;
+            return (int) Math.min(100, used * 100 / max);
+        }
+    }
+
+    // Enhanced quota usage with levels
+    public record QuotaUsageWithLevels(
+            QuotaItem employees,
+            QuotaItem projects,
+            QuotaItem storage) {
+    }
+
+    // Basic quota usage (kept for backward compatibility)
     public record QuotaUsage(
             long employeesUsed, int employeesMax,
             long projectsUsed, int projectsMax,

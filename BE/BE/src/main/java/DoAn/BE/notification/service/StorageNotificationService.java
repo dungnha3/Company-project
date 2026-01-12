@@ -14,10 +14,6 @@ public class StorageNotificationService {
     private final NotificationService notificationService;
 
     // [Thông báo upload file thành công] (Role: System)
-    public Notification createFileUploadNotification(Long userId, String filename, String fileSize) {
-        return notificationService.send(userId, DoAn.BE.notification.entity.NotificationType.STORAGE_UPDATE,
-                "/storage/files", filename, fileSize);
-    }
 
     // [Thông báo file được chia sẻ] (Role: System)
     public Notification createFileSharedNotification(Long receiverId, String senderName, String filename) {

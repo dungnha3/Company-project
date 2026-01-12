@@ -24,7 +24,6 @@ public class ProfileController {
     private final UserMapper userMapper;
 
     // ==================== UPDATE ====================
-    // Note: GET profile removed - use /api/auth/me instead
 
     // [Cập nhật profile của user hiện tại] (Role: Self)
     @PutMapping

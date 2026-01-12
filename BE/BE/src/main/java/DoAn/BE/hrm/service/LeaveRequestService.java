@@ -2,13 +2,11 @@ package DoAn.BE.hrm.service;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.FeatureFlagService;
 import DoAn.BE.common.service.AccessControlService;
@@ -18,10 +16,9 @@ import DoAn.BE.hrm.entity.LeaveRequest.LeaveStatus;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.repository.LeaveRequestRepository;
 import DoAn.BE.hrm.repository.EmployeeRepository;
-import DoAn.BE.notification.service.HRNotificationService;
-import DoAn.BE.notification.service.FCMService;
 import DoAn.BE.user.entity.User;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,23 +29,20 @@ public class LeaveRequestService {
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final EmployeeRepository employeeRepository;
-    private final HRNotificationService hrNotificationService;
-    private final FCMService fcmService;
     private final FeatureFlagService featureFlagService;
     private final AccessControlService accessControlService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
             EmployeeRepository employeeRepository,
-            HRNotificationService hrNotificationService,
-            FCMService fcmService,
             FeatureFlagService featureFlagService,
-            AccessControlService accessControlService) {
+            AccessControlService accessControlService,
+            ApplicationEventPublisher eventPublisher) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
-        this.hrNotificationService = hrNotificationService;
-        this.fcmService = fcmService;
         this.featureFlagService = featureFlagService;
         this.accessControlService = accessControlService;
+        this.eventPublisher = eventPublisher;
     }
 
     public LeaveRequest createLeaveRequest(LeaveRequestRequest request, User currentUser) {
@@ -57,7 +51,7 @@ public class LeaveRequestService {
         log.info("User {} creating leave request for employee ID: {}", currentUser.getUsername(),
                 request.getEmployeeId());
         Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException("End date must be after start date");
@@ -71,12 +65,20 @@ public class LeaveRequestService {
         leaveRequest.setReason(request.getReason());
         leaveRequest.setStatus(LeaveRequest.LeaveStatus.PENDING);
 
-        return leaveRequestRepository.save(leaveRequest);
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+
+        // 🔗 Dispatch webhook event
+        // 🔗 Dispatch webhook event
+        eventPublisher
+                .publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_REQUESTED,
+                        saved, currentUser.getUserId(), "Leave Requested: " + saved.getLeaveType()));
+
+        return saved;
     }
 
     public LeaveRequest getLeaveRequestById(Long id, User currentUser) {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Leave request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
 
         if (accessControlService.canViewLeave(currentUser)) {
             return leaveRequest;
@@ -91,7 +93,7 @@ public class LeaveRequestService {
 
     public LeaveRequest getLeaveRequestById(Long id) {
         return leaveRequestRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Leave request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
     }
 
     public List<LeaveRequest> getAllLeaveRequests(User currentUser) {
@@ -214,29 +216,11 @@ public class LeaveRequestService {
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
         log.info("✅ Accounting approved leave request - Completed 2-step approval");
 
-        try {
-            User employeeUser = leaveRequest.getEmployee().getUser();
-            if (employeeUser != null) {
-                hrNotificationService.createLeaveApprovedNotification(
-                        employeeUser.getUserId(),
-                        leaveRequest.getStartDate().toString(),
-                        leaveRequest.getEndDate().toString());
+        // Notifications are now handled by InternalNotificationListener via HrmEvent
 
-                if (employeeUser.getFcmToken() != null) {
-                    Map<String, String> data = new HashMap<>();
-                    data.put("type", "LEAVE_APPROVED");
-                    data.put("link", "/leave-request");
-                    fcmService.sendToDevice(
-                            employeeUser.getFcmToken(),
-                            "✅ Leave Request Approved",
-                            "Your leave from " + leaveRequest.getStartDate() + " to " + leaveRequest.getEndDate()
-                                    + " has been approved.",
-                            data);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to send notification: {}", e.getMessage());
-        }
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_APPROVED,
+                saved, currentUser.getUserId(), "Leave Approved: " + saved.getLeaveType()));
 
         return saved;
     }
@@ -257,29 +241,7 @@ public class LeaveRequestService {
         leaveRequest.approve(currentUser, note);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
-        try {
-            User employeeUser = leaveRequest.getEmployee().getUser();
-            if (employeeUser != null) {
-                hrNotificationService.createLeaveApprovedNotification(
-                        employeeUser.getUserId(),
-                        leaveRequest.getStartDate().toString(),
-                        leaveRequest.getEndDate().toString());
-
-                if (employeeUser.getFcmToken() != null) {
-                    Map<String, String> data = new HashMap<>();
-                    data.put("type", "LEAVE_APPROVED");
-                    data.put("link", "/leave-request");
-                    fcmService.sendToDevice(
-                            employeeUser.getFcmToken(),
-                            "✅ Leave Request Approved",
-                            "Your leave from " + leaveRequest.getStartDate() + " to " + leaveRequest.getEndDate()
-                                    + " has been approved.",
-                            data);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to send notification: {}", e.getMessage());
-        }
+        // Notifications handled by InternalNotificationListener
 
         return saved;
     }
@@ -299,31 +261,11 @@ public class LeaveRequestService {
         leaveRequest.reject(currentUser, note);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
-        try {
-            User employeeUser = leaveRequest.getEmployee().getUser();
-            if (employeeUser != null) {
-                String reason = note != null ? note : "No specific reason";
-                hrNotificationService.createLeaveRejectedNotification(
-                        employeeUser.getUserId(),
-                        leaveRequest.getStartDate().toString(),
-                        leaveRequest.getEndDate().toString(),
-                        reason);
+        // Notifications handled by InternalNotificationListener via HrmEvent
 
-                if (employeeUser.getFcmToken() != null) {
-                    Map<String, String> data = new HashMap<>();
-                    data.put("type", "LEAVE_REJECTED");
-                    data.put("link", "/leave-request");
-                    fcmService.sendToDevice(
-                            employeeUser.getFcmToken(),
-                            "❌ Leave Request Rejected",
-                            "Your leave from " + leaveRequest.getStartDate() + " to " + leaveRequest.getEndDate()
-                                    + " was rejected. Reason: " + reason,
-                            data);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to send notification: {}", e.getMessage());
-        }
+        // Publish Event (Assuming LEAVE_REJECTED type exists)
+        eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_REJECTED,
+                saved, currentUser.getUserId(), "Leave Rejected: " + (note != null ? note : "")));
 
         return saved;
     }

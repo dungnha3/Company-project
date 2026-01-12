@@ -29,6 +29,8 @@ public class AsyncConfig {
         executor.setWaitForTasksToCompleteOnShutdown(true);
         // Wait timeout on shutdown (seconds)
         executor.setAwaitTerminationSeconds(30);
+        executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(new ContextAwareTaskDecorator());
         executor.initialize();
         return executor;
     }
@@ -43,6 +45,8 @@ public class AsyncConfig {
         executor.setThreadNamePrefix("Notification-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
+        executor.setAwaitTerminationSeconds(60);
+        executor.setTaskDecorator(new ContextAwareTaskDecorator());
         executor.initialize();
         return executor;
     }
@@ -57,7 +61,41 @@ public class AsyncConfig {
         executor.setThreadNamePrefix("Sync-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(new ContextAwareTaskDecorator());
         executor.initialize();
         return executor;
+    }
+
+    /**
+     * Decorator to propagate TenantContext to async threads
+     */
+    public static class ContextAwareTaskDecorator implements org.springframework.core.task.TaskDecorator {
+        @Override
+        public Runnable decorate(Runnable runnable) {
+            // Setup context from calling thread
+            Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+            boolean personalMode = DoAn.BE.common.context.TenantContext.isPersonalMode();
+            Long userId = DoAn.BE.common.context.TenantContext.getCurrentUserId();
+
+            return () -> {
+                try {
+                    // Apply to async thread
+                    if (companyId != null) {
+                        DoAn.BE.common.context.TenantContext.setCompanyId(companyId);
+                    }
+                    if (personalMode) {
+                        DoAn.BE.common.context.TenantContext.setPersonalMode(true);
+                    }
+                    if (userId != null) {
+                        DoAn.BE.common.context.TenantContext.setCurrentUserId(userId);
+                    }
+
+                    runnable.run();
+                } finally {
+                    // Cleanup
+                    DoAn.BE.common.context.TenantContext.clear();
+                }
+            };
+        }
     }
 }

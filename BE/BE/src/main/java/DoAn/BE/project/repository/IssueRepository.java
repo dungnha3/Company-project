@@ -107,4 +107,17 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         // [Paginated upcoming - for large datasets]
         @Query("SELECT i FROM Issue i WHERE i.dueDate = :date AND i.issueStatus.name <> 'Done' AND i.assignee IS NOT NULL")
         Page<Issue> findUpcomingDeadlines(@Param("date") LocalDate date, Pageable pageable);
+
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("UPDATE Issue i SET i.issueStatus = :status WHERE i.project.projectId = :projectId")
+        void updateStatusByProjectId(@Param("projectId") Long projectId,
+                        @Param("status") DoAn.BE.project.entity.IssueStatus status);
+
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("UPDATE Issue i SET i.assignee = NULL WHERE i.project.projectId = :projectId AND i.assignee.userId = :userId")
+        void unassignByProjectMember(@Param("projectId") Long projectId, @Param("userId") Long userId);
+
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("UPDATE Issue i SET i.assignee = NULL WHERE i.assignee.userId = :userId")
+        void unassignByGlobalUser(@Param("userId") Long userId);
 }

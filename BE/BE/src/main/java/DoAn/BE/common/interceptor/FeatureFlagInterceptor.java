@@ -117,8 +117,8 @@ public class FeatureFlagInterceptor implements HandlerInterceptor {
                 return settings.isProjectModuleEnabled() && settings.isAnalyticsEnabled();
             case "CALENDAR":
                 return settings.isCalendarEnabled();
-            case "AUTOMATION":
-                return settings.isProjectModuleEnabled() && settings.isAutomationEnabled();
+            case "WEBHOOK":
+                return settings.isWebhookEnabled();
 
             // Chat sub-features
             case "CHAT_REACTIONS":

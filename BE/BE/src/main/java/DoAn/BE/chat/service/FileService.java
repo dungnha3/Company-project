@@ -15,7 +15,7 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.dto.UserDTO;
 import DoAn.BE.user.repository.UserRepository;
 import DoAn.BE.common.exception.BadRequestException;
-import DoAn.BE.common.exception.EntityNotFoundException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,10 +55,10 @@ public class FileService {
     // Gửi tin nhắn có file đính kèm
     public MessDTO sendMessageWithFile(SendMessageRequest request, Long senderId) {
         User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new EntityNotFoundException("Người gửi không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người gửi không tồn tại"));
 
         ChatRoom chatRoom = chatRoomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(request.getRoomId(),
                 senderId);
@@ -71,7 +71,7 @@ public class FileService {
         }
 
         DoAn.BE.storage.entity.File file = fileRepository.findById(request.getFileId())
-                .orElseThrow(() -> new EntityNotFoundException("File không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("File không tồn tại"));
 
         Message message = new Message();
         message.setChatRoom(chatRoom);
@@ -129,7 +129,6 @@ public class FileService {
         fileEntity.setFilename(file.getOriginalFilename());
         fileEntity.setFileSize(file.getSize());
         fileEntity.setMimeType(contentType);
-        // NOTE: Path tạm thời - cần tích hợp với FileStorageService để lưu file thực tế
         fileEntity.setFilePath("/uploads/" + file.getOriginalFilename());
         fileEntity = fileRepository.save(fileEntity);
 
@@ -170,7 +169,6 @@ public class FileService {
         imageEntity.setFilename(fileName);
         imageEntity.setFileSize(imageFile.getSize());
         imageEntity.setMimeType(contentType);
-        // NOTE: Path tạm thời - cần tích hợp với FileStorageService để lưu ảnh thực tế
         imageEntity.setFilePath("/uploads/images/" + fileName);
         imageEntity = fileRepository.save(imageEntity);
 
@@ -190,7 +188,7 @@ public class FileService {
     // Lấy danh sách file trong phòng chat
     public List<MessDTO> getFilesByRoomId(Long roomId, Long userId) {
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
         if (!isMember) {
@@ -208,7 +206,7 @@ public class FileService {
     // Lấy danh sách hình ảnh trong phòng chat
     public List<MessDTO> getImagesByRoomId(Long roomId, Long userId) {
         chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Phòng chat không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
 
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
         if (!isMember) {
@@ -268,3 +266,4 @@ public class FileService {
         return dto;
     }
 }
+

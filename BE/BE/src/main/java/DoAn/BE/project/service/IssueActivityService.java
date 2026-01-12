@@ -37,7 +37,7 @@ public class IssueActivityService {
         }
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -59,7 +59,7 @@ public class IssueActivityService {
         }
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy issue"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
         if (issue.getProject() == null) {
             throw new IllegalStateException("Issue không có dự án liên kết");
@@ -133,7 +133,7 @@ public class IssueActivityService {
     @Transactional
     public void deleteActivity(Long activityId, User currentUser) {
         IssueActivity activity = issueActivityRepository.findById(activityId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy activity"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy activity"));
 
         if (activity.getIssue() == null || activity.getIssue().getProject() == null) {
             throw new IllegalStateException("Activity không có issue hoặc dự án liên kết");
@@ -210,3 +210,4 @@ public class IssueActivityService {
         return dto;
     }
 }
+
