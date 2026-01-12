@@ -8,10 +8,16 @@ export default function HRDashboardPage() {
     const navigate = useNavigate();
     const { hasRole } = useWorkspaceStore();
 
-    // Fetch employees for stats
+    // Fetch employees for charts and lists
     const { data: employees, isLoading: loadingEmployees } = useQuery({
         queryKey: ['employees-dashboard'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
+    });
+
+    // Fetch Dashboard Stats (Server-side aggregation for accurate counts)
+    const { data: dashboardStats } = useQuery({
+        queryKey: ['hr-dashboard-stats'],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.HR_DASHBOARD.STATS)).data,
     });
 
     // Fetch pending leave requests
@@ -28,7 +34,7 @@ export default function HRDashboardPage() {
         enabled: hasRole('OWNER', 'ADMIN'),
     });
 
-    // Fetch today's attendance
+    // Fetch today's attendance (retained for detailed report if needed)
     const { data: attendance } = useQuery({
         queryKey: ['attendance-today'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.REPORT)).data,
@@ -40,12 +46,13 @@ export default function HRDashboardPage() {
     const reviewList = Array.isArray(pendingReviews) ? pendingReviews : pendingReviews?.content || [];
 
     const stats = {
-        totalEmployees: employeeList.length,
-        activeEmployees: employeeList.filter(e => e.status === 'ACTIVE').length,
-        onLeave: employeeList.filter(e => e.status === 'ON_LEAVE').length,
-        pendingLeaves: leaveList.length,
-        pendingReviews: reviewList.length,
-        checkedIn: attendance?.checkedIn || 0,
+        // Use server-side stats if available, otherwise fallback (likely inaccurate for large sets)
+        totalEmployees: dashboardStats?.totalEmployees ?? (employees?.totalElements || employeeList.length),
+        activeEmployees: dashboardStats?.activeEmployees ?? employeeList.filter(e => e.status === 'ACTIVE').length,
+        onLeave: dashboardStats?.onLeave ?? employeeList.filter(e => e.status === 'ON_LEAVE').length,
+        pendingLeaves: dashboardStats?.pendingLeaves ?? (leaveRequests?.totalElements || leaveList.length),
+        pendingReviews: dashboardStats?.pendingReviews ?? (pendingReviews?.totalElements || reviewList.length),
+        checkedIn: dashboardStats?.checkedIn ?? attendance?.checkedIn ?? 0,
     };
 
     return (

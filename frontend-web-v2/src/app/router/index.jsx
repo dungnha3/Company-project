@@ -14,16 +14,12 @@ import FeatureGuard from './guards/FeatureGuard';
 
 // Auth pages (not lazy - critical path)
 import LoginPage from '@pages/auth/LoginPage';
-import SelectCompanyPage from '@pages/auth/SelectCompanyPage';
 import LandingPage from '@pages/public/LandingPage';
 import OnboardingPage from '@pages/auth/OnboardingPage';
 import RegisterPage from '@pages/auth/RegisterPage';
 
 // Lazy load logout page
 const LogoutPage = lazy(() => import('@pages/auth/LogoutPage'));
-
-// Portal (User Hub)
-import PortalPage from '@pages/portal/PortalPage';
 
 // Lazy load feature pages
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
@@ -54,7 +50,6 @@ const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
 // New feature pages
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
 const MyTimelogsPage = lazy(() => import('@pages/timelogs/MyTimelogsPage'));
-const AutomationPage = lazy(() => import('@pages/automation/AutomationPage'));
 
 
 const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPage'));
@@ -151,31 +146,12 @@ const router = createBrowserRouter([
         ],
     },
 
-    // Company selection (authenticated but no company yet)
-    {
-        path: '/select-company',
-        element: (
-            <AuthGuard>
-                <SelectCompanyPage />
-            </AuthGuard>
-        ),
-    },
     // Onboarding (New Company Setup)
     {
         path: '/onboarding',
         element: (
             <AuthGuard>
                 <OnboardingPage />
-            </AuthGuard>
-        ),
-    },
-
-    // User Portal (Hub)
-    {
-        path: '/portal',
-        element: (
-            <AuthGuard>
-                <PortalPage />
             </AuthGuard>
         ),
     },
@@ -420,16 +396,7 @@ const router = createBrowserRouter([
                     </FeatureGuard>
                 ),
             },
-            {
-                path: 'projects/:projectId/automation',
-                element: (
-                    <FeatureGuard feature="automation">
-                        <Suspense fallback={<PageLoader />}>
-                            <AutomationPage />
-                        </Suspense>
-                    </FeatureGuard>
-                ),
-            },
+
             {
                 path: 'my-timelogs',
                 element: (

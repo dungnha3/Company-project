@@ -8,7 +8,9 @@ import { useAuthStore } from './authStore';
 // But SockJS might need absolute URL if proxy isn't enough for WS upgrade, 
 // usually /ws works if proxy is set up correctly. 
 // If using separate backend port, might need 'http://localhost:8080/ws'
-const WS_URL = 'http://localhost:8080/ws';
+// Use environment variable or fallback to localhost
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const WS_URL = `${BASE_URL}/ws`;
 
 export const useWebSocketStore = create((set, get) => ({
     client: null,

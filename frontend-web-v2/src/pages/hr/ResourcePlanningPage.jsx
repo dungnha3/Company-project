@@ -3,25 +3,25 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
-// Mock resource allocation data
-const MOCK_ALLOCATIONS = [
-    { id: 1, employeeId: 1, projectId: 1, projectName: 'Website Redesign', allocation: 80, startDate: '2024-01-01', endDate: '2024-03-31', color: 'bg-blue-500' },
-    { id: 2, employeeId: 1, projectId: 2, projectName: 'Mobile App', allocation: 20, startDate: '2024-01-15', endDate: '2024-02-28', color: 'bg-purple-500' },
-    { id: 3, employeeId: 2, projectId: 1, projectName: 'Website Redesign', allocation: 50, startDate: '2024-01-01', endDate: '2024-02-15', color: 'bg-blue-500' },
-    { id: 4, employeeId: 2, projectId: 3, projectName: 'API Integration', allocation: 50, startDate: '2024-01-10', endDate: '2024-03-15', color: 'bg-green-500' },
-    { id: 5, employeeId: 3, projectId: 2, projectName: 'Mobile App', allocation: 100, startDate: '2024-01-01', endDate: '2024-04-30', color: 'bg-purple-500' },
-    { id: 6, employeeId: 4, projectId: 3, projectName: 'API Integration', allocation: 60, startDate: '2024-01-01', endDate: '2024-02-28', color: 'bg-green-500' },
-    { id: 7, employeeId: 5, projectId: 1, projectName: 'Website Redesign', allocation: 40, startDate: '2024-02-01', endDate: '2024-03-31', color: 'bg-blue-500' },
-];
-
 export default function ResourcePlanningPage() {
     const [viewMode, setViewMode] = useState('timeline'); // timeline, heatmap
-    const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week
 
     // Fetch employees
-    const { data: employees, isLoading } = useQuery({
+    const { data: employees, isLoading: loadingEmployees } = useQuery({
         queryKey: ['employees-resources'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
+    });
+
+    // Fetch Allocations (Real Data)
+    const { data: allocations = [] } = useQuery({
+        queryKey: ['resource-allocations'],
+        queryFn: async () => {
+            try {
+                return (await apiClient.get(ENDPOINTS.RESOURCE_PLANNING.ALLOCATIONS)).data;
+            } catch (e) {
+                return [];
+            }
+        }
     });
 
     const empList = Array.isArray(employees) ? employees : employees?.content || [];
@@ -47,20 +47,22 @@ export default function ResourcePlanningPage() {
     // Calculate workload for an employee in a given week
     const getWorkload = (empId, weekIndex) => {
         const weekDate = weeks[weekIndex]?.fullDate;
-        if (!weekDate) return 0;
+        if (!weekDate || !allocations.length) return 0;
 
-        return MOCK_ALLOCATIONS
+        return allocations
             .filter(a => {
-                if (a.employeeId !== empId) return false;
+                if ((a.employeeId || a.employee?.id) !== empId) return false;
                 const start = new Date(a.startDate);
                 const end = new Date(a.endDate);
                 return weekDate >= start && weekDate <= end;
             })
-            .reduce((sum, a) => sum + a.allocation, 0);
+            .reduce((sum, a) => sum + (a.allocation || 0), 0);
     };
 
     // Calculate stats
     const stats = useMemo(() => {
+        if (!empList.length) return { total: 0, overloaded: 0, underutilized: 0, optimal: 0 };
+
         const overloaded = empList.filter(emp => {
             const id = emp.employeeId || emp.id;
             return weeks.some((_, i) => getWorkload(id, i) > 100);
@@ -78,7 +80,7 @@ export default function ResourcePlanningPage() {
             underutilized,
             optimal: empList.length - overloaded - underutilized,
         };
-    }, [empList, weeks]);
+    }, [empList, weeks, allocations]);
 
     return (
         <div className="space-y-6">
@@ -137,7 +139,7 @@ export default function ResourcePlanningPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {isLoading ? (
+                            {loadingEmployees ? (
                                 <tr>
                                     <td colSpan={weeks.length + 1} className="px-4 py-8 text-center">
                                         <div className="loading-spinner mx-auto" />

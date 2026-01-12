@@ -18,6 +18,7 @@ import DoAn.BE.auth.repository.RefreshTokenRepository;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.UnauthorizedException;
 import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.service.UserService;
@@ -126,9 +127,13 @@ public class AuthService {
         if (memberships.size() == 1) {
             CompanyMember singleMember = memberships.get(0);
             selectedCompanyId = singleMember.getCompany().getCompanyId();
-            accessToken = jwtService.generateToken(user, selectedCompanyId, singleMember.getRole());
+            // [Fix] Use first role or primary role logic. For now, sending the first role
+            // found.
+            CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                    .orElse(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
+            accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
             log.info("User {} auto-selected company {} with role {}",
-                    user.getUsername(), singleMember.getCompany().getName(), singleMember.getRole());
+                    user.getUsername(), singleMember.getCompany().getName(), primaryRole);
         } else {
             accessToken = jwtService.generateToken(user);
         }
@@ -162,13 +167,15 @@ public class AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập công ty này"));
 
         log.info("User {} đã chọn công ty {} với vai trò {}",
-                user.getUsername(), member.getCompany().getName(), member.getRole());
+                user.getUsername(), member.getCompany().getName(), member.getRoles());
 
         // [Lấy danh sách công ty] (Role: Query)
         List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(userId);
 
         // [Tạo token mới với companyId và role] (Role: Token)
-        String accessToken = jwtService.generateToken(user, companyId, member.getRole());
+        CompanyRole primaryRole = member.getRoles().stream().findFirst()
+                .orElse(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
+        String accessToken = jwtService.generateToken(user, companyId, primaryRole);
         String refreshToken = createRefreshToken(user);
 
         return buildAuthResponse(accessToken, refreshToken, user, memberships, companyId);
@@ -331,7 +338,9 @@ public class AuthService {
         if (memberships.size() == 1) {
             CompanyMember singleMember = memberships.get(0);
             selectedCompanyId = singleMember.getCompany().getCompanyId();
-            accessToken = jwtService.generateToken(targetUser, selectedCompanyId, singleMember.getRole());
+            CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                    .orElse(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
+            accessToken = jwtService.generateToken(targetUser, selectedCompanyId, primaryRole);
         } else {
             accessToken = jwtService.generateToken(targetUser);
         }
@@ -491,7 +500,8 @@ public class AuthService {
                         m.getCompany().getCompanyId(),
                         m.getCompany().getName(),
                         m.getCompany().getSlug(),
-                        m.getRole(),
+                        m.getRoles().stream().findFirst().orElse(DoAn.BE.company.entity.CompanyRole.EMPLOYEE),
+                        m.getPermissions(),
                         m.getCompany().getLogoUrl()))
                 .collect(Collectors.toList());
         response.setCompanies(companies);

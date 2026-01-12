@@ -123,17 +123,15 @@ function MyLeaveRequests() {
 function PendingLeaveRequests() {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const [selectedIds, setSelectedIds] = useState(new Set());
 
-    // Use LIST endpoint filtered by PENDING or PENDING specific endpoint if available
-    // Assuming backend filter or we fetch all and filter client side for now if LIST doesn't support params nicely
-    // Or use the provided ENDPOINTS.LEAVE_REQUESTS.LIST and hope for PENDING functionality
     const { data: requests, isLoading } = useQuery({
         queryKey: ['pending-leave-requests'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } })).data,
     });
 
     const approveMutation = useMutation({
-        mutationFn: (id) => apiClient.post(ENDPOINTS.LEAVE_REQUESTS.APPROVE(id)), // Assume endpoint structure
+        mutationFn: (id) => apiClient.post(ENDPOINTS.LEAVE_REQUESTS.APPROVE(id)),
         onSuccess: () => {
             showToast('Đã duyệt đơn', 'success');
             queryClient.invalidateQueries(['pending-leave-requests']);
@@ -153,7 +151,57 @@ function PendingLeaveRequests() {
         if (action === 'reject') rejectMutation.mutate(id);
     };
 
+    // Batch actions
+    const data = Array.isArray(requests) ? requests : requests?.content || [];
+
+    const handleSelectAll = () => {
+        if (selectedIds.size === data.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(data.map(r => r.leaveRequestId || r.id)));
+        }
+    };
+
+    const handleSelectOne = (id) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
+
+    const handleBatchApprove = () => {
+        if (!confirm(`Duyệt tất cả ${selectedIds.size} đơn đã chọn?`)) return;
+        selectedIds.forEach(id => approveMutation.mutate(id));
+        setSelectedIds(new Set());
+    };
+
+    const handleBatchReject = () => {
+        if (!confirm(`Từ chối tất cả ${selectedIds.size} đơn đã chọn?`)) return;
+        selectedIds.forEach(id => rejectMutation.mutate(id));
+        setSelectedIds(new Set());
+    };
+
     const columns = [
+        {
+            header: () => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.size > 0 && selectedIds.size === data.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                />
+            ),
+            accessorKey: 'select',
+            cell: (row) => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.has(row.leaveRequestId || row.id)}
+                    onChange={() => handleSelectOne(row.leaveRequestId || row.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                />
+            )
+        },
         {
             header: 'Nhân viên',
             accessorKey: 'employeeName',
@@ -203,10 +251,39 @@ function PendingLeaveRequests() {
         }
     ];
 
-    // Assuming requests might be paginated { content: [] } or array []
-    const data = Array.isArray(requests) ? requests : requests?.content || [];
-
-    return <DataTable columns={columns} data={data} loading={isLoading} />;
+    return (
+        <div className="space-y-4">
+            {/* Batch Action Bar */}
+            {selectedIds.size > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-blue-700 font-medium">
+                        Đã chọn {selectedIds.size} đơn
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleBatchApprove}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm"
+                        >
+                            <i className="fa-solid fa-check mr-1" /> Duyệt tất cả
+                        </button>
+                        <button
+                            onClick={handleBatchReject}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm"
+                        >
+                            <i className="fa-solid fa-xmark mr-1" /> Từ chối tất cả
+                        </button>
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-medium text-sm"
+                        >
+                            Bỏ chọn
+                        </button>
+                    </div>
+                </div>
+            )}
+            <DataTable columns={columns} data={data} loading={isLoading} />
+        </div>
+    );
 }
 
 function CreateLeaveModal({ isOpen, onClose }) {

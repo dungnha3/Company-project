@@ -43,7 +43,8 @@ eventPublisher.publishEvent(new HrmEvent(this, Type.ATTENDANCE_LATE, timeStr, us
 
 ### 3. Security Layers
 - JWT Authentication (Access + Refresh tokens)
-- Role-based access: `OWNER > ADMIN > MANAGER_* > EMPLOYEE`
+- **Multi-Role Access**: `roles` Set per member (e.g., `[ADMIN, MONITOR]`)
+- **Granular Permissions**: `PermissionService` checks Plan → Settings → UserPermissions
 - Feature flags: `CompanySettings` controls module access
 - Multi-tenant isolation: Company deactivation = immediate lockout
 

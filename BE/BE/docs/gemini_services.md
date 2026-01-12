@@ -3,7 +3,7 @@
 ## Overview
 This document describes all REST API endpoints, services, and their responsibilities.
 
----
+> **Updated: 2026-01-12** - Multi-role permission system (PUT `/{userId}/roles`)
 
 ## API Base URL
 ```
@@ -176,7 +176,7 @@ All endpoints marked with **(Paginated)** return this structure.
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | GET | `/` | List company members | Required |
-| PUT | `/{userId}/role` | Change member role | OWNER, ADMIN |
+| PUT | `/{userId}/roles` | Change member roles (Set) | OWNER, ADMIN |
 | DELETE | `/{userId}` | Remove member | OWNER, ADMIN |
 | PUT | `/{userId}/permissions` | Update fine-grained permissions | OWNER, ADMIN |
 
@@ -554,8 +554,8 @@ All endpoints marked with **(Paginated)** return this structure.
 | `SessionService` | User session management |
 | `UserService` | User CRUD operations |
 | `UserSaasService` | Multi-tenant user operations |
-| `AccessControlService` | Permission checking |
-| `PermissionService` | Feature flag validation |
+| `AccessControlService` | Permission checking (Plan -> Settings -> UserPermissions) |
+| `PermissionService` | Feature flag validation and detailed checks |
 
 ### HRM Services
 

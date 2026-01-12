@@ -3,18 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { useToast } from '@app/providers/ToastProvider';
 
-const AI_ENDPOINTS = {
-    STATUS: '/api/ai/status',
-    CHAT: '/api/ai/chat',
-    CONVERSATIONS: '/api/ai/conversations',
-    HELP: '/api/ai/help',
-};
+import { ENDPOINTS } from '@shared/api/endpoints';
 
 const QUICK_ACTIONS = [
-    { id: 'summarize', icon: 'fa-file-lines', label: 'Tóm tắt dự án', endpoint: (id) => `/api/ai/projects/${id}/summarize` },
-    { id: 'sprint', icon: 'fa-layer-group', label: 'Sprint hiện tại', endpoint: (id) => `/api/ai/projects/${id}/sprint-summary` },
-    { id: 'suggest', icon: 'fa-lightbulb', label: 'Gợi ý công việc', endpoint: (id) => `/api/ai/projects/${id}/suggest-tasks` },
-    { id: 'analyze', icon: 'fa-chart-line', label: 'Phân tích tiến độ', endpoint: (id) => `/api/ai/projects/${id}/analyze-progress` },
+    { id: 'summarize', icon: 'fa-file-lines', label: 'Tóm tắt dự án', endpoint: ENDPOINTS.AI.SUMMARIZE_PROJECT },
+    { id: 'sprint', icon: 'fa-layer-group', label: 'Sprint hiện tại', endpoint: ENDPOINTS.AI.SPRINT_SUMMARY },
+    { id: 'suggest', icon: 'fa-lightbulb', label: 'Gợi ý công việc', endpoint: ENDPOINTS.AI.SUGGEST_TASKS },
+    { id: 'analyze', icon: 'fa-chart-line', label: 'Phân tích tiến độ', endpoint: ENDPOINTS.AI.ANALYZE_PROGRESS },
 ];
 
 export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
@@ -28,14 +23,14 @@ export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
     // Check AI status
     const { data: aiStatus } = useQuery({
         queryKey: ['ai-status'],
-        queryFn: async () => (await apiClient.get(AI_ENDPOINTS.STATUS)).data,
+        queryFn: async () => (await apiClient.get(ENDPOINTS.AI.STATUS)).data,
         staleTime: 60000,
     });
 
     // Chat mutation
     const chatMutation = useMutation({
         mutationFn: async (userMessage) => {
-            const response = await apiClient.post(AI_ENDPOINTS.CHAT, {
+            const response = await apiClient.post(ENDPOINTS.AI.CHAT, {
                 message: userMessage,
                 projectId,
                 conversationId,
@@ -168,8 +163,8 @@ export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
                         >
                             <div
                                 className={`max-w-[80%] p-3 rounded-2xl ${msg.role === 'user'
-                                        ? 'bg-indigo-500 text-white rounded-br-md'
-                                        : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                                    ? 'bg-indigo-500 text-white rounded-br-md'
+                                    : 'bg-gray-100 text-gray-800 rounded-bl-md'
                                     }`}
                             >
                                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>

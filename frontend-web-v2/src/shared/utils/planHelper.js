@@ -16,14 +16,18 @@ export const PLAN_CONFIG = {
             timeTracking: true,
             chat: true,
             files: true,
+            project: true,
+            storage: true,
             hr: false,
+            ai: false,
+            webhook: false,
             api: false,
         }
     },
     STARTER: {
         name: 'Starter',
         maxUsers: 20,
-        maxProjects: -1, // unlimited
+        maxProjects: 20,
         storageGB: 10,
         features: {
             kanban: true,
@@ -32,14 +36,18 @@ export const PLAN_CONFIG = {
             timeTracking: true,
             chat: true,
             files: true,
+            project: true,
+            storage: true,
             hr: false,
+            ai: true,
+            webhook: false,
             api: false,
         }
     },
     PROFESSIONAL: {
         name: 'Professional',
         maxUsers: 100,
-        maxProjects: -1,
+        maxProjects: 100,
         storageGB: 100,
         features: {
             kanban: true,
@@ -48,7 +56,11 @@ export const PLAN_CONFIG = {
             timeTracking: true,
             chat: true,
             files: true,
+            project: true,
+            storage: true,
             hr: true,
+            ai: true,
+            webhook: true,
             api: false,
         }
     },
@@ -64,7 +76,11 @@ export const PLAN_CONFIG = {
             timeTracking: true,
             chat: true,
             files: true,
+            project: true,
+            storage: true,
             hr: true,
+            ai: true,
+            webhook: true,
             api: true,
         }
     }

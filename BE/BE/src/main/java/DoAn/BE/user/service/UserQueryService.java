@@ -34,7 +34,7 @@ public class UserQueryService {
     private final CompanyMemberRepository companyMemberRepository;
 
     // ==================== SEARCH ====================
-// Tìm kiếm user theo từ khóa (username hoặc email)
+    // Tìm kiếm user theo từ khóa (username hoặc email)
     public List<User> searchUsers(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return Collections.emptyList();
@@ -43,40 +43,42 @@ public class UserQueryService {
     }
 
     // ==================== FILTER BY ROLE ====================
-// Lấy users theo role trong công ty hiện tại
+    // Lấy users theo role trong công ty hiện tại
     public List<User> getUsersByRole(CompanyRole role) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null || role == null) {
             return Collections.emptyList();
         }
-        return companyMemberRepository.findByCompany_CompanyIdAndRoleAndIsActiveTrue(companyId, role)
+        // Updated to use RolesContaining derived query
+        return companyMemberRepository.findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(companyId, role)
                 .stream()
                 .map(CompanyMember::getUser)
                 .collect(Collectors.toList());
     }
 
     // ==================== FILTER BY STATUS ====================
-// Lấy tất cả users đang active
+    // Lấy tất cả users đang active
     public List<User> getActiveUsers() {
         return userRepository.findByIsActiveTrue();
     }
 
-// Lấy tất cả users đang online
+    // ==================== users đang online
     public List<User> getOnlineUsers() {
         return userRepository.findByIsOnlineTrue();
     }
 
     // ==================== STATISTICS ====================
-// Đếm users theo role trong công ty hiện tại
+    // Đếm users theo role trong công ty hiện tại
     public long countUsersByRole(CompanyRole role) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null || role == null) {
             return 0L;
         }
-        return companyMemberRepository.countByCompany_CompanyIdAndRoleAndIsActiveTrue(companyId, role);
+        // Updated to use RolesContaining derived query
+        return companyMemberRepository.countByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(companyId, role);
     }
 
-// Đếm số users đang online
+    // Đếm số users đang online
     public long countOnlineUsers() {
         return userRepository.countByIsOnlineTrue();
     }

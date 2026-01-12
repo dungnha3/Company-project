@@ -62,8 +62,8 @@ public class WorkspaceService {
                 .findByUser_UserIdAndIsActiveTrue(user.getUserId());
 
         log.info("📊 Found {} memberships for user {}", memberships.size(), user.getUserId());
-        memberships.forEach(m -> log.info("   - Company: {}, Role: {}, Active: {}",
-                m.getCompany().getName(), m.getRole(), m.getCompany().getIsActive()));
+        memberships.forEach(m -> log.info("   - Company: {}, Roles: {}, Active: {}",
+                m.getCompany().getName(), m.getRoles(), m.getCompany().getIsActive()));
 
         for (CompanyMember m : memberships) {
             workspaces.add(WorkspaceDto.WorkspaceResponse.builder()
@@ -71,7 +71,7 @@ public class WorkspaceService {
                     .name(m.getCompany().getName())
                     .type(WorkspaceType.COMPANY)
                     .plan(m.getCompany().getPlan())
-                    .role(m.getRole().name())
+                    .role(m.getRoles().stream().findFirst().map(Enum::name).orElse("EMPLOYEE"))
                     .isActive(m.getCompany().getIsActive())
                     .build());
         }

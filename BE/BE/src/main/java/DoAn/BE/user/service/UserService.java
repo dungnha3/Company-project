@@ -185,8 +185,12 @@ public class UserService {
 
         if (request.getRole() != null && currentMember != null) {
             CompanyRole newRole = request.getRole();
-            if (!newRole.equals(currentMember.getRole())) {
-                currentMember.setRole(newRole);
+            if (!currentMember.hasAnyRole(newRole) || currentMember.getRoles().size() > 1) { // Simplification: If role
+                                                                                             // changes, we reset to
+                                                                                             // single new role for now
+                currentMember.getRoles().clear();
+                currentMember.getRoles().add(newRole);
+                currentMember.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
                 companyMemberRepository.save(currentMember);
                 if (eventPublisher != null) {
                     eventPublisher.publishEvent(
@@ -200,7 +204,8 @@ public class UserService {
                 CompanyMember member = new CompanyMember();
                 member.setUser(user);
                 member.setCompany(companyOpt.get());
-                member.setRole(companyRole);
+                member.getRoles().add(companyRole);
+                member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(companyRole)));
                 member.setJoinedAt(LocalDateTime.now());
                 member.setIsActive(true);
                 companyMemberRepository.save(member);
@@ -317,8 +322,8 @@ public class UserService {
             CompanyMember member = new CompanyMember();
             member.setUser(savedUser);
             member.setCompany(company);
-            member.setRole(role);
-            member.setPermissions(roleTemplateService.getTemplate(role));
+            member.getRoles().add(role);
+            member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(role)));
             member.setJoinedAt(LocalDateTime.now());
             member.setIsActive(true);
             companyMemberRepository.save(member);
@@ -404,9 +409,10 @@ public class UserService {
                         .orElse(null);
                 if (member != null) {
                     CompanyRole newRole = userDTO.getRole();
-                    if (newRole != null && !newRole.equals(member.getRole())) {
-                        member.setRole(newRole);
-                        member.setPermissions(roleTemplateService.getTemplate(newRole));
+                    if (newRole != null && (!member.hasAnyRole(newRole) || member.getRoles().size() > 1)) {
+                        member.getRoles().clear();
+                        member.getRoles().add(newRole);
+                        member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
                         companyMemberRepository.save(member);
                         if (eventPublisher != null) {
                             eventPublisher.publishEvent(new UserUpdatedEvent(this, user, currentUser,
@@ -422,8 +428,8 @@ public class UserService {
                             CompanyMember newMember = new CompanyMember();
                             newMember.setUser(user);
                             newMember.setCompany(companyOpt.get());
-                            newMember.setRole(companyRole);
-                            newMember.setPermissions(roleTemplateService.getTemplate(companyRole));
+                            newMember.getRoles().add(companyRole);
+                            newMember.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(companyRole)));
                             newMember.setJoinedAt(LocalDateTime.now());
                             newMember.setIsActive(true);
                             companyMemberRepository.save(newMember);
@@ -514,4 +520,3 @@ public class UserService {
         return userRepository.findByResetPasswordToken(token);
     }
 }
-

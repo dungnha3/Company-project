@@ -218,6 +218,13 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     <div className="text-sm font-medium text-gray-900">{currentIssue.loggedHours || 0}h</div>
                                 </div>
                             </div>
+
+                            {/* Custom Fields Section */}
+                            <CustomFieldsSection
+                                projectId={currentIssue.projectId}
+                                issueId={currentIssue.issueId}
+                                initialValues={currentIssue.customFieldValues || {}}
+                            />
                         </div>
                     )}
 
@@ -300,7 +307,99 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     );
 }
 
-// Activity Log Tab Component
+// Custom Fields Section Component
+function CustomFieldsSection({ projectId, issueId, initialValues }) {
+    const toast = useToast();
+    const queryClient = useQueryClient();
+    const [values, setValues] = useState(initialValues);
+
+    // Fetch custom field definitions
+    const { data: fields = [], isLoading } = useQuery({
+        queryKey: ['customFields', projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.CUSTOM_FIELDS.BY_PROJECT(projectId))).data,
+        enabled: !!projectId,
+    });
+
+    // Update value mutation
+    const updateMutation = useMutation({
+        mutationFn: async ({ fieldId, value }) => {
+            // Assuming endpoint to update specific custom field value or all values
+            // Here we use a hypothetical endpoint. If it fails, we fall back to generic issue update if applicable.
+            // Using the endpoint defined in endpoints.js: ISSUE_VALUES
+            await apiClient.put(ENDPOINTS.CUSTOM_FIELDS.ISSUE_VALUES(issueId), {
+                [fieldId]: value
+            });
+        },
+        onSuccess: () => {
+            toast.success('Đã cập nhật trường tùy chỉnh');
+            queryClient.invalidateQueries(['issue', issueId]);
+        },
+        onError: () => toast.error('Lỗi cập nhật trường tùy chỉnh')
+    });
+
+    const handleChange = (fieldId, value) => {
+        setValues(prev => ({ ...prev, [fieldId]: value }));
+        // Debounce or auto-save could be added here. For now, we save on blur or selection.
+        if (value !== values[fieldId]) {
+            updateMutation.mutate({ fieldId, value });
+        }
+    };
+
+    if (isLoading) return <div className="py-4 text-center text-xs text-gray-400">Đang tải trường tùy chỉnh...</div>;
+    if (!fields.length) return null;
+
+    return (
+        <div className="pt-4 border-t border-gray-100 mt-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Thông tin thêm</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {fields.map(field => (
+                    <div key={field.id} className="space-y-1">
+                        <label className="text-xs text-gray-500 block">{field.name}</label>
+                        {field.type === 'TEXT' && (
+                            <input
+                                type="text"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                value={values[field.id] || ''}
+                                onBlur={(e) => handleChange(field.id, e.target.value)}
+                                onChange={(e) => setValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            />
+                        )}
+                        {field.type === 'NUMBER' && (
+                            <input
+                                type="number"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                value={values[field.id] || ''}
+                                onBlur={(e) => handleChange(field.id, e.target.value)}
+                                onChange={(e) => setValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            />
+                        )}
+                        {field.type === 'DATE' && (
+                            <input
+                                type="date"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                value={values[field.id] || ''}
+                                onChange={(e) => handleChange(field.id, e.target.value)}
+                            />
+                        )}
+                        {field.type === 'DROPDOWN' && (
+                            <select
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                value={values[field.id] || ''}
+                                onChange={(e) => handleChange(field.id, e.target.value)}
+                            >
+                                <option value="">-- Chọn --</option>
+                                {field.options?.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function ActivityLogTab({ issueId }) {
     const { data: activities = [], isLoading } = useQuery({
         queryKey: ['issueActivities', issueId],

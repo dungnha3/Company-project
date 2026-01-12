@@ -26,94 +26,90 @@ export default function GlobalSearch({ isOpen, onClose }) {
     const inputRef = useRef(null);
     const navigate = useNavigate();
 
-    // Fetch data for search
-    const { data: employees } = useQuery({
-        queryKey: ['search-employees'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
-        enabled: isOpen && query.length > 0,
-        staleTime: 30000,
-    });
-
-    const { data: projects } = useQuery({
-        queryKey: ['search-projects'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.LIST)).data,
-        enabled: isOpen && query.length > 0,
-        staleTime: 30000,
-    });
-
-    const { data: departments } = useQuery({
-        queryKey: ['search-departments'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.DEPARTMENTS.LIST)).data,
-        enabled: isOpen && query.length > 0,
-        staleTime: 30000,
+    // Unified Global Search
+    const { data: searchResults } = useQuery({
+        queryKey: ['global-search', query],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.SEARCH, { params: { keyword: query } })).data,
+        enabled: isOpen && query.trim().length > 1,
+        staleTime: 60000,
     });
 
     // Filter results based on query
     const getResults = useCallback(() => {
         if (!query.trim()) return [];
 
-        const lowerQuery = query.toLowerCase();
         const results = [];
 
-        // Employees
-        const empList = Array.isArray(employees) ? employees : employees?.content || [];
-        if (activeCategory === 'all' || activeCategory === 'employees') {
-            empList.filter(e =>
-                e.fullName?.toLowerCase().includes(lowerQuery) ||
-                e.email?.toLowerCase().includes(lowerQuery) ||
-                e.employeeCode?.toLowerCase().includes(lowerQuery)
-            ).slice(0, 5).forEach(emp => {
+        // Helper to map API results to search items
+        const mapItems = (items, type, icon, color, getTitle, getSubtitle, getPath) => {
+            if (!items) return;
+            items.slice(0, 5).forEach(item => {
                 results.push({
-                    type: 'employee',
-                    id: emp.employeeId || emp.id,
-                    title: emp.fullName,
-                    subtitle: emp.position?.name || emp.email,
-                    icon: 'fa-user',
-                    color: 'text-blue-500',
-                    path: `/app/employees/${emp.employeeId || emp.id}`,
+                    type,
+                    id: item.id || item[`${type}Id`], // Handle different ID fields
+                    title: getTitle(item),
+                    subtitle: getSubtitle(item),
+                    icon,
+                    color,
+                    path: getPath(item),
                 });
             });
+        };
+
+        // Employees
+        if (activeCategory === 'all' || activeCategory === 'employees') {
+            mapItems(
+                searchResults?.employees,
+                'employee',
+                'fa-user',
+                'text-blue-500',
+                e => e.fullName,
+                e => e.position || e.email,
+                e => `/app/employees/${e.id}`
+            );
         }
 
         // Projects
-        const projList = Array.isArray(projects) ? projects : projects?.content || [];
         if (activeCategory === 'all' || activeCategory === 'projects') {
-            projList.filter(p =>
-                p.name?.toLowerCase().includes(lowerQuery) ||
-                p.description?.toLowerCase().includes(lowerQuery)
-            ).slice(0, 5).forEach(proj => {
-                results.push({
-                    type: 'project',
-                    id: proj.projectId || proj.id,
-                    title: proj.name,
-                    subtitle: `${proj.issueCount || 0} công việc`,
-                    icon: 'fa-folder-open',
-                    color: 'text-purple-500',
-                    path: `/app/projects/${proj.projectId || proj.id}`,
-                });
-            });
+            mapItems(
+                searchResults?.projects,
+                'project',
+                'fa-folder-open',
+                'text-purple-500',
+                p => p.name,
+                p => `${p.status} • ${p.memberCount || 0} members`,
+                p => `/app/projects/${p.id}`
+            );
         }
 
         // Departments
-        const deptList = Array.isArray(departments) ? departments : departments?.content || [];
         if (activeCategory === 'all' || activeCategory === 'departments') {
-            deptList.filter(d =>
-                d.name?.toLowerCase().includes(lowerQuery)
-            ).slice(0, 3).forEach(dept => {
-                results.push({
-                    type: 'department',
-                    id: dept.departmentId || dept.id,
-                    title: dept.name,
-                    subtitle: `${dept.employeeCount || 0} nhân viên`,
-                    icon: 'fa-building',
-                    color: 'text-orange-500',
-                    path: '/app/departments',
-                });
-            });
+            mapItems(
+                searchResults?.departments,
+                'department',
+                'fa-building',
+                'text-orange-500',
+                d => d.name,
+                d => `${d.employeeCount || 0} nhân viên`,
+                d => '/app/departments'
+            );
+        }
+
+        // Issues (New Category supported by backend)
+        if (activeCategory === 'all' || activeCategory === 'issues') {
+            mapItems(
+                searchResults?.issues,
+                'issue',
+                'fa-check-circle',
+                'text-green-500',
+                i => i.title,
+                i => `${i.projectKey}-${i.id} • ${i.status}`,
+                i => `/app/projects/${i.projectId}?issue=${i.id}`
+            );
         }
 
         return results;
-    }, [query, employees, projects, departments, activeCategory]);
+    }, [query, searchResults, activeCategory]);
 
     const results = getResults();
     const showQuickActions = !query.trim();
@@ -192,8 +188,8 @@ export default function GlobalSearch({ isOpen, onClose }) {
                     <button
                         onClick={() => setActiveCategory('all')}
                         className={`px-3 py-1 rounded-full text-sm transition-colors ${activeCategory === 'all'
-                                ? 'bg-indigo-100 text-indigo-700'
-                                : 'text-gray-500 hover:bg-gray-100'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'text-gray-500 hover:bg-gray-100'
                             }`}
                     >
                         Tất cả
@@ -203,8 +199,8 @@ export default function GlobalSearch({ isOpen, onClose }) {
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
                             className={`px-3 py-1 rounded-full text-sm transition-colors flex items-center gap-1 ${activeCategory === cat.id
-                                    ? 'bg-indigo-100 text-indigo-700'
-                                    : 'text-gray-500 hover:bg-gray-100'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'text-gray-500 hover:bg-gray-100'
                                 }`}
                         >
                             <i className={`fa-solid ${cat.icon} ${cat.color} text-xs`} />

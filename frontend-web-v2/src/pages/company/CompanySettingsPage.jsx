@@ -4,6 +4,7 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import InviteMemberModal from '@features/company/components/InviteMemberModal';
+import IntegrationsSettings from '@features/company/components/IntegrationsSettings';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function CompanySettingsPage() {
@@ -50,6 +51,13 @@ export default function CompanySettingsPage() {
                             >
                                 Modules
                             </TabButton>
+                            <TabButton
+                                active={activeTab === 'integrations'}
+                                onClick={() => setActiveTab('integrations')}
+                                icon="fa-link"
+                            >
+                                Integrations
+                            </TabButton>
                         </>
                     )}
                 </div>
@@ -60,6 +68,7 @@ export default function CompanySettingsPage() {
                 {activeTab === 'general' && <GeneralSettings workspace={currentWorkspace} />}
                 {activeTab === 'members' && !isPersonal && <MembersSettings />}
                 {activeTab === 'modules' && !isPersonal && <ModulesSettings workspace={currentWorkspace} />}
+                {activeTab === 'integrations' && !isPersonal && <IntegrationsSettings workspace={currentWorkspace} />}
             </div>
         </div>
     );
@@ -150,14 +159,34 @@ function MembersSettings() {
     const { currentWorkspace } = useWorkspaceStore();
     const [showInviteModal, setShowInviteModal] = useState(false);
     const toast = useToast();
+    const queryClient = useQueryClient();
 
-    // TODO: Fetch members from API when endpoint is ready
-    const members = [];
-    const loading = false;
+    // Fetch members from API
+    const { data: members = [], isLoading: loading } = useQuery({
+        queryKey: ['company-members', currentWorkspace?.id],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data?.content || [],
+        enabled: !!currentWorkspace?.id
+    });
+
+    // Delete member mutation
+    const deleteMutation = useMutation({
+        mutationFn: async (userId) => {
+            // Assuming endpoint to remove member from company exists, using employee delete for now
+            // Adjust endpoint if strictly removing from company vs deleting employee record
+            return apiClient.delete(ENDPOINTS.EMPLOYEES.DELETE(userId));
+        },
+        onSuccess: () => {
+            toast.success('Đã xóa thành viên!');
+            queryClient.invalidateQueries(['company-members', currentWorkspace?.id]);
+        },
+        onError: (err) => {
+            toast.error('Lỗi xóa thành viên: ' + (err.response?.data?.message || err.message));
+        }
+    });
 
     const handleRemove = async (userId) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa thành viên này?')) return;
-        toast.info('Chức năng đang phát triển');
+        if (!window.confirm('Bạn có chắc chắn muốn xóa thành viên này? Hành động này sẽ xóa nhân viên khỏi công ty.')) return;
+        deleteMutation.mutate(userId);
     };
 
     return (
@@ -185,10 +214,38 @@ function MembersSettings() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {loading ? (
-                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Đang tải...</td></tr>
+                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500"><i className="fa-solid fa-spinner fa-spin mr-2" />Đang tải...</td></tr>
                         ) : members.length === 0 ? (
                             <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Chưa có thành viên nào. Hãy mời thêm!</td></tr>
-                        ) : null}
+                        ) : (
+                            members.map(member => (
+                                <tr key={member.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                                {member.fullName?.charAt(0) || 'U'}
+                                            </div>
+                                            <span className="font-medium text-gray-900">{member.fullName}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-600 font-mono text-xs">{member.email}</td>
+                                    <td className="px-6 py-4">
+                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full border border-gray-200">
+                                            {member.position?.title || 'Thành viên'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button
+                                            onClick={() => handleRemove(member.id)}
+                                            className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
+                                            title="Xóa thành viên"
+                                        >
+                                            <i className="fa-regular fa-trash-can" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -196,7 +253,9 @@ function MembersSettings() {
             <InviteMemberModal
                 isOpen={showInviteModal}
                 onClose={() => setShowInviteModal(false)}
-                onSuccess={() => { }}
+                onSuccess={() => {
+                    queryClient.invalidateQueries(['company-members', currentWorkspace?.id]);
+                }}
             />
         </div>
     );
@@ -369,12 +428,12 @@ function ModulesSettings({ workspace }) {
                             disabled={updateMutation.isPending}
                         />
                         <ToggleRow
-                            icon="fa-bolt"
-                            iconColor="text-amber-500"
-                            title="Automation"
-                            description="Tự động hóa workflow dự án (Premium)"
-                            enabled={settings.automationEnabled === true}
-                            onToggle={() => handleToggle('automationEnabled')}
+                            icon="fa-link"
+                            iconColor="text-indigo-500"
+                            title="Webhook Integration"
+                            description="Kết nối với hệ thống bên ngoài (Slack, Discord, etc.)"
+                            enabled={settings.webhookEnabled === true}
+                            onToggle={() => handleToggle('webhookEnabled')}
                             disabled={updateMutation.isPending}
                         />
                     </div>

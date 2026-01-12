@@ -87,8 +87,9 @@ public class UsersController {
                 DoAn.BE.company.entity.CompanyMember member = new DoAn.BE.company.entity.CompanyMember();
                 member.setUser(newUser);
                 member.setCompany(company);
-                member.setRole(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
-                member.setPermissions(roleTemplateService.getTemplate(DoAn.BE.company.entity.CompanyRole.EMPLOYEE));
+                member.getRoles().add(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
+                member.setPermissions(
+                        roleTemplateService.getTemplate(java.util.Set.of(DoAn.BE.company.entity.CompanyRole.EMPLOYEE)));
                 member.setInvitedAt(java.time.LocalDateTime.now());
                 member.setIsActive(true);
                 companyMemberRepository.save(member);

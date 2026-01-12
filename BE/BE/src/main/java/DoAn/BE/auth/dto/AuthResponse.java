@@ -54,6 +54,7 @@ public class AuthResponse {
         private String name;
         private String slug;
         private CompanyRole role; // Vai trò của user trong công ty này
+        private DoAn.BE.company.entity.UserPermissions permissions; // [NEW] Granular permissions
         private String logoUrl;
     }
 }

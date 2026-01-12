@@ -154,7 +154,7 @@ public class AccessControlService {
     }
 
     private boolean isCompanyAdminOrOwner(CompanyMember member) {
-        return member.getRole() == CompanyRole.OWNER || member.getRole() == CompanyRole.ADMIN;
+        return member.hasAnyRole(CompanyRole.OWNER, CompanyRole.ADMIN);
     }
 
     // ========================================================================
@@ -198,7 +198,7 @@ public class AccessControlService {
         CompanyMember member = getCurrentMember();
         if (member == null)
             return false;
-        return isCompanyAdminOrOwner(member) || member.getRole() == CompanyRole.MANAGER_HR
+        return isCompanyAdminOrOwner(member) || member.hasAnyRole(CompanyRole.MANAGER_HR)
                 || permissionService.hasPermission(member, "HR", "VIEW_LIST");
     }
 
@@ -206,7 +206,7 @@ public class AccessControlService {
         CompanyMember member = getCurrentMember();
         if (member == null)
             return false;
-        return isCompanyAdminOrOwner(member) || member.getRole() == CompanyRole.MANAGER_ACCOUNTING
+        return isCompanyAdminOrOwner(member) || member.hasAnyRole(CompanyRole.MANAGER_ACCOUNTING)
                 || permissionService.hasPermission(member, "SALARY", "VIEW");
     }
 
@@ -214,7 +214,7 @@ public class AccessControlService {
         CompanyMember member = getCurrentMember();
         if (member == null)
             return false;
-        return isCompanyAdminOrOwner(member) || member.getRole() == CompanyRole.MANAGER_PROJECT
+        return isCompanyAdminOrOwner(member) || member.hasAnyRole(CompanyRole.MANAGER_PROJECT)
                 || permissionService.hasPermission(member, "PROJECT", "CREATE");
     }
 
@@ -254,11 +254,8 @@ public class AccessControlService {
             return false;
         }
 
-        CompanyRole role = member.getRole();
-        return role == CompanyRole.OWNER ||
-                role == CompanyRole.ADMIN ||
-                role == CompanyRole.MANAGER_PROJECT ||
-                role == CompanyRole.EMPLOYEE;
+        return member.hasAnyRole(CompanyRole.OWNER, CompanyRole.ADMIN, CompanyRole.MANAGER_PROJECT,
+                CompanyRole.EMPLOYEE);
     }
 
     public void checkPermission(Long companyId, CompanyRole requiredRole) {
@@ -272,14 +269,14 @@ public class AccessControlService {
             return;
         }
 
-        if (member.getRole() != requiredRole) {
+        if (!member.hasAnyRole(requiredRole)) {
             throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này");
         }
     }
 
     public void checkHRPermission(User user) {
-         if (!isHRManager()) {
-             throw new ForbiddenException("Yêu cầu quyền Quản lý nhân sự");
-         }
+        if (!isHRManager()) {
+            throw new ForbiddenException("Yêu cầu quyền Quản lý nhân sự");
+        }
     }
 }

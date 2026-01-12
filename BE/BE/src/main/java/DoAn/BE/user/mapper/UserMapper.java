@@ -41,7 +41,9 @@ public class UserMapper {
                         .findFirst()
                         .ifPresentOrElse(member -> {
                             // Dùng CompanyRole trực tiếp
-                            dto.setRole(member.getRole() != null ? member.getRole() : CompanyRole.EMPLOYEE);
+                            CompanyRole primaryRole = member.getRoles().stream().findFirst()
+                                    .orElse(CompanyRole.EMPLOYEE);
+                            dto.setRole(primaryRole);
                         }, () -> dto.setRole(CompanyRole.EMPLOYEE));
             } else {
                 dto.setRole(CompanyRole.EMPLOYEE);
@@ -53,7 +55,7 @@ public class UserMapper {
                         .map(m -> new UserDTO.CompanyMembershipInfo(
                                 m.getCompany().getCompanyId(),
                                 m.getCompany().getName(),
-                                m.getRole() != null ? m.getRole().name() : null,
+                                m.getRoles().stream().findFirst().map(Enum::name).orElse(null),
                                 m.getIsActive()))
                         .collect(Collectors.toList());
                 dto.setCompanyMemberships(memberships);

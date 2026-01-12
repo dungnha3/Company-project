@@ -2,10 +2,9 @@ package DoAn.BE.company.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import DoAn.BE.company.entity.CompanyMember;
@@ -43,30 +42,42 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
         // Kiểm tra user có trong công ty và đang active không
         boolean existsByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(Long userId, Long companyId);
 
-        // Lấy members theo role trong công ty
-        List<CompanyMember> findByCompany_CompanyIdAndRoleAndIsActiveTrue(Long companyId, CompanyRole role);
-
-        // Đếm members theo role trong công ty
-        long countByCompany_CompanyIdAndRoleAndIsActiveTrue(Long companyId, CompanyRole role);
-
-        // Lấy tất cả HR Managers trong công ty
-        @Query("SELECT m FROM CompanyMember m WHERE m.company.companyId = :companyId " +
-                        "AND m.role = 'MANAGER_HR' AND m.isActive = true")
-        List<CompanyMember> findHRManagersByCompany(@Param("companyId") Long companyId);
-
-        // Lấy tất cả Project Managers trong công ty
-        @Query("SELECT m FROM CompanyMember m WHERE m.company.companyId = :companyId " +
-                        "AND m.role = 'MANAGER_PROJECT' AND m.isActive = true")
-        List<CompanyMember> findProjectManagersByCompany(@Param("companyId") Long companyId);
-
-        // Lấy tất cả Admins/Owners trong công ty
-        @Query("SELECT m FROM CompanyMember m WHERE m.company.companyId = :companyId " +
-                        "AND m.role IN ('OWNER', 'ADMIN') AND m.isActive = true")
-        List<CompanyMember> findAdminsByCompany(@Param("companyId") Long companyId);
-
         // Check by Entity
         boolean existsByUserAndCompany(DoAn.BE.user.entity.User user, DoAn.BE.company.entity.Company company);
 
         // [SAAS] Đếm tổng số user active trong công ty để check limit gói
         long countByCompany_CompanyIdAndIsActiveTrue(Long companyId);
+
+        // ==========================================
+        // MULTI-ROLE SUPPORT (Derived Queries)
+        // ==========================================
+
+        // Tìm members có chứa role cụ thể
+        List<CompanyMember> findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
+
+        // Đếm members có chứa role cụ thể
+        long countByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
+
+        // Tìm members có chứa 1 trong các role (OR logic)
+        List<CompanyMember> findByCompany_CompanyIdAndRolesInAndIsActiveTrue(Long companyId, Set<CompanyRole> roles);
+
+        // ==========================================
+        // DEFAULT METHODS
+        // ==========================================
+
+        // Lấy tất cả HR Managers trong công ty
+        default List<CompanyMember> findHRManagersByCompany(Long companyId) {
+                return findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(companyId, CompanyRole.MANAGER_HR);
+        }
+
+        // Lấy tất cả Project Managers trong công ty
+        default List<CompanyMember> findProjectManagersByCompany(Long companyId) {
+                return findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(companyId, CompanyRole.MANAGER_PROJECT);
+        }
+
+        // Lấy tất cả Admins/Owners trong công ty
+        default List<CompanyMember> findAdminsByCompany(Long companyId) {
+                return findByCompany_CompanyIdAndRolesInAndIsActiveTrue(companyId,
+                                Set.of(CompanyRole.OWNER, CompanyRole.ADMIN));
+        }
 }

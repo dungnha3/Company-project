@@ -12,9 +12,10 @@ import ExportDropdown from './components/ExportDropdown';
 
 // Lazy load new feature tabs
 const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
-const AutomationPage = lazy(() => import('../automation/AutomationPage'));
 const SprintTab = lazy(() => import('./tabs/SprintTab'));
 const PhaseTab = lazy(() => import('./tabs/PhaseTab'));
+const IssueListTab = lazy(() => import('./tabs/IssueListTab'));
+const ProjectSettingsTab = lazy(() => import('./tabs/ProjectSettingsTab'));
 
 const PageLoader = () => <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-2xl text-primary" /></div>;
 
@@ -45,8 +46,9 @@ export default function ProjectDetailPage() {
         if (isProjectFeatureEnabled(settings, 'analytics')) {
             baseTabs.push({ id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' });
         }
-        if (isProjectFeatureEnabled(settings, 'automation')) {
-            baseTabs.push({ id: 'automation', label: 'Automation', icon: 'fa-bolt' });
+        // Webhook integration replaces removed Automation module
+        if (isProjectFeatureEnabled(settings, 'webhook')) {
+            baseTabs.push({ id: 'webhook', label: 'Webhooks', icon: 'fa-link' });
         }
         baseTabs.push({ id: 'settings', label: 'Cài đặt', icon: 'fa-gear' });
 
@@ -143,19 +145,29 @@ export default function ProjectDetailPage() {
                         <PhaseTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'list' && <div className="text-center py-10 text-gray-400">Issue List coming soon...</div>}
+                {activeTab === 'list' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <IssueListTab projectId={project.projectId} />
+                    </Suspense>
+                )}
                 {activeTab === 'gantt' && <ProjectGantt project={project} />}
                 {activeTab === 'analytics' && (
                     <Suspense fallback={<PageLoader />}>
                         <AnalyticsPage />
                     </Suspense>
                 )}
-                {activeTab === 'automation' && (
+                {activeTab === 'webhook' && (
+                    <div className="card p-6 text-center">
+                        <i className="fa-solid fa-link text-4xl text-indigo-500 mb-4" />
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Webhook Integration</h3>
+                        <p className="text-gray-500">Cài đặt webhook trong Company Settings để kết nối với hệ thống bên ngoài.</p>
+                    </div>
+                )}
+                {activeTab === 'settings' && (
                     <Suspense fallback={<PageLoader />}>
-                        <AutomationPage />
+                        <ProjectSettingsTab project={project} />
                     </Suspense>
                 )}
-                {activeTab === 'settings' && <div className="text-center py-10 text-gray-400">Project Settings coming soon...</div>}
             </div>
 
             {/* Edit Project Modal */}
@@ -171,12 +183,41 @@ export default function ProjectDetailPage() {
 }
 
 function OverviewTab({ project }) {
+    const { data: activitiesData, isLoading } = useQuery({
+        queryKey: ['project-activities', project.projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.ACTIVITIES.BY_PROJECT(project.projectId))).data,
+    });
+
+    const activities = activitiesData?.content || [];
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <div className="card p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Hoạt động gần đây</h3>
-                    <p className="text-gray-500 italic">Chưa có hoạt động nào.</p>
+                    {isLoading ? (
+                        <div className="text-center py-4"><i className="fa-solid fa-spinner fa-spin text-gray-400" /></div>
+                    ) : activities.length === 0 ? (
+                        <p className="text-gray-500 italic">Chưa có hoạt động nào.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {activities.map(act => (
+                                <div key={act.activityId || act.id} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                                        {act.user?.fullName?.charAt(0) || 'U'}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-900">
+                                            <span className="font-medium">{act.user?.fullName}</span> {act.description}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            {new Date(act.createdAt).toLocaleString('vi-VN')}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="space-y-6">

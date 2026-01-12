@@ -13,6 +13,8 @@ export default function CalendarPage() {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [currentWeek, setCurrentWeek] = useState(new Date());
+    const [viewMode, setViewMode] = useState('month'); // 'month' | 'week' | 'day'
     const [showForm, setShowForm] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [formData, setFormData] = useState({
@@ -27,7 +29,7 @@ export default function CalendarPage() {
 
     useEffect(() => {
         loadEvents();
-    }, [currentMonth]);
+    }, [currentMonth, currentWeek, viewMode]);
 
     const loadEvents = async () => {
         try {
@@ -76,6 +78,37 @@ export default function CalendarPage() {
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1));
     };
 
+    const navigateWeek = (delta) => {
+        const newDate = new Date(currentWeek);
+        newDate.setDate(newDate.getDate() + (delta * 7));
+        setCurrentWeek(newDate);
+    };
+
+    const getWeekNumber = (date) => {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    };
+
+    const getWeekDays = () => {
+        const startOfWeek = new Date(currentWeek);
+        const dayOfWeek = startOfWeek.getDay();
+        startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(startOfWeek);
+            day.setDate(startOfWeek.getDate() + i);
+            days.push(day);
+        }
+        return days;
+    };
+
+    const getEventsForDate = (date) => {
+        if (!date) return [];
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return events.filter(e => e.startTime?.startsWith(dateStr));
+    };
     const getDaysInMonth = () => {
         const year = currentMonth.getFullYear();
         const month = currentMonth.getMonth();
@@ -100,25 +133,72 @@ export default function CalendarPage() {
     return (
         <div className="p-6 max-w-6xl mx-auto">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-white">📅 Lịch</h1>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">📅 Lịch</h1>
+                <div className="flex items-center gap-3">
+                    {/* View Switcher */}
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        {[
+                            { id: 'month', label: 'Tháng', icon: 'fa-calendar' },
+                            { id: 'week', label: 'Tuần', icon: 'fa-calendar-week' },
+                            { id: 'day', label: 'Ngày', icon: 'fa-calendar-day' },
+                        ].map(view => (
+                            <button
+                                key={view.id}
+                                onClick={() => setViewMode(view.id)}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${viewMode === view.id
+                                    ? 'bg-white shadow-sm text-gray-900'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <i className={`fa-solid ${view.icon} text-xs`} />
+                                <span className="hidden sm:inline">{view.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="btn-primary"
+                    >
+                        <i className="fa-solid fa-plus mr-1" /> Tạo sự kiện
+                    </button>
+                </div>
+            </div>
+
+            {/* Navigation (Month/Week/Day) */}
+            <div className="flex justify-center items-center gap-4 mb-5">
                 <button
-                    onClick={() => setShowForm(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                    onClick={() => viewMode === 'month' ? navigateMonth(-1) : navigateWeek(-1)}
+                    className="w-10 h-10 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
                 >
-                    + Tạo sự kiện
+                    <i className="fa-solid fa-chevron-left" />
+                </button>
+                <h2 className="text-lg font-semibold text-gray-800 min-w-[200px] text-center">
+                    {viewMode === 'month'
+                        ? `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`
+                        : viewMode === 'week'
+                            ? `Tuần ${getWeekNumber(currentWeek)}, ${currentWeek.getFullYear()}`
+                            : currentWeek.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })
+                    }
+                </h2>
+                <button
+                    onClick={() => viewMode === 'month' ? navigateMonth(1) : navigateWeek(1)}
+                    className="w-10 h-10 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                    <i className="fa-solid fa-chevron-right" />
+                </button>
+                <button
+                    onClick={() => { setCurrentMonth(new Date()); setCurrentWeek(new Date()); }}
+                    className="px-3 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                    Hôm nay
                 </button>
             </div>
 
-            {/* Month Navigation */}
-            <div className="flex justify-center items-center gap-6 mb-5">
-                <button onClick={() => navigateMonth(-1)} className="w-10 h-10 bg-slate-800 border border-slate-700 rounded-lg text-white text-lg hover:bg-slate-700 transition-colors">←</button>
-                <h2 className="text-xl font-semibold text-white min-w-[200px] text-center">{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h2>
-                <button onClick={() => navigateMonth(1)} className="w-10 h-10 bg-slate-800 border border-slate-700 rounded-lg text-white text-lg hover:bg-slate-700 transition-colors">→</button>
-            </div>
-
             {loading ? (
-                <div className="text-center text-slate-400 py-16">Đang tải...</div>
+                <div className="text-center text-gray-400 py-16">
+                    <i className="fa-solid fa-spinner fa-spin text-2xl" />
+                </div>
             ) : (
                 <div className="grid grid-cols-7 gap-1 bg-slate-700 rounded-xl p-2">
                     {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(day => (

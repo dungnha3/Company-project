@@ -284,37 +284,9 @@ BEGIN
 END
 
 -- =====================================================
--- 15. AUTOMATION RULES
+-- 15. AUTOMATION RULES - SKIPPED (Module deleted)
 -- =====================================================
-IF NOT EXISTS (SELECT 1 FROM automation_rules WHERE project_id = @project_id)
-BEGIN
-    INSERT INTO automation_rules (project_id, name, description, trigger_type, is_active, created_by, company_id, created_at) VALUES
-        (@project_id, N'Auto-assign to PM', N'Tự động assign issues CRITICAL cho PM', 'ISSUE_CREATED', 1, @admin_user_id, 1, GETDATE()),
-        (@project_id, N'Notify on Done', N'Thông báo khi issue hoàn thành', 'STATUS_CHANGED', 1, @admin_user_id, 1, GETDATE()),
-        (@project_id, N'Due date reminder', N'Nhắc nhở deadline', 'DUE_DATE_APPROACHING', 0, @pm_user_id, 1, GETDATE());
-END
-
--- Add conditions and actions for rules
-DECLARE @rule1_id BIGINT, @rule2_id BIGINT;
-SELECT TOP 1 @rule1_id = rule_id FROM automation_rules WHERE name LIKE N'Auto-assign%';
-SELECT TOP 1 @rule2_id = rule_id FROM automation_rules WHERE name LIKE N'Notify on Done%';
-
-IF @rule1_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM automation_conditions WHERE rule_id = @rule1_id)
-BEGIN
-    INSERT INTO automation_conditions (rule_id, field, operator, value) VALUES
-        (@rule1_id, 'priority', 'EQUALS', 'CRITICAL');
-    INSERT INTO automation_actions (rule_id, action_type, action_config, order_index) VALUES
-        (@rule1_id, 'UPDATE_FIELD', '{"field":"assignee","value":"' + CAST(@pm_user_id AS VARCHAR) + '"}', 1);
-END
-
-IF @rule2_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM automation_conditions WHERE rule_id = @rule2_id)
-BEGIN
-    INSERT INTO automation_conditions (rule_id, field, operator, value) VALUES
-        (@rule2_id, 'status', 'EQUALS', 'Done');
-    INSERT INTO automation_actions (rule_id, action_type, action_config, order_index) VALUES
-        (@rule2_id, 'SEND_NOTIFICATION', '{"message":"Issue đã hoàn thành!"}', 1),
-        (@rule2_id, 'ADD_COMMENT', '{"content":"Issue marked as Done by automation"}', 2);
-END
+PRINT N'⏭️ Automation Rules: Skipped (module deleted from codebase)';
 
 -- =====================================================
 -- 16. CHAT ROOMS (if table exists)
@@ -429,7 +401,6 @@ SELECT 'Issue Comments', COUNT(*) FROM issue_comments UNION ALL
 SELECT 'Time Logs', COUNT(*) FROM time_logs WHERE company_id = 1 UNION ALL
 SELECT 'Calendar Events', COUNT(*) FROM calendar_events WHERE company_id = 1 UNION ALL
 SELECT 'Event Attendees', COUNT(*) FROM event_attendees UNION ALL
-SELECT 'Automation Rules', COUNT(*) FROM automation_rules WHERE company_id = 1 UNION ALL
 SELECT 'Notifications', COUNT(*) FROM notifications;
 PRINT N'';
 PRINT N'🎉 Sẵn sàng test TẤT CẢ tính năng!';
@@ -439,7 +410,7 @@ PRINT N'   ✓ HRM: Departments, Positions, Employees, Attendance, Leave, Salary
 PRINT N'   ✓ Projects: Projects, Sprints, Issues, Comments, Activities, Phases';
 PRINT N'   ✓ Time Tracking: Time Logs';
 PRINT N'   ✓ Calendar: Events, Attendees';
-PRINT N'   ✓ Automation: Rules, Conditions, Actions';
+-- Automation module removed
 PRINT N'   ✓ Chat: Rooms';
 PRINT N'   ✓ Notifications';
 PRINT N'   ✓ Audit Logs';

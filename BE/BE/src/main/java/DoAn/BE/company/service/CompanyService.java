@@ -154,7 +154,7 @@ public class CompanyService {
         CompanyMember owner = new CompanyMember();
         owner.setCompany(company);
         owner.setUser(currentUser);
-        owner.setRole(CompanyRole.OWNER);
+        owner.getRoles().add(CompanyRole.OWNER);
         owner.setIsActive(true);
         owner.setJoinedAt(java.time.LocalDateTime.now());
         companyMemberRepository.save(owner);
@@ -289,8 +289,9 @@ public class CompanyService {
         resp.setLogoUrl(company.getLogoUrl());
         resp.setAddress(company.getAddress());
         resp.setPlan(company.getPlan());
-        resp.setRole(member.getRole().name());
-        resp.setOwner(member.getRole() == CompanyRole.OWNER);
+        resp.setRole(member.getRoles().stream().findFirst().map(Enum::name).orElse(null));
+        resp.setPermissions(member.getPermissions());
+        resp.setOwner(member.hasAnyRole(CompanyRole.OWNER));
         resp.setIsActive(company.getIsActive());
         return resp;
     }

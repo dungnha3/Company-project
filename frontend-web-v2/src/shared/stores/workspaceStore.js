@@ -64,7 +64,8 @@ export const useWorkspaceStore = create(
                             name: personalWorkspace.name,
                             type: 'PERSONAL',
                             plan: personalWorkspace.plan,
-                            role: 'OWNER'
+                            roles: ['OWNER'], // Personal workspace always OWNER
+                            permissions: null, // Full access (implicit)
                         },
                         workspaceType: 'PERSONAL',
                     });
@@ -85,10 +86,14 @@ export const useWorkspaceStore = create(
                         console.warn('Failed to fetch company settings:', error);
                     }
 
+                    // Convert single role to array if needed (backward compatibility)
+                    const roles = company.roles || (company.role ? [company.role] : []);
+
                     set({
                         currentWorkspace: {
                             ...company,
                             settings, // Attach settings to workspace
+                            roles: roles,
                         },
                         workspaceType: 'COMPANY',
                     });
@@ -113,17 +118,38 @@ export const useWorkspaceStore = create(
                 return workspaceType === 'COMPANY' ? currentWorkspace?.id : null;
             },
 
-            // Role check helper - for Company Admin permissions (not System Admin)
+            // Role check helper
             hasRole: (...allowedRoles) => {
                 const { currentWorkspace } = get();
-                const currentRole = currentWorkspace?.role || 'MEMBER';
-                return allowedRoles.includes(currentRole);
+                // Check against roles array
+                const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
+                return allowedRoles.some(role => userRoles.includes(role));
             },
 
-            // Current role getter
+            // Permission check helper
+            hasPermission: (permissionKey) => {
+                const { currentWorkspace } = get();
+                if (!currentWorkspace || get().workspaceType === 'PERSONAL') return true; // Safe default for Personal
+
+                // Owner/Admin bypass
+                const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : []);
+                if (userRoles.includes('OWNER') || userRoles.includes('ADMIN')) return true;
+
+                // Check user permissions object
+                const perms = currentWorkspace.permissions;
+                if (!perms) return false; // No perms object = no access (unless owner/admin)
+
+                // Simple mapping for now, can be expanded or delegated to featureHelper
+                // But featureHelper needs access to perms.
+                // We will return the RAW logic here for direct usage, but featureHelper is preferred for "Chain of Logic"
+                return !!perms[permissionKey];
+            },
+
+            // Current role getter (primary)
             getCurrentRole: () => {
                 const { currentWorkspace } = get();
-                return currentWorkspace?.role || 'MEMBER';
+                const roles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
+                return roles[0]; // Return primary role
             },
         }),
         {

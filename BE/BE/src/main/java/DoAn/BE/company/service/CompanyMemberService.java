@@ -29,7 +29,6 @@ public class CompanyMemberService {
     private final CompanyMemberRepository memberRepository;
     private final RoleTemplateService roleTemplateService;
     private final AccessControlService accessControlService;
-    private final DoAn.BE.audit.service.AuditLogService auditLogService;
 
     // [Lấy danh sách thành viên của công ty]
     // Quyền: Bất kỳ nhân viên nào trong công ty đều xem được (để chat, assign
@@ -64,10 +63,11 @@ public class CompanyMemberService {
         accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
 
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
-        CompanyRole oldRole = targetMember.getRole();
 
         // [Business Rule: Không thể đổi role của Owner]
-        validateNotOwner(targetMember, "Không thể thay đổi vai trò của Chủ sở hữu");
+        if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
+            throw new ForbiddenException("Không thể thay đổi vai trò của Chủ sở hữu");
+        }
 
         // [Business Rule: Không thể gán role Owner trực tiếp - Phải dùng chức năng
         // Chuyển giao]
@@ -77,26 +77,14 @@ public class CompanyMemberService {
         }
 
         // [CORE LOGIC: Cập nhật Role và Reset Quyền theo Template]
-        targetMember.setRole(newRole);
-        // Lấy mẫu quyền tương ứng với Role mới (Ví dụ: HR -> Full quyền HR)
-        targetMember.setPermissions(roleTemplateService.getTemplate(newRole));
+        // REFACTOR: Replacing all roles with the new single role
+        targetMember.getRoles().clear();
+        targetMember.getRoles().add(newRole);
+
+        // Lấy mẫu quyền tương ứng với Set roles mới
+        targetMember.setPermissions(roleTemplateService.getTemplate(targetMember.getRoles()));
 
         memberRepository.save(targetMember);
-
-        // Log audit action for role change
-        User currentUser = accessControlService.getCurrentUser();
-        if (currentUser != null) {
-            auditLogService.logAction(
-                    currentUser,
-                    "CHANGE_ROLE",
-                    "USER",
-                    targetUserId,
-                    java.util.Map.of("role", oldRole.name()),
-                    java.util.Map.of("role", newRole.name(), "username", targetMember.getUser().getUsername()),
-                    DoAn.BE.audit.entity.AuditLog.Severity.WARNING,
-                    null,
-                    null);
-        }
 
         log.info("Đã thay đổi role của user {} thành {} trong công ty {} và áp dụng bộ quyền mẫu mới.",
                 targetUserId, newRole, companyId);
@@ -113,7 +101,9 @@ public class CompanyMemberService {
         accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
 
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
-        validateNotOwner(targetMember, "Không thể xóa Chủ sở hữu khỏi công ty");
+        if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
+            throw new ForbiddenException("Không thể xóa Chủ sở hữu khỏi công ty");
+        }
 
         memberRepository.delete(targetMember);
         log.info("Đã xóa user {} khỏi công ty {}", targetUserId, companyId);
@@ -131,7 +121,7 @@ public class CompanyMemberService {
                 .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(currentUser.getUserId(), companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bạn không phải là thành viên của công ty này"));
 
-        if (member.getRole() == CompanyRole.OWNER) {
+        if (member.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException(
                     "Chủ sở hữu không thể rời công ty. Vui lòng chuyển quyền sở hữu hoặc xóa công ty.");
         }
@@ -148,12 +138,14 @@ public class CompanyMemberService {
         accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
 
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
-        validateNotOwner(targetMember, "Không thể sửa quyền hạn của Chủ sở hữu");
+        if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
+            throw new ForbiddenException("Không thể sửa quyền hạn của Chủ sở hữu");
+        }
 
         UserPermissions perms = targetMember.getPermissions();
         if (perms == null) {
             // Fallback nếu null: Lấy template hiện tại của Role đang có
-            perms = roleTemplateService.getTemplate(targetMember.getRole());
+            perms = roleTemplateService.getTemplate(targetMember.getRoles());
             targetMember.setPermissions(perms);
         }
 
@@ -173,19 +165,14 @@ public class CompanyMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thành viên"));
     }
 
-    private void validateNotOwner(CompanyMember member, String errorMessage) {
-        if (member.getRole() == CompanyRole.OWNER) {
-            throw new ForbiddenException(errorMessage);
-        }
-    }
-
     private CompanyMemberDto mapToDto(CompanyMember member) {
         CompanyMemberDto dto = new CompanyMemberDto();
         dto.setUserId(member.getUser().getUserId());
         dto.setFullName(member.getUser().getFullName());
         dto.setEmail(member.getUser().getEmail());
         dto.setAvatarUrl(member.getUser().getAvatarUrl());
-        dto.setRole(member.getRole());
+        // [Mapping] For now map to primary role
+        dto.setRole(member.getRoles().stream().findFirst().orElse(CompanyRole.EMPLOYEE));
         dto.setActive(member.getIsActive());
         dto.setPermissions(member.getPermissions());
         return dto;

@@ -1,48 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
-
-// Since OKR endpoints may not exist yet, we'll use mock data structure
-const MOCK_OBJECTIVES = [
-    {
-        id: 1,
-        title: 'Tăng doanh thu Q1',
-        description: 'Đạt mục tiêu doanh thu quý 1',
-        owner: { fullName: 'Nguyễn Văn A' },
-        period: 'Q1-2024',
-        status: 'IN_PROGRESS',
-        progress: 65,
-        keyResults: [
-            { id: 1, title: 'Tăng 20% khách hàng mới', target: 100, current: 65, unit: '%' },
-            { id: 2, title: 'Doanh số đạt 5 tỷ', target: 5000, current: 3250, unit: 'triệu' },
-        ]
-    },
-    {
-        id: 2,
-        title: 'Nâng cao chất lượng sản phẩm',
-        owner: { fullName: 'Trần Thị B' },
-        period: 'Q1-2024',
-        status: 'ON_TRACK',
-        progress: 80,
-        keyResults: [
-            { id: 3, title: 'Giảm bug xuống < 10/tháng', target: 10, current: 8, unit: 'bugs' },
-            { id: 4, title: 'Test coverage > 80%', target: 80, current: 75, unit: '%' },
-        ]
-    },
-    {
-        id: 3,
-        title: 'Phát triển đội ngũ',
-        owner: { fullName: 'Lê Văn C' },
-        period: 'Q1-2024',
-        status: 'AT_RISK',
-        progress: 35,
-        keyResults: [
-            { id: 5, title: 'Tuyển 5 nhân sự mới', target: 5, current: 2, unit: 'người' },
-            { id: 6, title: 'Training 100% team', target: 100, current: 40, unit: '%' },
-        ]
-    },
-];
 
 const STATUS_CONFIG = {
     ON_TRACK: { label: 'Đúng tiến độ', color: 'bg-green-100 text-green-700', icon: 'fa-check-circle' },
@@ -57,16 +17,41 @@ export default function OKRPage() {
     const [selectedPeriod, setSelectedPeriod] = useState('Q1-2024');
     const [viewMode, setViewMode] = useState('list'); // list, grid
     const { showToast } = useToast();
+    const queryClient = useQueryClient();
 
-    // For now, use mock data. Replace with API call when backend is ready
-    const objectives = MOCK_OBJECTIVES;
+    // Fetch OKRs
+    const { data: objectives = [], isLoading } = useQuery({
+        queryKey: ['okrs', selectedPeriod],
+        queryFn: async () => {
+            try {
+                return (await apiClient.get(ENDPOINTS.OKR.LIST, { params: { period: selectedPeriod } })).data;
+            } catch (e) {
+                return [];
+            }
+        }
+    });
+
+    // Create OKR
+    const createMutation = useMutation({
+        mutationFn: async (newOKR) => {
+            return (await apiClient.post(ENDPOINTS.OKR.CREATE, newOKR)).data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(['okrs']);
+            showToast('Tạo OKR thành công', 'success');
+            setShowModal(false);
+        },
+        onError: (err) => {
+            showToast('Không thể tạo OKR: ' + (err.response?.data?.message || err.message), 'error');
+        }
+    });
 
     // Calculate overall stats
     const stats = {
         total: objectives.length,
         onTrack: objectives.filter(o => o.status === 'ON_TRACK').length,
         atRisk: objectives.filter(o => o.status === 'AT_RISK' || o.status === 'BEHIND').length,
-        avgProgress: Math.round(objectives.reduce((sum, o) => sum + o.progress, 0) / objectives.length) || 0,
+        avgProgress: objectives.length ? Math.round(objectives.reduce((sum, o) => sum + (o.progress || 0), 0) / objectives.length) : 0,
     };
 
     return (
@@ -168,26 +153,24 @@ export default function OKRPage() {
 
             {/* Objectives List */}
             <div className={viewMode === 'grid' ? 'grid md:grid-cols-2 gap-4' : 'space-y-4'}>
-                {objectives.map(objective => (
+                {objectives.length === 0 && !isLoading ? (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center col-span-2">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i className="fa-solid fa-bullseye text-2xl text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">Chưa có OKR nào</h3>
+                        <p className="text-gray-500 mb-4">Bắt đầu bằng cách tạo mục tiêu đầu tiên</p>
+                        <button onClick={() => setShowModal(true)} className="btn-primary">
+                            <i className="fa-solid fa-plus mr-2" /> Tạo OKR
+                        </button>
+                    </div>
+                ) : objectives.map(objective => (
                     <ObjectiveCard key={objective.id} objective={objective} viewMode={viewMode} />
                 ))}
             </div>
 
-            {objectives.length === 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i className="fa-solid fa-bullseye text-2xl text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Chưa có OKR nào</h3>
-                    <p className="text-gray-500 mb-4">Bắt đầu bằng cách tạo mục tiêu đầu tiên</p>
-                    <button onClick={() => setShowModal(true)} className="btn-primary">
-                        <i className="fa-solid fa-plus mr-2" /> Tạo OKR
-                    </button>
-                </div>
-            )}
-
             {/* Create OKR Modal */}
-            {showModal && <OKRFormModal onClose={() => setShowModal(false)} />}
+            {showModal && <OKRFormModal onClose={() => setShowModal(false)} onSubmit={(data) => createMutation.mutate(data)} isLoading={createMutation.isPending} />}
         </div>
     );
 }
@@ -225,7 +208,7 @@ function ObjectiveCard({ objective, viewMode }) {
                         <div className="flex items-center gap-3 text-sm text-gray-500">
                             <span>
                                 <i className="fa-solid fa-user mr-1" />
-                                {objective.owner?.fullName}
+                                {objective.owner?.fullName || 'N/A'}
                             </span>
                             <span>
                                 <i className="fa-solid fa-calendar mr-1" />
@@ -243,13 +226,13 @@ function ObjectiveCard({ objective, viewMode }) {
                 <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
                     <div
                         className={`absolute left-0 top-0 h-full rounded-full transition-all duration-300 ${objective.progress >= 70 ? 'bg-green-500' :
-                                objective.progress >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                            objective.progress >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                             }`}
-                        style={{ width: `${objective.progress}%` }}
+                        style={{ width: `${objective.progress || 0}%` }}
                     />
                 </div>
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 font-medium">{objective.progress}% hoàn thành</span>
+                    <span className="text-gray-600 font-medium">{objective.progress || 0}% hoàn thành</span>
                     <span className="text-gray-400">
                         {objective.keyResults?.length || 0} Key Results
                         <i className={`fa-solid fa-chevron-${expanded ? 'up' : 'down'} ml-2`} />
@@ -261,8 +244,8 @@ function ObjectiveCard({ objective, viewMode }) {
             {expanded && (
                 <div className="border-t border-gray-100 bg-gray-50/50 p-5 space-y-3">
                     <h4 className="text-sm font-semibold text-gray-600 mb-3">Key Results</h4>
-                    {objective.keyResults?.map(kr => (
-                        <KeyResultItem key={kr.id} keyResult={kr} />
+                    {objective.keyResults?.map((kr, idx) => (
+                        <KeyResultItem key={kr.id || idx} keyResult={kr} />
                     ))}
                 </div>
             )}
@@ -271,7 +254,7 @@ function ObjectiveCard({ objective, viewMode }) {
 }
 
 function KeyResultItem({ keyResult }) {
-    const progress = Math.min(100, Math.round((keyResult.current / keyResult.target) * 100));
+    const progress = Math.min(100, Math.round(((keyResult.current || 0) / (keyResult.target || 1)) * 100));
 
     return (
         <div className="bg-white rounded-lg p-3 border border-gray-100">
@@ -284,8 +267,8 @@ function KeyResultItem({ keyResult }) {
             <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                     className={`absolute left-0 top-0 h-full rounded-full ${progress >= 100 ? 'bg-green-500' :
-                            progress >= 70 ? 'bg-blue-500' :
-                                progress >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                        progress >= 70 ? 'bg-blue-500' :
+                            progress >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                         }`}
                     style={{ width: `${progress}%` }}
                 />
@@ -294,7 +277,7 @@ function KeyResultItem({ keyResult }) {
     );
 }
 
-function OKRFormModal({ onClose, objective }) {
+function OKRFormModal({ onClose, objective, onSubmit, isLoading }) {
     const [formData, setFormData] = useState({
         title: objective?.title || '',
         description: objective?.description || '',
@@ -311,9 +294,7 @@ function OKRFormModal({ onClose, objective }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // TODO: API call when backend is ready
-        console.log('Submit OKR:', formData);
-        onClose();
+        onSubmit(formData);
     };
 
     return (
@@ -439,11 +420,12 @@ function OKRFormModal({ onClose, objective }) {
 
                     {/* Footer */}
                     <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
-                        <button type="button" onClick={onClose} className="btn-ghost">
+                        <button type="button" onClick={onClose} className="btn-ghost" disabled={isLoading}>
                             Hủy
                         </button>
-                        <button type="submit" className="btn-primary">
-                            <i className="fa-solid fa-check mr-2" /> Lưu OKR
+                        <button type="submit" className="btn-primary" disabled={isLoading}>
+                            {isLoading ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : <i className="fa-solid fa-check mr-2" />}
+                            Lưu OKR
                         </button>
                     </div>
                 </form>

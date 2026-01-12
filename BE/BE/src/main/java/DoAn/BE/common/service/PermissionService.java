@@ -3,6 +3,7 @@ package DoAn.BE.common.service;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.Plan;
 import DoAn.BE.company.entity.UserPermissions;
 
 @Service
@@ -18,14 +19,26 @@ public class PermissionService {
     // Helper interfaces for type-safe checks (optional if we use strings)
 
     public boolean hasPermission(CompanyMember member, String feature, String action) {
-        if (member == null || member.getRole() == null || member.getPermissions() == null) {
+        if (member == null || member.getRoles() == null || member.getPermissions() == null) {
             return false;
         }
 
         // Owner/Admin luôn có quyền truy cập (Cơ chế an toàn)
-        if (member.getRole() == DoAn.BE.company.entity.CompanyRole.OWNER ||
-                member.getRole() == DoAn.BE.company.entity.CompanyRole.ADMIN) {
+        if (member.hasAnyRole(DoAn.BE.company.entity.CompanyRole.OWNER, DoAn.BE.company.entity.CompanyRole.ADMIN)) {
+            // NHƯNG vẫn cần check Plan tier - Admin không thể bypass Plan limits
+            if (!isPlanFeatureEnabled(member.getCompany().getPlan(), feature)) {
+                return false;
+            }
             return true;
+        }
+
+        // CẤP ĐỘ 0: KIỂM TRA PLAN TIER (BẮT BUỘC)
+        Plan companyPlan = member.getCompany().getPlan();
+        if (companyPlan == null) {
+            companyPlan = Plan.FREE; // Default to FREE if null
+        }
+        if (!isPlanFeatureEnabled(companyPlan, feature)) {
+            return false;
         }
 
         // CẤP ĐỘ 1: KIỂM TRA CẤU HÌNH CÔNG TY (CỜ TÍNH NĂNG)
@@ -84,10 +97,47 @@ public class PermissionService {
         }
     }
 
-    // Kiểm tra Feature Flag của công ty (Level 1)
+    /**
+     * CẤP ĐỘ 0: Kiểm tra Plan Tier có cho phép feature không
+     * Đây là cấp cao nhất - KHÔNG THỂ BYPASS
+     */
+    private boolean isPlanFeatureEnabled(Plan plan, String feature) {
+        if (plan == null) {
+            plan = Plan.FREE;
+        }
+
+        switch (feature) {
+            case "HR":
+            case "SALARY":
+            case "LEAVE":
+            case "ATTENDANCE":
+            case "CONTRACT":
+            case "REVIEW":
+                return plan.isHrModuleEnabled();
+            case "AI":
+                return plan.isAiModuleEnabled();
+            case "WEBHOOK":
+                return plan.isWebhookEnabled();
+            case "API":
+                return plan.isApiAccessEnabled();
+            case "PROJECT":
+            case "CHAT":
+            case "STORAGE":
+                return true; // Các module cơ bản luôn có
+            default:
+                return true; // Unknown feature, allow by default
+        }
+    }
+
+    /**
+     * CẤP ĐỘ 1: Kiểm tra Feature Flag của công ty (Admin có thể tắt/bật)
+     */
     private boolean isFeatureEnabledForCompany(DoAn.BE.company.entity.CompanySettings settings, String feature) {
-        if (settings == null)
-            return true; // Fail-open or close based on policy. Assume enabled for legacy.
+        if (settings == null) {
+            // Personal Workspace hoặc missing settings = áp dụng FREE plan limits
+            // KHÔNG cho phép tất cả nữa!
+            return isPlanFeatureEnabled(Plan.FREE, feature);
+        }
 
         switch (feature) {
             case "HR":
@@ -113,6 +163,8 @@ public class PermissionService {
                 return settings.isStorageModuleEnabled();
             case "AI":
                 return settings.isAiModuleEnabled();
+            case "WEBHOOK":
+                return settings.isWebhookEnabled();
             default:
                 return true; // Unknown feature, allow by default or handle otherwise
         }

@@ -88,8 +88,8 @@ public class InviteService {
         CompanyMember member = new CompanyMember();
         member.setUser(user);
         member.setCompany(company);
-        member.setRole(role);
-        member.setPermissions(roleTemplateService.getTemplate(role));
+        member.getRoles().add(role);
+        member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(role)));
         member.setInvitedAt(LocalDateTime.now());
         member.setIsActive(true);
 
@@ -110,8 +110,8 @@ public class InviteService {
         CompanyMember member = new CompanyMember();
         member.setUser(newUser);
         member.setCompany(company);
-        member.setRole(role);
-        member.setPermissions(roleTemplateService.getTemplate(role));
+        member.getRoles().add(role);
+        member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(role)));
         member.setInvitedAt(LocalDateTime.now());
         member.setIsActive(false);
 

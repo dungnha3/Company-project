@@ -19,31 +19,50 @@ export default function ActivityLogPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateRange, setDateRange] = useState('7d'); // 7d, 30d, 90d, all
 
-    // Mock activity data - replace with actual API
-    const { data: activities = [], isLoading } = useQuery({
-        queryKey: ['company-activity', currentWorkspace?.id, filter, dateRange],
+    const [page, setPage] = useState(0);
+
+    // Fetch activity data
+    const { data: dataPage, isLoading } = useQuery({
+        queryKey: ['company-activity', currentWorkspace?.id, filter, dateRange, searchQuery, page],
         queryFn: async () => {
-            // Mock data
-            return [
-                { id: 1, type: 'member', user: 'Nguyễn Văn A', email: 'a@company.com', action: 'đã tham gia công ty', target: null, ip: '192.168.1.1', time: new Date(Date.now() - 300000), icon: 'fa-user-plus', color: 'green' },
-                { id: 2, type: 'project', user: 'Trần Thị B', email: 'b@company.com', action: 'đã tạo dự án', target: 'Mobile App', ip: '192.168.1.2', time: new Date(Date.now() - 1800000), icon: 'fa-folder-plus', color: 'blue' },
-                { id: 3, type: 'settings', user: 'Admin', email: 'admin@company.com', action: 'đã cập nhật cài đặt', target: 'Bảo mật', ip: '192.168.1.3', time: new Date(Date.now() - 7200000), icon: 'fa-cog', color: 'purple' },
-                { id: 4, type: 'member', user: 'Lê Văn C', email: 'c@company.com', action: 'được thăng cấp', target: 'Manager', ip: '192.168.1.4', time: new Date(Date.now() - 86400000), icon: 'fa-user-shield', color: 'orange' },
-                { id: 5, type: 'billing', user: 'System', email: 'system', action: 'Thanh toán thành công', target: '$99/tháng', ip: null, time: new Date(Date.now() - 259200000), icon: 'fa-credit-card', color: 'emerald' },
-                { id: 6, type: 'security', user: 'Phạm Văn D', email: 'd@company.com', action: 'đã bật 2FA', target: null, ip: '192.168.1.5', time: new Date(Date.now() - 345600000), icon: 'fa-shield-alt', color: 'red' },
-                { id: 7, type: 'member', user: 'Hoàng Thị E', email: 'e@company.com', action: 'đã rời công ty', target: null, ip: '192.168.1.6', time: new Date(Date.now() - 432000000), icon: 'fa-user-minus', color: 'gray' },
-                { id: 8, type: 'project', user: 'Nguyễn Văn F', email: 'f@company.com', action: 'đã xóa dự án', target: 'Old Project', ip: '192.168.1.7', time: new Date(Date.now() - 518400000), icon: 'fa-trash', color: 'red' },
-            ];
+            const params = { page, size: 20 };
+
+            // Map filters to API params
+            if (filter !== 'all') params.type = filter.toUpperCase();
+            if (searchQuery) params.search = searchQuery;
+
+            // Date range calculation
+            const now = new Date();
+            if (dateRange === '7d') params.after = new Date(now - 7 * 86400000).toISOString();
+            if (dateRange === '30d') params.after = new Date(now - 30 * 86400000).toISOString();
+            if (dateRange === '90d') params.after = new Date(now - 90 * 86400000).toISOString();
+
+            return (await apiClient.get(ENDPOINTS.AUDIT.LIST, { params })).data;
         },
         enabled: !!currentWorkspace?.id,
+        keepPreviousData: true,
     });
 
-    const filteredActivities = activities.filter(a => {
-        if (filter !== 'all' && a.type !== filter) return false;
-        if (searchQuery && !a.user.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            !a.action.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-        return true;
+    const activities = (Array.isArray(dataPage) ? dataPage : dataPage?.content || []).map(log => {
+        const typeKey = log.type?.toLowerCase() || 'system';
+        const config = ACTIVITY_TYPES[typeKey] || { icon: 'fa-info-circle', label: 'Info' };
+
+        return {
+            id: log.id,
+            type: typeKey,
+            user: log.actorName || 'System',
+            email: log.actorEmail,
+            action: log.action,
+            target: log.target,
+            ip: log.ipAddress,
+            time: new Date(log.createdAt),
+            icon: config.icon,
+            color: typeKey === 'security' ? 'red' : typeKey === 'billing' ? 'green' : 'blue'
+        };
     });
+
+    const totalElements = dataPage?.totalElements || 0;
+    const totalPages = dataPage?.totalPages || 0;
 
     return (
         <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -77,8 +96,8 @@ export default function ActivityLogPage() {
                                 key={key}
                                 onClick={() => setFilter(key)}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === key
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 <i className={`fa-solid ${icon} mr-1.5`} />
@@ -113,7 +132,7 @@ export default function ActivityLogPage() {
                     <div className="p-8 text-center">
                         <i className="fa-solid fa-spinner fa-spin text-2xl text-gray-300" />
                     </div>
-                ) : filteredActivities.length === 0 ? (
+                ) : activities.length === 0 ? (
                     <div className="p-12 text-center">
                         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                             <i className="fa-solid fa-history text-2xl text-gray-300" />
@@ -139,7 +158,7 @@ export default function ActivityLogPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filteredActivities.map(activity => (
+                            {activities.map(activity => (
                                 <tr key={activity.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -185,16 +204,27 @@ export default function ActivityLogPage() {
             </div>
 
             {/* Pagination */}
-            {filteredActivities.length > 0 && (
+            {totalElements > 0 && (
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-gray-500">
-                        Hiển thị {filteredActivities.length} hoạt động
+                        Hiển thị {activities.length} / {totalElements} hoạt động
                     </p>
-                    <div className="flex gap-2">
-                        <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <div className="flex gap-2 items-center">
+                        <button
+                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                            disabled={page === 0}
+                            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             ← Trước
                         </button>
-                        <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                        <span className="text-sm text-gray-600 mx-2">
+                            Trang {page + 1} / {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setPage(p => p + 1)}
+                            disabled={page >= totalPages - 1}
+                            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             Sau →
                         </button>
                     </div>

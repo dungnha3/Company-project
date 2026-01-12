@@ -14,6 +14,7 @@ public class CompanyDto {
         private Plan plan;
         private boolean isOwner; // Helper for frontend
         private String role; // Current user's role
+        private DoAn.BE.company.entity.UserPermissions permissions; // [NEW] Granular permissions
         private Boolean isActive; // [SAAS] For System Admin UI
     }
 

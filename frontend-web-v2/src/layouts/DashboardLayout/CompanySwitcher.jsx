@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { getRoleLabel } from '@shared/utils/roleHelper';
+import CreateCompanyModal from '@features/company/components/CreateCompanyModal';
 
 /**
  * WorkspaceSwitcher - Cho phép chuyển đổi giữa Personal và Company workspaces
  */
 export default function CompanySwitcher({ collapsed }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const {
         workspaces,
         currentWorkspace,
@@ -104,7 +106,7 @@ export default function CompanySwitcher({ collapsed }) {
             </div>
 
             {isOpen && (
-                <div className="company-switcher-dropdown">
+                <div className="company-switcher-dropdown z-50">
                     {/* Personal Workspace Section */}
                     <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Cá nhân
@@ -129,33 +131,67 @@ export default function CompanySwitcher({ collapsed }) {
                     ))}
 
                     {/* Company Workspaces Section */}
-                    {workspaces.filter(w => w.type === 'COMPANY').length > 0 && (
-                        <>
-                            <div className="border-t my-2" />
-                            <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                                Workspaces
+                    <div className="border-t my-2" />
+                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Workspaces
+                    </div>
+
+                    {workspaces.filter(w => w.type === 'COMPANY').map(workspace => (
+                        <div
+                            key={`company-${workspace.id}`}
+                            className={`company-item ${workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' ? 'active' : ''}`}
+                            onClick={() => handleSelect(workspace)}
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-semibold text-sm">
+                                {workspace.name?.charAt(0)}
                             </div>
-                            {workspaces.filter(w => w.type === 'COMPANY').map(workspace => (
-                                <div
-                                    key={`company-${workspace.id}`}
-                                    className={`company-item ${workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' ? 'active' : ''}`}
-                                    onClick={() => handleSelect(workspace)}
-                                >
-                                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-semibold text-sm">
-                                        {workspace.name?.charAt(0)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-medium">{workspace.name}</div>
-                                        <div className="text-xs text-gray-500">{getRoleLabel(workspace.role)}</div>
-                                    </div>
-                                    {workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' && (
-                                        <i className="fa-solid fa-check text-primary" />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-medium truncate">{workspace.name}</span>
+                                    {workspace.plan && (
+                                        <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${workspace.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-600' :
+                                                workspace.plan === 'PROFESSIONAL' ? 'bg-indigo-100 text-indigo-600' :
+                                                    workspace.plan === 'STARTER' ? 'bg-amber-100 text-amber-600' :
+                                                        'bg-gray-100 text-gray-500'
+                                            }`}>
+                                            {workspace.plan === 'FREE' ? 'Free' : workspace.plan?.charAt(0)}
+                                        </span>
                                     )}
                                 </div>
-                            ))}
-                        </>
-                    )}
+                                <div className="text-xs text-gray-500">{getRoleLabel(workspace.role)}</div>
+                            </div>
+                            {workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' && (
+                                <i className="fa-solid fa-check text-primary" />
+                            )}
+                        </div>
+                    ))}
+
+                    {/* Create New Company Button */}
+                    <div className="border-t my-2 pt-2">
+                        <button
+                            onClick={() => {
+                                setIsOpen(false);
+                                setShowCreateModal(true);
+                            }}
+                            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors text-primary"
+                        >
+                            <div className="w-8 h-8 rounded-lg border border-dashed border-primary/50 flex items-center justify-center">
+                                <i className="fa-solid fa-plus text-sm" />
+                            </div>
+                            <span className="font-medium text-sm">Tạo công ty mới</span>
+                        </button>
+                    </div>
                 </div>
+            )}
+
+            {/* Create Company Modal */}
+            {showCreateModal && (
+                <CreateCompanyModal
+                    onClose={() => setShowCreateModal(false)}
+                    onSuccess={() => {
+                        fetchWorkspaces();
+                    }}
+                />
             )}
         </div>
     );

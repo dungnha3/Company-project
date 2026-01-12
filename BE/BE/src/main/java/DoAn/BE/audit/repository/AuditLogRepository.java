@@ -32,11 +32,12 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
                      @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
        // Tìm tất cả actions của Admin trên Manager accounts (Paginated)
+       // NOTE: Uses native role check since multi-role uses @ElementCollection
        @Query("SELECT DISTINCT a FROM AuditLog a " +
                      "JOIN a.actor.memberships mActor " +
                      "JOIN a.targetUser.memberships mTarget " +
-                     "WHERE mActor.role = 'ADMIN' " +
-                     "AND mTarget.role IN ('MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT')")
+                     "WHERE 'ADMIN' MEMBER OF mActor.roles " +
+                     "AND ('MANAGER_HR' MEMBER OF mTarget.roles OR 'MANAGER_ACCOUNTING' MEMBER OF mTarget.roles OR 'MANAGER_PROJECT' MEMBER OF mTarget.roles)")
        Page<AuditLog> findAdminActionsOnManagers(Pageable pageable);
 
        // Tìm recent logs (Paginated) - Sort logic should be passed via Pageable

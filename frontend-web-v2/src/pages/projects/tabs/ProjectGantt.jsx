@@ -3,13 +3,23 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
 export default function ProjectGantt({ project }) {
-    // Determine Gantt range based on Project Start/End
-    // If no phases/sprints, show Project duration bar
-    // Ideally fetch Phases or Sprints
+    // Fetch Sprints
     const { data: sprints = [] } = useQuery({
         queryKey: ['sprints', project.projectId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(project.projectId))).data,
     });
+
+    // Fetch Phases
+    const { data: phases = [] } = useQuery({
+        queryKey: ['phases', project.projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.PHASES.BY_PROJECT(project.projectId))).data || [],
+    });
+
+    // Combine items
+    const ganttItems = [
+        ...phases.map(p => ({ ...p, type: 'PHASE' })),
+        ...sprints.map(s => ({ ...s, type: 'SPRINT' }))
+    ].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
     // Calculate total duration in days to map to grid
     const startDate = new Date(project.startDate || new Date());
@@ -70,31 +80,39 @@ export default function ProjectGantt({ project }) {
                 </div>
 
                 {/* Sprints / Phases */}
-                {sprints.map(sprint => {
-                    const pos = getPosition(sprint.startDate, sprint.endDate);
+                {ganttItems.map((item, idx) => {
+                    const pos = getPosition(item.startDate, item.endDate);
+                    const isPhase = item.type === 'PHASE';
+                    const isCompleted = item.status === 'COMPLETED';
+
                     return (
-                        <div key={sprint.sprintId} className="group">
+                        <div key={`${item.type}-${item.id || item.sprintId || idx}`} className="group">
                             <div className="flex items-center justify-between mb-1 text-sm text-gray-600 pl-4">
-                                <span>{sprint.name}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${sprint.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                    {sprint.status}
+                                <span>{item.name}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1
+                                    ${isPhase ? 'bg-purple-100 text-purple-700' : isCompleted ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}
+                                `}>
+                                    {isPhase ? <i className="fa-solid fa-layer-group text-[9px]" /> : <i className="fa-solid fa-person-running text-[9px]" />}
+                                    {isPhase ? 'PHASE' : item.status}
                                 </span>
                             </div>
                             <div className="relative h-4 bg-gray-50 rounded-full w-full">
                                 <div
                                     className={`absolute top-0 bottom-0 rounded-full transition-all shadow-sm cursor-pointer
-                                      ${sprint.status === 'COMPLETED' ? 'bg-green-400' : 'bg-orange-400'}
+                                       ${isPhase
+                                            ? 'bg-purple-400 group-hover:bg-purple-500'
+                                            : isCompleted ? 'bg-green-400 group-hover:bg-green-500' : 'bg-orange-400 group-hover:bg-orange-500'}
                                    `}
                                     style={{ left: pos.left, width: pos.width }}
-                                    title={`${sprint.name}: ${new Date(sprint.startDate).toLocaleDateString()} - ${new Date(sprint.endDate).toLocaleDateString()}`}
+                                    title={`${item.type}: ${item.name} \n${new Date(item.startDate).toLocaleDateString()} - ${new Date(item.endDate).toLocaleDateString()}`}
                                 ></div>
                             </div>
                         </div>
                     );
                 })}
 
-                {sprints.length === 0 && (
-                    <div className="text-center py-8 text-gray-400 italic text-sm">Chưa có Sprint nào được tạo.</div>
+                {ganttItems.length === 0 && (
+                    <div className="text-center py-8 text-gray-400 italic text-sm">Chưa có Sprint hoặc Phase nào.</div>
                 )}
             </div>
         </div>

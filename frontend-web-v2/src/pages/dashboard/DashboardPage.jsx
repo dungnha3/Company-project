@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -31,19 +31,43 @@ export default function DashboardPage() {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
 
-    // Chart data
-    const attendanceData = [
-        { name: 'T2', present: 95, absent: 5 },
-        { name: 'T3', present: 92, absent: 8 },
-        { name: 'T4', present: 88, absent: 12 },
-        { name: 'T5', present: 97, absent: 3 },
-        { name: 'T6', present: 90, absent: 10 },
-    ];
+    // Fetch attendance history for chart
+    const { data: attendanceHistory = [] } = useQuery({
+        queryKey: ['my-attendance-history'],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.MY_HISTORY)).data || []
+    });
+
+    // Process attendance data for the current week
+    const attendanceData = (() => {
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        const day = startOfWeek.getDay() || 7; // Get current day number, convert Sun (0) to 7
+        if (day !== 1) startOfWeek.setHours(-24 * (day - 1)); // Set to Monday
+
+        const weekData = [];
+        const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+        for (let i = 0; i < 7; i++) {
+            const current = new Date(startOfWeek);
+            current.setDate(startOfWeek.getDate() + i);
+            const dateStr = current.toDateString();
+
+            // Find record for this day
+            const record = attendanceHistory.find(r => new Date(r.date).toDateString() === dateStr);
+
+            weekData.push({
+                name: days[i],
+                workHours: record?.workHours ? Number(record.workHours.toFixed(1)) : 0,
+                status: record?.status || 'ABSENT'
+            });
+        }
+        return weekData;
+    })();
 
     const projectStatusData = [
-        { name: 'Đang làm', value: stats?.activeProjects || 5, color: '#3b82f6' },
-        { name: 'Hoàn thành', value: stats?.completedProjects || 12, color: '#22c55e' },
-        { name: 'Tạm dừng', value: stats?.pausedProjects || 2, color: '#f59e0b' },
+        { name: 'Đang làm', value: stats?.activeProjects ?? 0, color: '#3b82f6' },
+        { name: 'Hoàn thành', value: stats?.completedProjects ?? 0, color: '#22c55e' },
+        { name: 'Tạm dừng', value: stats?.pausedProjects ?? 0, color: '#f59e0b' },
     ];
 
     return (
@@ -82,33 +106,36 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                     title="Thành viên"
-                    value={stats?.totalEmployees || currentWorkspace?.memberCount || 24}
+                    value={stats?.totalEmployees ?? currentWorkspace?.memberCount ?? 0}
                     icon="fa-users"
                     color="blue"
-                    trend={+5}
+                    trend={stats?.employeeTrend}
                 />
                 <StatCard
                     title="Dự án Active"
-                    value={stats?.activeProjects || 8}
+                    value={stats?.activeProjects ?? 0}
                     icon="fa-diagram-project"
                     color="purple"
-                    trend={+2}
+                    trend={stats?.projectTrend}
                 />
                 <StatCard
                     title="Đơn chờ duyệt"
-                    value={stats?.pendingLeaves || 3}
+                    value={stats?.pendingLeaves ?? 0}
                     icon="fa-envelope"
                     color="orange"
-                    badge="Mới"
+                    badge={stats?.pendingLeaves > 0 ? "Mới" : null}
                 />
                 <StatCard
                     title="Tasks tuần này"
-                    value={stats?.completedTasks || 47}
+                    value={stats?.completedTasks ?? 0}
                     icon="fa-check-circle"
                     color="green"
-                    trend={+12}
+                    trend={stats?.taskTrend}
                 />
             </div>
+
+            {/* First Steps Widget (for new users) */}
+            <FirstStepsWidget stats={stats} />
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -118,8 +145,8 @@ export default function DashboardPage() {
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-800">Chấm công tuần này</h3>
-                                <p className="text-sm text-gray-500">Tỷ lệ đi làm theo ngày</p>
+                                <h3 className="text-lg font-bold text-gray-800">Chấm công của bạn</h3>
+                                <p className="text-sm text-gray-500">Giờ làm việc tuần này</p>
                             </div>
                             <Link to="/app/attendance" className="text-sm text-blue-600 hover:underline">
                                 Xem chi tiết →
@@ -131,9 +158,11 @@ export default function DashboardPage() {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} />
                                     <YAxis axisLine={false} tickLine={false} />
-                                    <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                                    <Bar dataKey="present" name="Có mặt" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="absent" name="Vắng" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                    <Tooltip
+                                        cursor={{ fill: '#f3f4f6' }}
+                                        formatter={(value) => [`${value} giờ`, 'Làm việc']}
+                                    />
+                                    <Bar dataKey="workHours" name="Giờ làm" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -214,6 +243,9 @@ export default function DashboardPage() {
                             )}
                         </div>
                     </div>
+
+                    {/* Pending Invites */}
+                    <PendingInvitesCard />
 
                     {/* Quick Links */}
                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
@@ -340,3 +372,189 @@ function QuickLink({ to, icon, label }) {
         </Link>
     );
 }
+
+function PendingInvitesCard() {
+    const { data: invites = [], isLoading, refetch } = useQuery({
+        queryKey: ['pending-invites'],
+        queryFn: async () => {
+            try {
+                return (await apiClient.get(ENDPOINTS.INVITES.PENDING)).data || [];
+            } catch {
+                return [];
+            }
+        },
+    });
+
+    const acceptMutation = useMutation({
+        mutationFn: async (inviteId) => apiClient.post(ENDPOINTS.INVITES.ACCEPT, { inviteId }),
+        onSuccess: () => {
+            refetch();
+            window.location.reload(); // Refresh to update workspaces
+        }
+    });
+
+    const declineMutation = useMutation({
+        mutationFn: async (inviteId) => apiClient.delete(ENDPOINTS.INVITES.CANCEL(inviteId)),
+        onSuccess: () => refetch()
+    });
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-800">Lời mời Workspace</h3>
+                {invites.length > 0 && (
+                    <span className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
+                        {invites.length}
+                    </span>
+                )}
+            </div>
+
+            {isLoading ? (
+                <div className="text-center py-4">
+                    <i className="fa-solid fa-spinner fa-spin text-gray-400" />
+                </div>
+            ) : invites.length > 0 ? (
+                <div className="space-y-3">
+                    {invites.slice(0, 3).map((invite) => (
+                        <div key={invite.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                {invite.companyName?.[0] || 'W'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-800 truncate">{invite.companyName}</p>
+                                <p className="text-xs text-gray-500">{invite.role || 'Member'}</p>
+                            </div>
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => acceptMutation.mutate(invite.id)}
+                                    disabled={acceptMutation.isPending}
+                                    className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
+                                    title="Chấp nhận"
+                                >
+                                    <i className="fa-solid fa-check" />
+                                </button>
+                                <button
+                                    onClick={() => declineMutation.mutate(invite.id)}
+                                    disabled={declineMutation.isPending}
+                                    className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                    title="Từ chối"
+                                >
+                                    <i className="fa-solid fa-xmark" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-6 text-gray-400">
+                    <div className="w-12 h-12 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                        <i className="fa-regular fa-envelope-open text-xl" />
+                    </div>
+                    <p className="text-sm">Không có lời mời</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function FirstStepsWidget({ stats }) {
+    const [dismissed, setDismissed] = useState(false);
+
+    // Check completion based on stats
+    const steps = [
+        {
+            id: 'project',
+            label: 'Tạo dự án đầu tiên',
+            done: (stats?.activeProjects ?? 0) > 0,
+            link: '/app/projects',
+            icon: 'fa-folder-plus'
+        },
+        {
+            id: 'member',
+            label: 'Thêm thành viên',
+            done: (stats?.totalEmployees ?? 0) > 1,
+            link: '/app/employees',
+            icon: 'fa-user-plus'
+        },
+        {
+            id: 'task',
+            label: 'Tạo task đầu tiên',
+            done: (stats?.completedTasks ?? 0) > 0 || (stats?.totalTasks ?? 0) > 0,
+            link: '/app/my-issues',
+            icon: 'fa-list-check'
+        },
+        {
+            id: 'department',
+            label: 'Thiết lập phòng ban',
+            done: (stats?.totalDepartments ?? 0) > 0,
+            link: '/app/departments',
+            icon: 'fa-building'
+        },
+    ];
+
+    const completedCount = steps.filter(s => s.done).length;
+    const allDone = completedCount === steps.length;
+    const progress = (completedCount / steps.length) * 100;
+
+    // Don't show if dismissed or all done
+    if (dismissed || allDone) return null;
+
+    return (
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <i className="fa-solid fa-rocket text-emerald-600" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Bước đầu tiên</h3>
+                        <p className="text-sm text-gray-500">{completedCount}/{steps.length} hoàn thành</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => setDismissed(true)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    title="Ẩn"
+                >
+                    <i className="fa-solid fa-xmark" />
+                </button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-2 bg-emerald-100 rounded-full mb-4 overflow-hidden">
+                <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-2">
+                {steps.map(step => (
+                    <Link
+                        key={step.id}
+                        to={step.link}
+                        className={`flex items-center gap-3 p-3 rounded-xl transition-all ${step.done
+                            ? 'bg-emerald-100/50 text-emerald-700'
+                            : 'bg-white hover:bg-emerald-50 text-gray-700 hover:text-emerald-700'
+                            }`}
+                    >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${step.done ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'
+                            }`}>
+                            {step.done ? (
+                                <i className="fa-solid fa-check" />
+                            ) : (
+                                <i className={`fa-solid ${step.icon}`} />
+                            )}
+                        </div>
+                        <span className={step.done ? 'line-through' : 'font-medium'}>{step.label}</span>
+                        {!step.done && (
+                            <i className="fa-solid fa-arrow-right ml-auto text-sm text-gray-400" />
+                        )}
+                    </Link>
+                ))}
+            </div>
+        </div>
+    );
+}
+

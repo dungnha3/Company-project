@@ -11,8 +11,8 @@ const SKILL_LEVELS = {
     4: { label: 'Chuyên gia', color: 'bg-purple-100 text-purple-700', icon: 'fa-crown' },
 };
 
-// Default skills categories
-const SKILL_CATEGORIES = [
+// Default skills categories as fallback
+const DEFAULT_SKILL_CATEGORIES = [
     {
         name: 'Kỹ năng kỹ thuật',
         skills: ['JavaScript', 'React', 'Node.js', 'Python', 'Java', 'SQL', 'DevOps', 'Cloud']
@@ -27,15 +27,6 @@ const SKILL_CATEGORIES = [
     }
 ];
 
-// Mock skill data for employees
-const MOCK_EMPLOYEE_SKILLS = {
-    1: { 'JavaScript': 4, 'React': 4, 'Node.js': 3, 'Git': 3, 'Giao tiếp': 3 },
-    2: { 'Python': 4, 'SQL': 4, 'AWS': 3, 'Excel': 2, 'Giải quyết vấn đề': 4 },
-    3: { 'Java': 3, 'SQL': 3, 'Docker': 2, 'Làm việc nhóm': 4, 'Lãnh đạo': 3 },
-    4: { 'Figma': 4, 'Giao tiếp': 4, 'Làm việc nhóm': 3, 'Quản lý thời gian': 3 },
-    5: { 'JavaScript': 2, 'React': 2, 'Git': 2, 'Giao tiếp': 2 },
-};
-
 export default function SkillsMatrixPage() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedDepartment, setSelectedDepartment] = useState('all');
@@ -43,7 +34,7 @@ export default function SkillsMatrixPage() {
     const [viewMode, setViewMode] = useState('matrix'); // matrix, list
 
     // Fetch employees
-    const { data: employees, isLoading } = useQuery({
+    const { data: employees, isLoading: loadingEmployees } = useQuery({
         queryKey: ['employees-skills'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
     });
@@ -54,17 +45,42 @@ export default function SkillsMatrixPage() {
         queryFn: async () => (await apiClient.get(ENDPOINTS.DEPARTMENTS.LIST)).data,
     });
 
+    // Fetch Skills Matrix (Real Data)
+    const { data: skillsMatrix = {} } = useQuery({
+        queryKey: ['skills-matrix'],
+        queryFn: async () => {
+            try {
+                return (await apiClient.get(ENDPOINTS.SKILLS.MATRIX)).data;
+            } catch (e) {
+                return {};
+            }
+        }
+    });
+
+    // Fetch Skill Categories (Optional, fallback to DEFAULT)
+    const { data: skillCategories = DEFAULT_SKILL_CATEGORIES } = useQuery({
+        queryKey: ['skills-list'],
+        queryFn: async () => {
+            try {
+                const res = await apiClient.get(ENDPOINTS.SKILLS.LIST);
+                return res.data?.length ? res.data : DEFAULT_SKILL_CATEGORIES;
+            } catch {
+                return DEFAULT_SKILL_CATEGORIES;
+            }
+        }
+    });
+
     const empList = Array.isArray(employees) ? employees : employees?.content || [];
     const deptList = Array.isArray(departments) ? departments : departments?.content || [];
 
     // All skills flattened
     const allSkills = useMemo(() => {
         if (selectedCategory === 'all') {
-            return SKILL_CATEGORIES.flatMap(cat => cat.skills);
+            return skillCategories.flatMap(cat => cat.skills || []);
         }
-        const category = SKILL_CATEGORIES.find(c => c.name === selectedCategory);
+        const category = skillCategories.find(c => c.name === selectedCategory);
         return category?.skills || [];
-    }, [selectedCategory]);
+    }, [selectedCategory, skillCategories]);
 
     // Filter employees
     const filteredEmployees = useMemo(() => {
@@ -85,7 +101,7 @@ export default function SkillsMatrixPage() {
 
     // Get skill level for an employee
     const getSkillLevel = (empId, skill) => {
-        const skills = MOCK_EMPLOYEE_SKILLS[empId] || {};
+        const skills = skillsMatrix[empId] || {};
         return skills[skill] || 0;
     };
 
@@ -104,7 +120,7 @@ export default function SkillsMatrixPage() {
             };
         });
         return stats;
-    }, [allSkills, filteredEmployees]);
+    }, [allSkills, filteredEmployees, skillsMatrix]);
 
     return (
         <div className="space-y-6">
@@ -162,7 +178,7 @@ export default function SkillsMatrixPage() {
                         className="input min-w-[180px]"
                     >
                         <option value="all">Tất cả kỹ năng</option>
-                        {SKILL_CATEGORIES.map(cat => (
+                        {skillCategories.map(cat => (
                             <option key={cat.name} value={cat.name}>{cat.name}</option>
                         ))}
                     </select>
@@ -232,7 +248,7 @@ export default function SkillsMatrixPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {isLoading ? (
+                                {loadingEmployees ? (
                                     <tr>
                                         <td colSpan={allSkills.length + 1} className="px-4 py-8 text-center text-gray-400">
                                             <div className="loading-spinner mx-auto" />
@@ -260,7 +276,6 @@ export default function SkillsMatrixPage() {
                                             </td>
                                             {allSkills.slice(0, 10).map(skill => {
                                                 const level = getSkillLevel(emp.employeeId || emp.id, skill);
-                                                const config = SKILL_LEVELS[level];
                                                 return (
                                                     <td key={skill} className="px-3 py-3 text-center">
                                                         <SkillBadge level={level} />
@@ -281,7 +296,7 @@ export default function SkillsMatrixPage() {
                         <EmployeeSkillCard
                             key={emp.employeeId || emp.id}
                             employee={emp}
-                            skills={MOCK_EMPLOYEE_SKILLS[emp.employeeId || emp.id] || {}}
+                            skills={skillsMatrix[emp.employeeId || emp.id] || {}}
                         />
                     ))}
                 </div>

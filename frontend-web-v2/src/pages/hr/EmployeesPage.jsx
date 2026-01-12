@@ -18,6 +18,7 @@ export default function EmployeesPage() {
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+    const [selectedIds, setSelectedIds] = useState(new Set()); // For bulk selection
 
     // State
     const [page, setPage] = useState(0);
@@ -63,6 +64,33 @@ export default function EmployeesPage() {
         }
     };
 
+    // Bulk actions
+    const handleSelectAll = () => {
+        if (selectedIds.size === employeesData?.content?.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(employeesData?.content?.map(e => e.nhanvienId) || []));
+        }
+    };
+
+    const handleSelectOne = (id) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const handleBulkDelete = () => {
+        if (window.confirm(`Bạn có chắc muốn xóa ${selectedIds.size} nhân viên đã chọn?`)) {
+            // Delete one by one (or create bulk delete API)
+            selectedIds.forEach(id => deleteMutation.mutate(id));
+            setSelectedIds(new Set());
+        }
+    };
+
     const { data: departments } = useQuery({
         queryKey: ['departments'],
         queryFn: async () => {
@@ -74,6 +102,27 @@ export default function EmployeesPage() {
 
     // Columns Configuration
     const columns = [
+        // Checkbox column for bulk select
+        {
+            header: () => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.size > 0 && selectedIds.size === employeesData?.content?.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+            ),
+            accessorKey: 'select',
+            cell: (row) => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.has(row.nhanvienId)}
+                    onChange={() => handleSelectOne(row.nhanvienId)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+            )
+        },
         {
             header: 'Nhân viên',
             accessorKey: 'hoTen',
@@ -223,6 +272,38 @@ export default function EmployeesPage() {
                     }}
                     employeeId={selectedEmployeeId}
                 />
+            )}
+
+            {/* Bulk Action Bar */}
+            {selectedIds.size > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="text-blue-700 font-medium">
+                            Đã chọn {selectedIds.size} nhân viên
+                        </span>
+                    </div>
+                    <div className="flex gap-2">
+                        <ExportButton
+                            endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
+                            params={{ ids: Array.from(selectedIds).join(',') }}
+                            filename={`NhanVien_Selected_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                            label="Xuất đã chọn"
+                            variant="secondary"
+                        />
+                        <button
+                            onClick={handleBulkDelete}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm"
+                        >
+                            <i className="fa-solid fa-trash mr-1" /> Xóa đã chọn
+                        </button>
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors text-sm"
+                        >
+                            Bỏ chọn
+                        </button>
+                    </div>
+                </div>
             )}
 
             {/* Filters */}

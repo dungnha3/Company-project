@@ -148,11 +148,37 @@ function ProjectListView({ projects, navigate }) {
         }
     ];
 
+    if (!projects?.length) {
+        return (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-4">
+                    <i className="fa-solid fa-folder-open text-3xl text-indigo-400" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Chưa có dự án nào</h3>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                    Bắt đầu quản lý công việc bằng cách tạo dự án đầu tiên của bạn.
+                </p>
+            </div>
+        );
+    }
+
     return <DataTable columns={columns} data={projects || []} />;
 }
 
 function ProjectCardView({ projects, navigate }) {
-    if (!projects?.length) return <div className="text-center py-10 text-gray-500">Chưa có dự án nào</div>;
+    if (!projects?.length) {
+        return (
+            <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-purple-100 to-pink-100 rounded-3xl flex items-center justify-center mb-6">
+                    <i className="fa-solid fa-rocket text-4xl text-purple-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Bắt đầu dự án đầu tiên!</h3>
+                <p className="text-gray-500 mb-6 max-w-lg mx-auto">
+                    Tạo dự án để quản lý công việc, theo dõi tiến độ và cộng tác với đội ngũ của bạn.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

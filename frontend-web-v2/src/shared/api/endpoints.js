@@ -172,6 +172,43 @@ export const ENDPOINTS = {
         REJECT: (id) => `/api/reviews/${id}/reject`,
     },
 
+    // OKR (Objectives and Key Results)
+    OKR: {
+        LIST: '/api/okrs',
+        CREATE: '/api/okrs',
+        BY_ID: (id) => `/api/okrs/${id}`,
+        UPDATE: (id) => `/api/okrs/${id}`,
+        DELETE: (id) => `/api/okrs/${id}`,
+        MY: '/api/okrs/my',
+        DEPARTMENT: (deptId) => `/api/okrs/department/${deptId}`,
+    },
+
+    // Skills Matrix
+    SKILLS: {
+        MATRIX: '/api/skills/matrix',
+        LIST: '/api/skills',
+        CREATE: '/api/skills',
+        UPDATE_EMPLOYEE: (empId) => `/api/skills/employee/${empId}`,
+        BY_EMPLOYEE: (empId) => `/api/skills/employee/${empId}`,
+    },
+
+    // Onboarding
+    ONBOARDING: {
+        TEMPLATES: '/api/onboarding/templates',
+        INSTANCES: '/api/onboarding/instances',
+        CREATE_INSTANCE: '/api/onboarding/instances',
+        UPDATE_PROGRESS: (id) => `/api/onboarding/instances/${id}/progress`,
+        TASKS: (instanceId) => `/api/onboarding/instances/${instanceId}/tasks`,
+    },
+
+    // Resource Planning
+    RESOURCE_PLANNING: {
+        ALLOCATIONS: '/api/resources/allocations',
+        BY_PROJECT: (projectId) => `/api/resources/project/${projectId}`,
+        BY_EMPLOYEE: (empId) => `/api/resources/employee/${empId}`,
+        UPDATE: (id) => `/api/resources/allocations/${id}`,
+    },
+
     // Dashboard
     DASHBOARD: {
         STATS: '/api/dashboard/stats',
@@ -322,15 +359,56 @@ export const ENDPOINTS = {
         RESPOND: (id) => `/api/calendar/events/${id}/respond`,
     },
 
-    // Automations (NEW)
-    AUTOMATIONS: {
-        CREATE: '/api/automations',
-        BY_PROJECT: (projectId) => `/api/automations/project/${projectId}`,
-        BY_ID: (id) => `/api/automations/${id}`,
-        TOGGLE: (id) => `/api/automations/${id}/toggle`,
-        DELETE: (id) => `/api/automations/${id}`,
-        LOGS: (id) => `/api/automations/${id}/logs`,
+    // AI Assistant
+    AI: {
+        STATUS: '/api/ai/status',
+        CHAT: '/api/ai/chat',
+        // Conversations
+        CONVERSATIONS: '/api/ai/conversations',
+        CONVERSATION_BY_ID: (id) => `/api/ai/conversations/${id}`,
+        DELETE_CONVERSATION: (id) => `/api/ai/conversations/${id}`,
+        // Project Analysis
+        SUMMARIZE_PROJECT: (projectId) => `/api/ai/projects/${projectId}/summary`,
+        SPRINT_SUMMARY: (projectId) => `/api/ai/projects/${projectId}/sprint/summary`,
+        SUGGEST_TASKS: (projectId) => `/api/ai/projects/${projectId}/suggest-tasks`,
+        ANALYZE_PROGRESS: (projectId) => `/api/ai/projects/${projectId}/analyze-progress`,
+        GENERATE_REPORT: (projectId) => `/api/ai/projects/${projectId}/report`,
+        // Actions
+        HELP: '/api/ai/help',
+        ACTIONS: '/api/ai/actions',
+        BATCH_ACTIONS: '/api/ai/actions/batch',
     },
+
+    // Integration - Webhooks (replaces removed Automation module)
+    INTEGRATION: {
+        WEBHOOKS: '/api/integration/webhooks',
+        WEBHOOK_BY_ID: (id) => `/api/integration/webhooks/${id}`,
+        TEST_WEBHOOK: (id) => `/api/integration/webhooks/${id}/test`,
+    },
+
+    // Global Search (NEW)
+    SEARCH: '/api/search',
+
+    // Custom Fields
+    CUSTOM_FIELDS: {
+        BY_PROJECT: (projectId) => `/api/projects/${projectId}/custom-fields`,
+        CREATE: (projectId) => `/api/projects/${projectId}/custom-fields`,
+        UPDATE: (id) => `/api/projects/custom-fields/${id}`, // Assuming /api/projects/custom-fields/{id} based on other patterns or /api/custom-fields/{id}
+        DELETE: (id) => `/api/projects/custom-fields/${id}`,
+        // Values usually handled within Issue update or specific endpoint
+        ISSUE_VALUES: (issueId) => `/api/issues/${issueId}/custom-fields`,
+    },
+
+    // Integrations & SSO
+    INTEGRATION: {
+        WEBHOOKS: '/api/integration/webhooks',
+        WEBHOOK_BY_ID: (id) => `/api/integration/webhooks/${id}`,
+        TEST_WEBHOOK: (id) => `/api/integration/webhooks/${id}/test`,
+        // SSO config
+        SSO_CONFIG: '/api/integration/sso/config',
+        SLACK_CONFIG: '/api/integration/slack/config',
+    },
+
 
     // Chat (merged from duplicates)
     CHAT: {

@@ -47,7 +47,7 @@ public class UserSaasService {
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // ==================== QUERY BY COMPANY ====================
-// Lấy users thuộc công ty hiện tại (cho Company Admin)
+    // Lấy users thuộc công ty hiện tại (cho Company Admin)
     public Page<User> getUsersByCurrentCompany(Pageable pageable) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -57,7 +57,7 @@ public class UserSaasService {
                 .map(CompanyMember::getUser);
     }
 
-// Lấy users thuộc công ty hiện tại (không phân trang)
+    // Lấy users thuộc công ty hiện tại (không phân trang)
     public List<User> getUsersByCurrentCompanyWithoutPaging() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -69,7 +69,7 @@ public class UserSaasService {
                 .collect(Collectors.toList());
     }
 
-// Lấy users thuộc một công ty cụ thể (cho System Admin)
+    // Lấy users thuộc một công ty cụ thể (cho System Admin)
     public Page<User> getUsersByCompanyId(Long companyId, Pageable pageable) {
         if (companyId == null) {
             return Page.empty();
@@ -89,7 +89,7 @@ public class UserSaasService {
     }
 
     // ==================== ROLE MANAGEMENT ====================
-// Cập nhật role của user trong một công ty (System Admin only)
+    // Cập nhật role của user trong một công ty (System Admin only)
     public void updateUserRoleInCompany(Long userId, Long companyId, String roleName, User currentUser) {
         log.info("System Admin {} cập nhật role cho user {} trong công ty {}",
                 currentUser.getUsername(), userId, companyId);
@@ -118,12 +118,14 @@ public class UserSaasService {
 
         if (member != null) {
             // Update existing membership
-            CompanyRole oldRole = member.getRole();
-            member.setRole(newRole);
-            member.setPermissions(roleTemplateService.getTemplate(newRole));
+            // [SAAS] Simplification: Reset to single role for now
+            String oldRoles = member.getRoles().toString();
+            member.getRoles().clear();
+            member.getRoles().add(newRole);
+            member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
             companyMemberRepository.save(member);
             log.info("✅ Đã cập nhật role từ {} sang {} cho user {} trong công ty {}",
-                    oldRole, newRole, userId, companyId);
+                    oldRoles, newRole, userId, companyId);
         } else {
             // Create new membership
             Company company = companyRepository.findById(companyId)
@@ -132,8 +134,8 @@ public class UserSaasService {
             CompanyMember newMember = new CompanyMember();
             newMember.setUser(user);
             newMember.setCompany(company);
-            newMember.setRole(newRole);
-            newMember.setPermissions(roleTemplateService.getTemplate(newRole));
+            newMember.getRoles().add(newRole);
+            newMember.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
             newMember.setJoinedAt(LocalDateTime.now());
             newMember.setIsActive(true);
             companyMemberRepository.save(newMember);
@@ -148,7 +150,7 @@ public class UserSaasService {
         }
     }
 
-// Cập nhật isSystemAdmin cho user (System Admin only)
+    // Cập nhật isSystemAdmin cho user (System Admin only)
     public void updateSystemAdminStatus(Long userId, Boolean isSystemAdmin, User currentUser) {
         if (!currentUser.isSystemAdminAccount()) {
             throw new BadRequestException("Chỉ System Admin mới có thể thay đổi quyền System Admin");
@@ -165,4 +167,3 @@ public class UserSaasService {
                 user.getUsername());
     }
 }
-

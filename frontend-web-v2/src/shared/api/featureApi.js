@@ -122,41 +122,7 @@ export const calendarApi = {
 /**
  * Automation API Service
  */
+// Automation API removed
 export const automationApi = {
-    // Create automation rule
-    createRule: async (data) => {
-        const response = await apiClient.post(ENDPOINTS.AUTOMATIONS.CREATE, data);
-        return response.data;
-    },
-
-    // Get project rules
-    getProjectRules: async (projectId) => {
-        const response = await apiClient.get(ENDPOINTS.AUTOMATIONS.BY_PROJECT(projectId));
-        return response.data;
-    },
-
-    // Get rule by ID
-    getRule: async (ruleId) => {
-        const response = await apiClient.get(ENDPOINTS.AUTOMATIONS.BY_ID(ruleId));
-        return response.data;
-    },
-
-    // Toggle rule
-    toggleRule: async (ruleId) => {
-        const response = await apiClient.post(ENDPOINTS.AUTOMATIONS.TOGGLE(ruleId));
-        return response.data;
-    },
-
-    // Delete rule
-    deleteRule: async (ruleId) => {
-        await apiClient.delete(ENDPOINTS.AUTOMATIONS.DELETE(ruleId));
-    },
-
-    // Get rule logs
-    getRuleLogs: async (ruleId, page = 0, size = 20) => {
-        const response = await apiClient.get(ENDPOINTS.AUTOMATIONS.LOGS(ruleId), {
-            params: { page, size }
-        });
-        return response.data;
-    }
+    // Deprecated placeholders to prevent import errors if unused
 };

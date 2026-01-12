@@ -143,8 +143,8 @@ export default function NotificationsPage() {
                             key={type.key}
                             onClick={() => setActiveTab(type.key)}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeTab === type.key
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <i className={`fa-solid ${type.icon}`} />
@@ -406,6 +406,21 @@ function getIconClass(type) {
         'PAYROLL_READY': 'fa-solid fa-money-bill-wave',
         'MENTION': 'fa-solid fa-at',
         'SYSTEM': 'fa-solid fa-cog',
+        // NEW notification types from BE events
+        'COMMENT_ADDED': 'fa-solid fa-comment',
+        'COMMENT_EDITED': 'fa-solid fa-pen-to-square',
+        'COMMENT_DELETED': 'fa-solid fa-comment-slash',
+        'ROLE_CHANGED': 'fa-solid fa-user-gear',
+        'ISSUE_CREATED': 'fa-solid fa-plus-circle',
+        'ISSUE_UPDATED': 'fa-solid fa-pen',
+        'ISSUE_DELETED': 'fa-solid fa-trash',
+        'ISSUE_ASSIGNED': 'fa-solid fa-user-plus',
+        'ISSUE_OVERDUE': 'fa-solid fa-clock',
+        'SPRINT_STARTED': 'fa-solid fa-play',
+        'SPRINT_COMPLETED': 'fa-solid fa-flag-checkered',
+        'SPRINT_ENDING_SOON': 'fa-solid fa-hourglass-half',
+        'PROJECT_CREATED': 'fa-solid fa-folder-plus',
+        'PROJECT_MEMBER_ADDED': 'fa-solid fa-user-plus',
     };
     return icons[type] || 'fa-solid fa-bell';
 }
@@ -420,6 +435,21 @@ function getIconColors(type) {
         'PAYROLL_READY': 'bg-yellow-100 text-yellow-600',
         'MENTION': 'bg-purple-100 text-purple-600',
         'SYSTEM': 'bg-gray-100 text-gray-600',
+        // NEW notification types from BE events
+        'COMMENT_ADDED': 'bg-blue-100 text-blue-600',
+        'COMMENT_EDITED': 'bg-amber-100 text-amber-600',
+        'COMMENT_DELETED': 'bg-red-100 text-red-600',
+        'ROLE_CHANGED': 'bg-indigo-100 text-indigo-600',
+        'ISSUE_CREATED': 'bg-green-100 text-green-600',
+        'ISSUE_UPDATED': 'bg-blue-100 text-blue-600',
+        'ISSUE_DELETED': 'bg-red-100 text-red-600',
+        'ISSUE_ASSIGNED': 'bg-cyan-100 text-cyan-600',
+        'ISSUE_OVERDUE': 'bg-red-100 text-red-600',
+        'SPRINT_STARTED': 'bg-green-100 text-green-600',
+        'SPRINT_COMPLETED': 'bg-emerald-100 text-emerald-600',
+        'SPRINT_ENDING_SOON': 'bg-orange-100 text-orange-600',
+        'PROJECT_CREATED': 'bg-indigo-100 text-indigo-600',
+        'PROJECT_MEMBER_ADDED': 'bg-blue-100 text-blue-600',
     };
     return colors[type] || 'bg-gray-100 text-gray-600';
 }
@@ -440,6 +470,21 @@ function getTypeLabel(type) {
         'PAYROLL_READY': 'Lương',
         'MENTION': 'Mention',
         'SYSTEM': 'Hệ thống',
+        // NEW notification types from BE events
+        'COMMENT_ADDED': 'Bình luận mới',
+        'COMMENT_EDITED': 'Sửa bình luận',
+        'COMMENT_DELETED': 'Xóa bình luận',
+        'ROLE_CHANGED': 'Thay đổi vai trò',
+        'ISSUE_CREATED': 'Task mới',
+        'ISSUE_UPDATED': 'Cập nhật task',
+        'ISSUE_DELETED': 'Xóa task',
+        'ISSUE_ASSIGNED': 'Được gán task',
+        'ISSUE_OVERDUE': 'Quá hạn',
+        'SPRINT_STARTED': 'Sprint bắt đầu',
+        'SPRINT_COMPLETED': 'Sprint hoàn thành',
+        'SPRINT_ENDING_SOON': 'Sprint sắp hết',
+        'PROJECT_CREATED': 'Dự án mới',
+        'PROJECT_MEMBER_ADDED': 'Thêm thành viên',
     };
     return labels[type] || 'Thông báo';
 }

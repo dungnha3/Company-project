@@ -10,6 +10,7 @@ A multi-tenant SaaS backend for enterprise management, built with Spring Boot 3.
 - **Real-time Chat**: Rooms, Messages, Reactions, Meetings
 - **File Storage**: Local or MinIO storage with versioning
 - **AI Assistant**: Gemini-powered project assistant
+- **Granular Permissions**: Multi-role support with custom user overrides
 
 ---
 
@@ -59,6 +60,7 @@ A multi-tenant SaaS backend for enterprise management, built with Spring Boot 3.
 
 | File | Description |
 |------|-------------|
+| [CLAUDE.md](docs/CLAUDE.md) | AI assistant quick reference |
 | [gemini_entities.md](docs/gemini_entities.md) | Entity & data structure docs |
 | [gemini_services.md](docs/gemini_services.md) | API & service docs |
 
@@ -88,7 +90,7 @@ src/main/java/DoAn/BE/
 - ✅ XSS Protection (Input sanitization)
 - ✅ HTTPS Ready (Forward headers configured)
 - ✅ Multi-tenant Isolation (Automatic tenant filtering)
-- ✅ Role-Based Access Control (6 roles)
+- ✅ Multi-Role Access Control (User can have multiple roles)
 
 ---
 

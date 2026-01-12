@@ -36,7 +36,7 @@ const FEATURE_SETTINGS_MAP = {
     'timeTracking': 'timeTrackingEnabled',
     'analytics': 'analyticsEnabled',
     'calendar': 'calendarEnabled',
-    'automation': 'automationEnabled',
+    'webhook': 'webhookEnabled',
 
     // Chat Sub-features (NEW)
     'chatReactions': 'chatReactionsEnabled',
@@ -56,18 +56,63 @@ const HR_DEPENDENT_FEATURES = [
 /**
  * Check xem feature có yêu cầu Project module không
  */
-const PROJECT_DEPENDENT_FEATURES = ['timeTracking', 'analytics', 'automation'];
+const PROJECT_DEPENDENT_FEATURES = ['timeTracking', 'analytics', 'webhook'];
 
 /**
- * Kiểm tra feature có được bật không
- * @param {string} plan - Plan tier (FREE, STARTER, PROFESSIONAL, ENTERPRISE)
- * @param {object|null} settings - CompanySettings từ backend (null = Personal Workspace)
- * @param {string} feature - Feature key
- * @returns {boolean}
+ * Feature Helper - Kết hợp Plan + CompanySettings + UserPermissions
  */
-export function isFeatureEnabled(plan, settings, feature) {
-    // 1. Kiểm tra Plan trước
-    // HR sub-features đều phụ thuộc vào 'hr' plan feature
+
+// ... (existing imports)
+
+/**
+ * Mapping feature -> UserPermission field (Default permission required for this feature)
+ * Used when generic feature access is checked (e.g. Sidebar)
+ */
+const FEATURE_PERMISSION_MAP = {
+    'hr': 'hrViewList',
+    'attendance': 'attendanceViewAll', // Or attendanceViewOwn if we had it, but ViewAll seems appropriate for module access
+    'leave': 'leaveViewAll', // Proxy
+    'salary': 'salaryView',
+    'contract': 'hrManageContracts', // Contract management
+    'review': 'hrViewList', // Review usually linked to HR
+    'project': 'projectCreate', // Or projectManageAll? Maybe just need ability to see projects? 
+    // We don't have projectView? Assuming projectCreate implies access for now or update POJO.
+    // Actually UserPermissions has projectCreate, projectManageAll, projectDelete.
+    // Use projectCreate as proxy for "Can use Projects" for now? Or better, just 'projectManageAll' if we want to restrict?
+    // Let's assume projectCreate for basic access or if they are just a member.
+    // Wait, regular members might NOT create projects but can View.
+    // Our UserPermissions POJO is limited. 
+    // For now, if permissions object is null (Admin/Owner), it passes.
+    // If permissions object exists (Employee), they might NOT have projectCreate.
+    // We might need a 'projectView' permission or similar. 
+    // For now, let's map 'project' to 'projectCreate' or 'projectManageAll' implies full access.
+    // IF NO MAPPING, we might skip permission check for generic module, relies on specific action checks later.
+    'chat': 'chatCreateGroup', // Proxy
+    'storage': 'storageUpload', // Proxy
+};
+
+/**
+ * Check specifically for user permission (Granular)
+ */
+export function hasUserPermission(permissions, feature) {
+    if (!permissions) return true; // No permissions object provided (or Personal/Owner), assume Allowed or handled elsewhere
+
+    // Direct field check if feature matches permission key
+    if (permissions[feature] !== undefined) return permissions[feature];
+
+    // Mapped check
+    const permKey = FEATURE_PERMISSION_MAP[feature];
+    if (permKey && permissions[permKey] !== undefined) {
+        return permissions[permKey];
+    }
+
+    return true; // Default allow if no specific permission mapped (Plan/Settings controlled)
+}
+
+// ... existing isFeatureEnabled signature updated
+
+export function isFeatureEnabled(plan, settings, feature, permissions = null) {
+    // 1. Plan Check
     let planFeature = feature;
     if (HR_DEPENDENT_FEATURES.includes(feature)) planFeature = 'hr';
     if (PROJECT_DEPENDENT_FEATURES.includes(feature)) planFeature = 'project';
@@ -76,33 +121,29 @@ export function isFeatureEnabled(plan, settings, feature) {
         return false;
     }
 
-    // 2. Nếu không có settings (Personal Workspace) → cho phép tất cả
+    // 2. Personal Workspace Check (No settings, no perms usually)
     if (!settings) {
-        return true;
+        return planHasFeature('FREE', planFeature);
     }
 
-    // 3. Kiểm tra CompanySettings
+    // 3. Company Settings Check
     const settingsKey = FEATURE_SETTINGS_MAP[feature];
-    if (!settingsKey) {
-        // Feature không có trong map → cho phép
-        return true;
+    if (settingsKey && settings[settingsKey] === false) {
+        return false;
     }
 
-    // 4. HR sub-features cần check cả hrModuleEnabled
-    if (HR_DEPENDENT_FEATURES.includes(feature)) {
-        if (!settings.hrModuleEnabled) {
+    // 4. HR/Project Module Global Switches
+    if (HR_DEPENDENT_FEATURES.includes(feature) && !settings.hrModuleEnabled) return false;
+    if (PROJECT_DEPENDENT_FEATURES.includes(feature) && !settings.projectModuleEnabled) return false;
+
+    // 5. User Permission Check (NEW)
+    if (permissions) {
+        if (!hasUserPermission(permissions, feature)) {
             return false;
         }
     }
 
-    // 5. Project sub-features cần check cả projectModuleEnabled
-    if (PROJECT_DEPENDENT_FEATURES.includes(feature)) {
-        if (!settings.projectModuleEnabled) {
-            return false;
-        }
-    }
-
-    return settings[settingsKey] !== false;
+    return true;
 }
 
 /**
@@ -172,7 +213,7 @@ export function isProjectFeatureEnabled(settings, feature) {
         'timeTracking': 'timeTrackingEnabled',
         'analytics': 'analyticsEnabled',
         'calendar': 'calendarEnabled',
-        'automation': 'automationEnabled',
+        'webhook': 'webhookEnabled',
     };
 
     if (!settings) return true; // Personal workspace

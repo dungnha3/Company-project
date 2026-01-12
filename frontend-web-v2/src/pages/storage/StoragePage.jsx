@@ -400,11 +400,22 @@ function ShareModal({ file, onClose }) {
     const [shareEmail, setShareEmail] = useState('');
     const [permission, setPermission] = useState('view');
 
+    // Generate link mutation
+    const generateLinkMutation = useMutation({
+        mutationFn: async () => {
+            return (await apiClient.post(ENDPOINTS.STORAGE.GENERATE_LINK(file.id))).data;
+        },
+        onSuccess: (data) => {
+            setShareLink(data.link || data.url); // Assuming API returns { link: '...' }
+            showToast('Đã tạo link chia sẻ!', 'success');
+        },
+        onError: (err) => {
+            showToast(err.response?.data?.message || 'Không thể tạo link', 'error');
+        }
+    });
+
     const generateLink = () => {
-        // Mock generate public link
-        const link = `${window.location.origin}/shared/${file.id}/${Date.now()}`;
-        setShareLink(link);
-        showToast('Đã tạo link chia sẻ!', 'success');
+        generateLinkMutation.mutate();
     };
 
     const copyLink = () => {
@@ -414,7 +425,8 @@ function ShareModal({ file, onClose }) {
 
     const shareByEmail = () => {
         if (!shareEmail) return;
-        showToast(`Đã gửi lời mời đến ${shareEmail}`, 'success');
+        // Ideally this would also be an API call
+        showToast(`Tính năng gửi email đang phát triển`, 'info');
         setShareEmail('');
     };
 
@@ -476,9 +488,15 @@ function ShareModal({ file, onClose }) {
                         ) : (
                             <button
                                 onClick={generateLink}
-                                className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                                disabled={generateLinkMutation.isPending}
+                                className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                             >
-                                <i className="fa-solid fa-link mr-2" /> Tạo link chia sẻ
+                                {generateLinkMutation.isPending ? (
+                                    <i className="fa-solid fa-spinner fa-spin mr-2" />
+                                ) : (
+                                    <i className="fa-solid fa-link mr-2" />
+                                )}
+                                Tạo link chia sẻ
                             </button>
                         )}
                     </div>

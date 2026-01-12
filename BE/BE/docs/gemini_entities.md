@@ -3,7 +3,7 @@
 ## Quick Reference Guide
 
 > Tài liệu liệt kê tất cả entities với tên cột database thực tế.
-> **Updated: 2026-01-10** - Added TimeTracking, Calendar, Automation modules
+> **Updated: 2026-01-12** - Multi-role permission system, CompanySettings expansion
 
 ---
 
@@ -60,11 +60,33 @@
 | `chatModuleEnabled` | `chat_module_enabled` | Boolean | Chat module toggle |
 | `storageModuleEnabled` | `storage_module_enabled` | Boolean | Storage module toggle |
 | `aiModuleEnabled` | `ai_module_enabled` | Boolean | AI module toggle |
+| `webhookEnabled` | `webhook_enabled` | Boolean | Webhook integration toggle |
 | `attendanceEnabled` | `attendance_enabled` | Boolean | Attendance sub-feature |
 | `leaveEnabled` | `leave_enabled` | Boolean | Leave sub-feature |
 | `salaryEnabled` | `salary_enabled` | Boolean | Salary sub-feature |
 | `contractEnabled` | `contract_enabled` | Boolean | Contract sub-feature |
 | `reviewEnabled` | `review_enabled` | Boolean | Review sub-feature |
+| `okrEnabled` | `okr_enabled` | Boolean | OKR feature |
+| `skillsMatrixEnabled` | `skills_matrix_enabled` | Boolean | Skills matrix feature |
+| `onboardingEnabled` | `onboarding_enabled` | Boolean | Onboarding feature |
+| `resourcePlanningEnabled` | `resource_planning_enabled` | Boolean | Resource planning feature |
+| `orgChartEnabled` | `org_chart_enabled` | Boolean | Org chart feature |
+| `timeTrackingEnabled` | `time_tracking_enabled` | Boolean | Time tracking sub-feature |
+| `analyticsEnabled` | `analytics_enabled` | Boolean | Analytics sub-feature |
+| `calendarEnabled` | `calendar_enabled` | Boolean | Calendar sub-feature |
+| `chatReactionsEnabled` | `chat_reactions_enabled` | Boolean | Chat reactions toggle |
+| `chatFileShareEnabled` | `chat_file_share_enabled` | Boolean | Chat file sharing toggle |
+| `chatThreadsEnabled` | `chat_threads_enabled` | Boolean | Chat threads toggle |
+| `chatSearchEnabled` | `chat_search_enabled` | Boolean | Chat search toggle |
+| `maxEmployees` | `max_employees` | Integer | Max employees limit |
+| `maxProjects` | `max_projects` | Integer | Max projects limit |
+| `maxStorageBytes` | `max_storage_bytes` | Long | Max storage in bytes |
+| `maxFileUploadBytes` | `max_file_upload_bytes` | Long | Max file upload size |
+| `allowedRadius` | `allowed_radius` | Double | GPS check-in radius (meters) |
+| `officeLatitude` | `office_latitude` | Double | Office GPS latitude |
+| `officeLongitude` | `office_longitude` | Double | Office GPS longitude |
+| `userStorageQuotaBytes` | `user_storage_quota_bytes` | Long | Per-user storage quota |
+| `maxLeaveDaysPerYear` | `max_leave_days_per_year` | Integer | Annual leave limit |
 
 ### Table: `company_members`
 | Field | DB Column | Type | Description |
@@ -72,9 +94,15 @@
 | `id` | `id` | Long | Primary key |
 | `user` | `user_id` | FK→User | Member user |
 | `company` | `company_id` | FK→Company | Parent company |
-| `role` | `role` | Enum | OWNER, ADMIN, MANAGER_HR, MANAGER_PROJECT, MANAGER_ACCOUNTING, EMPLOYEE |
+| `permissions` | `permissions` | JSON/String | Granular user permissions |
 | `isActive` | `is_active` | Boolean | Membership active |
 | `joinedAt` | `joined_at` | LocalDateTime | Join date |
+
+### Table: `company_member_roles`
+| Field | DB Column | Type | Description |
+|-------|-----------|------|-------------|
+| `member` | `member_id` | FK→CompanyMember | Parent member |
+| `role` | `role` | Enum | OWNER, ADMIN, MANAGER_HR, MANAGER_PROJECT, MANAGER_ACCOUNTING, EMPLOYEE |
 
 ---
 

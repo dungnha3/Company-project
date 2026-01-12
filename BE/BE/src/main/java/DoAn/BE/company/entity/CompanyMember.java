@@ -21,6 +21,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.FetchType;
 import org.hibernate.annotations.Filter;
 
 // Entity liên kết Người dùng với Công ty (1 người dùng có thể tham gia nhiều công ty)
@@ -54,9 +60,21 @@ public class CompanyMember extends DoAn.BE.common.entity.BaseEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "company_member_roles", joinColumns = @JoinColumn(name = "member_id"))
     @Enumerated(EnumType.STRING)
-    @Column(length = 30, nullable = false)
-    private CompanyRole role;
+    @Column(name = "role")
+    private Set<CompanyRole> roles = new HashSet<>();
+
+    public boolean hasAnyRole(CompanyRole... checkRoles) {
+        if (roles == null || roles.isEmpty())
+            return false;
+        for (CompanyRole r : checkRoles) {
+            if (roles.contains(r))
+                return true;
+        }
+        return false;
+    }
 
     // Quyền hạn chi tiết (JSON)
     @Convert(converter = UserPermissionsConverter.class)
