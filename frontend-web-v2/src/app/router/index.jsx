@@ -44,7 +44,7 @@ const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
 const OrgChartPage = lazy(() => import('@pages/hr/OrgChartPage'));
 const OKRPage = lazy(() => import('@pages/hr/OKRPage'));
 const SkillsMatrixPage = lazy(() => import('@pages/hr/SkillsMatrixPage'));
-const OnboardingPage = lazy(() => import('@pages/hr/OnboardingPage'));
+const HROnboardingPage = lazy(() => import('@pages/hr/OnboardingPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
 
 // Project pages
@@ -83,7 +83,13 @@ const PageLoader = () => (
 );
 
 const router = createBrowserRouter([
-    // Public routes
+    // Landing page (public)
+    {
+        path: '/',
+        element: <LandingPage />,
+    },
+
+    // Auth routes
     {
         element: <AuthLayout />,
         children: [

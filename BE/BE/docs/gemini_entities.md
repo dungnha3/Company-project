@@ -424,15 +424,16 @@
 | `conditionId` | `condition_id` | Long | Primary key |
 | `rule` | `rule_id` | FK→AutomationRule | Parent rule |
 | `field` | `field` | String | Field to check (status, priority, assignee) |
-| `operator` | `operator` | Enum | EQUALS, NOT_EQUALS, CONTAINS, IS_EMPTY, IS_NOT_EMPTY |
+| `operator` | `operator` | Enum | EQUALS, NOT_EQUALS, CONTAINS, NOT_CONTAINS, IN, NOT_IN, GREATER_THAN, LESS_THAN, IS_EMPTY, IS_NOT_EMPTY |
 | `value` | `value` | String | Expected value |
+| `orderIndex` | `order_index` | Integer | Condition order (default 0) |
 
 ### Table: `automation_actions`
 | Field | DB Column | Type | Description |
 |-------|-----------|------|-------------|
 | `actionId` | `action_id` | Long | Primary key |
 | `rule` | `rule_id` | FK→AutomationRule | Parent rule |
-| `actionType` | `action_type` | Enum | UPDATE_FIELD, ADD_COMMENT, SEND_NOTIFICATION, SEND_WEBHOOK |
+| `actionType` | `action_type` | Enum | UPDATE_FIELD, SEND_NOTIFICATION, ADD_COMMENT, ADD_LABEL, REMOVE_LABEL, ASSIGN_TO, MOVE_TO_SPRINT, SEND_WEBHOOK, SEND_EMAIL |
 | `actionConfig` | `action_config` | String | JSON config |
 | `orderIndex` | `order_index` | Integer | Execution order |
 
@@ -445,7 +446,7 @@
 | `status` | `status` | Enum | SUCCESS, FAILED, SKIPPED, PARTIAL |
 | `message` | `message` | String | Execution message |
 | `actionsExecuted` | `actions_executed` | Integer | Count of actions run |
-| `createdAt` | `created_at` | LocalDateTime | Execution time |
+| `executedAt` | `executed_at` | LocalDateTime | Execution time |
 
 ---
 

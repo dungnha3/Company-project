@@ -6,9 +6,10 @@
 -- =====================================================
 
 -- =====================================================
--- 0. PASSWORD HASH cho "Admin@123" (BCrypt)
+-- 0. PASSWORD HASH cho "Admin@123" (BCrypt cost=10)
+-- Hash được generate từ https://bcrypt-generator.com
 -- =====================================================
-DECLARE @password_hash VARCHAR(100) = '$2a$10$N9qo8uLOickgx2ZMRZoMy.MqrqbKHVHF0hQzQE3OGQbR6hKwkE2Iq';
+DECLARE @password_hash VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
 
 -- =====================================================
 -- 1. COMPANY (Công ty mặc định)

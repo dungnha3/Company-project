@@ -430,6 +430,8 @@ All endpoints marked with **(Paginated)** return this structure.
 | DELETE | `/{ruleId}` | Delete rule | Project Admin |
 | GET | `/{ruleId}/logs` | Get execution logs (Paginated) | Member |
 
+> **Note**: There is no PUT endpoint to update an existing rule. To modify a rule, delete and recreate it.
+
 **Trigger Types:**
 - `ISSUE_CREATED`, `ISSUE_UPDATED`, `STATUS_CHANGED`
 - `ASSIGNEE_CHANGED`, `PRIORITY_CHANGED`, `COMMENT_ADDED`

@@ -6,8 +6,10 @@ import DoAn.BE.user.repository.PersonalWorkspaceRepository;
 import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
@@ -23,6 +25,18 @@ public class DebugController {
     private final CompanyMemberRepository companyMemberRepository;
     private final jakarta.persistence.EntityManager entityManager;
     private final DoAn.BE.workspace.service.WorkspaceService workspaceService;
+    private final PasswordEncoder passwordEncoder;
+
+    // Generate BCrypt hash for a password - USE THIS TO GET CORRECT HASH FOR SQL
+    @GetMapping("/generate-hash")
+    public ResponseEntity<Map<String, String>> generateHash(
+            @RequestParam(defaultValue = "Admin@123") String password) {
+        Map<String, String> result = new HashMap<>();
+        result.put("password", password);
+        result.put("hash", passwordEncoder.encode(password));
+        result.put("instruction", "Copy this hash to SQL: UPDATE users SET password_hash = '<hash>' WHERE 1=1;");
+        return ResponseEntity.ok(result);
+    }
 
     @GetMapping("/workspaces")
     public ResponseEntity<Map<String, Object>> debugWorkspaces(

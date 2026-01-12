@@ -2,8 +2,22 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig({
-  plugins: [react()],
+// Bundle analyzer - only when ANALYZE=true
+const analyzePlugin = process.env.ANALYZE
+  ? import('rollup-plugin-visualizer').then(m => m.visualizer({
+    open: true,
+    filename: 'dist/stats.html',
+    gzipSize: true,
+    brotliSize: true,
+  }))
+  : null;
+
+export default defineConfig(async () => ({
+  plugins: [
+    react(),
+    // Add analyzer in analyze mode
+    analyzePlugin && await analyzePlugin,
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -29,6 +43,15 @@ export default defineConfig({
     global: 'window',
   },
   build: {
+    // Production optimizations
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,  // Remove console.log in production
+        drop_debugger: true, // Remove debugger statements
+      },
+    },
+    sourcemap: false, // Disable for production security
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -44,7 +67,13 @@ export default defineConfig({
               return 'vendor-charts';
             }
             if (id.includes('zustand') || id.includes('sockjs') || id.includes('stomp')) {
-              return 'vendor-ui';
+              return 'vendor-state';
+            }
+            if (id.includes('@dnd-kit')) {
+              return 'vendor-dnd';
+            }
+            if (id.includes('lucide') || id.includes('icons')) {
+              return 'vendor-icons';
             }
           }
         },
@@ -52,5 +81,4 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 600,
   },
-});
-
+}));

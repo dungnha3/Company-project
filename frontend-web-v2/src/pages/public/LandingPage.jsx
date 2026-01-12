@@ -84,32 +84,27 @@ export default function LandingPage() {
                             </div>
                         </div>
                         <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-[400px]">
-                            {/* Mock Dashboard UI */}
+                            {/* Dashboard Preview - Feature Icons */}
                             <div className="grid grid-cols-4 gap-4">
-                                {/* Stats Cards */}
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                                    <div className="text-gray-500 text-sm mb-1">Nhân viên</div>
-                                    <div className="text-2xl font-bold text-gray-900">248</div>
-                                    <div className="text-green-500 text-xs mt-1">+12 tháng này</div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                    <i className="fa-solid fa-users text-3xl text-blue-500 mb-2" />
+                                    <div className="text-gray-700 font-medium">Nhân viên</div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                                    <div className="text-gray-500 text-sm mb-1">Dự án</div>
-                                    <div className="text-2xl font-bold text-gray-900">32</div>
-                                    <div className="text-blue-500 text-xs mt-1">18 đang hoạt động</div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                    <i className="fa-solid fa-diagram-project text-3xl text-indigo-500 mb-2" />
+                                    <div className="text-gray-700 font-medium">Dự án</div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                                    <div className="text-gray-500 text-sm mb-1">Tasks</div>
-                                    <div className="text-2xl font-bold text-gray-900">1,429</div>
-                                    <div className="text-purple-500 text-xs mt-1">87% hoàn thành</div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                    <i className="fa-solid fa-list-check text-3xl text-purple-500 mb-2" />
+                                    <div className="text-gray-700 font-medium">Tasks</div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                                    <div className="text-gray-500 text-sm mb-1">Giờ đã log</div>
-                                    <div className="text-2xl font-bold text-gray-900">12,840h</div>
-                                    <div className="text-indigo-500 text-xs mt-1">Tuần này: 320h</div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                    <i className="fa-solid fa-clock text-3xl text-emerald-500 mb-2" />
+                                    <div className="text-gray-700 font-medium">Time Tracking</div>
                                 </div>
                             </div>
 
-                            {/* Charts Row */}
+                            {/* Charts Preview */}
                             <div className="grid grid-cols-3 gap-4 mt-4">
                                 <div className="col-span-2 bg-white rounded-xl p-4 shadow-sm border border-gray-100 h-48 flex items-center justify-center">
                                     <div className="text-center text-gray-400">
@@ -120,7 +115,7 @@ export default function LandingPage() {
                                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 h-48 flex items-center justify-center">
                                     <div className="text-center text-gray-400">
                                         <i className="fa-solid fa-chart-pie text-4xl mb-2 text-purple-300" />
-                                        <p className="text-sm">Status Distribution</p>
+                                        <p className="text-sm">Analytics</p>
                                     </div>
                                 </div>
                             </div>
@@ -129,25 +124,6 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Stats Section */}
-            <section className="py-16 bg-indigo-600">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                        {[
-                            { number: '10,000+', label: 'Người dùng', icon: 'fa-users' },
-                            { number: '500+', label: 'Doanh nghiệp', icon: 'fa-building' },
-                            { number: '2M+', label: 'Tasks hoàn thành', icon: 'fa-check-circle' },
-                            { number: '99.9%', label: 'Uptime', icon: 'fa-server' },
-                        ].map((stat, idx) => (
-                            <div key={idx} className="text-white">
-                                <i className={`fa-solid ${stat.icon} text-3xl mb-3 text-indigo-200`} />
-                                <div className="text-4xl font-bold mb-1">{stat.number}</div>
-                                <div className="text-indigo-200">{stat.label}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
 
             {/* Features Grid - Updated with new features */}
             <section id="features" className="py-20 bg-gray-50">

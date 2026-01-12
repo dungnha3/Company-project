@@ -64,22 +64,6 @@ export default function LoginPage() {
                     <p className="text-lg text-indigo-100 mb-8 max-w-md">
                         Đăng nhập để truy cập dashboard, quản lý dự án và theo dõi tiến độ công việc của bạn.
                     </p>
-
-                    {/* Stats */}
-                    <div className="flex gap-8">
-                        <div>
-                            <div className="text-3xl font-bold">10K+</div>
-                            <div className="text-indigo-200 text-sm">Người dùng</div>
-                        </div>
-                        <div>
-                            <div className="text-3xl font-bold">500+</div>
-                            <div className="text-indigo-200 text-sm">Doanh nghiệp</div>
-                        </div>
-                        <div>
-                            <div className="text-3xl font-bold">99.9%</div>
-                            <div className="text-indigo-200 text-sm">Uptime</div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
