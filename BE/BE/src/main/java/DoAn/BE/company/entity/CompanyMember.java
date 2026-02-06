@@ -37,9 +37,7 @@ import org.hibernate.annotations.Filter;
         // Index cho query: findByUser_UserIdAndIsActiveTrue (Login, Profile)
         @jakarta.persistence.Index(name = "idx_cm_user_active", columnList = "user_id, is_active"),
         // Index cho query: findByCompany_CompanyIdAndIsActiveTrue (Member List)
-        @jakarta.persistence.Index(name = "idx_cm_company_active", columnList = "company_id, is_active"),
-        // Index cho query: findByCompany_CompanyIdAndRoleAndIsActiveTrue (Role lookups)
-        @jakarta.persistence.Index(name = "idx_cm_company_role_active", columnList = "company_id, role, is_active")
+        @jakarta.persistence.Index(name = "idx_cm_company_active", columnList = "company_id, is_active")
 })
 @Data
 @NoArgsConstructor

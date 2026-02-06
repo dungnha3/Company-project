@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
@@ -152,7 +153,7 @@ export default function DashboardPage() {
                                 Xem chi tiết →
                             </Link>
                         </div>
-                        <div className="h-64">
+                        <div className="h-64 w-full min-w-0">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={attendanceData}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -194,7 +195,7 @@ export default function DashboardPage() {
                     {/* Project Status Pie */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Dự án theo trạng thái</h3>
-                        <div className="h-48 flex items-center justify-center">
+                        <div className="h-48 flex items-center justify-center w-full min-w-0">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie

@@ -80,6 +80,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/debug/**").hasRole(SYSTEM_ADMIN) // DEBUG -
                                                                                                         // Secured
 
+                                                // ===== COMMON ENDPOINTS (Tenant Agnostic) =====
+                                                .requestMatchers("/api/workspaces/**").authenticated()
+                                                .requestMatchers("/api/invites/**").authenticated()
+
                                                 // ===== SYSTEM ADMIN ENDPOINTS =====
                                                 .requestMatchers("/api/companies/admin/**").hasRole(SYSTEM_ADMIN)
 

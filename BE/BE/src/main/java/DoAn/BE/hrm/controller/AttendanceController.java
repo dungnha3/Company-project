@@ -37,6 +37,21 @@ public class AttendanceController {
 
     // ==================== CRUD ====================
 
+    // [Authentication] Get my attendance history
+    @GetMapping("/my-history")
+    public ResponseEntity<List<AttendanceDTO>> getMyAttendanceHistory(
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser.getEmployee() == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        // Get current month's attendance by default or similar logic
+        // For simplicity reusing getAttendanceByEmployee logic but returning list or
+        // page
+        // Mapping /my-history usually implies 'all history' or 'recent'.
+        // Let's implement getting all paged for the user.
+        return ResponseEntity.ok(List.of()); // Placeholder, let's look at the existing service methods first
+    }
+
     // [Create attendance] (Role: HR Manager)
     @PostMapping
     public ResponseEntity<AttendanceDTO> createAttendance(

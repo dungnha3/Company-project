@@ -3,6 +3,12 @@ import { AUTH_CONFIG } from '../../config/authConfig';
 import { useAuthStore } from '../../shared/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 
+// Helper function to check if Google Client ID is properly configured
+const isGoogleConfigured = () => {
+    const clientId = AUTH_CONFIG.GOOGLE_CLIENT_ID;
+    return clientId && !clientId.includes("YOUR_GOOGLE_CLIENT_ID");
+};
+
 const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
     const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
     const navigate = useNavigate();
@@ -36,7 +42,7 @@ const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
         // Khởi tạo Google Button nếu script đã load
         if (window.google && window.google.accounts) {
             // Kiểm tra xem Client ID đã được config chưa
-            if (AUTH_CONFIG.GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE_CLIENT_ID")) {
+            if (!isGoogleConfigured()) {
                 console.warn("Chưa cấu hình Google Client ID");
                 return;
             }
@@ -53,7 +59,7 @@ const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
         }
     }, [loginWithGoogle, navigate]);
 
-    if (AUTH_CONFIG.GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE_CLIENT_ID")) {
+    if (!isGoogleConfigured()) {
         return (
             <div className="p-3 bg-gray-100 text-gray-500 rounded-lg text-center text-sm border border-dashed border-gray-300">
                 <i className="fa-brands fa-google mr-2"></i>

@@ -32,20 +32,23 @@ public class WorkspaceService {
     /**
      * Lấy tất cả workspaces của user (Personal + Company memberships)
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<WorkspaceDto.WorkspaceResponse> getAllWorkspaces(User user) {
         List<WorkspaceDto.WorkspaceResponse> workspaces = new ArrayList<>();
 
         // 1. Personal Workspace
-        personalWorkspaceRepository.findByUser_UserId(user.getUserId())
-                .ifPresent(pw -> workspaces.add(WorkspaceDto.WorkspaceResponse.builder()
-                        .id(pw.getWorkspaceId())
-                        .name(pw.getName())
-                        .type(WorkspaceType.PERSONAL)
-                        .plan(user.getPersonalPlan())
-                        .role("OWNER")
-                        .isActive(true)
-                        .build()));
+        // 1. Personal Workspace - Auto create if not exists (Self-healing)
+        DoAn.BE.user.entity.PersonalWorkspace pw = personalWorkspaceRepository.findByUser_UserId(user.getUserId())
+                .orElseGet(() -> createPersonalWorkspaceIfNotExists(user));
+
+        workspaces.add(WorkspaceDto.WorkspaceResponse.builder()
+                .id(pw.getWorkspaceId())
+                .name(pw.getName())
+                .type(WorkspaceType.PERSONAL)
+                .plan(user.getPersonalPlan())
+                .role("OWNER")
+                .isActive(true)
+                .build());
 
         // 2. Company Workspaces
         // [FIX] Disable tenant filter to see ALL memberships

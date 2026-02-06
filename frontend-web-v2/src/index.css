@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tailwind v4: Enable class-based dark mode selector */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Base Layer - Reset & Typography */
 @layer base {
   * {

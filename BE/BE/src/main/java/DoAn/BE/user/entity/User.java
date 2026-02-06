@@ -31,8 +31,9 @@ import org.hibernate.annotations.SQLRestriction;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(callSuper = true)
-@ToString(exclude = { "memberships" }) // [FIX] Exclude lazy collection to prevent circular
-                                       // ToString
+@ToString(exclude = { "memberships", "personalWorkspace", "employee" }) // [FIX] Exclude lazy collection to prevent
+                                                                        // circular
+// ToString
 @Table(name = "users", indexes = {
         // Index cho query: findByIsOnlineTrue (Presence check)
         @jakarta.persistence.Index(name = "idx_user_online", columnList = "is_online"),
