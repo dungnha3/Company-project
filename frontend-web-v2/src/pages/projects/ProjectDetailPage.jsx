@@ -77,12 +77,12 @@ export default function ProjectDetailPage() {
                     </div>
                     <div className="flex gap-2">
                         {showCalendar && (
-                            <Link to="/app/calendar" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Link to="/app/me/calendar" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                                 <i className="fa-solid fa-calendar mr-2" />Lịch
                             </Link>
                         )}
                         {showTimelogs && (
-                            <Link to="/app/my-timelogs" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Link to="/app/me/timelogs" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                                 <i className="fa-solid fa-clock mr-2" />Time Logs
                             </Link>
                         )}
@@ -185,7 +185,10 @@ export default function ProjectDetailPage() {
 function OverviewTab({ project }) {
     const { data: activitiesData, isLoading } = useQuery({
         queryKey: ['project-activities', project.projectId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ACTIVITIES.BY_PROJECT(project.projectId))).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.ACTIVITIES.BY_PROJECT(project.projectId));
+            return response.data?.content || response.data || [];
+        },
     });
 
     const activities = activitiesData?.content || [];

@@ -105,74 +105,13 @@ public class CompanyController {
     }
 
     // ==================== SYSTEM ADMIN ENDPOINTS ====================
-
-    // [SAAS] Cập nhật thông tin công ty (System Admin - không cần là member)
-    @PutMapping("/admin/{companyId}")
-    public ResponseEntity<?> updateCompanyByAdmin(
-            @PathVariable Long companyId,
-            @RequestBody CompanyDto.CompanyUpdateRequest request,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        if (!user.isSystemAdminAccount()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
-        }
-        companyService.updateCompanyByAdmin(companyId, request);
-        return ResponseEntity.ok().body(Map.of("message", "Cập nhật thông tin công ty thành công"));
-    }
-
-    // [SAAS] Đổi plan công ty (System Admin only)
-    @PutMapping("/admin/{companyId}/plan")
-    public ResponseEntity<?> changePlan(
-            @PathVariable Long companyId,
-            @RequestParam String plan,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        if (!user.isSystemAdminAccount()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
-        }
-        companyService.changePlan(companyId, plan);
-        return ResponseEntity.ok().body(Map.of("message", "Đổi plan thành công"));
-    }
-
-    // [SAAS] Bật/tắt trạng thái công ty (System Admin only)
-    @PutMapping("/admin/{companyId}/status")
-    public ResponseEntity<?> toggleCompanyStatus(
-            @PathVariable Long companyId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        if (!user.isSystemAdminAccount()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
-        }
-        boolean newStatus = companyService.toggleCompanyStatus(companyId);
-        return ResponseEntity.ok().body(Map.of(
-                "message", newStatus ? "Đã kích hoạt công ty" : "Đã tạm ngưng công ty",
-                "isActive", newStatus));
-    }
-
-    // [SAAS] Xóa công ty (System Admin only)
-    @DeleteMapping("/admin/{companyId}")
-    public ResponseEntity<?> deleteCompany(
-            @PathVariable Long companyId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        if (!user.isSystemAdminAccount()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
-        }
-        companyService.deleteCompany(companyId);
-        return ResponseEntity.ok().body(Map.of("message", "Đã xóa công ty thành công"));
-    }
-
-    // [SAAS] Cập nhật cài đặt công ty (System Admin only - Bao gồm GPS)
-    @PutMapping("/admin/{companyId}/settings")
-    public ResponseEntity<?> updateSettingsByAdmin(
-            @PathVariable Long companyId,
-            @RequestBody CompanyDto.SettingsUpdateRequest request,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        if (!user.isSystemAdminAccount()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
-        }
-        companyService.updateSettingsBySystemAdmin(companyId, request);
-        return ResponseEntity.ok().body(Map.of("message", "Cập nhật cài đặt (System Admin) thành công"));
-    }
+    // MOVED TO SysAdminCompanyController
+    /*
+     * The following endpoints have been moved to /api/sysadmin/companies/*
+     * - updateCompanyByAdmin
+     * - changePlan
+     * - toggleCompanyStatus
+     * - deleteCompany
+     * - updateSettingsByAdmin
+     */
 }

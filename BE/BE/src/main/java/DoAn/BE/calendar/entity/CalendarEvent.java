@@ -75,7 +75,7 @@ public class CalendarEvent {
     private Issue issue; // Link to issue for deadline events
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
+    @JoinColumn(name = "company_id", nullable = true)
     private Company company;
 
     @Column(name = "created_at", nullable = false)

@@ -195,7 +195,7 @@ export default function CompanyDashboardPage() {
                     <div className="mt-6 pt-6 border-t border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-500 mb-3">Truy cập nhanh</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <QuickLink to="/app/employees" icon="fa-users" label="Nhân viên" />
+                            <QuickLink to="/app/hr/employees" icon="fa-users" label="Nhân viên" />
                             <QuickLink to="/app/projects" icon="fa-folder" label="Dự án" />
                             <QuickLink to="/app/company/billing" icon="fa-credit-card" label="Thanh toán" />
                             <QuickLink to="/app/company/settings" icon="fa-cog" label="Cài đặt" />

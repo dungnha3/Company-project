@@ -18,6 +18,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // [SAAS] Đếm số dự án của công ty check limit
     long countByCompany_CompanyId(Long companyId);
 
+    // [SAAS] Lấy danh sách dự án của công ty (SysAdmin)
+    List<Project> findByCompany_CompanyId(Long companyId);
+
     Optional<Project> findByKeyProject(String keyProject);
 
     List<Project> findByCreatedBy_UserId(Long userId);

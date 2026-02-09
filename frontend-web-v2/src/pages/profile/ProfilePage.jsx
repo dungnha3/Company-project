@@ -80,8 +80,8 @@ export default function ProfilePage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         <i className={`fa-solid ${tab.icon}`} />
@@ -115,10 +115,12 @@ function ProfileInfoTab({ user }) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            // await apiClient.put(ENDPOINTS.USERS.BY_ID(user.userId), formData);
+            const response = await apiClient.put(ENDPOINTS.PROFILE.UPDATE, formData);
+            updateUser(response.data);
             toast.success('Đã cập nhật thông tin!');
         } catch (err) {
-            toast.error('Lỗi khi cập nhật');
+            console.error(err);
+            toast.error(err.response?.data?.message || 'Lỗi khi cập nhật');
         } finally {
             setSaving(false);
         }
@@ -199,12 +201,12 @@ function SecurityTab() {
             return;
         }
         try {
-            // await apiClient.post(ENDPOINTS.AUTH.CHANGE_PASSWORD, passwords);
+            await apiClient.post(ENDPOINTS.PROFILE.CHANGE_PASSWORD, passwords);
             toast.success('Đã đổi mật khẩu thành công!');
             setShowChangePassword(false);
             setPasswords({ current: '', new: '', confirm: '' });
         } catch (err) {
-            toast.error('Mật khẩu cũ không đúng');
+            toast.error(err.response?.data?.message || 'Mật khẩu cũ không đúng');
         }
     };
 
@@ -413,7 +415,7 @@ function SessionsTab() {
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${session.current ? 'bg-green-100' : 'bg-gray-100'
                                 }`}>
                                 <i className={`fa-solid ${session.device.includes('iPhone') ? 'fa-mobile' :
-                                        session.device.includes('Mac') ? 'fa-desktop' : 'fa-laptop'
+                                    session.device.includes('Mac') ? 'fa-desktop' : 'fa-laptop'
                                     } ${session.current ? 'text-green-600' : 'text-gray-500'}`} />
                             </div>
                             <div>

@@ -20,6 +20,9 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
         // Lấy memberships active của user
         List<CompanyMember> findByUser_UserIdAndIsActiveTrue(Long userId);
 
+        // Lấy pending invites (memberships chưa kích hoạt) của user
+        List<CompanyMember> findByUser_UserIdAndIsActiveFalse(Long userId);
+
         // Lấy membership cụ thể (user + company)
         Optional<CompanyMember> findByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
 

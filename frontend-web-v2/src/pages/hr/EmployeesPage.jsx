@@ -188,7 +188,7 @@ export default function EmployeesPage() {
             cell: (row) => (
                 <div className="flex justify-end gap-2">
                     <button
-                        onClick={() => navigate(`/employees/${row.nhanvienId}`)}
+                        onClick={() => navigate(`/app/hr/employees/${row.nhanvienId}`)}
                         className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-all"
                         title="Xem chi tiết"
                     >

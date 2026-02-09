@@ -23,7 +23,10 @@ export default function HRDashboardPage() {
     // Fetch pending leave requests
     const { data: leaveRequests } = useQuery({
         queryKey: ['pending-leaves-dashboard'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } })).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
+            return response.data?.content || response.data || [];
+        },
         enabled: hasRole('MANAGER_HR', 'OWNER', 'ADMIN'),
     });
 
@@ -120,14 +123,14 @@ export default function HRDashboardPage() {
                         label="Thêm nhân viên"
                         description="Tạo hồ sơ nhân viên mới"
                         color="bg-blue-500"
-                        onClick={() => navigate('/app/employees')}
+                        onClick={() => navigate('/app/hr/employees')}
                     />
                     <QuickActionCard
                         icon="fa-file-signature"
                         label="Duyệt đơn nghỉ"
                         description={`${stats.pendingLeaves} đơn đang chờ`}
                         color="bg-orange-500"
-                        onClick={() => navigate('/app/leave-requests')}
+                        onClick={() => navigate('/app/hr/leave-requests')}
                         badge={stats.pendingLeaves > 0}
                     />
                     <QuickActionCard
@@ -142,7 +145,7 @@ export default function HRDashboardPage() {
                         label="Bảng lương"
                         description="Xem và tính lương"
                         color="bg-green-500"
-                        onClick={() => navigate('/app/salaries')}
+                        onClick={() => navigate('/app/hr/salaries')}
                     />
                 </div>
             </div>
@@ -157,7 +160,7 @@ export default function HRDashboardPage() {
                             Đơn nghỉ phép mới nhất
                         </h2>
                         <button
-                            onClick={() => navigate('/app/leave-requests')}
+                            onClick={() => navigate('/app/hr/leave-requests')}
                             className="text-sm text-primary hover:underline"
                         >
                             Xem tất cả →

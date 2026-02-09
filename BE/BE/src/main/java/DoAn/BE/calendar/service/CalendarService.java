@@ -15,6 +15,7 @@ import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.util.SecurityUtil;
+import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.ProjectRepository;
@@ -45,8 +46,14 @@ public class CalendarService {
         User currentUser = SecurityUtil.getCurrentUser();
         Long companyId = TenantContext.getCompanyId();
 
-        if (companyId == null) {
-            throw new ForbiddenException("Yêu cầu context công ty");
+        Company company = null;
+        if (companyId != null) {
+            company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+        } else {
+            // Personal Workspace - Ensure event type is handled or allow it
+            // Typically we might enforce EventType.PERSONAL if company is null, but for now
+            // let's allow all.
         }
 
         CalendarEvent event = CalendarEvent.builder()
@@ -60,7 +67,7 @@ public class CalendarService {
                 .meetingLink(request.getMeetingLink())
                 .recurrenceRule(request.getRecurrenceRule())
                 .createdBy(currentUser)
-                .company(companyRepository.getReferenceById(companyId))
+                .company(company) // Nullable now
                 .build();
 
         // Link to project if specified
@@ -105,9 +112,17 @@ public class CalendarService {
      */
     public List<CalendarEventDTO> getEvents(LocalDateTime start, LocalDateTime end) {
         Long companyId = TenantContext.getCompanyId();
+        User currentUser = SecurityUtil.getCurrentUser();
 
-        return eventRepository.findByCompany_CompanyIdAndStartTimeBetween(companyId, start, end)
-                .stream()
+        List<CalendarEvent> events;
+        if (companyId != null) {
+            events = eventRepository.findByCompany_CompanyIdAndStartTimeBetween(companyId, start, end);
+        } else {
+            // Personal Workspace - Fetch events created by user
+            events = eventRepository.findByCreatedBy_UserIdAndStartTimeBetween(currentUser.getUserId(), start, end);
+        }
+
+        return events.stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }

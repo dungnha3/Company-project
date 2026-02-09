@@ -17,7 +17,10 @@ export default function SalariesPage() {
 
     const { data: salaries, isLoading } = useQuery({
         queryKey: ['salaries', period],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.SALARIES.LIST, { params: { period } })).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.SALARIES.LIST, { params: { period } });
+            return response.data?.content || response.data || [];
+        },
     });
 
     const generateMutation = useMutation({

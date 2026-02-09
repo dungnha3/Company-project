@@ -16,7 +16,14 @@ export default function ProjectsPage() {
 
     const { data: projects, isLoading } = useQuery({
         queryKey: ['projects'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.LIST)).data,
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.PROJECTS.LIST)).data;
+                return response?.content || response || [];
+            } catch {
+                return [];
+            }
+        },
     });
 
     const handleProjectCreated = (project) => {

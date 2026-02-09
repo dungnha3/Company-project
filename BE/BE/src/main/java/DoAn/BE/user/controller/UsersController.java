@@ -232,9 +232,12 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // Kiểm tra quyền: Admin/HR cập nhật tất cả, user cập nhật của mình
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()
-                && !currentUser.getUserId().equals(userId)) {
+        // Kiểm tra quyền: Admin/HR cập nhật tất cả, user cập nhật của mình, System
+        // Admin cập nhật tất cả
+        if (!currentUser.isSystemAdminAccount() &&
+                !accessControlService.isOwnerOrAdmin() &&
+                !accessControlService.isHRManager() &&
+                !currentUser.getUserId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -254,7 +257,8 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (!accessControlService.isOwnerOrAdmin()) {
+        // System Admin allowed
+        if (!currentUser.isSystemAdminAccount() && !accessControlService.isOwnerOrAdmin()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -277,7 +281,9 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        // System Admin allowed
+        if (!currentUser.isSystemAdminAccount() && !accessControlService.isOwnerOrAdmin()
+                && !accessControlService.isHRManager()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -308,7 +314,9 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        // System Admin allowed
+        if (!currentUser.isSystemAdminAccount() && !accessControlService.isOwnerOrAdmin()
+                && !accessControlService.isHRManager()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

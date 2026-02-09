@@ -141,7 +141,7 @@ export default function OrgChartPage() {
                                         onClick={() => setSelectedDept(
                                             selectedDept === dept.departmentId ? null : dept.departmentId
                                         )}
-                                        onViewEmployee={(empId) => navigate(`/app/employees/${empId}`)}
+                                        onViewEmployee={(empId) => navigate(`/app/hr/employees/${empId}`)}
                                     />
                                 ))}
                             </div>
@@ -285,8 +285,8 @@ function EmployeeCard({ employee, isManager, compact, onClick }) {
                 }`}
         >
             <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold shadow mb-2 ${isManager
-                    ? 'bg-gradient-to-br from-purple-500 to-purple-600'
-                    : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                ? 'bg-gradient-to-br from-purple-500 to-purple-600'
+                : 'bg-gradient-to-br from-gray-400 to-gray-500'
                 }`}>
                 {employee.avatarUrl ? (
                     <img src={employee.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />

@@ -77,8 +77,10 @@ public class FileStorageService {
     @Transactional
     public FileUploadResponse uploadFile(MultipartFile file, Long folderId, Long userId, String ipAddress,
             String userAgent) {
-        // [Granular Permission] Kiểm tra quyền upload file
-        accessControlService.checkStorageUploadPermission();
+        // [Granular Permission] Kiểm tra quyền upload file (Only if in Company context)
+        if (TenantContext.getCompanyId() != null) {
+            accessControlService.checkStorageUploadPermission();
+        }
 
         // Validate user
         User user = userRepository.findById(userId)
@@ -88,6 +90,14 @@ public class FileStorageService {
         fileValidator.validateFile(file);
 
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+
+        // Quota dựa trên vai trò - Owner/Admin được quota cao hơn
+        boolean isPrivileged = false;
+        if (TenantContext.getCompanyId() != null) {
+            isPrivileged = accessControlService.isOwnerOrAdmin();
+        }
+        long quotaGb = isPrivileged ? adminQuotaGB : userQuotaGB;
+        long quotaBytes = quotaGb * 1024L * 1024L * 1024L;
 
         // Check quota
         checkStorageQuota(userId, file.getSize());
@@ -602,9 +612,10 @@ public class FileStorageService {
                 }
             }
         } else {
-            // Fallback if no company context (e.g. personal workspace if implemented)
-            long quotaGb = accessControlService.isOwnerOrAdmin() ? adminQuotaGB : userQuotaGB;
-            quotaBytes = quotaGb * 1024L * 1024L * 1024L;
+            // Fallback if no company context (e.g. personal workspace)
+            // For personal workspace, treat as regular user unless we have other flags
+            // Or assume everyone gets userQuotaGB
+            quotaBytes = userQuotaGB * 1024L * 1024L * 1024L;
         }
         long newUsage = currentUsage + fileSize;
 

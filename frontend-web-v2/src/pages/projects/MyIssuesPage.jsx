@@ -27,16 +27,31 @@ export default function MyIssuesPage() {
     const [selectedIssue, setSelectedIssue] = useState(null);
     const queryClient = useQueryClient();
 
-    // Fetch my assigned issues
+    // Fetch my assigned issues (paginated response)
     const { data: assignedIssues = [], isLoading: loadingAssigned } = useQuery({
         queryKey: ['myIssues'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data,
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data;
+                // Handle paginated response (has .content) or direct array
+                return response?.content || response || [];
+            } catch {
+                return [];
+            }
+        },
     });
 
     // Fetch issues I reported
     const { data: reportedIssues = [], isLoading: loadingReported } = useQuery({
         queryKey: ['myReportedIssues'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.MY_REPORTED)).data,
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_REPORTED)).data;
+                return Array.isArray(response) ? response : (response?.content || []);
+            } catch {
+                return [];
+            }
+        },
     });
 
     const isLoading = loadingAssigned || loadingReported;

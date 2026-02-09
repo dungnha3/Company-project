@@ -12,7 +12,7 @@ const SEARCH_CATEGORIES = [
 ];
 
 const QUICK_ACTIONS = [
-    { id: 'new-employee', label: 'Thêm nhân viên', icon: 'fa-user-plus', path: '/app/employees', color: 'text-blue-500' },
+    { id: 'new-employee', label: 'Thêm nhân viên', icon: 'fa-user-plus', path: '/app/hr/employees', color: 'text-blue-500' },
     { id: 'new-project', label: 'Tạo dự án mới', icon: 'fa-folder-plus', path: '/app/projects', color: 'text-purple-500' },
     { id: 'new-leave', label: 'Tạo đơn nghỉ phép', icon: 'fa-calendar-plus', path: '/app/leave-requests', color: 'text-green-500' },
     { id: 'hr-dashboard', label: 'HR Dashboard', icon: 'fa-gauge-high', path: '/app/hr-dashboard', color: 'text-indigo-500' },
@@ -65,7 +65,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
                 'text-blue-500',
                 e => e.fullName,
                 e => e.position || e.email,
-                e => `/app/employees/${e.id}`
+                e => `/app/hr/employees/${e.id}`
             );
         }
 
@@ -91,7 +91,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
                 'text-orange-500',
                 d => d.name,
                 d => `${d.employeeCount || 0} nhân viên`,
-                d => '/app/departments'
+                d => '/app/hr/departments'
             );
         }
 

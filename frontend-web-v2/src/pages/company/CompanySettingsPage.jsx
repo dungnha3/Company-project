@@ -388,6 +388,60 @@ function ModulesSettings({ workspace }) {
                             onToggle={() => handleToggle('contractEnabled')}
                             disabled={updateMutation.isPending}
                         />
+                        <ToggleRow
+                            icon="fa-star"
+                            iconColor="text-yellow-500"
+                            title="Đánh giá năng lực"
+                            description="Review định kỳ, đánh giá 360 độ"
+                            enabled={settings.reviewEnabled !== false}
+                            onToggle={() => handleToggle('reviewEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-bullseye"
+                            iconColor="text-red-500"
+                            title="OKR / KPI"
+                            description="Quản lý mục tiêu và kết quả then chốt"
+                            enabled={settings.okrEnabled !== false}
+                            onToggle={() => handleToggle('okrEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-layer-group"
+                            iconColor="text-purple-500"
+                            title="Ma trận kỹ năng"
+                            description="Quản lý skills và levels của nhân viên"
+                            enabled={settings.skillsMatrixEnabled !== false}
+                            onToggle={() => handleToggle('skillsMatrixEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-user-graduate"
+                            iconColor="text-pink-500"
+                            title="Onboarding"
+                            description="Quy trình tuyển dụng và hội nhập"
+                            enabled={settings.onboardingEnabled !== false}
+                            onToggle={() => handleToggle('onboardingEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-people-arrows"
+                            iconColor="text-blue-600"
+                            title="Quản lý nguồn lực"
+                            description="Resource Planning & Allocation"
+                            enabled={settings.resourcePlanningEnabled !== false}
+                            onToggle={() => handleToggle('resourcePlanningEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
+                        <ToggleRow
+                            icon="fa-sitemap"
+                            iconColor="text-indigo-600"
+                            title="Sơ đồ tổ chức"
+                            description="Hiển thị cây cấu trúc công ty"
+                            enabled={settings.orgChartEnabled !== false}
+                            onToggle={() => handleToggle('orgChartEnabled')}
+                            disabled={updateMutation.isPending}
+                        />
                     </div>
                 </div>
             )}

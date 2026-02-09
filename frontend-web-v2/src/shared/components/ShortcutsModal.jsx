@@ -123,16 +123,16 @@ export function useKeyboardShortcuts(navigate) {
                         navigate('/app/projects');
                         break;
                     case 'E':
-                        navigate('/app/employees');
+                        navigate('/app/hr/employees');
                         break;
                     case 'O':
                         navigate('/app/org-chart');
                         break;
                     case 'I':
-                        navigate('/app/my-issues');
+                        navigate('/app/me/issues');
                         break;
                     case 'C':
-                        navigate('/app/calendar');
+                        navigate('/app/me/calendar');
                         break;
                 }
                 setKeySequence([]);

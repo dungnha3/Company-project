@@ -62,6 +62,24 @@ public class CompanyService {
                 .collect(Collectors.toList());
     }
 
+    // [SAAS] Lấy thông tin công ty theo ID (System Admin - không yêu cầu
+    // membership)
+    @Transactional(readOnly = true)
+    public CompanyDto.CompanyResponse getCompanyById(Long companyId) {
+        if (companyId == null) {
+            throw new BadRequestException("ID công ty không được để trống");
+        }
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty với ID: " + companyId));
+        return mapCompanyToResponse(company);
+    }
+
+    // [SAAS] Lấy settings công ty (System Admin - wrapper cho getSettingsCached)
+    @Transactional(readOnly = true)
+    public CompanySettings getCompanySettings(Long companyId) {
+        return getSettingsCached(companyId);
+    }
+
     // [Helper] Map Company entity trực tiếp sang Response (không qua CompanyMember)
     private CompanyDto.CompanyResponse mapCompanyToResponse(Company company) {
         CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
@@ -467,6 +485,83 @@ public class CompanyService {
         updateGpsSettings(settings, req); // GPS update allowed here
 
         log.info("[System Admin] Đã cập nhật cài đặt (bao gồm GPS) cho công ty: {}", companyId);
+        return companySettingsRepository.save(settings);
+    }
+
+    // [SAAS] Override Quota (God Mode)
+    @Transactional
+    public CompanySettings updateCompanyQuota(Long companyId,
+            DoAn.BE.sysadmin.dto.SysAdminCompanyDto.QuotaUpdateRequest req) {
+        CompanySettings settings = companySettingsRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
+
+        if (req.getMaxEmployees() != null)
+            settings.setMaxEmployees(req.getMaxEmployees());
+        if (req.getMaxProjects() != null)
+            settings.setMaxProjects(req.getMaxProjects());
+        if (req.getMaxStorageBytes() != null)
+            settings.setMaxStorageBytes(req.getMaxStorageBytes());
+        if (req.getUserStorageQuotaBytes() != null)
+            settings.setUserStorageQuotaBytes(req.getUserStorageQuotaBytes());
+
+        log.info("[System Admin] Đã override Quota cho công ty {}: Emp={}, Proj={}, Store={}",
+                companyId, settings.getMaxEmployees(), settings.getMaxProjects(), settings.getMaxStorageBytes());
+
+        return companySettingsRepository.save(settings);
+    }
+
+    // [SAAS] Override Features (God Mode)
+    @Transactional
+    public CompanySettings updateCompanyFeatures(Long companyId,
+            DoAn.BE.sysadmin.dto.SysAdminCompanyDto.FeatureOverrideRequest req) {
+        CompanySettings settings = companySettingsRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
+
+        // Core Modules
+        if (req.getHrModuleEnabled() != null)
+            settings.setHrModuleEnabled(req.getHrModuleEnabled());
+        if (req.getProjectModuleEnabled() != null)
+            settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
+        if (req.getChatModuleEnabled() != null)
+            settings.setChatModuleEnabled(req.getChatModuleEnabled());
+        if (req.getAiModuleEnabled() != null)
+            settings.setAiModuleEnabled(req.getAiModuleEnabled());
+        if (req.getStorageModuleEnabled() != null)
+            settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
+
+        // HR Sub-features
+        if (req.getAttendanceEnabled() != null)
+            settings.setAttendanceEnabled(req.getAttendanceEnabled());
+        if (req.getLeaveEnabled() != null)
+            settings.setLeaveEnabled(req.getLeaveEnabled());
+        if (req.getSalaryEnabled() != null)
+            settings.setSalaryEnabled(req.getSalaryEnabled());
+        if (req.getContractEnabled() != null)
+            settings.setContractEnabled(req.getContractEnabled());
+        if (req.getReviewEnabled() != null)
+            settings.setReviewEnabled(req.getReviewEnabled());
+
+        // Competitive Features
+        if (req.getOkrEnabled() != null)
+            settings.setOkrEnabled(req.getOkrEnabled());
+        if (req.getSkillsMatrixEnabled() != null)
+            settings.setSkillsMatrixEnabled(req.getSkillsMatrixEnabled());
+        if (req.getOnboardingEnabled() != null)
+            settings.setOnboardingEnabled(req.getOnboardingEnabled());
+        if (req.getResourcePlanningEnabled() != null)
+            settings.setResourcePlanningEnabled(req.getResourcePlanningEnabled());
+        if (req.getOrgChartEnabled() != null)
+            settings.setOrgChartEnabled(req.getOrgChartEnabled());
+
+        // Project Sub-features
+        if (req.getTimeTrackingEnabled() != null)
+            settings.setTimeTrackingEnabled(req.getTimeTrackingEnabled());
+        if (req.getAnalyticsEnabled() != null)
+            settings.setAnalyticsEnabled(req.getAnalyticsEnabled());
+        if (req.getCalendarEnabled() != null)
+            settings.setCalendarEnabled(req.getCalendarEnabled());
+
+        log.info("[System Admin] Đã override Features cho công ty {}", companyId);
         return companySettingsRepository.save(settings);
     }
 }

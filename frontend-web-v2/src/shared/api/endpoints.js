@@ -22,9 +22,39 @@ export const ENDPOINTS = {
 
     // Admin (SaaS)
     ADMIN: {
-        COMPANIES: '/api/companies/admin/all',
-        COMPANY_DETAILS: (id) => `/api/companies/admin/${id}`,
-        USERS: '/api/users/admin', // Assuming this exists or will mock
+        COMPANIES: '/api/sysadmin/companies', // Old: /api/companies/admin/all
+        COMPANY_DETAILS: (id) => `/api/sysadmin/companies/${id}`,
+        USERS: '/api/users',
+    },
+
+    // System Admin (God Mode)
+    SYSADMIN: {
+        COMPANIES: '/api/sysadmin/companies',
+        COMPANY_DETAILS: (id) => `/api/sysadmin/companies/${id}`,
+        COMPANY_PLAN: (id) => `/api/sysadmin/companies/${id}/plan`,
+        COMPANY_STATUS: (id) => `/api/sysadmin/companies/${id}/status`,
+        COMPANY_DELETE: (id) => `/api/sysadmin/companies/${id}`,
+        COMPANY_QUOTA: (id) => `/api/sysadmin/companies/${id}/quota`,
+        COMPANY_FEATURES: (id) => `/api/sysadmin/companies/${id}/features`,
+        COMPANY_SETTINGS: (id) => `/api/sysadmin/companies/${id}/settings`,
+
+        // Settings
+        SETTINGS: '/api/sysadmin/settings',
+
+        // Analytics
+        ANALYTICS: {
+            STATS: '/api/sysadmin/analytics/stats',
+            GROWTH: '/api/sysadmin/analytics/growth',
+        },
+
+        // Tenant Deep View
+        TENANTS: {
+            USERS: (companyId) => `/api/sysadmin/tenants/${companyId}/users`,
+            PROJECTS: (companyId) => `/api/sysadmin/tenants/${companyId}/projects`,
+        },
+
+        // Users Management
+        USERS: '/api/sysadmin/users',
     },
 
     // Companies
@@ -36,6 +66,9 @@ export const ENDPOINTS = {
         DELETE: (id) => `/api/companies/${id}`,
         SETTINGS: (id) => `/api/companies/${id}/settings`,
         QUOTA: '/api/companies/quota', // GET - current quota usage
+        // Members
+        MEMBERS: (companyId) => `/api/companies/${companyId}/members`,
+        MEMBER_PERMISSIONS: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/permissions`,
     },
 
     // Workspaces (NEW - Dual Workspace Model)
@@ -43,6 +76,15 @@ export const ENDPOINTS = {
         LIST: '/api/workspaces',
         PERSONAL: '/api/workspaces/personal',
         ENSURE_PERSONAL: '/api/workspaces/personal/ensure',
+    },
+
+    // Personal Tasks (Personal Workspace only)
+    PERSONAL_TASKS: {
+        LIST: '/api/me/tasks',
+        STATS: '/api/me/tasks/stats',
+        CREATE: '/api/me/tasks',
+        UPDATE: (id) => `/api/me/tasks/${id}`,
+        DELETE: (id) => `/api/me/tasks/${id}`,
     },
 
     // Invites
@@ -299,6 +341,7 @@ export const ENDPOINTS = {
     STORAGE: {
         LIST: '/api/storage/files',
         FILES: '/api/storage/files',
+        FILES_IN_FOLDER: (folderId) => `/api/storage/folders/${folderId}/files`, // Added
         FILE_BY_ID: (id) => `/api/storage/files/${id}`,
         DOWNLOAD: (id) => `/api/storage/files/${id}/download`,
         MY_FILES: '/api/storage/files/my-files',
@@ -307,6 +350,7 @@ export const ENDPOINTS = {
         // Folders
         FOLDERS: '/api/storage/folders',
         FOLDER_BY_ID: (id) => `/api/storage/folders/${id}`,
+        SUBFOLDERS: (folderId) => `/api/storage/folders/${folderId}/subfolders`, // Added
         CREATE_FOLDER: '/api/storage/folders',
         MY_FOLDERS: '/api/storage/folders/my-folders',
         // Sharing

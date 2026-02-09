@@ -1,297 +1,357 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import DataTable from '@shared/components/ui/DataTable';
 
 const PLANS = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'];
 
 export default function AdminCompaniesPage() {
-    const toast = useToast();
+    const { showToast } = useToast();
     const queryClient = useQueryClient();
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [showPlanModal, setShowPlanModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [newPlan, setNewPlan] = useState('');
 
-    const { data: companies = [], isLoading, error } = useQuery({
+    // Filters
+    const [keyword, setKeyword] = useState('');
+    const [filterPlan, setFilterPlan] = useState('ALL');
+    const [filterStatus, setFilterStatus] = useState('ALL');
+
+    const { data: companies = [], isLoading } = useQuery({
         queryKey: ['admin-companies'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.ADMIN.COMPANIES);
+            const res = await apiClient.get(ENDPOINTS.SYSADMIN.COMPANIES);
             return res.data;
         },
     });
 
-    // Toggle status mutation
+    // Mutations
     const toggleStatusMutation = useMutation({
-        mutationFn: async (companyId) => {
-            return apiClient.put(`/api/companies/admin/${companyId}/status`);
-        },
+        mutationFn: (companyId) => apiClient.put(ENDPOINTS.SYSADMIN.COMPANY_STATUS(companyId)),
         onSuccess: (res) => {
             queryClient.invalidateQueries(['admin-companies']);
-            toast.success(res.data.message);
+            showToast(res.data.message || 'Đã cập nhật trạng thái', 'success');
         },
-        onError: (err) => {
-            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-        },
+        onError: (err) => showToast(err.response?.data?.message || err.message, 'error'),
     });
 
-    // Change plan mutation
     const changePlanMutation = useMutation({
-        mutationFn: async ({ companyId, plan }) => {
-            return apiClient.put(`/api/companies/admin/${companyId}/plan?plan=${plan}`);
-        },
+        mutationFn: ({ companyId, plan }) => apiClient.put(`${ENDPOINTS.SYSADMIN.COMPANY_PLAN(companyId)}?plan=${plan}`),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-companies']);
-            toast.success('Đổi plan thành công!');
+            showToast('Đã thay đổi gói dịch vụ', 'success');
             setShowPlanModal(false);
-            setSelectedCompany(null);
         },
-        onError: (err) => {
-            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-        },
+        onError: (err) => showToast(err.response?.data?.message || err.message, 'error'),
     });
 
-    // Delete company mutation
     const deleteMutation = useMutation({
-        mutationFn: async (companyId) => {
-            return apiClient.delete(`/api/companies/admin/${companyId}`);
-        },
+        mutationFn: (companyId) => apiClient.delete(ENDPOINTS.SYSADMIN.COMPANY_DELETE(companyId)),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-companies']);
-            toast.success('Đã xóa công ty thành công');
+            showToast('Đã xóa công ty', 'success');
             setShowDeleteModal(false);
-            setSelectedCompany(null);
         },
-        onError: (err) => {
-            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-        },
+        onError: (err) => showToast(err.response?.data?.message || err.message, 'error'),
     });
+
+    // Filtered data
+    const filteredCompanies = useMemo(() => {
+        return companies.filter(c => {
+            const matchSearch = c.name?.toLowerCase().includes(keyword.toLowerCase()) ||
+                c.ownerName?.toLowerCase().includes(keyword.toLowerCase());
+            const matchPlan = filterPlan === 'ALL' || c.plan === filterPlan;
+            const matchStatus = filterStatus === 'ALL' ||
+                (filterStatus === 'ACTIVE' ? c.isActive : !c.isActive);
+            return matchSearch && matchPlan && matchStatus;
+        });
+    }, [companies, keyword, filterPlan, filterStatus]);
 
     // Stats
-    const totalCompanies = companies.length;
-    const activeCompanies = companies.filter(c => c.isActive).length;
-    const suspendedCompanies = totalCompanies - activeCompanies;
-    const planStats = PLANS.reduce((acc, plan) => {
-        acc[plan] = companies.filter(c => c.plan === plan).length;
-        return acc;
-    }, {});
-
-    const handleToggleStatus = (company) => {
-        if (!confirm(`Bạn có chắc muốn ${company.isActive ? 'tạm ngưng' : 'kích hoạt'} công ty "${company.name}"?`)) return;
-        toggleStatusMutation.mutate(company.companyId);
+    const stats = {
+        total: companies.length,
+        active: companies.filter(c => c.isActive).length,
+        suspended: companies.filter(c => !c.isActive).length,
     };
 
-    const handleChangePlan = (company) => {
-        setSelectedCompany(company);
-        setNewPlan(company.plan || 'FREE');
-        setShowPlanModal(true);
-    };
-
-    const handleDelete = (company) => {
-        setSelectedCompany(company);
-        setShowDeleteModal(true);
-    };
-
-    const confirmChangePlan = () => {
-        if (!selectedCompany) return;
-        changePlanMutation.mutate({ companyId: selectedCompany.companyId, plan: newPlan });
-    };
-
-    const confirmDelete = () => {
-        if (!selectedCompany) return;
-        deleteMutation.mutate(selectedCompany.companyId);
-    };
-
-    if (isLoading) return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;
-    if (error) return <div className="p-8 text-center text-red-500">Lỗi không thể tải dữ liệu: {error.message}</div>;
+    // Table columns
+    const columns = [
+        {
+            header: 'Công ty',
+            accessorKey: 'name',
+            cell: (row) => (
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold border border-indigo-100 uppercase">
+                        {row.name?.charAt(0) || 'C'}
+                    </div>
+                    <div>
+                        <div className="font-semibold text-gray-900">{row.name}</div>
+                        <div className="text-xs text-gray-500">ID: {row.companyId}</div>
+                    </div>
+                </div>
+            )
+        },
+        {
+            header: 'Gói dịch vụ',
+            accessorKey: 'plan',
+            cell: (row) => (
+                <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedCompany(row); setNewPlan(row.plan || 'FREE'); setShowPlanModal(true); }}
+                    className={`badge cursor-pointer hover:opacity-80 ${getPlanBadgeClass(row.plan)}`}
+                >
+                    <i className="fa-solid fa-crown mr-1" />
+                    {row.plan || 'FREE'}
+                </button>
+            )
+        },
+        {
+            header: 'Trạng thái',
+            accessorKey: 'isActive',
+            cell: (row) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`${row.isActive ? 'Tạm dừng' : 'Kích hoạt'} công ty "${row.name}"?`)) {
+                            toggleStatusMutation.mutate(row.companyId);
+                        }
+                    }}
+                    className={row.isActive ? 'badge-success cursor-pointer' : 'badge-danger cursor-pointer'}
+                >
+                    <i className={`fa-solid ${row.isActive ? 'fa-check' : 'fa-ban'} mr-1`} />
+                    {row.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                </button>
+            )
+        },
+        {
+            header: 'Chủ sở hữu',
+            accessorKey: 'ownerName',
+            cell: (row) => <span className="text-gray-600">{row.ownerName || '---'}</span>
+        },
+        {
+            header: '',
+            accessorKey: 'actions',
+            cell: (row) => (
+                <div className="flex justify-end gap-2">
+                    <Link
+                        to={`/admin/companies/${row.companyId}`}
+                        className="p-2 text-gray-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-all"
+                        title="Quản lý"
+                    >
+                        <i className="fa-solid fa-cog" />
+                    </Link>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedCompany(row); setShowDeleteModal(true); }}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Xóa"
+                    >
+                        <i className="fa-solid fa-trash" />
+                    </button>
+                </div>
+            )
+        }
+    ];
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Quản lý Công ty (Tenant)</h1>
-                    <p className="text-gray-500 mt-1">Danh sách các công ty đang sử dụng hệ thống</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Quản lý công ty</h1>
+                    <p className="text-gray-500 text-sm">Quản lý tất cả các tenant trong hệ thống</p>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                    <p className="text-xs text-gray-500 font-medium">Tổng</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{totalCompanies}</h3>
-                </div>
-                <div className="bg-white rounded-xl shadow-sm p-4 border border-green-200 bg-green-50">
-                    <p className="text-xs text-green-600 font-medium">Active</p>
-                    <h3 className="text-2xl font-bold text-green-700">{activeCompanies}</h3>
-                </div>
-                <div className="bg-white rounded-xl shadow-sm p-4 border border-orange-200 bg-orange-50">
-                    <p className="text-xs text-orange-600 font-medium">Suspended</p>
-                    <h3 className="text-2xl font-bold text-orange-700">{suspendedCompanies}</h3>
-                </div>
-                {PLANS.map(plan => (
-                    <div key={plan} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                        <p className="text-xs text-gray-500 font-medium">{plan}</p>
-                        <h3 className="text-2xl font-bold text-indigo-600">{planStats[plan]}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="stat-card">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                            <i className="fa-solid fa-building text-indigo-600 text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Tổng công ty</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        </div>
                     </div>
-                ))}
+                </div>
+                <div className="stat-card">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                            <i className="fa-solid fa-check-circle text-green-600 text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Đang hoạt động</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                            <i className="fa-solid fa-ban text-red-600 text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Tạm dừng</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.suspended}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="card p-4">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    {/* Status Tabs */}
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        {[
+                            { value: 'ALL', label: 'Tất cả' },
+                            { value: 'ACTIVE', label: 'Hoạt động' },
+                            { value: 'SUSPENDED', label: 'Tạm dừng' },
+                        ].map(s => (
+                            <button
+                                key={s.value}
+                                onClick={() => setFilterStatus(s.value)}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterStatus === s.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                {s.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <select
+                            className="input w-full md:w-48"
+                            value={filterPlan}
+                            onChange={(e) => setFilterPlan(e.target.value)}
+                        >
+                            <option value="ALL">Tất cả gói</option>
+                            {PLANS.map(plan => (
+                                <option key={plan} value={plan}>{plan}</option>
+                            ))}
+                        </select>
+
+                        <div className="relative w-full md:w-64">
+                            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                className="input pl-10"
+                                placeholder="Tìm tên công ty..."
+                                value={keyword}
+                                onChange={(e) => setKeyword(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Công ty</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Gói (Plan)</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owner</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {companies.map((company) => (
-                                <tr key={company.companyId} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold overflow-hidden">
-                                                {company.logoUrl ? (
-                                                    <img src={company.logoUrl} alt={company.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    company.name?.charAt(0) || 'C'
-                                                )}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-gray-900">{company.name}</p>
-                                                <p className="text-xs text-gray-400">ID: {company.companyId}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => handleChangePlan(company)}
-                                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors cursor-pointer"
-                                        >
-                                            {company.plan || 'FREE'}
-                                            <i className="fa-solid fa-pen-to-square ml-1.5 text-[10px]" />
-                                        </button>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => handleToggleStatus(company)}
-                                            disabled={toggleStatusMutation.isPending}
-                                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${company.isActive
-                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                : 'bg-red-100 text-red-800 hover:bg-red-200'
-                                                }`}
-                                        >
-                                            <i className={`fa-solid ${company.isActive ? 'fa-check-circle' : 'fa-ban'} mr-1`} />
-                                            {company.isActive ? 'Active' : 'Suspended'}
-                                        </button>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {company.ownerName || 'N/A'}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleDelete(company)}
-                                            className="text-gray-400 hover:text-red-600 transition-colors p-2"
-                                            title="Xóa công ty"
-                                        >
-                                            <i className="fa-solid fa-trash" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {companies.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                                        Chưa có công ty nào trong hệ thống
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <DataTable
+                loading={isLoading}
+                columns={columns}
+                data={filteredCompanies}
+                totalCount={filteredCompanies.length}
+            />
 
             {/* Change Plan Modal */}
             {showPlanModal && selectedCompany && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white">
-                            <h2 className="text-xl font-bold">Đổi Plan</h2>
-                            <p className="text-indigo-100 text-sm mt-1">{selectedCompany.name}</p>
+                <div className="modal-overlay" onClick={() => setShowPlanModal(false)}>
+                    <div className="modal-content max-w-md" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="text-lg font-semibold">Thay đổi gói dịch vụ</h3>
+                            <button onClick={() => setShowPlanModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <i className="fa-solid fa-times" />
+                            </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Chọn Plan mới</label>
-                                <select
-                                    value={newPlan}
-                                    onChange={(e) => setNewPlan(e.target.value)}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                >
-                                    {PLANS.map(plan => (
-                                        <option key={plan} value={plan}>{plan}</option>
-                                    ))}
-                                </select>
+                        <div className="modal-body">
+                            <p className="text-gray-600 mb-4">Công ty: <strong>{selectedCompany.name}</strong></p>
+                            <div className="grid grid-cols-2 gap-3">
+                                {PLANS.map(plan => (
+                                    <button
+                                        key={plan}
+                                        onClick={() => setNewPlan(plan)}
+                                        className={`p-4 rounded-xl border-2 text-left transition-all ${newPlan === plan
+                                            ? 'border-indigo-500 bg-indigo-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <i className={`fa-solid fa-crown ${newPlan === plan ? 'text-indigo-500' : 'text-gray-400'}`} />
+                                            <span className={`font-semibold ${newPlan === plan ? 'text-indigo-700' : 'text-gray-700'}`}>{plan}</span>
+                                        </div>
+                                        {plan === selectedCompany.plan && (
+                                            <span className="text-xs text-gray-500 mt-1 block">Gói hiện tại</span>
+                                        )}
+                                    </button>
+                                ))}
                             </div>
-                            <div className="flex gap-3 justify-end">
-                                <button
-                                    onClick={() => setShowPlanModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    onClick={confirmChangePlan}
-                                    disabled={changePlanMutation.isPending}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                                >
-                                    {changePlanMutation.isPending ? 'Đang xử lý...' : 'Xác nhận'}
-                                </button>
-                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button onClick={() => setShowPlanModal(false)} className="btn-secondary">Hủy</button>
+                            <button
+                                onClick={() => changePlanMutation.mutate({ companyId: selectedCompany.companyId, plan: newPlan })}
+                                disabled={changePlanMutation.isPending || newPlan === selectedCompany.plan}
+                                className="btn-primary"
+                            >
+                                {changePlanMutation.isPending ? 'Đang xử lý...' : 'Xác nhận'}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Modal */}
             {showDeleteModal && selectedCompany && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 text-white">
-                            <h2 className="text-xl font-bold">⚠️ Xóa công ty</h2>
-                            <p className="text-red-100 text-sm mt-1">Hành động này không thể hoàn tác!</p>
+                <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+                    <div className="modal-content max-w-md" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header bg-red-50">
+                            <h3 className="text-lg font-semibold text-red-700">
+                                <i className="fa-solid fa-triangle-exclamation mr-2" />
+                                Xóa công ty
+                            </h3>
+                            <button onClick={() => setShowDeleteModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <i className="fa-solid fa-times" />
+                            </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-gray-600">
-                                Bạn có chắc muốn xóa công ty <strong>{selectedCompany.name}</strong>?
+                        <div className="modal-body">
+                            <p className="text-gray-600 mb-4">
+                                Bạn có chắc muốn xóa <strong>{selectedCompany.name}</strong>?
                             </p>
-                            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                                <i className="fa-solid fa-exclamation-triangle mr-2" />
-                                Tất cả dữ liệu của công ty sẽ bị xóa vĩnh viễn: nhân viên, dự án, chat, files...
-                            </p>
-                            <div className="flex gap-3 justify-end">
-                                <button
-                                    onClick={() => setShowDeleteModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    onClick={confirmDelete}
-                                    disabled={deleteMutation.isPending}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                                >
-                                    {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
-                                </button>
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                                <p className="font-semibold mb-2">Hành động này không thể hoàn tác!</p>
+                                <ul className="list-disc list-inside text-red-600 space-y-1">
+                                    <li>Tất cả nhân viên và người dùng</li>
+                                    <li>Tất cả dự án và công việc</li>
+                                    <li>Tất cả tin nhắn và tệp tin</li>
+                                </ul>
                             </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button onClick={() => setShowDeleteModal(false)} className="btn-secondary">Hủy</button>
+                            <button
+                                onClick={() => deleteMutation.mutate(selectedCompany.companyId)}
+                                disabled={deleteMutation.isPending}
+                                className="btn-danger"
+                            >
+                                {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
         </div>
     );
+}
+
+function getPlanBadgeClass(plan) {
+    const classes = {
+        FREE: 'bg-gray-100 text-gray-700',
+        STARTER: 'bg-blue-100 text-blue-700',
+        PROFESSIONAL: 'bg-purple-100 text-purple-700',
+        ENTERPRISE: 'bg-amber-100 text-amber-700',
+    };
+    return classes[plan] || classes.FREE;
 }

@@ -8,7 +8,10 @@ export default function ConversationList({ selectedRoomId, onSelectRoom, onCreat
 
     const { data: rooms = [], isLoading } = useQuery({
         queryKey: ['chat-rooms'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.CHAT.ROOMS)).data || [],
+        queryFn: async () => {
+            const response = (await apiClient.get(ENDPOINTS.CHAT.ROOMS)).data;
+            return response?.content || [];
+        },
     });
 
     const filteredRooms = rooms.filter(room =>

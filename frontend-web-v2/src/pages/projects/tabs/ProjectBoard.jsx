@@ -42,7 +42,15 @@ export default function ProjectBoard({ project }) {
     // Ideally we filter by active sprint. For now let's fetch all project issues.
     const { data: issues = [], isLoading } = useQuery({
         queryKey: ['issues', project.projectId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(project.projectId))).data,
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(project.projectId))).data;
+                // Handle paginated response (has .content) or direct array
+                return response?.content || response || [];
+            } catch {
+                return [];
+            }
+        },
     });
 
     const sensors = useSensors(

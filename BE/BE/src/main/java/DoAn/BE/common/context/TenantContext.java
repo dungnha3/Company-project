@@ -28,6 +28,9 @@ public class TenantContext {
 
     public static void setPersonalMode(boolean value) {
         personalMode.set(value);
+        if (value) {
+            currentCompanyId.remove();
+        }
     }
 
     public static boolean isPersonalMode() {

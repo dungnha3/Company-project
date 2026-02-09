@@ -222,15 +222,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/calendar/**").hasAnyRole(ALL_EMPLOYEES)
 
                                                 // ===== STORAGE (with SYSTEM_ADMIN for logo upload) =====
-                                                .requestMatchers("/api/storage/**")
-                                                .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.ADMIN.name(),
-                                                                CompanyRole.EMPLOYEE.name(),
-                                                                CompanyRole.MANAGER_HR.name(),
-                                                                CompanyRole.MANAGER_ACCOUNTING.name(),
-                                                                CompanyRole.MANAGER_PROJECT.name(), SYSTEM_ADMIN)
+                                                .requestMatchers("/api/storage/**").authenticated()
 
                                                 // ===== AI CHATBOT =====
-                                                .requestMatchers("/api/ai/**").hasAnyRole(ALL_EMPLOYEES)
+                                                .requestMatchers("/api/ai/**").authenticated()
 
                                                 // ===== NOTIFICATIONS =====
                                                 .requestMatchers("/api/notifications/**").authenticated()

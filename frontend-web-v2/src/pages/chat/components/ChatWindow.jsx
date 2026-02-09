@@ -29,7 +29,10 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
     // Fetch messages
     const { data: messages = [], isLoading } = useQuery({
         queryKey: ['chat-messages', roomId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.CHAT.MESSAGES(roomId))).data || [],
+        queryFn: async () => {
+            const response = (await apiClient.get(ENDPOINTS.CHAT.MESSAGES(roomId))).data;
+            return response?.content || [];
+        },
         enabled: !!roomId,
     });
 

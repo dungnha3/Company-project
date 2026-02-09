@@ -86,7 +86,10 @@ export default function LeaveRequestsPage() {
 function MyLeaveRequests() {
     const { data: requests, isLoading } = useQuery({
         queryKey: ['my-leave-requests'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_REQUESTS)).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_REQUESTS);
+            return response.data?.content || response.data || [];
+        },
     });
 
     const columns = [
@@ -127,7 +130,10 @@ function PendingLeaveRequests() {
 
     const { data: requests, isLoading } = useQuery({
         queryKey: ['pending-leave-requests'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } })).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
+            return response.data?.content || response.data || [];
+        },
     });
 
     const approveMutation = useMutation({

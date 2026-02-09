@@ -152,6 +152,24 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    // [Gửi email khôi phục mật khẩu] (Role: Admin reset)
+    public void sendPasswordResetEmail(String email, String username, String newPassword) {
+        String subject = "Thông báo: Mật khẩu tài khoản đã được đặt lại";
+        String content = String.format(
+                "Kính gửi %s,\n\n" +
+                        "Mật khẩu tài khoản của bạn đã được quản trị viên đặt lại.\n\n" +
+                        "Thông tin đăng nhập mới:\n" +
+                        "- Tên đăng nhập: %s\n" +
+                        "- Mật khẩu mới: %s\n\n" +
+                        "Vui lòng đổi mật khẩu ngay sau khi đăng nhập lại.\n" +
+                        "Link đăng nhập: %s/login\n\n" +
+                        "Trân trọng,\n" +
+                        "Bộ phận Quản trị Hệ thống",
+                username, username, newPassword, baseUrl);
+
+        sendSimpleEmail(email, subject, content);
+    }
+
     private String buildEmailContent(Notification notification) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 

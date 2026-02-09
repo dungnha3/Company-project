@@ -127,7 +127,7 @@ function DepartmentModal({ isOpen, onClose, department }) {
     // Fetch potential managers
     const { data: employees } = useQuery({
         queryKey: ['employees-simple'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST, { params: { size: 100 } })).data.content // Fetch top 100 for dropdown
+        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data // Fetch list for dropdown
     });
 
     const mutation = useMutation({
@@ -179,7 +179,7 @@ function DepartmentModal({ isOpen, onClose, department }) {
                             <select name="managerId" className="input w-full" defaultValue={department?.manager?.employeeId}>
                                 <option value="">-- Chọn trưởng phòng --</option>
                                 {employees?.map(e => (
-                                    <option key={e.nhanvienId} value={e.nhanvienId}>{e.hoTen}</option>
+                                    <option key={e.employeeId} value={e.employeeId}>{e.fullName}</option>
                                 ))}
                             </select>
                         </div>

@@ -30,8 +30,9 @@ export default function LandingPage() {
                         {/* Auth Buttons */}
                         <div className="flex items-center gap-4">
                             {isAuthenticated ? (
-                                <Link to="/portal" className="btn-primary">
-                                    Vào Portal <i className="fa-solid fa-arrow-right ml-2" />
+                                <Link to={useAuthStore.getState().user?.isSystemAdmin ? "/admin" : "/app"} className="btn-primary">
+                                    {useAuthStore.getState().user?.isSystemAdmin ? "Vào Admin Portal" : "Vào Ứng dụng"}
+                                    <i className="fa-solid fa-arrow-right ml-2" />
                                 </Link>
                             ) : (
                                 <>
