@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { useToast } from '@app/providers/ToastProvider';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 import { ENDPOINTS } from '@shared/api/endpoints';
 
@@ -19,12 +20,15 @@ export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
     const messagesEndRef = useRef(null);
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const { workspaceType } = useWorkspaceStore();
+    const isCompanyWorkspace = workspaceType === 'COMPANY';
 
     // Check AI status
     const { data: aiStatus } = useQuery({
         queryKey: ['ai-status'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.AI.STATUS)).data,
         staleTime: 60000,
+        enabled: isOpen && isCompanyWorkspace, // Only fetch when open AND in Company Workspace
     });
 
     // Chat mutation
@@ -108,12 +112,14 @@ export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
                         onClick={handleNewChat}
                         className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                         title="Cuộc trò chuyện mới"
+                        aria-label="Bắt đầu cuộc trò chuyện mới"
                     >
                         <i className="fa-solid fa-plus" />
                     </button>
                     <button
                         onClick={onClose}
                         className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        aria-label="Đóng AI Assistant"
                     >
                         <i className="fa-solid fa-times" />
                     </button>
@@ -185,19 +191,23 @@ export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
 
             {/* Input */}
             <form onSubmit={handleSend} className="p-4 border-t border-gray-100 bg-gray-50">
+                <label htmlFor="ai-chat-input" className="sr-only">Nhập tin nhắn cho AI Assistant</label>
                 <div className="flex gap-2">
                     <input
+                        id="ai-chat-input"
                         type="text"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         placeholder="Nhập tin nhắn..."
                         className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         disabled={chatMutation.isPending}
+                        aria-label="Nhập tin nhắn cho AI"
                     />
                     <button
                         type="submit"
                         disabled={!message.trim() || chatMutation.isPending}
                         className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        aria-label="Gửi tin nhắn"
                     >
                         <i className="fa-solid fa-paper-plane" />
                     </button>

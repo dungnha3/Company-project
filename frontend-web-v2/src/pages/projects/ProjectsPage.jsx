@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
+import { formatDate } from '@shared/utils/formatters';
 import CreateProjectModal from './components/CreateProjectModal';
 import CreateIssueModal from './components/CreateIssueModal';
 
@@ -132,12 +133,12 @@ function ProjectListView({ projects, navigate }) {
         {
             header: 'Ngày bắt đầu',
             accessorKey: 'startDate',
-            cell: (row) => <span className="text-gray-600">{row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : '---'}</span>
+            cell: (row) => <span className="text-gray-600">{row.startDate ? formatDate(row.startDate) : '---'}</span>
         },
         {
             header: 'Thời hạn',
             accessorKey: 'endDate',
-            cell: (row) => <span className="text-gray-600">{row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : '---'}</span>
+            cell: (row) => <span className="text-gray-600">{row.endDate ? formatDate(row.endDate) : '---'}</span>
         },
         {
             header: '',
@@ -220,7 +221,7 @@ function ProjectCardView({ projects, navigate }) {
                         <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-50">
                             <div className="flex items-center gap-1">
                                 <i className="fa-regular fa-calendar" />
-                                {project.startDate ? new Date(project.startDate).toLocaleDateString('vi-VN') : 'N/A'}
+                                {project.startDate ? formatDate(project.startDate) : 'N/A'}
                             </div>
                             <div className="flex -space-x-2">
                                 {project.members?.slice(0, 3).map((m, i) => (
@@ -240,7 +241,7 @@ function ProjectCardView({ projects, navigate }) {
     );
 }
 
-function StatusBadge({ status }) {
+const StatusBadge = memo(function StatusBadge({ status }) {
     const configs = {
         PLANNING: { color: 'text-blue-700 bg-blue-50 border-blue-100', label: 'Planning' },
         IN_PROGRESS: { color: 'text-orange-700 bg-orange-50 border-orange-100', label: 'In Progress' },
@@ -256,4 +257,4 @@ function StatusBadge({ status }) {
             {config.label}
         </span>
     );
-}
+});

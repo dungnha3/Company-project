@@ -44,7 +44,12 @@ export default function CompanySwitcher({ collapsed }) {
     }, [workspaces]);
 
     const handleSelect = async (workspace) => {
-        selectWorkspace(workspace);
+        // Fix: Use switchToCompany for company workspaces to properly fetch settings
+        if (workspace.type === 'COMPANY') {
+            await useWorkspaceStore.getState().switchToCompany(workspace.id);
+        } else {
+            selectWorkspace(workspace);
+        }
         setIsOpen(false);
     };
 
@@ -57,7 +62,13 @@ export default function CompanySwitcher({ collapsed }) {
 
     const getDisplayRole = () => {
         if (!currentWorkspace) return 'Owner';
-        return getRoleLabel(currentWorkspace.role);
+        // Fix: Use roles array instead of single role
+        const roles = currentWorkspace.roles || (currentWorkspace.role ? [currentWorkspace.role] : []);
+        if (roles.length === 0) return 'Member';
+        // Show highest priority role
+        const priorityOrder = ['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT', 'EMPLOYEE'];
+        const primaryRole = priorityOrder.find(r => roles.includes(r)) || roles[0];
+        return getRoleLabel(primaryRole);
     };
 
     const getInitial = () => {
@@ -150,15 +161,15 @@ export default function CompanySwitcher({ collapsed }) {
                                     <span className="font-medium truncate">{workspace.name}</span>
                                     {workspace.plan && (
                                         <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${workspace.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-600' :
-                                                workspace.plan === 'PROFESSIONAL' ? 'bg-indigo-100 text-indigo-600' :
-                                                    workspace.plan === 'STARTER' ? 'bg-amber-100 text-amber-600' :
-                                                        'bg-gray-100 text-gray-500'
+                                            workspace.plan === 'PROFESSIONAL' ? 'bg-indigo-100 text-indigo-600' :
+                                                workspace.plan === 'STARTER' ? 'bg-amber-100 text-amber-600' :
+                                                    'bg-gray-100 text-gray-500'
                                             }`}>
                                             {workspace.plan === 'FREE' ? 'Free' : workspace.plan?.charAt(0)}
                                         </span>
                                     )}
                                 </div>
-                                <div className="text-xs text-gray-500">{getRoleLabel(workspace.role)}</div>
+                                <div className="text-xs text-gray-500">{getRoleLabel(workspace.roles?.[0] || workspace.role)}</div>
                             </div>
                             {workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' && (
                                 <i className="fa-solid fa-check text-primary" />
@@ -178,7 +189,7 @@ export default function CompanySwitcher({ collapsed }) {
                             <div className="w-8 h-8 rounded-lg border border-dashed border-primary/50 flex items-center justify-center">
                                 <i className="fa-solid fa-plus text-sm" />
                             </div>
-                            <span className="font-medium text-sm">Tạo công ty mới</span>
+                            <span className="font-medium text-sm">Tạo Workspace mới</span>
                         </button>
                     </div>
                 </div>

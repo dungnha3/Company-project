@@ -36,7 +36,6 @@ const NAV_CONFIG = [
             { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi', companyOnly: true },
             { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân', feature: 'calendar', companyOnly: true },
             { path: '/app/me/timelogs', icon: 'fa-stopwatch', label: 'Chấm công (Logs)', feature: 'timeTracking', companyOnly: true },
-            { path: '/app/me/profile', icon: 'fa-user', label: 'Hồ sơ' },
         ],
     },
     {
@@ -68,7 +67,7 @@ const NAV_CONFIG = [
         items: [
             { path: '/app/hr/attendance', icon: 'fa-clock', label: 'Chấm công', feature: 'attendance' },
             { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
-            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', roles: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING'] },
+            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', roles: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR'] },
         ],
     },
     {
@@ -92,13 +91,13 @@ const NAV_CONFIG = [
     },
     {
         key: 'company',
-        title: 'Quản trị Công ty',
+        title: 'Quản trị Workspace',
         roles: ['OWNER', 'ADMIN'],
         companyOnly: true,
         items: [
             { path: '/app/company/dashboard', icon: 'fa-building', label: 'Tổng quan' },
             { path: '/app/company/activity', icon: 'fa-history', label: 'Nhật ký hoạt động' },
-            { path: '/app/company/billing', icon: 'fa-credit-card', label: 'Gói & Thanh toán' },
+            { path: '/app/billing', icon: 'fa-credit-card', label: 'Gói & Thanh toán' },
             { path: '/app/company/settings', icon: 'fa-cog', label: 'Cài đặt chung' },
         ],
     },
@@ -299,7 +298,7 @@ export default function Sidebar() {
                 {/* Subtle Upgrade Prompt - Only for FREE Personal Workspace */}
                 {isPersonalWorkspace && currentPlan === 'FREE' && !sidebarCollapsed && (
                     <NavLink
-                        to="/app/company/billing"
+                        to="/app/billing"
                         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 text-violet-600 text-sm hover:from-violet-100 hover:to-purple-100 transition-all group"
                     >
                         <i className="fa-solid fa-sparkles text-xs group-hover:animate-pulse" />
@@ -353,7 +352,7 @@ export default function Sidebar() {
                                 <button
                                     onClick={() => {
                                         closeUpgradeModal();
-                                        navigate('/app/company/billing');
+                                        navigate('/app/billing');
                                     }}
                                     className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
                                 >

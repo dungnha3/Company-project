@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate } from '@shared/utils/formatters';
 import IssueDetailModal from '../components/IssueDetailModal';
 
 // Reusing IssueRow logic or similar
@@ -44,9 +45,9 @@ function IssueRow({ issue, onClick }) {
             </td>
             <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs ${issue.priority === 'CRITICAL' ? 'bg-red-100 text-red-700' :
-                        issue.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
-                            issue.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-green-100 text-green-700'
+                    issue.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                        issue.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
                     }`}>
                     {issue.priority}
                 </span>
@@ -55,7 +56,7 @@ function IssueRow({ issue, onClick }) {
                 {issue.dueDate ? (
                     <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
                         {isOverdue && <i className="fa-solid fa-exclamation-triangle mr-1" />}
-                        {new Date(issue.dueDate).toLocaleDateString('vi-VN')}
+                        {formatDate(issue.dueDate)}
                     </span>
                 ) : (
                     <span className="text-gray-400">—</span>

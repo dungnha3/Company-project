@@ -12,11 +12,12 @@ export function RoleGuard({ roles, children }) {
         }
     }
 
-    // Get role from current workspace context
-    const currentRole = currentWorkspace?.role || 'MEMBER';
+    // Get roles from current workspace context (array)
+    const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
 
-    // Check if user has required role
-    if (!roles.includes(currentRole)) {
+    // Check if user has ANY of the required roles
+    const hasRequiredRole = roles.some(r => currentRoles.includes(r));
+    if (!hasRequiredRole) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="card text-center max-w-md">

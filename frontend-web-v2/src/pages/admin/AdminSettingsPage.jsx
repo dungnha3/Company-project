@@ -191,7 +191,7 @@ export default function AdminSettingsPage() {
                 <div className="space-y-4">
                     <ToggleField
                         label="Cho phép đăng ký mới"
-                        description="Cho phép công ty mới đăng ký tài khoản"
+                        description="Cho phép Workspace mới đăng ký tài khoản"
                         checked={localSettings.allow_registration}
                         onChange={(val) => handleChange('allow_registration', val)}
                     />

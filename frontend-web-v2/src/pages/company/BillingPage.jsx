@@ -5,6 +5,7 @@ import { useAuthStore } from '@shared/stores/authStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatNumber } from '@shared/utils/formatters';
 
 const PLANS = [
     {
@@ -156,8 +157,8 @@ export default function BillingPage() {
                 <button
                     onClick={() => setActiveTab('personal')}
                     className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'personal'
-                            ? 'bg-white shadow-sm text-gray-900'
-                            : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white shadow-sm text-gray-900'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <i className="fa-solid fa-user text-xs" />
@@ -167,8 +168,8 @@ export default function BillingPage() {
                     <button
                         onClick={() => setActiveTab('company')}
                         className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'company'
-                                ? 'bg-white shadow-sm text-gray-900'
-                                : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-white shadow-sm text-gray-900'
+                            : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         <i className="fa-solid fa-building text-xs" />
@@ -178,8 +179,8 @@ export default function BillingPage() {
                 <button
                     onClick={() => setActiveTab('bundle')}
                     className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'bundle'
-                            ? 'bg-white shadow-sm text-gray-900'
-                            : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white shadow-sm text-gray-900'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <i className="fa-solid fa-gift text-xs" />
@@ -191,8 +192,8 @@ export default function BillingPage() {
             {/* Current Plan Overview */}
             {activeTab !== 'bundle' && (
                 <div className={`rounded-2xl p-6 text-white ${activeTab === 'personal'
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600'
                     }`}>
                     <div className="flex items-center justify-between">
                         <div>
@@ -247,10 +248,10 @@ export default function BillingPage() {
                                     {bundle.price !== null ? (
                                         <div className="flex items-baseline gap-2">
                                             <span className="text-sm text-gray-400 line-through">
-                                                {bundle.originalPrice?.toLocaleString('vi-VN')}đ
+                                                {formatNumber(bundle.originalPrice)}đ
                                             </span>
                                             <span className="text-3xl font-bold text-gray-900">
-                                                {bundle.price.toLocaleString('vi-VN')}đ
+                                                {formatNumber(bundle.price)}đ
                                             </span>
                                             <span className="text-sm text-gray-500">/tháng</span>
                                         </div>
@@ -280,8 +281,8 @@ export default function BillingPage() {
                                 <button
                                     onClick={() => handleBundlePurchase(bundle.id)}
                                     className={`w-full mt-6 py-3 rounded-xl font-medium transition-colors ${bundle.popular
-                                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
-                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                                         }`}
                                 >
                                     Chọn Bundle này
@@ -342,7 +343,7 @@ export default function BillingPage() {
                                         {displayPrice !== null ? (
                                             <>
                                                 <span className="text-3xl font-bold text-gray-900">
-                                                    {displayPrice.toLocaleString('vi-VN')}đ
+                                                    {formatNumber(displayPrice)}đ
                                                 </span>
                                                 <span className="text-sm text-gray-500">/{plan.period}</span>
                                             </>
@@ -379,10 +380,10 @@ export default function BillingPage() {
                                         onClick={() => handleUpgrade(plan.id)}
                                         disabled={isCurrent}
                                         className={`w-full mt-6 py-2.5 rounded-xl font-medium text-sm transition-colors ${isCurrent
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                : plan.popular
-                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : plan.popular
+                                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                                             }`}
                                     >
                                         {isCurrent ? 'Gói hiện tại' : 'Chọn gói này'}

@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import DataTable from '@shared/components/ui/DataTable';
+import { formatDate } from '@shared/utils/formatters';
 
 const PLANS = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'];
 
@@ -164,11 +165,11 @@ export default function AdminCompanyDetailPage() {
                             Thông tin chung
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <InfoCard label="Tên công ty" value={company?.name} icon="fa-building" />
+                            <InfoCard label="Tên Workspace" value={company?.name} icon="fa-building" />
                             <InfoCard label="Chủ sở hữu" value={company?.ownerName || 'N/A'} icon="fa-user-tie" />
                             <InfoCard label="Email" value={company?.email || 'N/A'} icon="fa-envelope" />
                             <InfoCard label="Địa chỉ" value={company?.address || 'Chưa cập nhật'} icon="fa-map-marker-alt" />
-                            <InfoCard label="Ngày tạo" value={company?.createdAt ? new Date(company.createdAt).toLocaleDateString('vi-VN') : 'N/A'} icon="fa-calendar" />
+                            <InfoCard label="Ngày tạo" value={company?.createdAt ? formatDate(company.createdAt) : 'N/A'} icon="fa-calendar" />
                             <div className="bg-gray-50 rounded-xl p-4">
                                 <label className="label">Thay đổi gói</label>
                                 <select
@@ -243,8 +244,8 @@ export default function AdminCompanyDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <QuotaInput label="Số nhân viên tối đa" value={settings.maxEmployees} onChange={(val) => updateQuotaMutation.mutate({ maxEmployees: parseInt(val) })} />
                             <QuotaInput label="Số dự án tối đa" value={settings.maxProjects} onChange={(val) => updateQuotaMutation.mutate({ maxProjects: parseInt(val) })} />
-                            <QuotaInput label="Dung lượng lưu trữ (bytes)" value={settings.maxStorageBytes} onChange={(val) => updateQuotaMutation.mutate({ maxStorageBytes: parseInt(val) })} suffix={`≈ ${((settings.maxStorageBytes || 0) / 1024 / 1024 / 1024).toFixed(2)} GB`} />
-                            <QuotaInput label="Kích thước file upload tối đa (bytes)" value={settings.maxFileUploadBytes} onChange={(val) => updateSettingsMutation.mutate({ maxFileUploadBytes: parseInt(val) })} suffix={`≈ ${((settings.maxFileUploadBytes || 0) / 1024 / 1024).toFixed(0)} MB`} />
+                            <QuotaInput label="Dung lượng lưu trữ (bytes)" value={settings.maxStorageBytes} onChange={(val) => updateQuotaMutation.mutate({ maxStorageBytes: parseInt(val) })} suffix={`≈ ${formatBytes(settings.maxStorageBytes || 0)}`} />
+                            <QuotaInput label="Kích thước file upload tối đa (bytes)" value={settings.maxFileUploadBytes} onChange={(val) => updateSettingsMutation.mutate({ maxFileUploadBytes: parseInt(val) })} suffix={`≈ ${formatBytes(settings.maxFileUploadBytes || 0)}`} />
                             <QuotaInput label="Số ngày phép/năm" value={settings.maxLeaveDaysPerYear || 12} onChange={(val) => updateSettingsMutation.mutate({ maxLeaveDaysPerYear: parseInt(val) })} suffix="ngày" />
                         </div>
                     </div>
@@ -348,7 +349,7 @@ export default function AdminCompanyDetailPage() {
                                             </div>
                                         )
                                     },
-                                    { header: 'Ngày tham gia', accessorKey: 'joinedAt', cell: (row) => new Date(row.joinedAt).toLocaleDateString('vi-VN') },
+                                    { header: 'Ngày tham gia', accessorKey: 'joinedAt', cell: (row) => formatDate(row.joinedAt) },
                                 ]}
                                 data={users}
                                 totalCount={users.length}

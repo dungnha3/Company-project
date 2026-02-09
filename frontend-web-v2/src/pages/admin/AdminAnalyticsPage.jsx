@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from '@shared/components/LazyCharts';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatCurrency, formatBytes, formatNumber } from '@shared/utils/formatters';
 
 const COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -61,7 +62,7 @@ export default function AdminAnalyticsPage() {
                     color="indigo"
                 />
                 <KPICard
-                    label="Tổng công ty"
+                    label="Tổng workspace"
                     value={stats.totalCompanies || 0}
                     icon="fa-building"
                     color="blue"
@@ -73,7 +74,7 @@ export default function AdminAnalyticsPage() {
                     color="green"
                 />
                 <KPICard
-                    label="Công ty mới tháng này"
+                    label="Workspace mới tháng này"
                     value={stats.newCompaniesThisMonth || 0}
                     icon="fa-plus-circle"
                     color="purple"
@@ -124,10 +125,10 @@ export default function AdminAnalyticsPage() {
                                     outerRadius={80}
                                     paddingAngle={5}
                                     dataKey="value"
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    label={({ name, percent }) => `${name} ${formatNumber(percent * 100, { maximumFractionDigits: 0 })}% `}
                                 >
                                     {planData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell - ${index} `} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip />
@@ -149,7 +150,7 @@ export default function AdminAnalyticsPage() {
             <div className="card">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     <i className="fa-solid fa-chart-bar text-green-500 mr-2" />
-                    Công ty mới theo tháng
+                    Workspace mới theo tháng
                 </h3>
                 <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
@@ -159,7 +160,7 @@ export default function AdminAnalyticsPage() {
                             <YAxis tick={{ fontSize: 12 }} />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="companies" name="Công ty mới" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="companies" name="Workspace mới" fill="#14b8a6" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -188,8 +189,8 @@ function KPICard({ label, value, icon, color }) {
     return (
         <div className="stat-card">
             <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colorClasses[color]}`}>
-                    <i className={`fa-solid ${icon} text-xl`} />
+                <div className={`w - 12 h - 12 rounded - xl flex items - center justify - center ${colorClasses[color]} `}>
+                    <i className={`fa - solid ${icon} text - xl`} />
                 </div>
                 <div>
                     <p className="text-xs text-gray-500">{label}</p>
@@ -210,7 +211,7 @@ function QuickStat({ label, value, icon, color }) {
 
     return (
         <div className="card p-4 flex items-center gap-3">
-            <i className={`fa-solid ${icon} ${colorClasses[color]}`} />
+            <i className={`fa - solid ${icon} ${colorClasses[color]} `} />
             <div>
                 <p className="text-lg font-bold text-gray-900">{value}</p>
                 <p className="text-xs text-gray-500">{label}</p>
@@ -219,14 +220,6 @@ function QuickStat({ label, value, icon, color }) {
     );
 }
 
-function formatCurrency(value) {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
-}
 
-function formatBytes(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+
+

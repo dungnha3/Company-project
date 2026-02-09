@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function ResourcePlanningPage() {
     const [viewMode, setViewMode] = useState('timeline'); // timeline, heatmap
@@ -37,7 +38,7 @@ export default function ResourcePlanningPage() {
             weekStart.setDate(weekStart.getDate() + (i * 7));
             result.push({
                 label: `W${i + 1}`,
-                date: weekStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+                date: formatDate(weekStart, { day: '2-digit', month: '2-digit' }),
                 fullDate: weekStart,
             });
         }

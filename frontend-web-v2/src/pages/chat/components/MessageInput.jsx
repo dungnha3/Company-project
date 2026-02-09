@@ -5,6 +5,8 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useWebSocketStore } from '@shared/stores/websocketStore';
 import EmojiPicker from './EmojiPicker';
 
+import { formatBytes } from '@shared/utils/formatters';
+
 export default function MessageInput({ roomId, replyTo, onCancelReply, onMessageSent }) {
     const { sendMessage } = useWebSocketStore();
     const [inputValue, setInputValue] = useState('');
@@ -121,7 +123,7 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
                     <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-700 truncate">{attachedFile.name}</div>
                         <div className="text-xs text-gray-400">
-                            {(attachedFile.size / 1024).toFixed(1)} KB
+                            {formatBytes(attachedFile.size)}
                         </div>
                     </div>
                     <button

@@ -67,6 +67,9 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
 
     // WebSocket subscription
     useEffect(() => {
+        // Guard: Only proceed if roomId is valid
+        if (!roomId) return;
+
         const topic = `/topic/room.${roomId}`;
         subscribe(topic, (newMessage) => {
             queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), newMessage]);

@@ -141,7 +141,7 @@ function PositionModal({ isOpen, onClose, position }) {
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">{isEdit ? 'Cập nhật chức vụ' : 'Thêm chức vụ'}</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
                     </div>
 
                     <div className="p-6 space-y-4">

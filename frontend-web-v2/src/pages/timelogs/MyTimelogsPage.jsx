@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { timelogApi } from '../../shared/api/featureApi';
+import { formatDate, formatNumber } from '@shared/utils/formatters';
 
 export default function MyTimelogsPage() {
     const [timelogs, setTimelogs] = useState([]);
@@ -53,7 +54,7 @@ export default function MyTimelogsPage() {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-white">⏱️ My Time Logs</h1>
                 <div className="bg-indigo-600 px-4 py-2 rounded-lg">
-                    <span className="text-white font-semibold">{totalHours.toFixed(1)}h</span>
+                    <span className="text-white font-semibold">{formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h</span>
                     <span className="text-indigo-200 text-sm ml-1">total</span>
                 </div>
             </div>
@@ -75,9 +76,9 @@ export default function MyTimelogsPage() {
                                 <div key={date}>
                                     <div className="flex justify-between items-center mb-3">
                                         <h2 className="text-lg font-semibold text-white">
-                                            📅 {new Date(date).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                            📅 {formatDate(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                                         </h2>
-                                        <span className="text-green-400 font-medium">{dayTotal.toFixed(1)}h</span>
+                                        <span className="text-green-400 font-medium">{formatNumber(dayTotal, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h</span>
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         {logs.map(log => (

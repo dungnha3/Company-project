@@ -1,135 +1,90 @@
-﻿# 🏢 Gemini ERP - Multi-tenant SaaS Platform
+﻿# Gemini ERP
 
-> Enterprise HR & Project Management System with Dual Workspace Architecture
+A multi-tenant SaaS platform I built for my graduation project. It handles HR management and project tracking for small-to-medium businesses.
 
-![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green?style=flat-square)
-![React](https://img.shields.io/badge/React-18-cyan?style=flat-square)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.x-blue?style=flat-square)
+## What it does
 
-## ✨ Core Features
+**HR side:**
+- Employee records, contracts, and org chart
+- Leave requests with 2-step approval (PM → Accounting)
+- Attendance tracking with GPS validation
+- Salary calculation based on attendance data
 
-### 🏠 Dual Workspace
-- **Personal Workspace** - Individual task & project management
-- **Company Workspace** - Team collaboration with role-based access
+**Project side:**  
+- Kanban boards and sprint planning
+- Issue tracking similar to Jira
+- Time logging per task
+- Basic Gantt chart view
 
-### 👥 HR Management
-- Employee profiles & contracts
-- GPS-based attendance tracking
-- Leave request workflow
-- Salary management
+**Platform features:**
+- Multi-company support (each company is isolated)
+- 4 pricing tiers with feature gating
+- Real-time chat between team members
+- File storage with folder organization
 
-### 📊 Project Management
-- Kanban boards & Sprints
-- Issue tracking (Jira-like)
-- Gantt chart timeline
+## Tech I used
 
-### 💬 Communication
-- Real-time team chat
-- File sharing & storage
-- Notifications
+| Part | Stack |
+|------|-------|
+| Backend | Spring Boot 3.5, JPA/Hibernate, Spring Security |
+| Database | SQL Server with tenant filtering |
+| Frontend | React 18 + Vite, TailwindCSS, Zustand |
+| Auth | JWT + refresh tokens, Google OAuth |
+| Real-time | WebSocket for chat and notifications |
 
-### 🔐 SaaS Features
-- Multi-tenant architecture
-- 4-tier pricing (FREE, STARTER, PRO, ENTERPRISE)
-- Feature gating (Plan + Company Settings)
-- System Admin dashboard
+## How to run
 
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Backend** | Spring Boot 3.5, Spring Security, JWT |
-| **Database** | SQL Server (Multi-tenant) |
-| **Frontend** | React 18, Vite, TailwindCSS |
-| **State** | Zustand |
-| **API** | RESTful + WebSocket |
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Java 17+
-- Node.js 18+
-- SQL Server
-
-### Backend
+**Backend:**
 ```bash
-cd BE/BE
-cp ../../.env.example ../../.env  # Configure database & secrets
+cd BE
+# Set up .env with your DB credentials
 ./mvnw spring-boot:run
 ```
 
-### Frontend
+**Frontend:**
 ```bash
 cd frontend-web-v2
 npm install
 npm run dev
 ```
 
-## 📁 Project Structure
+## Project layout
 
 ```
-├── BE/BE/                   # Spring Boot Backend
-│   ├── src/main/java/DoAn/BE/
-│   │   ├── auth/            # Authentication & JWT
-│   │   ├── company/         # Company, Settings, Plan
-│   │   ├── hrm/             # HR module
-│   │   ├── project/         # Project management
-│   │   ├── chat/            # Messaging
-│   │   └── common/          # Shared utilities
-│   └── docs/                # API documentation
-│
-├── frontend-web-v2/         # React SPA (NEW)
-│   ├── src/
-│   │   ├── app/router/      # Routes & Guards
-│   │   ├── pages/           # Page components
-│   │   ├── shared/stores/   # Zustand stores
-│   │   └── layouts/         # Layout components
-│
-└── frontend-web/            # Legacy React app
+BE/
+├── src/main/java/DoAn/BE/
+│   ├── auth/       # JWT, login, OAuth
+│   ├── company/    # Multi-tenant logic, plans
+│   ├── hrm/        # Employees, leaves, salary
+│   ├── project/    # Issues, sprints, boards
+│   ├── chat/       # WebSocket messaging
+│   └── common/     # Shared stuff (exceptions, utils)
+
+frontend-web-v2/
+├── src/
+│   ├── pages/      # Route-based pages
+│   ├── features/   # Feature modules
+│   ├── shared/     # Reusable components, stores
+│   └── layouts/    # Dashboard, auth layouts
 ```
 
-## 📖 Documentation
+## Some implementation details
 
-| Document | Description |
-|----------|-------------|
-| [gemini_entities.md](BE/BE/docs/gemini_entities.md) | Database schema |
-| [gemini_services.md](BE/BE/docs/gemini_services.md) | API endpoints |
+**Multi-tenancy:** Each request carries a company ID in JWT. A Hibernate filter automatically scopes all queries to that company.
 
-## 🔐 Security
+**Role system:** Users can belong to multiple companies with different roles. Roles are: Owner, Admin, HR Manager, Project Manager, Member.
 
-### Authentication
-- JWT Bearer tokens
-- Google OAuth 2.0
-- Refresh token rotation
+**Feature flags:** 3-layer check - sidebar hides disabled features, route guards block direct access, backend throws 403 if someone bypasses frontend.
 
-### Authorization
-- Role-based access control (RBAC)
-- Company-level roles: OWNER, ADMIN, MANAGER_HR, MANAGER_PROJECT, MEMBER
-- System Admin for platform management
+**Caching:** Used Caffeine for frequently accessed data (departments, positions). Redis available for distributed setup.
 
-### Feature Gating (3 Layers)
-1. **Frontend Sidebar** - Hides disabled features
-2. **Frontend FeatureGuard** - Blocks direct URL access
-3. **Backend FeatureFlagService** - Returns 403 if disabled
+## What I learned
 
-## 👤 User Roles
+- Designing multi-tenant architecture from scratch
+- Handling complex authorization (company roles + fine-grained permissions)
+- Optimizing JPA queries (N+1 problems, batch fetching)
+- Building real-time features with WebSocket
 
-| Role | Scope | Capabilities |
-|------|-------|--------------|
-| **System Admin** | Platform | Manage all companies, change plans |
-| **Owner** | Workspace | Full control of workspace |
-| **Admin** | Workspace | Manage members, settings |
-| **Manager HR** | Workspace | HR operations |
-| **Member** | Workspace | Basic features |
+## Notes
 
-## ⚠️ Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
-- `JWT_SECRET`
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-
----
-
-*Built with ❤️ for enterprise productivity*
+This is a graduation project, not production-ready. Some corners were cut for time constraints, but the core architecture is solid.

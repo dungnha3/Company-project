@@ -8,6 +8,8 @@ import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate, formatCurrency } from '@shared/utils/formatters';
+import { Avatar } from '@shared/components/OptimizedImage';
 import EmployeeFormModal from './components/EmployeeFormModal';
 
 export default function EmployeesPage() {
@@ -128,13 +130,7 @@ export default function EmployeesPage() {
             accessorKey: 'hoTen',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    {row.avatarUrl ? (
-                        <img src={row.avatarUrl} alt={row.hoTen} className="w-10 h-10 rounded-full object-cover" />
-                    ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold border border-blue-100 uppercase">
-                            {row.hoTen ? row.hoTen.charAt(0) : 'U'}
-                        </div>
-                    )}
+                    <Avatar src={row.avatarUrl} name={row.hoTen} size="md" />
                     <div>
                         <div className="font-semibold text-gray-900">{row.hoTen}</div>
                         <div className="text-xs text-gray-500">{row.maNhanVien || `ID: ${row.nhanvienId}`}</div>
@@ -168,14 +164,14 @@ export default function EmployeesPage() {
             accessorKey: 'luongCoBan',
             cell: (row) => (
                 <span className="font-mono text-green-700 font-medium">
-                    {row.luongCoBan ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(row.luongCoBan) : '---'}
+                    {row.luongCoBan ? formatCurrency(row.luongCoBan) : '---'}
                 </span>
             )
         }] : []),
         {
             header: 'Ngày vào',
             accessorKey: 'ngayVaoLam',
-            cell: (row) => <span className="text-gray-600">{row.ngayVaoLam ? new Date(row.ngayVaoLam).toLocaleDateString('vi-VN') : '---'}</span>
+            cell: (row) => <span className="text-gray-600">{row.ngayVaoLam ? formatDate(row.ngayVaoLam) : '---'}</span>
         },
         {
             header: 'Trạng thái',
@@ -247,7 +243,7 @@ export default function EmployeesPage() {
                     {hasRole('MANAGER_HR') && (
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
-                            filename={`NhanVien_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                            filename={`NhanVien_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
                             label="Xuất Excel"
                         />
                     )}
@@ -286,7 +282,7 @@ export default function EmployeesPage() {
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
                             params={{ ids: Array.from(selectedIds).join(',') }}
-                            filename={`NhanVien_Selected_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                            filename={`NhanVien_Selected_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
                             label="Xuất đã chọn"
                             variant="secondary"
                         />

@@ -6,6 +6,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function LeaveRequestsPage() {
     const { hasRole } = useWorkspaceStore();
@@ -101,12 +102,12 @@ function MyLeaveRequests() {
         {
             header: 'Từ ngày',
             accessorKey: 'startDate',
-            cell: (row) => <span className="text-gray-600">{new Date(row.startDate).toLocaleDateString('vi-VN')}</span>
+            cell: (row) => <span className="text-gray-600">{formatDate(row.startDate)}</span>
         },
         {
             header: 'Đến ngày',
             accessorKey: 'endDate',
-            cell: (row) => <span className="text-gray-600">{new Date(row.endDate).toLocaleDateString('vi-VN')}</span>
+            cell: (row) => <span className="text-gray-600">{formatDate(row.endDate)}</span>
         },
         {
             header: 'Lý do',
@@ -226,7 +227,7 @@ function PendingLeaveRequests() {
         {
             header: 'Thời gian',
             accessorKey: 'dateRange',
-            cell: (row) => <span className="text-gray-600 text-xs">{new Date(row.startDate).toLocaleDateString()} - {new Date(row.endDate).toLocaleDateString()}</span>
+            cell: (row) => <span className="text-gray-600 text-xs">{formatDate(row.startDate)} - {formatDate(row.endDate)}</span>
         },
         {
             header: 'Trạng thái',
@@ -327,7 +328,7 @@ function CreateLeaveModal({ isOpen, onClose }) {
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">Tạo đơn xin nghỉ</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
                     </div>
 
                     <div className="p-6 space-y-4">
@@ -440,7 +441,7 @@ function LeaveCalendar() {
                         <i className="fa-solid fa-chevron-left text-gray-500" />
                     </button>
                     <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
-                        {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                        {formatDate(currentMonth, { month: 'long', year: 'numeric' })}
                     </h3>
                     <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
                         <i className="fa-solid fa-chevron-right text-gray-500" />

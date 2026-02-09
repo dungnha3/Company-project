@@ -48,8 +48,12 @@ export default function FeatureGuard({ feature, children, fallbackPath = '/app' 
 
     const plan = currentWorkspace?.plan || 'FREE';
     const settings = currentWorkspace?.settings || null;
+    const isCompanyWorkspace = currentWorkspace?.type === 'COMPANY';
 
-    const enabled = isFeatureEnabled(plan, settings, feature);
+    // [FIX] Wait for settings to load for company workspaces before checking features
+    const settingsLoading = isCompanyWorkspace && !settings;
+
+    const enabled = settingsLoading ? true : isFeatureEnabled(plan, settings, feature);
 
     // Reset toast flag when feature changes
     useEffect(() => {
@@ -60,15 +64,16 @@ export default function FeatureGuard({ feature, children, fallbackPath = '/app' 
     }, [feature]);
 
     useEffect(() => {
-        if (!enabled && !hasShownToast.current) {
+        // Only show toast after settings have loaded (not during loading)
+        if (!enabled && !hasShownToast.current && !settingsLoading) {
             hasShownToast.current = true;
             const featureName = FEATURE_NAMES[feature] || feature;
             toast.warning(`Tính năng "${featureName}" chưa được kích hoạt cho workspace của bạn`);
         }
-    }, [enabled, feature, toast]);
+    }, [enabled, feature, toast, settingsLoading]);
 
-    // Show nothing while workspace is loading
-    if (!currentWorkspace) {
+    // Show loading while workspace is loading OR settings are loading for company workspace
+    if (!currentWorkspace || settingsLoading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[200px]">
                 <div className="loading-spinner" />

@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-/* Tailwind v4: Enable class-based dark mode selector */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Tailwind v4: Dark mode configured in tailwind.config.js */
 
 /* Base Layer - Reset & Typography */
 @layer base {
@@ -9,6 +8,19 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+  }
+
+  /* Accessibility: Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   body {
@@ -23,6 +35,16 @@
   .dark body {
     background: linear-gradient(135deg, #1e1e2e 0%, #1a1a2e 100%);
     color: #e2e8f0;
+  }
+
+  /* Focus visible for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 
   ::-webkit-scrollbar {
@@ -243,6 +265,24 @@
 @layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent;
+  }
+
+  /* Typography: Tabular numbers for aligned columns */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessibility: Screen reader only */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
   }
 
   /* Glassmorphism */

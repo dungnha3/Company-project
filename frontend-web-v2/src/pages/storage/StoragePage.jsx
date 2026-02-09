@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate, formatBytes } from '@shared/utils/formatters';
 
 export default function StoragePage() {
     const { showToast } = useToast();
@@ -20,8 +21,12 @@ export default function StoragePage() {
     const { data: items = [], isLoading } = useQuery({
         queryKey: ['storage', currentFolder],
         queryFn: async () => {
-            const response = await apiClient.get(ENDPOINTS.STORAGE.LIST, {
-                params: { folderId: currentFolder }
+            // Use correct endpoint: MY_FILES for root, FILES_IN_FOLDER for subfolder
+            const endpoint = currentFolder
+                ? ENDPOINTS.STORAGE.FILES_IN_FOLDER(currentFolder)
+                : ENDPOINTS.STORAGE.MY_FILES;
+            const response = await apiClient.get(endpoint, {
+                params: currentFolder ? {} : { filter: 'company' }
             });
             return response.data?.content || response.data || [];
         },
@@ -99,7 +104,7 @@ export default function StoragePage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Tài liệu & Lưu trữ</h1>
-                    <p className="text-gray-500 text-sm">Quản lý files và thư mục công ty</p>
+                    <p className="text-gray-500 text-sm">Quản lý files và thư mục Workspace</p>
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -268,6 +273,7 @@ function FileCard({ file, onPreview, onShare }) {
                     <img
                         src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)}
                         alt={file.originalName}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                     />
                 ) : (
@@ -317,7 +323,7 @@ function FileListItem({ file, onPreview, onShare }) {
                 <div className="min-w-0 flex-1">
                     <div className="font-medium text-gray-900 truncate">{file.originalName}</div>
                     <div className="text-xs text-gray-500">
-                        {formatBytes(file.size)} • {new Date(file.createdAt).toLocaleDateString('vi-VN')}
+                        {formatBytes(file.size)} • {formatDate(file.createdAt)}
                     </div>
                 </div>
             </div>
@@ -365,7 +371,7 @@ function FilePreviewModal({ file, onClose }) {
                 {/* Preview Content */}
                 <div className="p-4 bg-gray-50 flex items-center justify-center min-h-[400px] max-h-[calc(90vh-120px)] overflow-auto">
                     {isImage && (
-                        <img src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} alt={file.originalName} className="max-w-full max-h-full rounded-lg shadow-lg" />
+                        <img src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} alt={file.originalName} loading="lazy" className="max-w-full max-h-full rounded-lg shadow-lg" />
                     )}
                     {isPdf && (
                         <iframe src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} className="w-full h-[600px] rounded-lg" />
@@ -571,11 +577,4 @@ function getFileColor(mimeType) {
     return 'bg-gray-100 text-gray-600';
 }
 
-function formatBytes(bytes, decimals = 2) {
-    if (!+bytes) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
+

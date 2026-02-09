@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate, formatTime as formatTimeUtil } from '@shared/utils/formatters';
+import { Avatar } from '@shared/components/OptimizedImage';
 
 export default function ConversationList({ selectedRoomId, onSelectRoom, onCreateRoom }) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -97,7 +99,7 @@ function RoomItem({ room, isSelected, onClick }) {
     const getRoomIcon = () => {
         if (room.type === 'DIRECT') {
             return room.otherUser?.avatar ? (
-                <img src={room.otherUser.avatar} alt="" className="w-full h-full object-cover" />
+                <Avatar src={room.otherUser.avatar} name={room.otherUser?.name} className="w-full h-full" />
             ) : (
                 <span>{room.otherUser?.name?.charAt(0) || room.name?.charAt(0) || 'U'}</span>
             );
@@ -178,10 +180,10 @@ function formatTime(dateString) {
 
     if (diff < 60000) return 'Vừa xong';
     if (diff < 3600000) return `${Math.floor(diff / 60000)}p`;
-    if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diff < 86400000) return formatTimeUtil(date);
     if (diff < 604800000) {
         const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
         return days[date.getDay()];
     }
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    return formatDate(date, { day: '2-digit', month: '2-digit' });
 }

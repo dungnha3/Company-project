@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { calendarApi } from '@shared/api/featureApi';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 const EVENT_TYPES = {
     MEETING: { label: 'Cuộc họp', icon: 'fa-calendar-check', color: 'bg-indigo-600' },
@@ -148,7 +149,7 @@ export default function PersonalCalendarPage() {
                     <i className="fa-solid fa-chevron-left" />
                 </button>
                 <h2 className="text-xl font-bold text-gray-800 capitalize">
-                    {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                    {formatDate(currentMonth, { month: 'long', year: 'numeric' })}
                 </h2>
                 <button
                     onClick={() => navigateMonth(1)}
@@ -335,8 +336,8 @@ export default function PersonalCalendarPage() {
                                     <div>
                                         <p className="font-medium text-gray-900">Thời gian</p>
                                         <p className="text-sm text-gray-600">
-                                            {new Date(selectedEvent.startTime).toLocaleString('vi-VN')} - <br />
-                                            {new Date(selectedEvent.endTime).toLocaleString('vi-VN')}
+                                            {formatDateTime(selectedEvent.startTime)} - <br />
+                                            {formatDateTime(selectedEvent.endTime)}
                                         </p>
                                     </div>
                                 </div>

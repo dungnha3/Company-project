@@ -49,6 +49,9 @@ export function useFeatureEnabled(featureKey) {
  * Hook to get current quota usage for the workspace
  */
 export function useQuotaUsage() {
+    const { workspaceType } = useWorkspaceStore();
+    const isCompanyWorkspace = workspaceType === 'COMPANY';
+
     return useQuery({
         queryKey: ['quota-usage'],
         queryFn: async () => {
@@ -56,6 +59,7 @@ export function useQuotaUsage() {
             return res.data;
         },
         staleTime: 60000, // 1 minute
+        enabled: isCompanyWorkspace, // Only fetch for Company Workspace
     });
 }
 
@@ -102,15 +106,23 @@ export function useQuotaCheck(quotaType) {
 export function usePermissions() {
     const { currentWorkspace, workspaceType } = useWorkspaceStore();
 
-    const role = workspaceType === 'PERSONAL' ? 'OWNER' : (currentWorkspace?.role || 'MEMBER');
+    // Get roles array (with fallback for backward compatibility)
+    const roles = workspaceType === 'PERSONAL'
+        ? ['OWNER']
+        : (currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']));
+
+    const primaryRole = roles[0] || 'MEMBER';
+    const hasRole = (...checkRoles) => checkRoles.some(r => roles.includes(r));
 
     return {
-        role,
-        isOwner: role === 'OWNER',
-        isAdmin: role === 'ADMIN' || role === 'OWNER',
-        isManager: ['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT', 'MANAGER_ACCOUNTING'].includes(role),
-        canManageHR: ['OWNER', 'ADMIN', 'MANAGER_HR'].includes(role),
-        canManageProjects: ['OWNER', 'ADMIN', 'MANAGER_PROJECT'].includes(role),
-        canManageFinance: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING'].includes(role),
+        roles,
+        primaryRole,
+        hasRole,
+        isOwner: hasRole('OWNER'),
+        isAdmin: hasRole('ADMIN', 'OWNER'),
+        isManager: hasRole('OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT', 'MANAGER_ACCOUNTING'),
+        canManageHR: hasRole('OWNER', 'ADMIN', 'MANAGER_HR'),
+        canManageProjects: hasRole('OWNER', 'ADMIN', 'MANAGER_PROJECT'),
+        canManageFinance: hasRole('OWNER', 'ADMIN', 'MANAGER_ACCOUNTING'),
     };
 }

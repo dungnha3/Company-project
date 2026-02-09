@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useAuthStore } from '@shared/stores/authStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from '@shared/components/LazyCharts';
 
 export default function DashboardPage() {
     const { user } = useAuthStore();
@@ -73,7 +74,7 @@ function PersonalDashboard({ user, greeting }) {
                             {greeting}, {user?.fullName?.split(' ').pop() || user?.username}! 👋
                         </h1>
                         <p className="text-purple-100 text-lg">
-                            {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            {formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                         <p className="text-purple-200 text-sm mt-2">
                             Không gian cá nhân của bạn
@@ -202,7 +203,7 @@ function PersonalDashboard({ user, greeting }) {
                                 <i className="fa-regular fa-envelope-open text-xl" />
                             </div>
                             <p className="text-sm">Không có lời mời nào</p>
-                            <p className="text-xs mt-1">Bạn sẽ thấy lời mời tham gia công ty ở đây</p>
+                            <p className="text-xs mt-1">Bạn sẽ thấy lời mời tham gia Workspace ở đây</p>
                         </div>
                     )}
                 </div>
@@ -255,7 +256,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
             const record = attendanceHistory.find(r => new Date(r.date).toDateString() === dateStr);
             weekData.push({
                 name: days[i],
-                workHours: record?.workHours ? Number(record.workHours.toFixed(1)) : 0,
+                workHours: record?.workHours ? Math.round(record.workHours * 10) / 10 : 0,
                 status: record?.status || 'ABSENT'
             });
         }
@@ -283,7 +284,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                             {greeting}, {user?.fullName?.split(' ').pop() || 'Admin'}! 👋
                         </h1>
                         <p className="text-blue-100 text-lg">
-                            {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            {formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                         <p className="text-blue-200 text-sm mt-2">
                             Bạn có <span className="font-bold text-white">{myTasks.length}</span> công việc cần xử lý
@@ -462,7 +463,9 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
 
 // ==================== SHARED COMPONENTS ====================
 
-function QuickAction({ to, icon, label }) {
+// ==================== MEMOIZED LIST COMPONENTS ====================
+
+const QuickAction = memo(function QuickAction({ to, icon, label }) {
     return (
         <Link
             to={to}
@@ -472,9 +475,9 @@ function QuickAction({ to, icon, label }) {
             <span className="text-xs font-medium">{label}</span>
         </Link>
     );
-}
+});
 
-function MiniStat({ icon, label, value, color }) {
+const MiniStat = memo(function MiniStat({ icon, label, value, color }) {
     const colorMap = {
         gray: 'bg-gray-100 text-gray-600',
         blue: 'bg-blue-100 text-blue-600',
@@ -492,9 +495,9 @@ function MiniStat({ icon, label, value, color }) {
             </div>
         </div>
     );
-}
+});
 
-function StatCard({ title, value, icon, color, trend, badge }) {
+const StatCard = memo(function StatCard({ title, value, icon, color, trend, badge }) {
     const colors = {
         blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
         purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
@@ -528,9 +531,9 @@ function StatCard({ title, value, icon, color, trend, badge }) {
             </div>
         </div>
     );
-}
+});
 
-function PersonalTaskItem({ task }) {
+const PersonalTaskItem = memo(function PersonalTaskItem({ task }) {
     const priorityDot = {
         LOW: 'bg-gray-400',
         MEDIUM: 'bg-amber-400',
@@ -549,21 +552,21 @@ function PersonalTaskItem({ task }) {
                 {task.dueDate && (
                     <div className={`text-xs ${task.overdue ? 'text-red-600' : 'text-gray-400'}`}>
                         <i className="fa-regular fa-calendar mr-1" />
-                        {new Date(task.dueDate).toLocaleDateString('vi-VN')}
+                        {formatDate(task.dueDate)}
                     </div>
                 )}
             </div>
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'DONE' ? 'bg-green-100 text-green-600' :
-                    task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' :
-                        'bg-gray-100 text-gray-600'
+                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' :
+                    'bg-gray-100 text-gray-600'
                 }`}>
                 {task.status === 'DONE' ? 'Xong' : task.status === 'IN_PROGRESS' ? 'Đang làm' : 'Cần làm'}
             </span>
         </Link>
     );
-}
+});
 
-function TaskItem({ task }) {
+const TaskItem = memo(function TaskItem({ task }) {
     const priorityColors = {
         HIGH: 'bg-red-100 text-red-600',
         MEDIUM: 'bg-orange-100 text-orange-600',
@@ -585,9 +588,9 @@ function TaskItem({ task }) {
             </span>
         </Link>
     );
-}
+});
 
-function NotificationItem({ notification }) {
+const NotificationItem = memo(function NotificationItem({ notification }) {
     const iconMap = {
         leave: 'fa-calendar-check',
         project: 'fa-folder',
@@ -604,14 +607,14 @@ function NotificationItem({ notification }) {
             <div className="min-w-0">
                 <p className="text-sm text-gray-700 line-clamp-2">{notification.message || notification.content}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                    {notification.createdAt ? new Date(notification.createdAt).toLocaleString('vi-VN') : 'Gần đây'}
+                    {notification.createdAt ? formatDateTime(notification.createdAt) : 'Gần đây'}
                 </p>
             </div>
         </div>
     );
-}
+});
 
-function QuickLink({ to, icon, label }) {
+const QuickLink = memo(function QuickLink({ to, icon, label }) {
     return (
         <Link
             to={to}
@@ -621,7 +624,7 @@ function QuickLink({ to, icon, label }) {
             {label}
         </Link>
     );
-}
+});
 
 function InviteItem({ invite }) {
     const queryClient = useQueryClient();
@@ -654,6 +657,7 @@ function InviteItem({ invite }) {
                     disabled={acceptMutation.isPending}
                     className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
                     title="Chấp nhận"
+                    aria-label="Chấp nhận lời mời"
                 >
                     <i className="fa-solid fa-check" />
                 </button>
@@ -662,6 +666,7 @@ function InviteItem({ invite }) {
                     disabled={declineMutation.isPending}
                     className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
                     title="Từ chối"
+                    aria-label="Từ chối lời mời"
                 >
                     <i className="fa-solid fa-xmark" />
                 </button>
@@ -719,6 +724,7 @@ function PersonalFirstSteps({ stats }) {
                     onClick={() => setDismissed(true)}
                     className="text-gray-400 hover:text-gray-600 p-1"
                     title="Ẩn"
+                    aria-label="Ẩn hướng dẫn"
                 >
                     <i className="fa-solid fa-xmark" />
                 </button>

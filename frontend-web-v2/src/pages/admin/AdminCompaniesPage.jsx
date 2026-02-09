@@ -53,7 +53,7 @@ export default function AdminCompaniesPage() {
         mutationFn: (companyId) => apiClient.delete(ENDPOINTS.SYSADMIN.COMPANY_DELETE(companyId)),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-companies']);
-            showToast('Đã xóa công ty', 'success');
+            showToast('Đã xóa workspace', 'success');
             setShowDeleteModal(false);
         },
         onError: (err) => showToast(err.response?.data?.message || err.message, 'error'),
@@ -81,7 +81,7 @@ export default function AdminCompaniesPage() {
     // Table columns
     const columns = [
         {
-            header: 'Công ty',
+            header: 'Workspace',
             accessorKey: 'name',
             cell: (row) => (
                 <div className="flex items-center gap-3">
@@ -115,7 +115,7 @@ export default function AdminCompaniesPage() {
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`${row.isActive ? 'Tạm dừng' : 'Kích hoạt'} công ty "${row.name}"?`)) {
+                        if (confirm(`${row.isActive ? 'Tạm dừng' : 'Kích hoạt'} workspace "${row.name}"?`)) {
                             toggleStatusMutation.mutate(row.companyId);
                         }
                     }}
@@ -160,7 +160,7 @@ export default function AdminCompaniesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Quản lý công ty</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Quản lý Workspace</h1>
                     <p className="text-gray-500 text-sm">Quản lý tất cả các tenant trong hệ thống</p>
                 </div>
             </div>
@@ -173,7 +173,7 @@ export default function AdminCompaniesPage() {
                             <i className="fa-solid fa-building text-indigo-600 text-xl" />
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Tổng công ty</p>
+                            <p className="text-sm text-gray-500">Tổng workspace</p>
                             <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                         </div>
                     </div>
@@ -239,7 +239,7 @@ export default function AdminCompaniesPage() {
                             <input
                                 type="text"
                                 className="input pl-10"
-                                placeholder="Tìm tên công ty..."
+                                placeholder="Tìm workspace..."
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
                             />
@@ -267,7 +267,7 @@ export default function AdminCompaniesPage() {
                             </button>
                         </div>
                         <div className="modal-body">
-                            <p className="text-gray-600 mb-4">Công ty: <strong>{selectedCompany.name}</strong></p>
+                            <p className="text-gray-600 mb-4">Workspace: <strong>{selectedCompany.name}</strong></p>
                             <div className="grid grid-cols-2 gap-3">
                                 {PLANS.map(plan => (
                                     <button
@@ -310,7 +310,7 @@ export default function AdminCompaniesPage() {
                         <div className="modal-header bg-red-50">
                             <h3 className="text-lg font-semibold text-red-700">
                                 <i className="fa-solid fa-triangle-exclamation mr-2" />
-                                Xóa công ty
+                                Xóa workspace
                             </h3>
                             <button onClick={() => setShowDeleteModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <i className="fa-solid fa-times" />

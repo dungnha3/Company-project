@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate, formatBytes } from '@shared/utils/formatters';
 
 const FILE_ICONS = {
     pdf: { icon: 'fa-file-pdf', color: 'text-red-500' },
@@ -29,13 +30,7 @@ const getFileIcon = (filename) => {
     return FILE_ICONS[ext] || FILE_ICONS.default;
 };
 
-const formatFileSize = (bytes) => {
-    if (!bytes) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};
+
 
 export default function PersonalStoragePage() {
     const { success, error } = useToast();
@@ -315,7 +310,7 @@ export default function PersonalStoragePage() {
                                     <i className={`fa-solid ${icon} ${color} text-xl`} />
                                 </div>
                                 <p className="font-medium text-gray-800 truncate text-sm">{file.name}</p>
-                                <p className="text-xs text-gray-400 mt-1">{formatFileSize(file.size)}</p>
+                                <p className="text-xs text-gray-400 mt-1">{formatBytes(file.size)}</p>
                                 {/* Actions */}
                                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
@@ -360,7 +355,7 @@ export default function PersonalStoragePage() {
                                     </td>
                                     <td className="px-4 py-3 text-gray-500 text-sm">—</td>
                                     <td className="px-4 py-3 text-gray-500 text-sm">
-                                        {folder.createdAt ? new Date(folder.createdAt).toLocaleDateString('vi-VN') : '—'}
+                                        {folder.createdAt ? formatDate(folder.createdAt) : '—'}
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <button
@@ -380,9 +375,9 @@ export default function PersonalStoragePage() {
                                             <i className={`fa-solid ${icon} ${color}`} />
                                             <span className="font-medium text-gray-800">{file.name}</span>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-500 text-sm">{formatFileSize(file.size)}</td>
+                                        <td className="px-4 py-3 text-gray-500 text-sm">{formatBytes(file.size)}</td>
                                         <td className="px-4 py-3 text-gray-500 text-sm">
-                                            {file.createdAt ? new Date(file.createdAt).toLocaleDateString('vi-VN') : '—'}
+                                            {file.createdAt ? formatDate(file.createdAt) : '—'}
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <button

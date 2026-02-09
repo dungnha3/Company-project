@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import ProjectBoard from './tabs/ProjectBoard';
 import ProjectGantt from './tabs/ProjectGantt';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
@@ -97,11 +98,11 @@ export default function ProjectDetailPage() {
                 <div className="flex gap-6 text-sm text-gray-600 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-2">
                         <i className="fa-regular fa-calendar text-primary" />
-                        <span>Start: {project.startDate ? new Date(project.startDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+                        <span>Start: {project.startDate ? formatDate(project.startDate) : 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-flag-checkered text-red-500" />
-                        <span>End: {project.endDate ? new Date(project.endDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+                        <span>End: {project.endDate ? formatDate(project.endDate) : 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-chart-pie text-blue-500" />
@@ -214,7 +215,7 @@ function OverviewTab({ project }) {
                                             <span className="font-medium">{act.user?.fullName}</span> {act.description}
                                         </p>
                                         <p className="text-xs text-gray-500 mt-0.5">
-                                            {new Date(act.createdAt).toLocaleString('vi-VN')}
+                                            {formatDateTime(act.createdAt)}
                                         </p>
                                     </div>
                                 </div>

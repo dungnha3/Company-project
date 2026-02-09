@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate } from '@shared/utils/formatters';
 
 const PHASE_STATUS = {
     PLANNING: { label: 'Lập kế hoạch', color: 'bg-gray-100 text-gray-700', icon: 'fa-clipboard-list' },
@@ -131,13 +132,13 @@ export default function PhaseTab({ projectId }) {
                                                     {phase.startDate && (
                                                         <span>
                                                             <i className="fa-regular fa-calendar mr-1" />
-                                                            {new Date(phase.startDate).toLocaleDateString('vi-VN')}
+                                                            {formatDate(phase.startDate)}
                                                         </span>
                                                     )}
                                                     {phase.endDate && (
                                                         <span>
                                                             <i className="fa-solid fa-arrow-right mx-1" />
-                                                            {new Date(phase.endDate).toLocaleDateString('vi-VN')}
+                                                            {formatDate(phase.endDate)}
                                                         </span>
                                                     )}
                                                     {phase.issueCount !== undefined && (

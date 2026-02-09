@@ -4,6 +4,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import TimeLogSection from './TimeLogSection';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 const STATUSES = [
     { value: 'TODO', label: 'To Do', color: 'bg-gray-100 text-gray-700' },
@@ -158,7 +159,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs text-gray-500 mb-1">Hạn chót</label>
                             <div className={`px-3 py-2 bg-gray-50 rounded-lg text-sm ${currentIssue.dueDate && new Date(currentIssue.dueDate) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
-                                {currentIssue.dueDate ? new Date(currentIssue.dueDate).toLocaleDateString('vi-VN') : '—'}
+                                {currentIssue.dueDate ? formatDate(currentIssue.dueDate) : '—'}
                             </div>
                         </div>
                     </div>
@@ -206,7 +207,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 <div>
                                     <span className="text-xs text-gray-500">Ngày tạo</span>
                                     <div className="text-sm font-medium text-gray-900">
-                                        {currentIssue.createdAt ? new Date(currentIssue.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                        {currentIssue.createdAt ? formatDate(currentIssue.createdAt) : 'N/A'}
                                     </div>
                                 </div>
                                 <div>
@@ -269,7 +270,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-sm text-gray-900">{comment.authorName}</span>
                                                     <span className="text-xs text-gray-400">
-                                                        {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                                                        {formatDateTime(comment.createdAt)}
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
@@ -456,7 +457,7 @@ function ActivityLogTab({ issueId }) {
                             <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium text-gray-900">{activity.userName || 'User'}</span>
                                 <span className="text-xs text-gray-400">
-                                    {new Date(activity.createdAt).toLocaleString('vi-VN')}
+                                    {formatDateTime(activity.createdAt)}
                                 </span>
                             </div>
                             <p className="text-gray-600">{activity.description}</p>

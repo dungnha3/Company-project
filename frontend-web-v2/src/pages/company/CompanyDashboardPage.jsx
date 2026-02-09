@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { Link } from 'react-router-dom';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function CompanyDashboardPage() {
     const { currentWorkspace } = useWorkspaceStore();
@@ -32,7 +33,7 @@ export default function CompanyDashboardPage() {
         planName: settings?.planName || currentWorkspace?.plan || 'Free',
         planExpiry: settings?.planExpiry || null,
         recentActivity: [
-            { id: 1, type: 'member_join', user: members[0]?.fullName || 'User', action: 'đã tham gia công ty', time: 'Gần đây', icon: 'fa-user-plus', color: 'green' },
+            { id: 1, type: 'member_join', user: members[0]?.fullName || 'User', action: 'đã tham gia Workspace', time: 'Gần đây', icon: 'fa-user-plus', color: 'green' },
             { id: 2, type: 'project_create', user: 'System', action: `Có ${projects.length} dự án`, time: '', icon: 'fa-folder-plus', color: 'blue' },
         ],
         quickStats: {
@@ -65,7 +66,7 @@ export default function CompanyDashboardPage() {
                         {currentWorkspace?.name || 'Company Dashboard'}
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        Tổng quan hoạt động công ty
+                        Tổng quan hoạt động Workspace
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -123,7 +124,7 @@ export default function CompanyDashboardPage() {
                     iconColor="text-amber-600"
                     title="Gói dịch vụ"
                     value={dashboardData?.planName}
-                    subtitle={`Hết hạn: ${new Date(dashboardData?.planExpiry).toLocaleDateString('vi-VN')}`}
+                    subtitle={`Hết hạn: ${formatDate(dashboardData?.planExpiry)}`}
                     badge="Active"
                 />
             </div>

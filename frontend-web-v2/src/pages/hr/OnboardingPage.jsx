@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function OnboardingPage() {
     const [activeTab, setActiveTab] = useState('active'); // active, templates
@@ -159,7 +160,7 @@ function OnboardingInstanceCard({ instance }) {
                     <span>Bước {instance.currentStep || 1}: {currentStep?.title || 'Đang cập nhật...'}</span>
                 </div>
                 <span className="text-gray-400">
-                    Bắt đầu: {instance.startDate ? new Date(instance.startDate).toLocaleDateString('vi-VN') : '--/--'}
+                    Bắt đầu: {formatDate(instance.startDate)}
                 </span>
             </div>
         </div>

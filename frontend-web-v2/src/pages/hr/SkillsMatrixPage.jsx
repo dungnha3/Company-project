@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatNumber } from '@shared/utils/formatters';
 
 const SKILL_LEVELS = {
     0: { label: 'Chưa có', color: 'bg-gray-100 text-gray-400', icon: 'fa-circle' },
@@ -114,7 +115,7 @@ export default function SkillsMatrixPage() {
             stats[skill] = {
                 coverage: Math.round((hasSkill.length / filteredEmployees.length) * 100) || 0,
                 avgLevel: hasSkill.length > 0
-                    ? (hasSkill.reduce((a, b) => a + b, 0) / hasSkill.length).toFixed(1)
+                    ? formatNumber(hasSkill.reduce((a, b) => a + b, 0) / hasSkill.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
                     : 0,
                 experts: levels.filter(l => l >= 3).length,
             };

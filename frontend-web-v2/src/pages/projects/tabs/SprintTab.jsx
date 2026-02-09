@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate } from '@shared/utils/formatters';
 import BurndownChart from '../components/BurndownChart';
 
 const SPRINT_STATUS = {
@@ -98,11 +99,11 @@ export default function SprintTab({ projectId }) {
                         <div className="grid grid-cols-4 gap-4 text-sm">
                             <div>
                                 <span className="text-gray-500">Bắt đầu</span>
-                                <div className="font-medium">{activeSprint.startDate ? new Date(activeSprint.startDate).toLocaleDateString('vi-VN') : '—'}</div>
+                                <div className="font-medium">{activeSprint.startDate ? formatDate(activeSprint.startDate) : '—'}</div>
                             </div>
                             <div>
                                 <span className="text-gray-500">Kết thúc</span>
-                                <div className="font-medium">{activeSprint.endDate ? new Date(activeSprint.endDate).toLocaleDateString('vi-VN') : '—'}</div>
+                                <div className="font-medium">{activeSprint.endDate ? formatDate(activeSprint.endDate) : '—'}</div>
                             </div>
                             <div>
                                 <span className="text-gray-500">Issues</span>
@@ -142,9 +143,9 @@ export default function SprintTab({ projectId }) {
                                     <div>
                                         <h4 className="font-medium text-gray-900">{sprint.name}</h4>
                                         <p className="text-sm text-gray-500">
-                                            {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString('vi-VN') : 'TBD'}
+                                            {sprint.startDate ? formatDate(sprint.startDate) : 'TBD'}
                                             {' → '}
-                                            {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString('vi-VN') : 'TBD'}
+                                            {sprint.endDate ? formatDate(sprint.endDate) : 'TBD'}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -181,7 +182,7 @@ export default function SprintTab({ projectId }) {
                                 <div>
                                     <h4 className="font-medium text-gray-700">{sprint.name}</h4>
                                     <p className="text-xs text-gray-500">
-                                        {sprint.completedAt ? new Date(sprint.completedAt).toLocaleDateString('vi-VN') : 'Completed'}
+                                        {sprint.completedAt ? formatDate(sprint.completedAt) : 'Completed'}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4 text-sm text-gray-500">

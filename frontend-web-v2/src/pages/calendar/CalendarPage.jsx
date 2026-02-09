@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { calendarApi } from '../../shared/api/featureApi';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 const EVENT_TYPES = {
     MEETING: { label: 'Cuộc họp', icon: '📅', color: 'bg-indigo-600' },
@@ -178,7 +179,7 @@ export default function CalendarPage() {
                         ? `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`
                         : viewMode === 'week'
                             ? `Tuần ${getWeekNumber(currentWeek)}, ${currentWeek.getFullYear()}`
-                            : currentWeek.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })
+                            : formatDate(currentWeek, { weekday: 'long', day: 'numeric', month: 'long' })
                     }
                 </h2>
                 <button
@@ -279,7 +280,7 @@ export default function CalendarPage() {
                         </span>
                         <h2 className="text-xl font-semibold text-white mb-2">{selectedEvent.title}</h2>
                         <p className="text-slate-400 text-sm mb-3">
-                            🕐 {new Date(selectedEvent.startTime).toLocaleString('vi-VN')} - {new Date(selectedEvent.endTime).toLocaleString('vi-VN')}
+                            🕐 {formatDateTime(selectedEvent.startTime)} - {formatDateTime(selectedEvent.endTime)}
                         </p>
                         {selectedEvent.location && <p className="text-slate-300 mb-2">📍 {selectedEvent.location}</p>}
                         {selectedEvent.meetingLink && <a href={selectedEvent.meetingLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline block mb-2">🔗 Tham gia họp</a>}

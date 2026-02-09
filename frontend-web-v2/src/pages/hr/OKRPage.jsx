@@ -135,7 +135,7 @@ export default function OKRPage() {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold text-gray-800">
                         <i className="fa-solid fa-building text-indigo-500 mr-2" />
-                        Tiến độ công ty
+                        Tiến độ Workspace
                     </h2>
                     <span className="text-sm text-gray-500">{selectedPeriod}</span>
                 </div>

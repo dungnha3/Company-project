@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate } from '@shared/utils/formatters';
+import { Avatar } from '@shared/components/OptimizedImage';
 import PermissionSelector from './employee/components/PermissionSelector';
 
 export default function EmployeeDetailPage() {
@@ -123,13 +125,7 @@ function EmployeeInfo({ employee }) {
             {/* Left Column - Avatar & Contact */}
             <div className="space-y-6">
                 <div className="text-center">
-                    {employee.avatarUrl ? (
-                        <img src={employee.avatarUrl} alt={employee.fullName} className="w-32 h-32 rounded-full object-cover mx-auto" />
-                    ) : (
-                        <div className="w-32 h-32 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-4xl font-bold mx-auto border-4 border-blue-100">
-                            {employee.fullName?.charAt(0)}
-                        </div>
-                    )}
+                    <Avatar src={employee.avatarUrl} name={employee.fullName} size="xl" className="w-32 h-32 mx-auto" />
                     <div className="mt-4 font-mono text-sm text-gray-500">{employee.employeeCode}</div>
                 </div>
 
@@ -146,7 +142,7 @@ function EmployeeInfo({ employee }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <InfoField label="Họ và tên" value={employee.fullName} />
                     <InfoField label="Giới tính" value={employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nữ' : 'Khác'} />
-                    <InfoField label="Ngày sinh" value={employee.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString('vi-VN') : '-'} />
+                    <InfoField label="Ngày sinh" value={formatDate(employee.dateOfBirth)} />
                     <InfoField label="CCCD/CMND" value={employee.identityNumber} />
                 </div>
 
@@ -154,7 +150,7 @@ function EmployeeInfo({ employee }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <InfoField label="Phòng ban" value={employee.department?.name} />
                     <InfoField label="Chức vụ" value={employee.position?.name} />
-                    <InfoField label="Ngày vào làm" value={employee.joinDate ? new Date(employee.joinDate).toLocaleDateString('vi-VN') : '-'} />
+                    <InfoField label="Ngày vào làm" value={formatDate(employee.joinDate)} />
                     <InfoField label="Loại nhân viên" value={employee.type} />
                 </div>
             </div>

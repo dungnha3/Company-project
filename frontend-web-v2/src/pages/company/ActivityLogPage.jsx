@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatRelativeTime, formatDateTime } from '@shared/utils/formatters';
 
 const ACTIVITY_TYPES = {
     all: { label: 'Tất cả', icon: 'fa-list' },
@@ -70,7 +71,7 @@ export default function ActivityLogPage() {
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Nhật ký hoạt động</h1>
                 <p className="text-gray-500 text-sm mt-1">
-                    Theo dõi tất cả hoạt động trong công ty
+                    Theo dõi tất cả hoạt động trong Workspace
                 </p>
             </div>
 
@@ -192,7 +193,7 @@ export default function ActivityLogPage() {
                                                 {formatRelativeTime(activity.time)}
                                             </p>
                                             <p className="text-xs text-gray-400">
-                                                {activity.time.toLocaleString('vi-VN')}
+                                                {formatDateTime(activity.time)}
                                             </p>
                                         </div>
                                     </td>
@@ -234,13 +235,4 @@ export default function ActivityLogPage() {
     );
 }
 
-function formatRelativeTime(date) {
-    const now = new Date();
-    const diff = now - date;
 
-    if (diff < 60000) return 'Vừa xong';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-}

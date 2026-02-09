@@ -21,6 +21,9 @@ import RegisterPage from '@pages/auth/RegisterPage';
 
 // Lazy load logout page
 const LogoutPage = lazy(() => import('@pages/auth/LogoutPage'));
+const ForgotPasswordPage = lazy(() => import('@pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@pages/auth/ResetPasswordPage'));
+
 
 // Lazy load feature pages
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
@@ -98,8 +101,11 @@ const router = createBrowserRouter([
             { path: '/login', element: <LoginPage /> },
             { path: '/register', element: <RegisterPage /> },
             { path: '/logout', element: <Suspense fallback={<PageLoader />}><LogoutPage /></Suspense> },
+            { path: '/forgot-password', element: <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense> },
+            { path: '/reset-password', element: <Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense> },
         ],
     },
+
 
     // System Admin Routes
     {
@@ -354,7 +360,7 @@ const router = createBrowserRouter([
                         path: 'salaries',
                         element: (
                             <FeatureGuard feature="salary">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING']}>
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR']}>
                                     <Suspense fallback={<PageLoader />}>
                                         <SalariesPage />
                                     </Suspense>
@@ -549,6 +555,14 @@ const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={<PageLoader />}>
                         <NotificationsPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'billing',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <BillingPage />
                     </Suspense>
                 ),
             },

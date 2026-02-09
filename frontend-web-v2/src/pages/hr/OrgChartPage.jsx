@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { Avatar } from '@shared/components/OptimizedImage';
 
 export default function OrgChartPage() {
     const navigate = useNavigate();
@@ -118,7 +119,7 @@ export default function OrgChartPage() {
                                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-3">
                                     <i className="fa-solid fa-building" />
                                 </div>
-                                <div className="text-lg font-bold text-gray-900">Công ty</div>
+                                <div className="text-lg font-bold text-gray-900">Workspace</div>
                                 <div className="text-sm text-gray-500">{deptList.length} Phòng ban</div>
                             </div>
 
@@ -265,7 +266,7 @@ function EmployeeCard({ employee, isManager, compact, onClick }) {
                 title={employee.fullName}
             >
                 {employee.avatarUrl ? (
-                    <img src={employee.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                    <Avatar src={employee.avatarUrl} name={employee.fullName} className="w-full h-full rounded-full" />
                 ) : (
                     <span className="text-xs font-semibold text-gray-600">{initials}</span>
                 )}
@@ -289,7 +290,7 @@ function EmployeeCard({ employee, isManager, compact, onClick }) {
                 : 'bg-gradient-to-br from-gray-400 to-gray-500'
                 }`}>
                 {employee.avatarUrl ? (
-                    <img src={employee.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                    <Avatar src={employee.avatarUrl} name={employee.fullName} className="w-full h-full rounded-full" />
                 ) : (
                     <span>{initials}</span>
                 )}

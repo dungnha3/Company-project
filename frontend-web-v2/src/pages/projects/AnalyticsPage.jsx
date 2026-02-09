@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+} from '@shared/components/LazyCharts';
 import { analyticsApi } from '../../shared/api/featureApi';
+import { formatDate, formatNumber } from '@shared/utils/formatters';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -95,12 +96,12 @@ export default function AnalyticsPage() {
                                 <XAxis
                                     dataKey="date"
                                     stroke="#888"
-                                    tickFormatter={(val) => new Date(val).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                    tickFormatter={(val) => formatDate(val, { day: '2-digit', month: '2-digit' })}
                                 />
                                 <YAxis stroke="#888" />
                                 <Tooltip
                                     contentStyle={{ background: '#1e1e2e', border: '1px solid #3d3d4d', borderRadius: '8px' }}
-                                    labelFormatter={(val) => new Date(val).toLocaleDateString('vi-VN')}
+                                    labelFormatter={(val) => formatDate(val)}
                                 />
                                 <Legend />
                                 <Line type="monotone" dataKey="ideal" stroke="#6366f1" strokeDasharray="5 5" name="Ideal" />
@@ -118,7 +119,7 @@ export default function AnalyticsPage() {
                         <h2 className="text-lg font-semibold text-white">🚀 Velocity</h2>
                         {velocity && (
                             <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                                Avg: {velocity.averageVelocity?.toFixed(1)} issues/sprint
+                                Avg: {formatNumber(velocity.averageVelocity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} issues/sprint
                             </span>
                         )}
                     </div>
@@ -155,7 +156,7 @@ export default function AnalyticsPage() {
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
-                                    label={({ status, percent }) => `${status} ${(percent * 100).toFixed(0)}%`}
+                                    label={({ status, percent }) => `${status} ${formatNumber(percent * 100, { maximumFractionDigits: 0 })}%`}
                                     outerRadius={100}
                                     dataKey="count"
                                     nameKey="status"

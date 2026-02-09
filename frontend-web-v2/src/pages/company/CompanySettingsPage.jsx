@@ -185,7 +185,7 @@ function MembersSettings() {
     });
 
     const handleRemove = async (userId) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa thành viên này? Hành động này sẽ xóa nhân viên khỏi công ty.')) return;
+        if (!window.confirm('Bạn có chắc chắn muốn xóa thành viên này? Hành động này sẽ xóa nhân viên khỏi Workspace.')) return;
         deleteMutation.mutate(userId);
     };
 
@@ -437,7 +437,7 @@ function ModulesSettings({ workspace }) {
                             icon="fa-sitemap"
                             iconColor="text-indigo-600"
                             title="Sơ đồ tổ chức"
-                            description="Hiển thị cây cấu trúc công ty"
+                            description="Hiển thị cây cấu trúc Workspace"
                             enabled={settings.orgChartEnabled !== false}
                             onToggle={() => handleToggle('orgChartEnabled')}
                             disabled={updateMutation.isPending}

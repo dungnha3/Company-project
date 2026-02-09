@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function ContractsPage() {
     const { hasRole } = useWorkspaceStore();
@@ -45,8 +46,8 @@ export default function ContractsPage() {
             accessorKey: 'duration',
             cell: (row) => (
                 <div className="text-sm">
-                    <div>{new Date(row.startDate).toLocaleDateString()}</div>
-                    <div className="text-gray-400 text-xs">đến {row.endDate ? new Date(row.endDate).toLocaleDateString() : 'Vô thời hạn'}</div>
+                    <div>{formatDate(row.startDate)}</div>
+                    <div className="text-gray-400 text-xs">đến {row.endDate ? formatDate(row.endDate) : 'Vô thời hạn'}</div>
                 </div>
             )
         },
@@ -171,7 +172,7 @@ function ContractModal({ isOpen, onClose, contract }) {
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">{isEdit ? 'Cập nhật hợp đồng' : 'Tạo hợp đồng mới'}</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
                     </div>
 
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">

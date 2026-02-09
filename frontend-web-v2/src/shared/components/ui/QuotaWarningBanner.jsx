@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 /**
  * QuotaWarningBanner - Displays upgrade prompts when quota reaches WARNING or CRITICAL level
@@ -14,6 +15,9 @@ import { ENDPOINTS } from '@shared/api/endpoints';
  * }
  */
 export default function QuotaWarningBanner() {
+    const { workspaceType } = useWorkspaceStore();
+    const isCompanyWorkspace = workspaceType === 'COMPANY';
+
     const { data: quota } = useQuery({
         queryKey: ['quota-banner'],
         queryFn: async () => {
@@ -22,6 +26,7 @@ export default function QuotaWarningBanner() {
         },
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
         retry: 1,
+        enabled: isCompanyWorkspace, // Only fetch for Company Workspace
     });
 
     // Validate data structure

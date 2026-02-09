@@ -21,8 +21,8 @@ export function ToastProvider({ children }) {
     return (
         <ToastContext.Provider value={{ success, error, warning, info }}>
             {children}
-            {/* Toast Container */}
-            <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+            {/* Toast Container - aria-live for accessibility */}
+            <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite" aria-atomic="true">
                 {toasts.map(toast => (
                     <div
                         key={toast.id}
@@ -37,9 +37,9 @@ export function ToastProvider({ children }) {
                     >
                         <div className="flex items-center gap-2">
                             <i className={`fa-solid ${toast.type === 'success' ? 'fa-check-circle' :
-                                    toast.type === 'error' ? 'fa-times-circle' :
-                                        toast.type === 'warning' ? 'fa-exclamation-triangle' :
-                                            'fa-info-circle'
+                                toast.type === 'error' ? 'fa-times-circle' :
+                                    toast.type === 'warning' ? 'fa-exclamation-triangle' :
+                                        'fa-info-circle'
                                 }`} />
                             <span>{toast.message}</span>
                         </div>

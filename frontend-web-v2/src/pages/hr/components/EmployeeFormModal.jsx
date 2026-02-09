@@ -168,7 +168,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                                     ))}
                                 </select>
                                 {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId}</p>}
-                                <p className="text-xs text-gray-400 mt-1">Chỉ những user đã được mời vào công ty mới hiển thị ở đây.</p>
+                                <p className="text-xs text-gray-400 mt-1">Chỉ những user đã được mời vào Workspace mới hiển thị ở đây.</p>
                             </div>
                         )}
 

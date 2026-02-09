@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatNumber } from '@shared/utils/formatters';
 import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ReviewFormModal from './components/ReviewFormModal';
@@ -214,7 +215,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             accessorKey: 'averageScore',
             cell: (row) => {
                 const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.leadershipScore].filter(s => s != null);
-                const avg = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
+                const avg = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
                 return <ScoreBadge score={avg} />;
             }
         },
@@ -371,7 +372,7 @@ function PendingReviewsTable({ canApprove }) {
             accessorKey: 'averageScore',
             cell: (row) => {
                 const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.leadershipScore].filter(s => s != null);
-                const avg = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
+                const avg = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
                 return <ScoreBadge score={avg} />;
             }
         },

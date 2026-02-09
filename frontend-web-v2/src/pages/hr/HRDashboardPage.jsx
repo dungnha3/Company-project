@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function HRDashboardPage() {
     const navigate = useNavigate();
@@ -182,7 +183,7 @@ export default function HRDashboardPage() {
                                         <div>
                                             <div className="font-medium text-gray-900">{leave.employee?.fullName || 'Unknown'}</div>
                                             <div className="text-xs text-gray-500">
-                                                {new Date(leave.startDate).toLocaleDateString('vi-VN')} - {new Date(leave.endDate).toLocaleDateString('vi-VN')}
+                                                {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
                                             </div>
                                         </div>
                                     </div>

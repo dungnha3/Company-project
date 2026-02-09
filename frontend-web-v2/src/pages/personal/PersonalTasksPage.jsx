@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate } from '@shared/utils/formatters';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả', icon: 'fa-layer-group' },
@@ -192,8 +193,8 @@ export default function PersonalTasksPage() {
                         <button
                             onClick={() => setViewMode('list')}
                             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'list'
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <i className="fa-solid fa-list mr-1.5" />
@@ -202,8 +203,8 @@ export default function PersonalTasksPage() {
                         <button
                             onClick={() => setViewMode('kanban')}
                             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'kanban'
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <i className="fa-solid fa-columns mr-1.5" />
@@ -453,7 +454,7 @@ function KanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isP
                         {task.dueDate && (
                             <span className={`text-xs px-2 py-0.5 rounded-full ${task.overdue ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
                                 <i className="fa-regular fa-calendar mr-1" />
-                                {new Date(task.dueDate).toLocaleDateString('vi-VN')}
+                                {formatDate(task.dueDate)}
                             </span>
                         )}
                         {task.labels?.map(label => (
@@ -567,7 +568,7 @@ function TaskItem({ task, onEdit, onDelete, onStatusChange, isPro }) {
                 {task.dueDate && (
                     <p className={`text-xs mt-1 ${task.overdue ? 'text-red-600' : 'text-gray-400'}`}>
                         <i className="fa-regular fa-calendar mr-1" />
-                        {new Date(task.dueDate).toLocaleDateString('vi-VN')}
+                        {formatDate(task.dueDate)}
                     </p>
                 )}
             </div>
@@ -671,8 +672,8 @@ function TaskModal({ isEditing, formData, setFormData, onSubmit, onClose, isPend
                                                 type="button"
                                                 onClick={() => toggleLabel(preset.name)}
                                                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${formData.labels.includes(preset.name)
-                                                        ? `${preset.color} text-white`
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    ? `${preset.color} text-white`
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                     }`}
                                             >
                                                 {preset.name}

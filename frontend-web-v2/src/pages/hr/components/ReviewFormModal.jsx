@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatNumber } from '@shared/utils/formatters';
 
 export default function ReviewFormModal({ isOpen, onClose, review }) {
     const queryClient = useQueryClient();
@@ -103,7 +104,7 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
     const scores = [formData.technicalScore, formData.attitudeScore, formData.teamworkScore, formData.leadershipScore]
         .filter(s => s !== '' && s != null)
         .map(s => parseFloat(s));
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
+    const avgScore = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
 
     if (!isOpen) return null;
 

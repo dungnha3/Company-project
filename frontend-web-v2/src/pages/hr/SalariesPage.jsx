@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
@@ -6,6 +6,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatCurrency, formatNumber } from '@shared/utils/formatters';
 
 export default function SalariesPage() {
     const { hasRole } = useWorkspaceStore();
@@ -151,7 +152,7 @@ export default function SalariesPage() {
     );
 }
 
-function StatCard({ icon, iconColor, iconBg, label, value }) {
+const StatCard = memo(function StatCard({ icon, iconColor, iconBg, label, value }) {
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center gap-3">
@@ -165,9 +166,9 @@ function StatCard({ icon, iconColor, iconBg, label, value }) {
             </div>
         </div>
     );
-}
+});
 
-function TabButton({ active, onClick, icon, label }) {
+const TabButton = memo(function TabButton({ active, onClick, icon, label }) {
     return (
         <button
             onClick={onClick}
@@ -178,7 +179,7 @@ function TabButton({ active, onClick, icon, label }) {
             {label}
         </button>
     );
-}
+});
 
 function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasRole }) {
     const columns = [
@@ -373,7 +374,7 @@ function SalaryCharts({ salaries, stats }) {
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-3xl font-bold text-green-600">{paidPercent.toFixed(0)}%</div>
+                        <div className="text-3xl font-bold text-green-600">{formatNumber(paidPercent, { maximumFractionDigits: 0 })}%</div>
                         <div className="text-sm text-gray-500">hoàn thành</div>
                     </div>
                 </div>
@@ -472,7 +473,7 @@ function PayslipModal({ salary, onClose }) {
     );
 }
 
-function PayslipRow({ label, value, positive }) {
+const PayslipRow = memo(function PayslipRow({ label, value, positive }) {
     return (
         <div className="flex justify-between items-center">
             <span className="text-gray-600">{label}</span>
@@ -481,8 +482,6 @@ function PayslipRow({ label, value, positive }) {
             </span>
         </div>
     );
-}
+});
 
-function formatCurrency(value) {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value || 0);
-}
+

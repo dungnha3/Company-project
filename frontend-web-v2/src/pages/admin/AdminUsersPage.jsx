@@ -4,6 +4,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import DataTable from '@shared/components/ui/DataTable';
+import { formatDateTime } from '@shared/utils/formatters';
 
 export default function AdminUsersPage() {
     const { showToast } = useToast();
@@ -94,7 +95,7 @@ export default function AdminUsersPage() {
             )
         },
         {
-            header: 'Công ty',
+            header: 'Workspace',
             accessorKey: 'companyName',
             cell: (row) => <span className="text-gray-600">{row.companyName || '---'}</span>
         },
@@ -136,7 +137,7 @@ export default function AdminUsersPage() {
             accessorKey: 'lastLoginAt',
             cell: (row) => (
                 <span className="text-gray-500 text-sm">
-                    {row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
+                    {row.lastLoginAt ? formatDateTime(row.lastLoginAt) : 'Chưa đăng nhập'}
                 </span>
             )
         },

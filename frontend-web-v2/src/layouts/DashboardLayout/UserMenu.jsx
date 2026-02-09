@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
+import { Avatar } from '@shared/components/OptimizedImage';
 
 export default function UserMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +15,7 @@ export default function UserMenu() {
             >
                 <div className="avatar">
                     {user?.avatarUrl ? (
-                        <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        <Avatar src={user.avatarUrl} name={user.username} size="md" className="w-full h-full" />
                     ) : (
                         <span>{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                     )}

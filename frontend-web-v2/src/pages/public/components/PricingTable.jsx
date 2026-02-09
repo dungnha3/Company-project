@@ -9,10 +9,10 @@ const plans = [
         period: '/tháng',
         description: 'Dành cho Startup và nhóm nhỏ',
         features: [
-            'Tối đa 12 thành viên tại công ty',
+            'Tối đa 5 thành viên',
             '3 Dự án đang hoạt động',
-            '2 GB dung lượng lưu trữ',
-            'Tính năng cơ bản: Chat, Nhân sự'
+            '1 GB dung lượng lưu trữ',
+            'Chat, Projects, Storage'
         ],
         cta: 'Dùng miễn phí',
         ctaLink: '/register',
@@ -20,19 +20,36 @@ const plans = [
         color: 'bg-gray-50 border-gray-200'
     },
     {
-        name: 'PRO',
-        price: '299.000',
+        name: 'STARTER',
+        price: '99.000',
         currency: 'VNĐ',
         period: '/tháng',
-        description: 'Cho doanh nghiệp đang phát triển',
+        description: 'Cho team đang phát triển',
         features: [
-            'Tối đa 50 thành viên',
+            'Tối đa 20 thành viên',
             '20 Dự án đang hoạt động',
+            '10 GB dung lượng lưu trữ',
+            'AI Assistant'
+        ],
+        cta: 'Đăng ký Starter',
+        ctaLink: '/register?plan=STARTER',
+        recommended: false,
+        color: 'bg-gray-50 border-gray-200'
+    },
+    {
+        name: 'PROFESSIONAL',
+        price: '199.000',
+        currency: 'VNĐ',
+        period: '/tháng',
+        description: 'Cho doanh nghiệp chuyên nghiệp',
+        features: [
+            'Tối đa 100 thành viên',
+            '100 Dự án đang hoạt động',
             '100 GB dung lượng lưu trữ',
-            'Full tính năng: Chấm công, Tính lương'
+            'Full HR Module + AI + Webhooks'
         ],
         cta: 'Đăng ký Pro',
-        ctaLink: '/register?plan=PRO',
+        ctaLink: '/register?plan=PROFESSIONAL',
         recommended: true,
         color: 'bg-white border-indigo-600 shadow-xl ring-2 ring-indigo-600 relative overflow-hidden'
     },
@@ -45,8 +62,8 @@ const plans = [
         features: [
             'Không giới hạn thành viên',
             'Không giới hạn dự án',
-            '10 TB dung lượng lưu trữ',
-            'Support 24/7 & Dedicated Server'
+            'Không giới hạn lưu trữ',
+            'SSO / SAML / API + Support 24/7'
         ],
         cta: 'Liên hệ Sale',
         ctaLink: '/contact',
@@ -64,7 +81,7 @@ export default function PricingTable() {
                     <p className="text-gray-500">Chọn gói phù hợp với quy mô doanh nghiệp của bạn</p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                     {plans.map((plan, idx) => (
                         <div key={idx} className={`rounded-2xl p-8 border hover:shadow-lg transition-shadow flex flex-col ${plan.color}`}>
                             {plan.recommended && (
@@ -93,8 +110,8 @@ export default function PricingTable() {
                             <Link
                                 to={plan.ctaLink}
                                 className={`w-full py-3 px-4 rounded-xl font-medium text-center transition-colors ${plan.recommended
-                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                        : 'bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50'
+                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    : 'bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50'
                                     }`}
                             >
                                 {plan.cta}

@@ -6,7 +6,7 @@ export default function SystemAdminLayout() {
     const navigate = useNavigate();
 
     const menuItems = [
-        { icon: 'fa-building', label: 'Quản lý Công ty', path: '/admin/companies' },
+        { icon: 'fa-building', label: 'Quản lý Workspace', path: '/admin/companies' },
         { icon: 'fa-users', label: 'Quản lý Tài khoản', path: '/admin/users' },
         { icon: 'fa-chart-line', label: 'Thống kê hệ thống', path: '/admin/analytics' },
         { icon: 'fa-gear', label: 'Cấu hình Global', path: '/admin/settings' },

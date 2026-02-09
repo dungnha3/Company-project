@@ -4,6 +4,8 @@ import { useAuthStore } from '@shared/stores/authStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate } from '@shared/utils/formatters';
+import { Avatar } from '@shared/components/OptimizedImage';
 
 const TABS = [
     { id: 'info', icon: 'fa-user', label: 'Thông tin' },
@@ -34,7 +36,7 @@ export default function ProfilePage() {
                     <div className="relative group">
                         <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 flex items-center justify-center text-4xl font-bold overflow-hidden">
                             {user?.avatarUrl ? (
-                                <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                <Avatar src={user.avatarUrl} name={user.fullName} size="xl" className="w-full h-full" />
                             ) : (
                                 user?.fullName?.charAt(0)?.toUpperCase() || 'U'
                             )}
@@ -66,7 +68,7 @@ export default function ProfilePage() {
                                 {user?.role || 'Member'}
                             </span>
                             <span className="text-blue-200 text-sm">
-                                Tham gia: {new Date(user?.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                                Tham gia: {formatDate(user?.createdAt || Date.now())}
                             </span>
                         </div>
                     </div>

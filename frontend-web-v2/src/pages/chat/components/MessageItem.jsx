@@ -4,6 +4,7 @@ import { useWebSocketStore } from '@shared/stores/websocketStore';
 import { useAuthStore } from '@shared/stores/authStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatTime } from '@shared/utils/formatters';
 import EmojiPicker from './EmojiPicker';
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
@@ -216,7 +217,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
 
                 {/* Timestamp & Read Status */}
                 <div className={`flex items-center gap-1 text-[10px] text-gray-400 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                    {new Date(message.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatTime(message.createdAt || Date.now())}
                     {isMe && message.readBy?.length > 0 && (
                         <i className="fa-solid fa-check-double text-blue-500" title="Đã xem" />
                     )}

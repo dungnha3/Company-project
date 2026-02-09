@@ -6,6 +6,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useNavigate } from 'react-router-dom';
+import { formatRelativeTime } from '@shared/utils/formatters';
 
 // Notification types based on workspace
 const COMPANY_NOTIFICATION_TYPES = [
@@ -158,8 +159,8 @@ export default function NotificationsPage() {
                         onClick={() => readAllMutation.mutate()}
                         disabled={readAllMutation.isPending || unreadCount === 0}
                         className={`px-4 py-2.5 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors ${isPersonal
-                                ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                            ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700'
+                            : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                     >
                         <i className="fa-solid fa-check-double mr-2" />
@@ -180,8 +181,8 @@ export default function NotificationsPage() {
                             key={type.key}
                             onClick={() => setActiveTab(type.key)}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === type.key
-                                    ? `bg-white shadow-sm ${isPersonal ? 'text-violet-600' : 'text-blue-600'}`
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                                ? `bg-white shadow-sm ${isPersonal ? 'text-violet-600' : 'text-blue-600'}`
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
                                 }`}
                         >
                             <i className={`fa-solid ${type.icon}`} />
@@ -273,7 +274,7 @@ function NotificationItem({ notification, onClick, onDelete, isPersonal }) {
                 <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
                 <div className="flex items-center gap-3 mt-2">
                     <span className="text-xs text-gray-400">
-                        {formatTimeAgo(notification.createdAt)}
+                        {formatRelativeTime(notification.createdAt)}
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${getTypeBadgeColor(notification.type, isPersonal)}`}>
                         {getTypeLabel(notification.type)}
@@ -434,8 +435,8 @@ function NotificationPreferencesModal({ onClose, isPersonal }) {
                     <button
                         onClick={handleSave}
                         className={`px-4 py-2.5 text-white rounded-xl font-medium ${isPersonal
-                                ? 'bg-gradient-to-r from-violet-500 to-purple-600'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                            ? 'bg-gradient-to-r from-violet-500 to-purple-600'
+                            : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                     >
                         Lưu thay đổi
@@ -581,17 +582,4 @@ function getTypeLabel(type) {
     return labels[type] || 'Thông báo';
 }
 
-function formatTimeAgo(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins} phút trước`;
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-}

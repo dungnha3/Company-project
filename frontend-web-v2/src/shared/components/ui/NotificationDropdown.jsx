@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocketStore } from '@shared/stores/websocketStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatRelativeTime } from '@shared/utils/formatters';
 
 export default function NotificationDropdown() {
     const [isOpen, setIsOpen] = useState(false);
@@ -11,6 +13,8 @@ export default function NotificationDropdown() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { subscribe, unsubscribe } = useWebSocketStore();
+    const { workspaceType } = useWorkspaceStore();
+    const isCompanyWorkspace = workspaceType === 'COMPANY';
 
     // Close on click outside
     useEffect(() => {
@@ -37,13 +41,14 @@ export default function NotificationDropdown() {
     const { data: unreadCount = 0 } = useQuery({
         queryKey: ['unread-count'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT)).data,
-        refetchInterval: 60000 // Polling fallback
+        refetchInterval: 60000, // Polling fallback
+        enabled: isCompanyWorkspace, // Only fetch for Company Workspace
     });
 
     const { data: notifications = [] } = useQuery({
         queryKey: ['notifications-preview'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST, { params: { size: 5 } })).data?.content || [],
-        enabled: isOpen
+        enabled: isOpen && isCompanyWorkspace, // Only when open AND in Company Workspace
     });
 
     const markReadMutation = useMutation({
@@ -101,7 +106,7 @@ export default function NotificationDropdown() {
                                             {notif.title}
                                         </p>
                                         <span className="text-xs text-gray-400 mt-1 block">
-                                            {new Date(notif.createdAt).toLocaleDateString()}
+                                            {formatRelativeTime(notif.createdAt)}
                                         </span>
                                     </div>
                                 </div>
