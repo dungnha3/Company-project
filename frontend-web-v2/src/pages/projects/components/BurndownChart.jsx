@@ -53,7 +53,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
 
     if (isLoading) {
         return (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-center h-48">
                     <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
                 </div>
@@ -63,7 +63,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
 
     if (error || !chartData) {
         return (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
                 <div className="text-center py-8 text-gray-400">
                     <i className="fa-solid fa-chart-line text-3xl mb-2" />
                     <p>Chưa có dữ liệu burndown</p>
@@ -75,7 +75,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
     const { data, maxIssues, idealPath, actualPath, chartHeight, padding } = chartData;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <h3 className="font-bold text-gray-900">Burndown Chart</h3>
@@ -104,7 +104,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
                             y1={padding.top + (percent / 100) * chartHeight}
                             x2="100%"
                             y2={padding.top + (percent / 100) * chartHeight}
-                            stroke="#e5e7eb"
+                            stroke="var(--color-border)"
                             strokeWidth="0.5"
                         />
                     ))}
@@ -113,7 +113,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
                     <path
                         d={idealPath}
                         fill="none"
-                        stroke="#9ca3af"
+                        stroke="var(--color-text-muted)"
                         strokeWidth="2"
                         strokeDasharray="4 2"
                         vectorEffect="non-scaling-stroke"
@@ -123,7 +123,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
                     <path
                         d={actualPath}
                         fill="none"
-                        stroke="#6366f1"
+                        stroke="var(--color-accent)"
                         strokeWidth="2.5"
                         vectorEffect="non-scaling-stroke"
                         strokeLinecap="round"
@@ -140,7 +140,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
                                 cx={`${x}%`}
                                 cy={y}
                                 r="4"
-                                fill="#6366f1"
+                                fill="var(--color-accent)"
                                 stroke="white"
                                 strokeWidth="2"
                             />

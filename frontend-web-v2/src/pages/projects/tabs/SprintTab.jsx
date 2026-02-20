@@ -8,7 +8,7 @@ import BurndownChart from '../components/BurndownChart';
 
 const SPRINT_STATUS = {
     PLANNING: { label: 'Planning', color: 'bg-gray-100 text-gray-700' },
-    ACTIVE: { label: 'Active', color: 'bg-blue-100 text-blue-700' },
+    ACTIVE: { label: 'Active', color: 'bg-indigo-100 text-indigo-700' },
     COMPLETED: { label: 'Completed', color: 'bg-green-100 text-green-700' },
 };
 
@@ -66,7 +66,7 @@ export default function SprintTab({ projectId }) {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                    className="btn-primary flex items-center gap-2"
                 >
                     <i className="fa-solid fa-plus" />
                     Tạo Sprint
@@ -76,15 +76,15 @@ export default function SprintTab({ projectId }) {
             {/* Active Sprint */}
             {activeSprint && (
                 <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200">
+                    <div className="bg-gradient-to-r from-indigo-50 to-indigo-50 rounded-xl p-5 border border-indigo-200">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-blue-500 text-white flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-lg bg-indigo-500 text-white flex items-center justify-center">
                                     <i className="fa-solid fa-rocket" />
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-900">{activeSprint.name}</h3>
-                                    <span className="text-xs text-blue-600 font-medium">ACTIVE SPRINT</span>
+                                    <span className="text-xs text-indigo-600 font-medium">ACTIVE SPRINT</span>
                                 </div>
                             </div>
                             <button
@@ -115,7 +115,7 @@ export default function SprintTab({ projectId }) {
                             </div>
                         </div>
                         {activeSprint.goal && (
-                            <p className="mt-3 text-sm text-gray-600 border-t border-blue-200 pt-3">
+                            <p className="mt-3 text-sm text-gray-600 border-t border-indigo-200 pt-3">
                                 <strong>Goal:</strong> {activeSprint.goal}
                             </p>
                         )}
@@ -138,7 +138,7 @@ export default function SprintTab({ projectId }) {
                     </h3>
                     <div className="space-y-3">
                         {planningSprints.map(sprint => (
-                            <div key={sprint.sprintId} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-indigo-300 transition-colors">
+                            <div key={sprint.sprintId} className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 p-4 hover:border-indigo-300 transition-colors">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h4 className="font-medium text-gray-900">{sprint.name}</h4>
@@ -155,7 +155,7 @@ export default function SprintTab({ projectId }) {
                                         <button
                                             onClick={() => startMutation.mutate(sprint.sprintId)}
                                             disabled={startMutation.isPending || activeSprint}
-                                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
+                                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50"
                                             title={activeSprint ? 'Phải hoàn thành sprint hiện tại trước' : 'Bắt đầu sprint'}
                                         >
                                             <i className="fa-solid fa-play mr-1" />
@@ -178,7 +178,7 @@ export default function SprintTab({ projectId }) {
                     </h3>
                     <div className="space-y-2">
                         {completedSprints.slice(0, 5).map(sprint => (
-                            <div key={sprint.sprintId} className="bg-gray-50 rounded-lg border border-gray-100 p-3 flex items-center justify-between">
+                            <div key={sprint.sprintId} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-100 p-3 flex items-center justify-between">
                                 <div>
                                     <h4 className="font-medium text-gray-700">{sprint.name}</h4>
                                     <p className="text-xs text-gray-500">
@@ -205,7 +205,7 @@ export default function SprintTab({ projectId }) {
                     <p className="text-sm text-gray-500 mb-4">Tạo sprint đầu tiên để bắt đầu quản lý công việc theo chu kỳ</p>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        className="btn-primary"
                     >
                         <i className="fa-solid fa-plus mr-2" />
                         Tạo Sprint
@@ -260,8 +260,8 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={onClose}>
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900">Tạo Sprint Mới</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -278,7 +278,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
                             type="text"
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             placeholder="VD: Sprint 1"
                             required
                         />
@@ -302,7 +302,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
                                 type="date"
                                 value={form.startDate}
                                 onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             />
                         </div>
                         <div>
@@ -311,7 +311,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
                                 type="date"
                                 value={form.endDate}
                                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             />
                         </div>
                     </div>
@@ -327,7 +327,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
                         <button
                             type="submit"
                             disabled={createMutation.isPending}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                            className="btn-primary disabled:opacity-50"
                         >
                             {createMutation.isPending ? 'Đang tạo...' : 'Tạo Sprint'}
                         </button>

@@ -25,7 +25,7 @@ import IssueDetailModal from '../components/IssueDetailModal';
 // Map status to columns
 const COLUMNS = {
     TODO: { id: 'OPEN', title: 'To Do', color: 'bg-gray-100' },
-    IN_PROGRESS: { id: 'IN_PROGRESS', title: 'In Progress', color: 'bg-blue-50' },
+    IN_PROGRESS: { id: 'IN_PROGRESS', title: 'In Progress', color: 'bg-indigo-50' },
     REVIEW: { id: 'IN_REVIEW', title: 'Review', color: 'bg-yellow-50' },
     DONE: { id: 'CLOSED', title: 'Done', color: 'bg-green-50' },
 };
@@ -248,7 +248,7 @@ function IssueCard({ issue, isOverlay, onClick }) {
 
                 <div className="flex items-center gap-2">
                     {issue.assignee ? (
-                        <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold" title={issue.assignee.fullName}>
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold" title={issue.assignee.fullName}>
                             {issue.assignee.fullName.charAt(0)}
                         </div>
                     ) : (
@@ -267,7 +267,7 @@ function getPriorityColor(priority) {
         case 'URGENT': return 'bg-red-100 text-red-700';
         case 'HIGH': return 'bg-orange-100 text-orange-700';
         case 'LOW': return 'bg-gray-100 text-gray-700';
-        default: return 'bg-blue-50 text-blue-700'; // NORMAL
+        default: return 'bg-indigo-50 text-indigo-700'; // NORMAL
     }
 }
 

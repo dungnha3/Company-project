@@ -80,7 +80,7 @@ export default function LoginPage() {
                         </Link>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-100">
                         {/* Header */}
                         <div className="text-center mb-8">
                             <h2 className="text-2xl font-bold text-gray-900">Đăng nhập</h2>

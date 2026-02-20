@@ -37,7 +37,7 @@ export default function DepartmentsPage() {
             cell: (row) => (
                 row.manager ? (
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold border border-blue-100">
+                        <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold border border-indigo-100">
                             {row.manager.fullName?.charAt(0) || 'M'}
                         </div>
                         <span className="text-sm text-gray-700">{row.manager.fullName}</span>
@@ -57,7 +57,7 @@ export default function DepartmentsPage() {
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedDept(row); setShowModal(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                     >
                         <i className="fa-solid fa-pen" />
                     </button>
@@ -156,7 +156,7 @@ function DepartmentModal({ isOpen, onClose, department }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>

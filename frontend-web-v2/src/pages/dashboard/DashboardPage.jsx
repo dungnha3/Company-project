@@ -119,7 +119,7 @@ function PersonalDashboard({ user, greeting }) {
                 </div>
 
                 {/* Stats */}
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 shadow-sm">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Tổng quan</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <MiniStat icon="fa-circle" label="Cần làm" value={stats?.todo || 0} color="gray" />
@@ -130,7 +130,7 @@ function PersonalDashboard({ user, greeting }) {
                 </div>
 
                 {/* Plan Status */}
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 shadow-sm">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Gói của bạn</h3>
                     <div className="flex items-center gap-4">
                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${stats?.isPro ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gray-100'}`}>
@@ -158,7 +158,7 @@ function PersonalDashboard({ user, greeting }) {
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Tasks */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Tasks gần đây</h3>
                         <Link to="/app/me/tasks" className="text-sm text-violet-600 hover:underline">
@@ -181,7 +181,7 @@ function PersonalDashboard({ user, greeting }) {
                 </div>
 
                 {/* Pending Invites */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Lời mời Workspace</h3>
                         {invites.length > 0 && (
@@ -272,7 +272,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute -top-20 -right-20 w-80 h-80 bg-white rounded-full" />
                     <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white rounded-full" />
@@ -283,10 +283,10 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                         <h1 className="text-3xl font-bold mb-2">
                             {greeting}, {user?.fullName?.split(' ').pop() || 'Admin'}! 👋
                         </h1>
-                        <p className="text-blue-100 text-lg">
+                        <p className="text-indigo-100 text-lg">
                             {formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
-                        <p className="text-blue-200 text-sm mt-2">
+                        <p className="text-indigo-200 text-sm mt-2">
                             Bạn có <span className="font-bold text-white">{myTasks.length}</span> công việc cần xử lý
                         </p>
                     </div>
@@ -341,20 +341,20 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                 {/* Left Column */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Attendance Chart */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-800">Chấm công của bạn</h3>
                                 <p className="text-sm text-gray-500">Giờ làm việc tuần này</p>
                             </div>
-                            <Link to="/app/hr/attendance" className="text-sm text-blue-600 hover:underline">
+                            <Link to="/app/hr/attendance" className="text-sm text-indigo-600 hover:underline">
                                 Xem chi tiết →
                             </Link>
                         </div>
                         <div className="h-64 w-full min-w-0">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={attendanceData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-surface)" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} />
                                     <YAxis axisLine={false} tickLine={false} />
                                     <Tooltip
@@ -368,10 +368,10 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                     </div>
 
                     {/* My Tasks */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-gray-800">Công việc của tôi</h3>
-                            <Link to="/app/me/issues" className="text-sm text-blue-600 hover:underline">
+                            <Link to="/app/me/issues" className="text-sm text-indigo-600 hover:underline">
                                 Xem tất cả →
                             </Link>
                         </div>
@@ -391,7 +391,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                 {/* Right Column */}
                 <div className="space-y-6">
                     {/* Project Status Pie */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Dự án theo trạng thái</h3>
                         <div className="h-48 flex items-center justify-center w-full min-w-0">
                             <ResponsiveContainer width="100%" height="100%">
@@ -424,10 +424,10 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                     </div>
 
                     {/* Notifications */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-gray-800">Thông báo</h3>
-                            <Link to="/app/notifications" className="text-sm text-blue-600 hover:underline">
+                            <Link to="/app/notifications" className="text-sm text-indigo-600 hover:underline">
                                 Xem tất cả →
                             </Link>
                         </div>
@@ -480,7 +480,7 @@ const QuickAction = memo(function QuickAction({ to, icon, label }) {
 const MiniStat = memo(function MiniStat({ icon, label, value, color }) {
     const colorMap = {
         gray: 'bg-gray-100 text-gray-600',
-        blue: 'bg-blue-100 text-blue-600',
+        blue: 'bg-indigo-100 text-indigo-600',
         green: 'bg-green-100 text-green-600',
         red: 'bg-red-100 text-red-600',
     };
@@ -499,7 +499,7 @@ const MiniStat = memo(function MiniStat({ icon, label, value, color }) {
 
 const StatCard = memo(function StatCard({ title, value, icon, color, trend, badge }) {
     const colors = {
-        blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
+        blue: { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-200' },
         purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
         orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },
         green: { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200' },
@@ -557,7 +557,7 @@ const PersonalTaskItem = memo(function PersonalTaskItem({ task }) {
                 )}
             </div>
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'DONE' ? 'bg-green-100 text-green-600' :
-                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' :
+                task.status === 'IN_PROGRESS' ? 'bg-indigo-100 text-indigo-600' :
                     'bg-gray-100 text-gray-600'
                 }`}>
                 {task.status === 'DONE' ? 'Xong' : task.status === 'IN_PROGRESS' ? 'Đang làm' : 'Cần làm'}
@@ -601,8 +601,8 @@ const NotificationItem = memo(function NotificationItem({ notification }) {
 
     return (
         <div className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                <i className={`fa-solid ${iconMap[notification.type] || iconMap.default} text-blue-600 text-sm`} />
+            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                <i className={`fa-solid ${iconMap[notification.type] || iconMap.default} text-indigo-600 text-sm`} />
             </div>
             <div className="min-w-0">
                 <p className="text-sm text-gray-700 line-clamp-2">{notification.message || notification.content}</p>

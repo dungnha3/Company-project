@@ -8,7 +8,7 @@ import { formatDate } from '@shared/utils/formatters';
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả', icon: 'fa-layer-group' },
     { value: 'TODO', label: 'Cần làm', icon: 'fa-circle', color: 'text-gray-500' },
-    { value: 'IN_PROGRESS', label: 'Đang làm', icon: 'fa-spinner', color: 'text-blue-500' },
+    { value: 'IN_PROGRESS', label: 'Đang làm', icon: 'fa-spinner', color: 'text-indigo-500' },
     { value: 'DONE', label: 'Hoàn thành', icon: 'fa-check-circle', color: 'text-green-500' },
 ];
 
@@ -26,7 +26,7 @@ const RECURRING_OPTIONS = [
 ];
 
 const LABEL_PRESETS = [
-    { name: 'Work', color: 'bg-blue-500' },
+    { name: 'Work', color: 'bg-indigo-500' },
     { name: 'Personal', color: 'bg-purple-500' },
     { name: 'Health', color: 'bg-green-500' },
     { name: 'Finance', color: 'bg-yellow-500' },
@@ -324,13 +324,13 @@ export default function PersonalTasksPage() {
 function StatCard({ icon, label, value, color, highlight }) {
     const colorMap = {
         gray: 'from-gray-50 to-gray-100 text-gray-600',
-        blue: 'from-blue-50 to-blue-100 text-blue-600',
+        blue: 'from-indigo-50 to-indigo-100 text-indigo-600',
         green: 'from-green-50 to-green-100 text-green-600',
         red: 'from-red-50 to-red-100 text-red-600',
     };
     const iconColorMap = {
         gray: 'bg-gray-200 text-gray-600',
-        blue: 'bg-blue-200 text-blue-600',
+        blue: 'bg-indigo-200 text-indigo-600',
         green: 'bg-green-200 text-green-600',
         red: 'bg-red-200 text-red-600',
     };
@@ -354,7 +354,7 @@ function StatCard({ icon, label, value, color, highlight }) {
 function ListView({ tasks, onEdit, onDelete, onStatusChange, isPro }) {
     if (tasks.length === 0) {
         return (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 p-12 text-center">
                 <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center mb-4">
                     <i className="fa-solid fa-inbox text-3xl text-violet-400" />
                 </div>
@@ -365,7 +365,7 @@ function ListView({ tasks, onEdit, onDelete, onStatusChange, isPro }) {
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="divide-y divide-gray-100">
                 {tasks.map(task => (
                     <TaskItem
@@ -386,7 +386,7 @@ function ListView({ tasks, onEdit, onDelete, onStatusChange, isPro }) {
 function KanbanBoard({ tasks, onEdit, onDelete, onStatusChange, isPro }) {
     const columns = [
         { key: 'TODO', label: 'Cần làm', color: 'border-gray-300', bg: 'bg-gray-50' },
-        { key: 'IN_PROGRESS', label: 'Đang làm', color: 'border-blue-400', bg: 'bg-blue-50' },
+        { key: 'IN_PROGRESS', label: 'Đang làm', color: 'border-indigo-400', bg: 'bg-indigo-50' },
         { key: 'DONE', label: 'Hoàn thành', color: 'border-green-400', bg: 'bg-green-50' },
     ];
 
@@ -440,7 +440,7 @@ function KanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isP
     };
 
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all group cursor-pointer">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all group cursor-pointer">
             <div className="flex items-start gap-3">
                 <div className={`w-2 h-2 rounded-full mt-2 ${priorityDot[task.priority]}`} />
                 <div className="flex-1 min-w-0">
@@ -463,7 +463,7 @@ function KanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isP
                             </span>
                         ))}
                         {task.recurringPattern && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600">
                                 <i className="fa-solid fa-repeat mr-1" />
                                 {task.recurringPattern}
                             </span>
@@ -515,7 +515,7 @@ function TaskItem({ task, onEdit, onDelete, onStatusChange, isPro }) {
                     ${task.status === 'DONE'
                         ? 'bg-green-500 border-green-500'
                         : task.status === 'IN_PROGRESS'
-                            ? 'bg-blue-500 border-blue-500'
+                            ? 'bg-indigo-500 border-indigo-500'
                             : 'bg-white border-gray-300 hover:border-violet-500'
                     }`}
                 style={{
@@ -552,7 +552,7 @@ function TaskItem({ task, onEdit, onDelete, onStatusChange, isPro }) {
                         </span>
                     ))}
                     {task.recurringPattern && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-600">
                             <i className="fa-solid fa-repeat mr-1" />
                         </span>
                     )}
@@ -589,8 +589,8 @@ function TaskItem({ task, onEdit, onDelete, onStatusChange, isPro }) {
 // Task Modal Component
 function TaskModal({ isEditing, formData, setFormData, onSubmit, onClose, isPending, isPro, toggleLabel }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay animate-fade-in">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4">
                     <div className="flex items-center justify-between">
@@ -685,7 +685,7 @@ function TaskModal({ isEditing, formData, setFormData, onSubmit, onClose, isPend
                                 {/* Recurring */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        <i className="fa-solid fa-repeat mr-1 text-blue-500" />
+                                        <i className="fa-solid fa-repeat mr-1 text-indigo-500" />
                                         Lặp lại
                                     </label>
                                     <select

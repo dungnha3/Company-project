@@ -89,7 +89,7 @@ export function EmptySprints({ onAction }) {
                 onAction && (
                     <button
                         onClick={onAction}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all hover:-translate-y-0.5"
+                        className="btn-primary transition-all hover:-translate-y-0.5"
                     >
                         <i className="fa-solid fa-plus mr-2" />
                         Tạo Sprint

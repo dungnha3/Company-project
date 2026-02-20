@@ -88,14 +88,14 @@ export default function EmployeeDetailPage() {
             </div>
 
             {/* Content */}
-            <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 p-6">
                 {activeTab === 'overview' && (
                     <EmployeeInfo employee={employee} />
                 )}
 
                 {activeTab === 'permissions' && (
                     <div>
-                        <div className="mb-6 bg-blue-50 text-blue-700 p-4 rounded-lg flex items-start gap-3">
+                        <div className="mb-6 bg-indigo-50 text-indigo-700 p-4 rounded-lg flex items-start gap-3">
                             <i className="fa-solid fa-circle-info mt-1" />
                             <div>
                                 <p className="font-semibold">Lưu ý về Phân quyền</p>

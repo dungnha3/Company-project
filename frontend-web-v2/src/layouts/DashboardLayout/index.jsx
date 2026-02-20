@@ -31,7 +31,7 @@ export default function DashboardLayout() {
     }
 
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-900 transition-colors duration-300">
+        <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900 transition-colors duration-300">
             <Sidebar />
             <main className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
                 <Header />

@@ -137,7 +137,7 @@ export default function NotificationsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPersonal ? 'bg-gradient-to-br from-violet-500 to-purple-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPersonal ? 'bg-gradient-to-br from-violet-500 to-purple-600' : 'bg-gradient-to-br from-indigo-500 to-indigo-600'}`}>
                         <i className="fa-solid fa-bell text-white text-xl" />
                     </div>
                     <div>
@@ -160,7 +160,7 @@ export default function NotificationsPage() {
                         disabled={readAllMutation.isPending || unreadCount === 0}
                         className={`px-4 py-2.5 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors ${isPersonal
                             ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700'
-                            : 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-indigo-600 hover:bg-indigo-700'
                             }`}
                     >
                         <i className="fa-solid fa-check-double mr-2" />
@@ -181,14 +181,14 @@ export default function NotificationsPage() {
                             key={type.key}
                             onClick={() => setActiveTab(type.key)}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === type.key
-                                ? `bg-white shadow-sm ${isPersonal ? 'text-violet-600' : 'text-blue-600'}`
+                                ? `bg-white shadow-sm ${isPersonal ? 'text-violet-600' : 'text-indigo-600'}`
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
                                 }`}
                         >
                             <i className={`fa-solid ${type.icon}`} />
                             {type.label}
                             {count > 0 && type.key === activeTab && (
-                                <span className={`px-1.5 py-0.5 rounded-full text-xs ${isPersonal ? 'bg-violet-100 text-violet-600' : 'bg-blue-100 text-blue-600'
+                                <span className={`px-1.5 py-0.5 rounded-full text-xs ${isPersonal ? 'bg-violet-100 text-violet-600' : 'bg-indigo-100 text-indigo-600'
                                     }`}>
                                     {count}
                                 </span>
@@ -201,8 +201,8 @@ export default function NotificationsPage() {
             {/* Loading */}
             {isLoading && (
                 <div className="flex flex-col items-center justify-center py-16">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isPersonal ? 'bg-violet-100' : 'bg-blue-100'}`}>
-                        <i className={`fa-solid fa-spinner fa-spin text-2xl ${isPersonal ? 'text-violet-500' : 'text-blue-500'}`} />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isPersonal ? 'bg-violet-100' : 'bg-indigo-100'}`}>
+                        <i className={`fa-solid fa-spinner fa-spin text-2xl ${isPersonal ? 'text-violet-500' : 'text-indigo-500'}`} />
                     </div>
                     <p className="text-gray-500">Đang tải thông báo...</p>
                 </div>
@@ -210,7 +210,7 @@ export default function NotificationsPage() {
 
             {/* Notification List */}
             {!isLoading && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     {filteredNotifications.length === 0 ? (
                         <div className="p-16 text-center">
                             <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isPersonal ? 'bg-violet-50' : 'bg-gray-50'}`}>
@@ -257,7 +257,7 @@ function NotificationItem({ notification, onClick, onDelete, isPersonal }) {
         <div
             className={`
                 relative p-4 hover:bg-gray-50 transition-colors cursor-pointer flex gap-4
-                ${!notification.isRead ? (isPersonal ? 'bg-violet-50/50' : 'bg-blue-50/50') : 'bg-white'}
+                ${!notification.isRead ? (isPersonal ? 'bg-violet-50/50' : 'bg-indigo-50/50') : 'bg-white'}
             `}
             onClick={onClick}
             onMouseEnter={() => setShowActions(true)}
@@ -283,7 +283,7 @@ function NotificationItem({ notification, onClick, onDelete, isPersonal }) {
             </div>
 
             {!notification.isRead && (
-                <div className={`w-2.5 h-2.5 rounded-full mt-2 shrink-0 ${isPersonal ? 'bg-violet-500' : 'bg-blue-500'}`} />
+                <div className={`w-2.5 h-2.5 rounded-full mt-2 shrink-0 ${isPersonal ? 'bg-violet-500' : 'bg-indigo-500'}`} />
             )}
 
             {/* Actions */}
@@ -324,10 +324,10 @@ function NotificationPreferencesModal({ onClose, isPersonal }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in">
-                <div className={`p-6 border-b border-gray-100 ${isPersonal ? 'bg-gradient-to-r from-violet-500 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}>
+                <div className={`p-6 border-b border-gray-100 ${isPersonal ? 'bg-gradient-to-r from-violet-500 to-purple-600' : 'bg-gradient-to-r from-indigo-500 to-indigo-600'}`}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold text-white">Cài đặt thông báo</h2>
                         <button onClick={onClose} className="text-white/80 hover:text-white">
@@ -436,7 +436,7 @@ function NotificationPreferencesModal({ onClose, isPersonal }) {
                         onClick={handleSave}
                         className={`px-4 py-2.5 text-white rounded-xl font-medium ${isPersonal
                             ? 'bg-gradient-to-r from-violet-500 to-purple-600'
-                            : 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-indigo-600 hover:bg-indigo-700'
                             }`}
                     >
                         Lưu thay đổi
@@ -449,7 +449,7 @@ function NotificationPreferencesModal({ onClose, isPersonal }) {
 
 function ToggleRow({ icon, label, desc, enabled, onToggle, accentColor = 'blue' }) {
     const colors = {
-        blue: 'bg-blue-500',
+        blue: 'bg-indigo-500',
         violet: 'bg-violet-500',
     };
 
@@ -525,7 +525,7 @@ function getIconColors(type, isPersonal) {
 
     // Company types
     const colors = {
-        'TASK_ASSIGNED': 'bg-blue-100 text-blue-600',
+        'TASK_ASSIGNED': 'bg-indigo-100 text-indigo-600',
         'TASK_COMPLETED': 'bg-green-100 text-green-600',
         'LEAVE_APPROVED': 'bg-green-100 text-green-600',
         'LEAVE_REJECTED': 'bg-red-100 text-red-600',
@@ -534,7 +534,7 @@ function getIconColors(type, isPersonal) {
         'MENTION': 'bg-purple-100 text-purple-600',
         'SYSTEM': 'bg-gray-100 text-gray-600',
         'ISSUE_CREATED': 'bg-green-100 text-green-600',
-        'ISSUE_UPDATED': 'bg-blue-100 text-blue-600',
+        'ISSUE_UPDATED': 'bg-indigo-100 text-indigo-600',
         'ISSUE_ASSIGNED': 'bg-cyan-100 text-cyan-600',
         'ISSUE_OVERDUE': 'bg-red-100 text-red-600',
     };
@@ -548,7 +548,7 @@ function getTypeBadgeColor(type, isPersonal) {
     if (['WORKSPACE_INVITE', 'INVITE_ACCEPTED'].includes(type)) {
         return 'bg-purple-100 text-purple-600';
     }
-    if (type?.includes('TASK') || type?.includes('ISSUE')) return 'bg-blue-100 text-blue-600';
+    if (type?.includes('TASK') || type?.includes('ISSUE')) return 'bg-indigo-100 text-indigo-600';
     if (type?.includes('LEAVE')) return 'bg-green-100 text-green-600';
     if (type === 'MENTION') return 'bg-purple-100 text-purple-600';
     return isPersonal ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-600';

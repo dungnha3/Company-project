@@ -112,7 +112,7 @@ function GeneralSettings({ workspace }) {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Logo */}
                 <div className="flex items-center gap-4 mb-6">
@@ -131,7 +131,7 @@ function GeneralSettings({ workspace }) {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên Workspace</label>
                     <input
                         type="text"
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                         value={formData.name}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
@@ -202,9 +202,9 @@ function MembersSettings() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-100">
+                    <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100">
                         <tr>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Thành viên</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
@@ -289,25 +289,25 @@ function ModulesSettings({ workspace }) {
     return (
         <div className="space-y-6 max-w-2xl">
             {/* Info banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                <i className="fa-solid fa-info-circle text-blue-500 mt-0.5" />
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-start gap-3">
+                <i className="fa-solid fa-info-circle text-indigo-500 mt-0.5" />
                 <div>
-                    <p className="text-sm font-medium text-blue-800">Cài đặt Module</p>
-                    <p className="text-xs text-blue-600 mt-1">
+                    <p className="text-sm font-medium text-indigo-800">Cài đặt Module</p>
+                    <p className="text-xs text-indigo-600 mt-1">
                         Bật/tắt các tính năng cho workspace của bạn. Tính năng bị tắt sẽ ẩn khỏi menu và không thể truy cập.
                     </p>
                 </div>
             </div>
 
             {/* Module Toggles */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100">
                     <h3 className="font-semibold text-gray-900">Modules chính</h3>
                 </div>
                 <div className="divide-y divide-gray-100">
                     <ToggleRow
                         icon="fa-users"
-                        iconColor="text-blue-500"
+                        iconColor="text-indigo-500"
                         title="Module Nhân sự (HR)"
                         description="Quản lý nhân viên, phòng ban, chức vụ"
                         enabled={settings.hrModuleEnabled !== false}
@@ -346,7 +346,7 @@ function ModulesSettings({ workspace }) {
 
             {/* HR Sub-features */}
             {settings.hrModuleEnabled !== false && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-900">Tính năng HR</h3>
                         <p className="text-xs text-gray-500 mt-1">Bật/tắt các tính năng con trong module Nhân sự</p>
@@ -426,7 +426,7 @@ function ModulesSettings({ workspace }) {
                         />
                         <ToggleRow
                             icon="fa-people-arrows"
-                            iconColor="text-blue-600"
+                            iconColor="text-indigo-600"
                             title="Quản lý nguồn lực"
                             description="Resource Planning & Allocation"
                             enabled={settings.resourcePlanningEnabled !== false}
@@ -448,7 +448,7 @@ function ModulesSettings({ workspace }) {
 
             {/* Project Sub-features */}
             {settings.projectModuleEnabled !== false && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-900">Tính năng Dự án</h3>
                         <p className="text-xs text-gray-500 mt-1">Bật/tắt các tính năng nâng cao trong module Dự án</p>
@@ -474,7 +474,7 @@ function ModulesSettings({ workspace }) {
                         />
                         <ToggleRow
                             icon="fa-calendar-days"
-                            iconColor="text-blue-500"
+                            iconColor="text-indigo-500"
                             title="Lịch"
                             description="Quản lý sự kiện, cuộc họp"
                             enabled={settings.calendarEnabled !== false}

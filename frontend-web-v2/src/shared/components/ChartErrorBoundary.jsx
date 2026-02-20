@@ -33,7 +33,7 @@ class ChartErrorBoundary extends Component {
                     <p className="text-gray-500 text-sm">Không thể hiển thị biểu đồ</p>
                     <button
                         onClick={() => this.setState({ hasError: false, error: null })}
-                        className="mt-3 text-blue-500 hover:text-blue-600 text-sm font-medium"
+                        className="mt-3 text-indigo-500 hover:text-indigo-600 text-sm font-medium"
                     >
                         Thử lại
                     </button>

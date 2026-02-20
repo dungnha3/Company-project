@@ -4,7 +4,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatCurrency, formatBytes, formatNumber } from '@shared/utils/formatters';
 
-const COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = ['var(--color-accent)', '#14b8a6', '#f59e0b', '#ef4444', 'var(--color-secondary)'];
 
 export default function AdminAnalyticsPage() {
     const { data: stats = {}, isLoading: loadingStats } = useQuery({
@@ -94,15 +94,15 @@ export default function AdminAnalyticsPage() {
                             <AreaChart data={growth}>
                                 <defs>
                                     <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface)" />
                                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                                 <YAxis tick={{ fontSize: 12 }} />
                                 <Tooltip />
-                                <Area type="monotone" dataKey="users" stroke="#6366f1" strokeWidth={2} fill="url(#userGradient)" />
+                                <Area type="monotone" dataKey="users" stroke="var(--color-accent)" strokeWidth={2} fill="url(#userGradient)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -155,7 +155,7 @@ export default function AdminAnalyticsPage() {
                 <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={growth}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface)" />
                             <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                             <YAxis tick={{ fontSize: 12 }} />
                             <Tooltip />
@@ -180,7 +180,7 @@ export default function AdminAnalyticsPage() {
 function KPICard({ label, value, icon, color }) {
     const colorClasses = {
         indigo: 'bg-indigo-100 text-indigo-600',
-        blue: 'bg-blue-100 text-blue-600',
+        blue: 'bg-indigo-100 text-indigo-600',
         green: 'bg-green-100 text-green-600',
         purple: 'bg-purple-100 text-purple-600',
         amber: 'bg-amber-100 text-amber-600',
@@ -204,7 +204,7 @@ function KPICard({ label, value, icon, color }) {
 function QuickStat({ label, value, icon, color }) {
     const colorClasses = {
         green: 'text-green-500',
-        blue: 'text-blue-500',
+        blue: 'text-indigo-500',
         purple: 'text-purple-500',
         amber: 'text-amber-500',
     };

@@ -170,7 +170,7 @@ export default function AdminCompanyDetailPage() {
                             <InfoCard label="Email" value={company?.email || 'N/A'} icon="fa-envelope" />
                             <InfoCard label="Địa chỉ" value={company?.address || 'Chưa cập nhật'} icon="fa-map-marker-alt" />
                             <InfoCard label="Ngày tạo" value={company?.createdAt ? formatDate(company.createdAt) : 'N/A'} icon="fa-calendar" />
-                            <div className="bg-gray-50 rounded-xl p-4">
+                            <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
                                 <label className="label">Thay đổi gói</label>
                                 <select
                                     className="input"
@@ -331,7 +331,7 @@ export default function AdminCompanyDetailPage() {
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                    <i className="fa-solid fa-users text-blue-500 mr-2" />
+                                    <i className="fa-solid fa-users text-indigo-500 mr-2" />
                                     Nhân viên
                                 </h3>
                                 <span className="badge-info">{users.length} người</span>
@@ -388,7 +388,7 @@ export default function AdminCompanyDetailPage() {
 // Sub-components
 function InfoCard({ label, value, icon }) {
     return (
-        <div className="bg-gray-50 rounded-xl p-4">
+        <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-gray-500">
                     <i className={`fa-solid ${icon}`} />
@@ -442,7 +442,7 @@ function QuotaInput({ label, value, onChange, suffix }) {
     }, [value]);
 
     return (
-        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+        <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 border border-gray-100">
             <label className="label">{label}</label>
             <div className="flex gap-2 items-center">
                 <input

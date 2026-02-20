@@ -106,7 +106,7 @@ function AttendanceWidget() {
     const hasCheckedOut = !!todayRecord?.checkOutTime;
 
     return (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
                 <div className="text-base opacity-90 mb-1">{formatDate(currentTime, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                 <div className="text-4xl font-bold font-mono tracking-wider mb-2">
@@ -130,7 +130,7 @@ function AttendanceWidget() {
                         px-6 py-3 rounded-lg font-bold shadow-lg transition-all transform hover:-translate-y-1 active:scale-95
                         ${hasCheckedIn
                             ? 'bg-gray-400 cursor-not-allowed opacity-50'
-                            : 'bg-white text-blue-600 hover:bg-blue-50'
+                            : 'bg-white text-indigo-600 hover:bg-indigo-50'
                         }
                     `}
                 >
@@ -193,7 +193,7 @@ function MyAttendanceHistory() {
     ];
 
     return (
-        <div className="bg-white rounded-xl shadow border border-gray-100 p-1">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-gray-100 p-1">
             <DataTable columns={columns} data={history || []} loading={isLoading} />
         </div>
     );
@@ -294,7 +294,7 @@ function AttendanceCalendar() {
     const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
             {/* Calendar Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -308,7 +308,7 @@ function AttendanceCalendar() {
                         <i className="fa-solid fa-chevron-right text-gray-500" />
                     </button>
                 </div>
-                <button onClick={goToToday} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+                <button onClick={goToToday} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium">
                     Hôm nay
                 </button>
             </div>
@@ -357,11 +357,11 @@ function AttendanceCalendar() {
                             className={`
                                 h-20 p-2 rounded-lg border transition-all
                                 ${statusColor}
-                                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : 'border-gray-100'}
+                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}
                             `}
                         >
                             <div className="flex justify-between items-start">
-                                <span className={`text-sm font-medium ${isToday ? 'text-blue-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <span className={`text-sm font-medium ${isToday ? 'text-indigo-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
                                     {item.day}
                                 </span>
                                 {statusIcon}

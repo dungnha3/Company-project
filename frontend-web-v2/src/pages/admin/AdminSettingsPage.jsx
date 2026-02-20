@@ -106,7 +106,7 @@ export default function AdminSettingsPage() {
                         warning={localSettings.maintenance_mode ? 'Hệ thống đang ở chế độ bảo trì!' : null}
                     />
 
-                    <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
                         <label className="label">Số ngày dùng thử mặc định</label>
                         <div className="flex items-center gap-2">
                             <input
@@ -131,7 +131,7 @@ export default function AdminSettingsPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
                         <label className="label">Số lần đăng nhập sai tối đa</label>
                         <div className="flex items-center gap-2">
                             <input
@@ -144,7 +144,7 @@ export default function AdminSettingsPage() {
                         </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
                         <label className="label">Thời gian hết phiên</label>
                         <div className="flex items-center gap-2">
                             <input
@@ -157,7 +157,7 @@ export default function AdminSettingsPage() {
                         </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
                         <label className="label">Độ dài mật khẩu tối thiểu</label>
                         <div className="flex items-center gap-2">
                             <input

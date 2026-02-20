@@ -199,7 +199,7 @@ export default function AIAssistantSidebar({ isOpen, onClose, projectId }) {
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         placeholder="Nhập tin nhắn..."
-                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                         disabled={chatMutation.isPending}
                         aria-label="Nhập tin nhắn cho AI"
                     />

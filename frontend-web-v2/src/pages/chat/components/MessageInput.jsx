@@ -95,8 +95,8 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
         <div className="p-4 bg-white border-t border-gray-100 shrink-0">
             {/* Reply Preview */}
             {replyTo && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-blue-50 rounded-lg text-sm">
-                    <i className="fa-solid fa-reply text-blue-500" />
+                <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-indigo-50 rounded-lg text-sm">
+                    <i className="fa-solid fa-reply text-indigo-500" />
                     <span className="text-gray-500">Đang trả lời</span>
                     <span className="font-medium text-gray-700">{replyTo.senderName}</span>
                     <span className="text-gray-400 truncate flex-1">{replyTo.content}</span>
@@ -138,7 +138,7 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
             {/* Input Form */}
             <form
                 onSubmit={handleSend}
-                className="flex gap-2 items-end bg-gray-50 px-4 py-3 rounded-2xl border border-gray-200 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all"
+                className="flex gap-2 items-end bg-gray-50 px-4 py-3 rounded-2xl border border-gray-200 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 transition-all"
             >
                 {/* File Attach */}
                 <input
@@ -151,7 +151,7 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                    className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
                     title="Đính kèm file"
                 >
                     <i className="fa-solid fa-paperclip" />
@@ -173,7 +173,7 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
                     <button
                         type="button"
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                        className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
                         title="Emoji"
                     >
                         <i className="fa-regular fa-face-smile" />
@@ -190,7 +190,7 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
                 <button
                     type="submit"
                     disabled={(!inputValue.trim() && !attachedFile) || uploading}
-                    className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center disabled:opacity-40 disabled:from-gray-300 disabled:to-gray-400 hover:from-blue-600 hover:to-blue-700 transition-all shadow-md"
+                    className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:from-gray-300 disabled:to-gray-400 hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-md"
                 >
                     {uploading ? (
                         <i className="fa-solid fa-spinner fa-spin text-sm" />

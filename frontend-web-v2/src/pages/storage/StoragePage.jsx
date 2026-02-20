@@ -137,7 +137,7 @@ export default function StoragePage() {
                             {index > 0 && <i className="fa-solid fa-chevron-right text-gray-300 mx-2" />}
                             <button
                                 onClick={() => navigateToBreadcrumb(index)}
-                                className={`text-sm font-medium ${index === folderPath.length - 1 ? 'text-gray-900' : 'text-blue-600 hover:underline'}`}
+                                className={`text-sm font-medium ${index === folderPath.length - 1 ? 'text-gray-900' : 'text-indigo-600 hover:underline'}`}
                             >
                                 {index === 0 ? <i className="fa-solid fa-house mr-1" /> : null}
                                 {folder.name}
@@ -168,17 +168,17 @@ export default function StoragePage() {
                 onDrop={handleDrop}
                 className={`
                     border-2 border-dashed rounded-xl p-6 text-center transition-all
-                    ${isDragging ? 'border-blue-500 bg-blue-50 scale-[1.01]' : 'border-gray-200 bg-gray-50'}
+                    ${isDragging ? 'border-indigo-500 bg-indigo-50 scale-[1.01]' : 'border-gray-200 bg-gray-50'}
                 `}
             >
-                <i className={`fa-solid fa-cloud-arrow-up text-2xl mb-2 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
+                <i className={`fa-solid fa-cloud-arrow-up text-2xl mb-2 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
                 <p className="text-sm text-gray-500">Kéo thả file vào đây để tải lên</p>
             </div>
 
             {/* Loading */}
             {isLoading && (
                 <div className="flex items-center justify-center py-12">
-                    <i className="fa-solid fa-spinner fa-spin text-2xl text-blue-500" />
+                    <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
                 </div>
             )}
 
@@ -191,10 +191,10 @@ export default function StoragePage() {
                             <div
                                 key={folder.id}
                                 onClick={() => navigateToFolder(folder)}
-                                className="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-200 hover:shadow-md cursor-pointer transition-all group"
+                                className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 hover:border-indigo-200 hover:shadow-md cursor-pointer transition-all group"
                             >
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors">
-                                    <i className="fa-solid fa-folder text-2xl text-blue-500" />
+                                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-200 transition-colors">
+                                    <i className="fa-solid fa-folder text-2xl text-indigo-500" />
                                 </div>
                                 <div className="font-medium text-gray-800 truncate">{folder.originalName || folder.name}</div>
                                 <div className="text-xs text-gray-400">{folder.itemCount || 0} items</div>
@@ -220,7 +220,7 @@ export default function StoragePage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 divide-y">
                             {files.map(file => (
                                 <FileListItem
                                     key={file.id}
@@ -263,7 +263,7 @@ function FileCard({ file, onPreview, onShare }) {
     const isImage = file.contentType?.startsWith('image/');
 
     return (
-        <div className="bg-white rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all group overflow-hidden">
             {/* Thumbnail */}
             <div
                 onClick={onPreview}
@@ -294,7 +294,7 @@ function FileCard({ file, onPreview, onShare }) {
                     <div className="flex gap-1">
                         <button
                             onClick={onShare}
-                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
+                            className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded"
                             title="Chia sẻ"
                         >
                             <i className="fa-solid fa-share-nodes text-sm" />
@@ -328,10 +328,10 @@ function FileListItem({ file, onPreview, onShare }) {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <button onClick={onPreview} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg">
+                <button onClick={onPreview} className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg">
                     <i className="fa-solid fa-eye" />
                 </button>
-                <button onClick={onShare} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg">
+                <button onClick={onShare} className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg">
                     <i className="fa-solid fa-share-nodes" />
                 </button>
                 <a href={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} className="p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg">
@@ -349,7 +349,7 @@ function FilePreviewModal({ file, onClose }) {
     const isAudio = file.contentType?.startsWith('audio/');
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95">
                 {/* Header */}
@@ -371,7 +371,7 @@ function FilePreviewModal({ file, onClose }) {
                 {/* Preview Content */}
                 <div className="p-4 bg-gray-50 flex items-center justify-center min-h-[400px] max-h-[calc(90vh-120px)] overflow-auto">
                     {isImage && (
-                        <img src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} alt={file.originalName} loading="lazy" className="max-w-full max-h-full rounded-lg shadow-lg" />
+                        <img alt="" src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} alt={file.originalName} loading="lazy" className="max-w-full max-h-full rounded-lg shadow-lg" />
                     )}
                     {isPdf && (
                         <iframe src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} className="w-full h-[600px] rounded-lg" />
@@ -388,7 +388,7 @@ function FilePreviewModal({ file, onClose }) {
                             <p className="text-gray-500">Không thể xem trước file này</p>
                             <a
                                 href={ENDPOINTS.STORAGE.DOWNLOAD(file.id)}
-                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
                             >
                                 <i className="fa-solid fa-download" /> Tải xuống
                             </a>
@@ -437,7 +437,7 @@ function ShareModal({ file, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in-95">
                 <div className="p-6 border-b border-gray-100">
@@ -460,7 +460,7 @@ function ShareModal({ file, onClose }) {
                                 value={shareEmail}
                                 onChange={(e) => setShareEmail(e.target.value)}
                                 placeholder="email@example.com"
-                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
                             />
                             <select
                                 value={permission}
@@ -470,7 +470,7 @@ function ShareModal({ file, onClose }) {
                                 <option value="view">Xem</option>
                                 <option value="edit">Chỉnh sửa</option>
                             </select>
-                            <button onClick={shareByEmail} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            <button onClick={shareByEmail} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
                                 <i className="fa-solid fa-paper-plane" />
                             </button>
                         </div>
@@ -495,7 +495,7 @@ function ShareModal({ file, onClose }) {
                             <button
                                 onClick={generateLink}
                                 disabled={generateLinkMutation.isPending}
-                                className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+                                className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-500 transition-colors disabled:opacity-50"
                             >
                                 {generateLinkMutation.isPending ? (
                                     <i className="fa-solid fa-spinner fa-spin mr-2" />
@@ -521,7 +521,7 @@ function NewFolderModal({ onClose, onCreate, isPending }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95">
                 <form onSubmit={handleSubmit}>
@@ -532,7 +532,7 @@ function NewFolderModal({ onClose, onCreate, isPending }) {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Tên thư mục..."
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
                             autoFocus
                         />
                     </div>
@@ -543,7 +543,7 @@ function NewFolderModal({ onClose, onCreate, isPending }) {
                         <button
                             type="submit"
                             disabled={!name.trim() || isPending}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                            className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50"
                         >
                             {isPending ? <i className="fa-solid fa-spinner fa-spin" /> : 'Tạo'}
                         </button>
@@ -569,7 +569,7 @@ function getFileIcon(mimeType) {
 function getFileColor(mimeType) {
     if (mimeType?.startsWith('image/')) return 'bg-purple-100 text-purple-600';
     if (mimeType?.includes('pdf')) return 'bg-red-100 text-red-600';
-    if (mimeType?.includes('word')) return 'bg-blue-100 text-blue-600';
+    if (mimeType?.includes('word')) return 'bg-indigo-100 text-indigo-600';
     if (mimeType?.includes('excel')) return 'bg-green-100 text-green-600';
     if (mimeType?.includes('powerpoint')) return 'bg-orange-100 text-orange-600';
     if (mimeType?.startsWith('video/')) return 'bg-pink-100 text-pink-600';

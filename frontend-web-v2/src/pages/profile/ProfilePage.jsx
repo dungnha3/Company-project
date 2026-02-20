@@ -24,7 +24,7 @@ export default function ProfilePage() {
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-6">
             {/* Header with Avatar */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden">
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -62,12 +62,12 @@ export default function ProfilePage() {
                     {/* Info */}
                     <div>
                         <h1 className="text-2xl font-bold">{user?.fullName || 'User'}</h1>
-                        <p className="text-blue-200">{user?.email}</p>
+                        <p className="text-indigo-200">{user?.email}</p>
                         <div className="flex items-center gap-3 mt-2">
                             <span className="px-3 py-1 bg-white/20 rounded-full text-xs">
                                 {user?.role || 'Member'}
                             </span>
-                            <span className="text-blue-200 text-sm">
+                            <span className="text-indigo-200 text-sm">
                                 Tham gia: {formatDate(user?.createdAt || Date.now())}
                             </span>
                         </div>
@@ -82,7 +82,7 @@ export default function ProfilePage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                            ? 'bg-white text-blue-600 shadow-sm'
+                            ? 'bg-white text-indigo-600 shadow-sm'
                             : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
@@ -93,7 +93,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                 {activeTab === 'info' && <ProfileInfoTab user={user} />}
                 {activeTab === 'security' && <SecurityTab />}
                 {activeTab === 'notifications' && <NotificationsTab />}
@@ -170,7 +170,7 @@ function ProfileInfoTab({ user }) {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2"
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2"
                 >
                     {saving ? (
                         <><i className="fa-solid fa-spinner fa-spin" /> Đang lưu...</>
@@ -220,8 +220,8 @@ function SecurityTab() {
             <div className="border border-gray-200 rounded-xl p-5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                            <i className="fa-solid fa-key text-blue-600" />
+                        <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                            <i className="fa-solid fa-key text-indigo-600" />
                         </div>
                         <div>
                             <h4 className="font-semibold text-gray-800">Mật khẩu</h4>
@@ -258,7 +258,7 @@ function SecurityTab() {
                         />
                         <button
                             onClick={handleChangePassword}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium"
                         >
                             Cập nhật mật khẩu
                         </button>
@@ -460,7 +460,7 @@ function FormField({ label, value, onChange, placeholder, disabled, multiline, t
                     placeholder={placeholder}
                     disabled={disabled}
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500 resize-none"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 disabled:bg-gray-50 disabled:text-gray-500 resize-none"
                 />
             ) : (
                 <input
@@ -469,7 +469,7 @@ function FormField({ label, value, onChange, placeholder, disabled, multiline, t
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     disabled={disabled}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 disabled:bg-gray-50 disabled:text-gray-500"
                 />
             )}
         </div>
@@ -490,7 +490,7 @@ function NotificationRow({ icon, title, desc, enabled, onToggle }) {
             </div>
             <button
                 onClick={onToggle}
-                className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? 'bg-blue-500' : 'bg-gray-300'
+                className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-300'
                     }`}
             >
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${enabled ? 'left-7' : 'left-1'

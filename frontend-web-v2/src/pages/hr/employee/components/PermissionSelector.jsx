@@ -65,8 +65,8 @@ export default function PermissionSelector({ value = {}, onChange, disabled = fa
     return (
         <div className="space-y-6">
             {PERMISSION_GROUPS.map(group => (
-                <div key={group.key} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <div key={group.key} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-slate-800/50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-gray-100">
                             <i className={`fa-solid ${group.icon} text-violet-600`} />
                         </div>

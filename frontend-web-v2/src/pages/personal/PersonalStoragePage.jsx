@@ -7,8 +7,8 @@ import { formatDate, formatBytes } from '@shared/utils/formatters';
 
 const FILE_ICONS = {
     pdf: { icon: 'fa-file-pdf', color: 'text-red-500' },
-    doc: { icon: 'fa-file-word', color: 'text-blue-600' },
-    docx: { icon: 'fa-file-word', color: 'text-blue-600' },
+    doc: { icon: 'fa-file-word', color: 'text-indigo-600' },
+    docx: { icon: 'fa-file-word', color: 'text-indigo-600' },
     xls: { icon: 'fa-file-excel', color: 'text-green-600' },
     xlsx: { icon: 'fa-file-excel', color: 'text-green-600' },
     ppt: { icon: 'fa-file-powerpoint', color: 'text-orange-500' },
@@ -249,7 +249,7 @@ export default function PersonalStoragePage() {
                         Trang chủ
                     </button>
                     <i className="fa-solid fa-chevron-right text-gray-300" />
-                    <span className="text-gray-600">Thư mục hiện tại</span>
+                    <span className="text-gray-600 dark:text-gray-400">Thư mục hiện tại</span>
                 </div>
             )}
 
@@ -262,7 +262,7 @@ export default function PersonalStoragePage() {
                     <p className="text-gray-500">Đang tải...</p>
                 </div>
             ) : folders.length === 0 && files.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 p-16 text-center">
                     <div className="w-24 h-24 mx-auto rounded-full bg-violet-50 flex items-center justify-center mb-4">
                         <i className="fa-solid fa-cloud-arrow-up text-4xl text-violet-300" />
                     </div>
@@ -282,7 +282,7 @@ export default function PersonalStoragePage() {
                     {folders.map(folder => (
                         <div
                             key={folder.id}
-                            className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-lg hover:border-violet-200 transition-all cursor-pointer group"
+                            className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 p-4 hover:shadow-lg hover:border-violet-200 transition-all cursor-pointer group"
                             onClick={() => setCurrentFolder(folder.id)}
                         >
                             <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-3">
@@ -304,7 +304,7 @@ export default function PersonalStoragePage() {
                         return (
                             <div
                                 key={file.id}
-                                className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-lg hover:border-violet-200 transition-all group relative"
+                                className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 p-4 hover:shadow-lg hover:border-violet-200 transition-all group relative"
                             >
                                 <div className={`w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mb-3`}>
                                     <i className={`fa-solid ${icon} ${color} text-xl`} />
@@ -332,7 +332,7 @@ export default function PersonalStoragePage() {
                 </div>
             ) : (
                 // List View
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 overflow-hidden">
                     <table className="w-full">
                         <thead className="bg-gray-50">
                             <tr>
@@ -403,8 +403,8 @@ export default function PersonalStoragePage() {
 
             {/* Create Folder Modal */}
             {showNewFolderModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
+                <div className="modal-overlay">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
                         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4">
                             <h3 className="text-lg font-semibold text-white">Tạo thư mục mới</h3>
                         </div>

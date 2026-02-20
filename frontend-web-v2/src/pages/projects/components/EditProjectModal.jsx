@@ -6,7 +6,7 @@ import { useToast } from '@app/providers/ToastProvider';
 
 const STATUS_OPTIONS = [
     { value: 'PLANNING', label: 'Lập kế hoạch', color: 'bg-gray-100 text-gray-700' },
-    { value: 'IN_PROGRESS', label: 'Đang thực hiện', color: 'bg-blue-100 text-blue-700' },
+    { value: 'IN_PROGRESS', label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700' },
     { value: 'ON_HOLD', label: 'Tạm dừng', color: 'bg-yellow-100 text-yellow-700' },
     { value: 'COMPLETED', label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
     { value: 'CANCELLED', label: 'Đã hủy', color: 'bg-red-100 text-red-700' },
@@ -125,9 +125,9 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
     if (!project) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="modal-overlay" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -310,7 +310,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                             <div className="flex items-center gap-3">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium
                                                     ${member.role === 'OWNER' ? 'bg-purple-100 text-purple-700' :
-                                                        member.role === 'MANAGER' ? 'bg-blue-100 text-blue-700' :
+                                                        member.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' :
                                                             'bg-gray-100 text-gray-700'}`}
                                                 >
                                                     {member.role === 'OWNER' ? 'Chủ dự án' :

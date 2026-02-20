@@ -63,7 +63,7 @@ export default function ContractsPage() {
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedContract(row); setShowModal(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                     >
                         <i className="fa-solid fa-pen" />
                     </button>
@@ -166,7 +166,7 @@ function ContractModal({ isOpen, onClose, contract }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>

@@ -6,13 +6,13 @@ import { useToast } from '@app/providers/ToastProvider';
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
-    { value: 'MEDIUM', label: 'Trung bình', icon: 'fa-minus', color: 'text-blue-500' },
+    { value: 'MEDIUM', label: 'Trung bình', icon: 'fa-minus', color: 'text-indigo-500' },
     { value: 'HIGH', label: 'Cao', icon: 'fa-arrow-up', color: 'text-orange-500' },
     { value: 'CRITICAL', label: 'Khẩn cấp', icon: 'fa-fire', color: 'text-red-500' },
 ];
 
 const ISSUE_TYPES = [
-    { value: 'TASK', label: 'Task', icon: 'fa-check', color: 'bg-blue-500' },
+    { value: 'TASK', label: 'Task', icon: 'fa-check', color: 'bg-indigo-500' },
     { value: 'BUG', label: 'Bug', icon: 'fa-bug', color: 'bg-red-500' },
     { value: 'STORY', label: 'Story', icon: 'fa-bookmark', color: 'bg-green-500' },
     { value: 'EPIC', label: 'Epic', icon: 'fa-bolt', color: 'bg-purple-500' },
@@ -110,16 +110,16 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleClose}>
+        <div className="modal-overlay" onClick={handleClose}>
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-500 to-cyan-600">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-cyan-600">
                     <div>
                         <h2 className="text-xl font-bold text-white">Tạo Task Mới</h2>
-                        <p className="text-blue-100 text-sm">Thêm công việc vào dự án</p>
+                        <p className="text-indigo-100 text-sm">Thêm công việc vào dự án</p>
                     </div>
                     <button
                         onClick={handleClose}
@@ -140,7 +140,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                 name="projectId"
                                 value={form.projectId}
                                 onChange={handleInputChange}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                 required
                             >
                                 <option value="">-- Chọn dự án --</option>
@@ -184,7 +184,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                 name="title"
                                 value={form.title}
                                 onChange={handleInputChange}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                 placeholder="VD: Implement login feature"
                                 required
                             />
@@ -197,7 +197,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                 name="description"
                                 value={form.description}
                                 onChange={handleInputChange}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                                 placeholder="Mô tả chi tiết task..."
                                 rows={3}
                             />
@@ -211,7 +211,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                     name="priority"
                                     value={form.priority}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                 >
                                     {PRIORITIES.map(p => (
                                         <option key={p.value} value={p.value}>
@@ -227,7 +227,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                     name="assigneeId"
                                     value={form.assigneeId}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
                                     disabled={!form.projectId}
                                 >
                                     <option value="">-- Chọn người --</option>
@@ -254,7 +254,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                         name="estimatedHours"
                                         value={form.estimatedHours}
                                         onChange={handleInputChange}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                         placeholder="8"
                                         min="0"
                                         step="0.5"
@@ -271,7 +271,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                         name="dueDate"
                                         value={form.dueDate}
                                         onChange={handleInputChange}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                     />
                                 </div>
                             </div>
@@ -291,7 +291,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                         <button
                             type="submit"
                             disabled={createMutation.isPending}
-                            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:from-indigo-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
                             {createMutation.isPending ? (
                                 <>

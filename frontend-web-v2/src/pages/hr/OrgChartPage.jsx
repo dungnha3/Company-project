@@ -86,7 +86,7 @@ export default function OrgChartPage() {
                     label="Phòng ban"
                     value={deptList.length}
                     icon="fa-building"
-                    color="bg-blue-500"
+                    color="bg-indigo-500"
                 />
                 <StatCard
                     label="Nhân viên"
@@ -103,7 +103,7 @@ export default function OrgChartPage() {
             </div>
 
             {/* Org Chart */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 overflow-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6 overflow-auto">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <div className="loading-spinner" />
@@ -154,7 +154,7 @@ export default function OrgChartPage() {
             {/* Legend */}
             <div className="flex items-center gap-6 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                    <div className="w-3 h-3 bg-indigo-500 rounded-full" />
                     <span>Phòng ban</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export default function OrgChartPage() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
                     <i className={`fa-solid ${icon} text-lg`} />
@@ -200,10 +200,10 @@ function DepartmentNode({ department, isSelected, onClick, onViewEmployee }) {
             {/* Department Card */}
             <div
                 onClick={onClick}
-                className={`org-node org-node-dept cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'
+                className={`org-node org-node-dept cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-indigo-500 shadow-lg' : 'hover:shadow-md'
                     }`}
             >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow mb-2">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow mb-2">
                     {department.name?.charAt(0) || 'D'}
                 </div>
                 <div className="text-sm font-semibold text-gray-900 text-center">

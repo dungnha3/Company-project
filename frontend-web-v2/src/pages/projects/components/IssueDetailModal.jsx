@@ -8,14 +8,14 @@ import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 const STATUSES = [
     { value: 'TODO', label: 'To Do', color: 'bg-gray-100 text-gray-700' },
-    { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
+    { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-indigo-100 text-indigo-700' },
     { value: 'IN_REVIEW', label: 'In Review', color: 'bg-purple-100 text-purple-700' },
     { value: 'DONE', label: 'Done', color: 'bg-green-100 text-green-700' },
 ];
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Low', icon: 'fa-arrow-down', color: 'text-gray-500' },
-    { value: 'MEDIUM', label: 'Medium', icon: 'fa-minus', color: 'text-blue-500' },
+    { value: 'MEDIUM', label: 'Medium', icon: 'fa-minus', color: 'text-indigo-500' },
     { value: 'HIGH', label: 'High', icon: 'fa-arrow-up', color: 'text-orange-500' },
     { value: 'CRITICAL', label: 'Critical', icon: 'fa-fire', color: 'text-red-500' },
 ];
@@ -92,10 +92,10 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const currentIssue = fullIssue || issue;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 pt-8 overflow-y-auto" onClick={onClose}>
-            <div className="bg-white rounded-2xl w-full max-w-4xl mx-4 mb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-8 overflow-y-auto" onClick={onClose}>
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl mx-4 mb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-t-2xl">
                     <div className="flex items-center gap-3">
                         <span className="bg-white/20 text-white px-2 py-1 rounded-md text-sm font-mono">
                             {currentIssue.issueKey || `#${currentIssue.issueId}`}
@@ -120,7 +120,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.status || 'TODO'}
                                 onChange={(e) => statusMutation.mutate(e.target.value)}
                                 disabled={statusMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             >
                                 {STATUSES.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -144,7 +144,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.assigneeId || ''}
                                 onChange={(e) => assignMutation.mutate(e.target.value || null)}
                                 disabled={assignMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             >
                                 <option value="">-- Chưa giao --</option>
                                 {members.map(m => (
@@ -178,7 +178,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             onClick={() => setActiveTab(tab.id)}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg flex items-center gap-2 transition-colors
                                 ${activeTab === tab.id
-                                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                                    ? 'bg-white text-indigo-600 border-b-2 border-indigo-600'
                                     : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
@@ -233,7 +233,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         <div className="space-y-4">
                             {/* Add Comment */}
                             <div className="flex gap-3">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
                                     U
                                 </div>
                                 <div className="flex-1">
@@ -241,14 +241,14 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                         value={newComment}
                                         onChange={(e) => setNewComment(e.target.value)}
                                         placeholder="Thêm bình luận..."
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                                         rows={2}
                                     />
                                     <div className="flex justify-end mt-2">
                                         <button
                                             onClick={() => commentMutation.mutate(newComment)}
                                             disabled={!newComment.trim() || commentMutation.isPending}
-                                            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                                            className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
                                         >
                                             {commentMutation.isPending ? 'Đang gửi...' : 'Gửi'}
                                         </button>
@@ -359,7 +359,7 @@ function CustomFieldsSection({ projectId, issueId, initialValues }) {
                         {field.type === 'TEXT' && (
                             <input
                                 type="text"
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
                                 value={values[field.id] || ''}
                                 onBlur={(e) => handleChange(field.id, e.target.value)}
                                 onChange={(e) => setValues(prev => ({ ...prev, [field.id]: e.target.value }))}
@@ -368,7 +368,7 @@ function CustomFieldsSection({ projectId, issueId, initialValues }) {
                         {field.type === 'NUMBER' && (
                             <input
                                 type="number"
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
                                 value={values[field.id] || ''}
                                 onBlur={(e) => handleChange(field.id, e.target.value)}
                                 onChange={(e) => setValues(prev => ({ ...prev, [field.id]: e.target.value }))}
@@ -377,14 +377,14 @@ function CustomFieldsSection({ projectId, issueId, initialValues }) {
                         {field.type === 'DATE' && (
                             <input
                                 type="date"
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
                                 value={values[field.id] || ''}
                                 onChange={(e) => handleChange(field.id, e.target.value)}
                             />
                         )}
                         {field.type === 'DROPDOWN' && (
                             <select
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
                                 value={values[field.id] || ''}
                                 onChange={(e) => handleChange(field.id, e.target.value)}
                             >
@@ -411,7 +411,7 @@ function ActivityLogTab({ issueId }) {
     const getActivityIcon = (type) => {
         const icons = {
             CREATED: 'fa-plus-circle text-green-500',
-            STATUS_CHANGED: 'fa-arrow-right text-blue-500',
+            STATUS_CHANGED: 'fa-arrow-right text-indigo-500',
             ASSIGNEE_CHANGED: 'fa-user text-purple-500',
             PRIORITY_CHANGED: 'fa-flag text-orange-500',
             SPRINT_CHANGED: 'fa-layer-group text-indigo-500',
@@ -460,7 +460,7 @@ function ActivityLogTab({ issueId }) {
                                     {formatDateTime(activity.createdAt)}
                                 </span>
                             </div>
-                            <p className="text-gray-600">{activity.description}</p>
+                            <p className="text-gray-600 dark:text-gray-400">{activity.description}</p>
                             {activity.oldValue && activity.newValue && (
                                 <div className="mt-2 text-xs flex items-center gap-2">
                                     <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded line-through">{activity.oldValue}</span>

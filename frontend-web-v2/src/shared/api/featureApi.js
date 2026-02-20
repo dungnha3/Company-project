@@ -120,9 +120,33 @@ export const calendarApi = {
 };
 
 /**
- * Automation API Service
+ * AI Assistant API Service
  */
-// Automation API removed
-export const automationApi = {
-    // Deprecated placeholders to prevent import errors if unused
+export const aiApi = {
+    getStatus: async () => (await apiClient.get(ENDPOINTS.AI.STATUS)).data,
+    chat: async (prompt, conversationId) => (await apiClient.post(ENDPOINTS.AI.CHAT, { prompt, conversationId })).data,
+    getConversations: async () => (await apiClient.get(ENDPOINTS.AI.CONVERSATIONS)).data,
+    getConversation: async (id) => (await apiClient.get(ENDPOINTS.AI.CONVERSATION_BY_ID(id))).data,
+    deleteConversation: async (id) => apiClient.delete(ENDPOINTS.AI.DELETE_CONVERSATION(id)),
+    getProjectSummary: async (projectId) => (await apiClient.get(ENDPOINTS.AI.PROJECT_SUMMARY(projectId))).data,
+    suggestTasks: async (projectId) => (await apiClient.get(ENDPOINTS.AI.SUGGEST_TASKS(projectId))).data,
+    analyzeProgress: async (projectId) => (await apiClient.get(ENDPOINTS.AI.ANALYZE_PROGRESS(projectId))).data,
+    getReport: async (projectId) => (await apiClient.get(ENDPOINTS.AI.REPORT(projectId))).data,
 };
+
+/**
+ * Webhook API Service
+ */
+export const webhookApi = {
+    list: async () => (await apiClient.get(ENDPOINTS.INTEGRATION.WEBHOOKS)).data,
+    getById: async (id) => (await apiClient.get(ENDPOINTS.INTEGRATION.WEBHOOK_BY_ID(id))).data,
+    create: async (data) => (await apiClient.post(ENDPOINTS.INTEGRATION.WEBHOOKS, data)).data,
+    update: async (id, data) => (await apiClient.put(ENDPOINTS.INTEGRATION.WEBHOOK_BY_ID(id), data)).data,
+    delete: async (id) => apiClient.delete(ENDPOINTS.INTEGRATION.WEBHOOK_BY_ID(id)),
+    test: async (id) => (await apiClient.post(ENDPOINTS.INTEGRATION.TEST_WEBHOOK(id))).data,
+};
+
+/**
+ * Automation API Service (deprecated)
+ */
+export const automationApi = {};

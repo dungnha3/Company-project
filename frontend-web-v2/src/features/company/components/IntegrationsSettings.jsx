@@ -111,7 +111,7 @@ function SSOSettings({ workspace }) {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Cấu hình SAML / OIDC</h3>
                 <form className="space-y-4" onSubmit={handleSave}>
                     <div>
@@ -160,7 +160,7 @@ function SSOSettings({ workspace }) {
                         <button
                             type="submit"
                             disabled={saveMutation.isPending}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                            className="btn-primary"
                         >
                             {saveMutation.isPending ? <i className="fa-solid fa-spinner fa-spin mr-2" /> : null}
                             Lưu cấu hình
@@ -209,16 +209,16 @@ function WebhooksList({ workspace }) {
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                    className="btn-primary flex items-center gap-2"
                 >
                     <i className="fa-solid fa-plus" />
                     Thêm Webhook
                 </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-100">
+                    <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100">
                         <tr>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">URL</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Events</th>
@@ -245,7 +245,7 @@ function WebhooksList({ workspace }) {
                                     <td className="px-6 py-4">
                                         <div className="flex flex-wrap gap-1">
                                             {wh.events?.slice(0, 3).map(evt => (
-                                                <span key={evt} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100">{evt}</span>
+                                                <span key={evt} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded border border-indigo-100">{evt}</span>
                                             ))}
                                             {wh.events?.length > 3 && <span className="text-xs text-gray-400">+{wh.events.length - 3} more</span>}
                                         </div>
@@ -333,8 +333,8 @@ function WebhookModal({ onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200">
+        <div className="modal-overlay">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
                     <h3 className="text-xl font-bold text-gray-900">Add New Webhook</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">

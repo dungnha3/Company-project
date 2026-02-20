@@ -78,7 +78,7 @@ export default function ExportDropdown({ projectId, projectName }) {
                         disabled={exporting === 'issues'}
                         className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50"
                     >
-                        <i className="fa-solid fa-list-check text-blue-500 w-5" />
+                        <i className="fa-solid fa-list-check text-indigo-500 w-5" />
                         <div>
                             <div className="font-medium">Export Issues (CSV)</div>
                             <div className="text-xs text-gray-400">Tất cả issues trong dự án</div>

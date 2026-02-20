@@ -7,7 +7,7 @@ import {
 import { analyticsApi } from '../../shared/api/featureApi';
 import { formatDate, formatNumber } from '@shared/utils/formatters';
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['var(--color-accent)', '#22c55e', '#f59e0b', '#ef4444', 'var(--color-secondary)', '#06b6d4'];
 
 export default function AnalyticsPage() {
     const { projectId } = useParams();
@@ -104,7 +104,7 @@ export default function AnalyticsPage() {
                                     labelFormatter={(val) => formatDate(val)}
                                 />
                                 <Legend />
-                                <Line type="monotone" dataKey="ideal" stroke="#6366f1" strokeDasharray="5 5" name="Ideal" />
+                                <Line type="monotone" dataKey="ideal" stroke="var(--color-accent)" strokeDasharray="5 5" name="Ideal" />
                                 <Line type="monotone" dataKey="actual" stroke="#22c55e" strokeWidth={2} name="Actual" />
                             </LineChart>
                         </ResponsiveContainer>
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
                                 <XAxis dataKey="sprintName" stroke="#888" />
                                 <YAxis stroke="#888" />
                                 <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid #3d3d4d', borderRadius: '8px' }} />
-                                <Bar dataKey="completedIssues" fill="#6366f1" name="Completed Issues" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="completedIssues" fill="var(--color-accent)" name="Completed Issues" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (

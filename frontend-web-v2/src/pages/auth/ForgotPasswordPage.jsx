@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
             {/* Right Side - Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
                 <div className="w-full max-w-md">
-                    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-100">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 <i className="fa-solid fa-key text-2xl text-white" />

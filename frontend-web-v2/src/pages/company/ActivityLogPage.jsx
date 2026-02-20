@@ -76,7 +76,7 @@ export default function ActivityLogPage() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-4">
                 <div className="flex flex-wrap items-center gap-4">
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
@@ -86,7 +86,7 @@ export default function ActivityLogPage() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Tìm kiếm hoạt động..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:bg-white focus:ring-2 focus:ring-blue-100"
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
@@ -97,7 +97,7 @@ export default function ActivityLogPage() {
                                 key={key}
                                 onClick={() => setFilter(key)}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === key
-                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    ? 'bg-white text-indigo-600 shadow-sm'
                                     : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
@@ -111,7 +111,7 @@ export default function ActivityLogPage() {
                     <select
                         value={dateRange}
                         onChange={(e) => setDateRange(e.target.value)}
-                        className="px-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-100 text-sm"
+                        className="px-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-100 text-sm"
                     >
                         <option value="7d">7 ngày qua</option>
                         <option value="30d">30 ngày qua</option>
@@ -128,7 +128,7 @@ export default function ActivityLogPage() {
             </div>
 
             {/* Activity List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {isLoading ? (
                     <div className="p-8 text-center">
                         <i className="fa-solid fa-spinner fa-spin text-2xl text-gray-300" />

@@ -141,7 +141,7 @@ export default function MyIssuesPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <StatCard
                         icon="fa-list-check"
-                        iconColor="bg-blue-100 text-blue-600"
+                        iconColor="bg-indigo-100 text-indigo-600"
                         label="Tổng tasks"
                         value={stats.total}
                     />
@@ -199,7 +199,7 @@ export default function MyIssuesPage() {
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                     >
                         {STATUS_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -214,17 +214,17 @@ export default function MyIssuesPage() {
                             placeholder="Tìm kiếm task..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Issues Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
+                        <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Task</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Dự án</th>
@@ -296,7 +296,7 @@ function IssueRow({ issue, onClick }) {
     const getStatusBadge = (status, statusName, statusColor) => {
         const colors = {
             'TODO': 'bg-gray-100 text-gray-700',
-            'IN_PROGRESS': 'bg-blue-100 text-blue-700',
+            'IN_PROGRESS': 'bg-indigo-100 text-indigo-700',
             'IN_REVIEW': 'bg-purple-100 text-purple-700',
             'DONE': 'bg-green-100 text-green-700',
         };

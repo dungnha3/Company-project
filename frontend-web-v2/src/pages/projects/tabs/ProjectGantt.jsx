@@ -76,7 +76,7 @@ export default function ProjectGantt({ project }) {
                         <span className="text-xs font-normal text-gray-500">PROJECT</span>
                     </div>
                     <div className="relative h-6 bg-gray-100 rounded-full w-full overflow-hidden">
-                        <div className="absolute top-0 bottom-0 bg-blue-500 rounded-full group-hover:bg-blue-600 transition-colors shadow-sm" style={{ left: '0%', width: '100%' }}></div>
+                        <div className="absolute top-0 bottom-0 bg-indigo-500 rounded-full group-hover:bg-indigo-600 transition-colors shadow-sm" style={{ left: '0%', width: '100%' }}></div>
                     </div>
                 </div>
 

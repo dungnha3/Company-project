@@ -322,8 +322,8 @@ export default function Sidebar() {
 
             {/* Upgrade Modal */}
             {upgradeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
+                <div className="modal-overlay">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
                         <div className="p-6 text-center">
                             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
                                 <i className="fa-solid fa-crown text-2xl text-indigo-600" />

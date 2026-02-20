@@ -95,7 +95,7 @@ export default function CompanySwitcher({ collapsed }) {
                 className="company-switcher-trigger"
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold ${workspaceType === 'PERSONAL' ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-primary'
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold ${workspaceType === 'PERSONAL' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-primary'
                     }`}>
                     {workspaceType === 'PERSONAL' ? (
                         <i className="fa-solid fa-user text-sm" />
@@ -128,7 +128,7 @@ export default function CompanySwitcher({ collapsed }) {
                             className={`company-item ${workspace.id === currentWorkspace?.id ? 'active' : ''}`}
                             onClick={() => handleSelect(workspace)}
                         >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
                                 <i className="fa-solid fa-user text-xs" />
                             </div>
                             <div className="flex-1">

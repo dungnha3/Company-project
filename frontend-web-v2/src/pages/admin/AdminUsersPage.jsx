@@ -97,7 +97,7 @@ export default function AdminUsersPage() {
         {
             header: 'Workspace',
             accessorKey: 'companyName',
-            cell: (row) => <span className="text-gray-600">{row.companyName || '---'}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.companyName || '---'}</span>
         },
         {
             header: 'Vai trò',

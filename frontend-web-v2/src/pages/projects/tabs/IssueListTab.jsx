@@ -12,7 +12,7 @@ function IssueRow({ issue, onClick }) {
     const getStatusBadge = (status, statusName) => {
         const colors = {
             'TODO': 'bg-gray-100 text-gray-700',
-            'IN_PROGRESS': 'bg-blue-100 text-blue-700',
+            'IN_PROGRESS': 'bg-indigo-100 text-indigo-700',
             'IN_REVIEW': 'bg-purple-100 text-purple-700',
             'DONE': 'bg-green-100 text-green-700',
         };
@@ -105,10 +105,10 @@ export default function IssueListTab({ projectId }) {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
+                        <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Task</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>

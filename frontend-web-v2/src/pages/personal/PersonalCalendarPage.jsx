@@ -160,7 +160,7 @@ export default function PersonalCalendarPage() {
             </div>
 
             {/* Calendar Grid */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {/* Weekday Headers */}
                 <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
                     {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(day => (
@@ -221,7 +221,7 @@ export default function PersonalCalendarPage() {
 
             {/* Create Modal */}
             {showForm && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="modal-overlay z-[100]">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowForm(false)} />
                     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in">
                         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between">
@@ -312,7 +312,7 @@ export default function PersonalCalendarPage() {
 
             {/* View Detail Modal */}
             {selectedEvent && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="modal-overlay z-[100]">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedEvent(null)} />
                     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
                         <div className={`px-6 py-4 flex items-center justify-between ${EVENT_TYPES[selectedEvent.eventType]?.color || 'bg-gray-600'}`}>

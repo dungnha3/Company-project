@@ -193,7 +193,7 @@ export default function BillingPage() {
             {activeTab !== 'bundle' && (
                 <div className={`rounded-2xl p-6 text-white ${activeTab === 'personal'
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600'
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                    : 'bg-gradient-to-r from-indigo-600 to-indigo-600'
                     }`}>
                     <div className="flex items-center justify-between">
                         <div>
@@ -330,11 +330,11 @@ export default function BillingPage() {
                             return (
                                 <div
                                     key={plan.id}
-                                    className={`relative bg-white rounded-2xl border-2 p-6 transition-all ${plan.popular ? 'border-blue-500 shadow-lg' : 'border-gray-100'
-                                        } ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                                    className={`relative bg-white rounded-2xl border-2 p-6 transition-all ${plan.popular ? 'border-indigo-500 shadow-lg' : 'border-gray-100'
+                                        } ${isCurrent ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
                                 >
                                     {plan.popular && (
-                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full">
+                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-500 text-white text-xs font-bold rounded-full">
                                             Phổ biến
                                         </span>
                                     )}
@@ -361,7 +361,7 @@ export default function BillingPage() {
                                     </ul>
                                     <div className="flex flex-wrap gap-2 mt-4">
                                         {plan.hrEnabled && (
-                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                                            <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full">
                                                 👥 HR
                                             </span>
                                         )}
@@ -382,7 +382,7 @@ export default function BillingPage() {
                                         className={`w-full mt-6 py-2.5 rounded-xl font-medium text-sm transition-colors ${isCurrent
                                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                             : plan.popular
-                                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                                                 : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                                             }`}
                                     >

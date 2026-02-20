@@ -73,7 +73,7 @@ export default function HRDashboardPage() {
                     label="Tổng nhân viên"
                     value={stats.totalEmployees}
                     icon="fa-users"
-                    color="bg-gradient-to-br from-blue-500 to-blue-600"
+                    color="bg-gradient-to-br from-indigo-500 to-indigo-600"
                     loading={loadingEmployees}
                 />
                 <StatCard
@@ -113,7 +113,7 @@ export default function HRDashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">
                     <i className="fa-solid fa-bolt text-yellow-500 mr-2" />
                     Thao tác nhanh
@@ -123,7 +123,7 @@ export default function HRDashboardPage() {
                         icon="fa-user-plus"
                         label="Thêm nhân viên"
                         description="Tạo hồ sơ nhân viên mới"
-                        color="bg-blue-500"
+                        color="bg-indigo-500"
                         onClick={() => navigate('/app/hr/employees')}
                     />
                     <QuickActionCard
@@ -154,7 +154,7 @@ export default function HRDashboardPage() {
             {/* Two Column Layout */}
             <div className="grid md:grid-cols-2 gap-6">
                 {/* Pending Leave Requests */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-gray-800">
                             <i className="fa-solid fa-clock text-orange-500 mr-2" />
@@ -197,9 +197,9 @@ export default function HRDashboardPage() {
                 </div>
 
                 {/* Department Distribution */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                     <h2 className="text-lg font-bold text-gray-800 mb-4">
-                        <i className="fa-solid fa-building text-blue-500 mr-2" />
+                        <i className="fa-solid fa-building text-indigo-500 mr-2" />
                         Phân bố nhân sự theo phòng ban
                     </h2>
                     <DepartmentChart employees={employeeList} />
@@ -207,7 +207,7 @@ export default function HRDashboardPage() {
             </div>
 
             {/* Employee Status Overview */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">
                     <i className="fa-solid fa-chart-pie text-purple-500 mr-2" />
                     Trạng thái nhân viên
@@ -223,7 +223,7 @@ export default function HRDashboardPage() {
                         label="Thử việc"
                         count={employeeList.filter(e => e.status === 'PROBATION').length}
                         total={employeeList.length}
-                        color="bg-blue-500"
+                        color="bg-indigo-500"
                     />
                     <StatusCard
                         label="Đang nghỉ"
@@ -294,7 +294,7 @@ function DepartmentChart({ employees }) {
 
     const entries = Object.entries(deptCounts).sort((a, b) => b[1] - a[1]);
     const total = employees.length || 1;
-    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
+    const colors = ['bg-indigo-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
 
     if (entries.length === 0) {
         return (
@@ -335,7 +335,7 @@ function StatusCard({ label, count, total, color }) {
         <div className="text-center p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
             <div className="relative w-16 h-16 mx-auto mb-2">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e5e7eb" strokeWidth="2" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--color-border)" strokeWidth="2" />
                     <circle
                         cx="18"
                         cy="18"

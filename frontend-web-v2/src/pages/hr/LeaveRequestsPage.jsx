@@ -102,12 +102,12 @@ function MyLeaveRequests() {
         {
             header: 'Từ ngày',
             accessorKey: 'startDate',
-            cell: (row) => <span className="text-gray-600">{formatDate(row.startDate)}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatDate(row.startDate)}</span>
         },
         {
             header: 'Đến ngày',
             accessorKey: 'endDate',
-            cell: (row) => <span className="text-gray-600">{formatDate(row.endDate)}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatDate(row.endDate)}</span>
         },
         {
             header: 'Lý do',
@@ -195,7 +195,7 @@ function PendingLeaveRequests() {
                     type="checkbox"
                     checked={selectedIds.size > 0 && selectedIds.size === data.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                 />
             ),
             accessorKey: 'select',
@@ -205,7 +205,7 @@ function PendingLeaveRequests() {
                     checked={selectedIds.has(row.leaveRequestId || row.id)}
                     onChange={() => handleSelectOne(row.leaveRequestId || row.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                 />
             )
         },
@@ -262,8 +262,8 @@ function PendingLeaveRequests() {
         <div className="space-y-4">
             {/* Batch Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
-                    <span className="text-blue-700 font-medium">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-indigo-700 font-medium">
                         Đã chọn {selectedIds.size} đơn
                     </span>
                     <div className="flex gap-2">
@@ -322,7 +322,7 @@ function CreateLeaveModal({ isOpen, onClose }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>
@@ -425,7 +425,7 @@ function LeaveCalendar() {
     const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
     const LEAVE_COLORS = {
-        ANNUAL: 'bg-blue-100 text-blue-700 border-blue-200',
+        ANNUAL: 'bg-indigo-100 text-indigo-700 border-indigo-200',
         SICK: 'bg-red-100 text-red-700 border-red-200',
         UNPAID: 'bg-gray-100 text-gray-700 border-gray-200',
         MATERNITY: 'bg-pink-100 text-pink-700 border-pink-200',
@@ -433,7 +433,7 @@ function LeaveCalendar() {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -474,10 +474,10 @@ function LeaveCalendar() {
                             className={`
                                 h-24 p-2 rounded-lg border transition-all overflow-hidden
                                 ${isWeekend ? 'bg-gray-50' : 'bg-white'}
-                                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : 'border-gray-100'}
+                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}
                             `}
                         >
-                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-indigo-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
                                 {item.day}
                             </div>
                             <div className="space-y-0.5">
@@ -504,20 +504,20 @@ function LeaveCalendar() {
             {/* Legend */}
             <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 rounded bg-blue-100 border border-blue-200" />
-                    <span className="text-gray-600">Nghỉ phép</span>
+                    <div className="w-4 h-4 rounded bg-indigo-100 border border-indigo-200" />
+                    <span className="text-gray-600 dark:text-gray-400">Nghỉ phép</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
-                    <span className="text-gray-600">Nghỉ ốm</span>
+                    <span className="text-gray-600 dark:text-gray-400">Nghỉ ốm</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200" />
-                    <span className="text-gray-600">Không lương</span>
+                    <span className="text-gray-600 dark:text-gray-400">Không lương</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <div className="w-4 h-4 rounded bg-pink-100 border border-pink-200" />
-                    <span className="text-gray-600">Thai sản</span>
+                    <span className="text-gray-600 dark:text-gray-400">Thai sản</span>
                 </div>
             </div>
         </div>

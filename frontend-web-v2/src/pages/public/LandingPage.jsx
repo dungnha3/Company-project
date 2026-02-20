@@ -84,19 +84,19 @@ export default function LandingPage() {
                         <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-[400px]">
                             {/* Dashboard Preview - Feature Icons */}
                             <div className="grid grid-cols-4 gap-4">
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-                                    <i className="fa-solid fa-users text-3xl text-blue-500 mb-2" />
+                                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                    <i className="fa-solid fa-users text-3xl text-indigo-500 mb-2" />
                                     <div className="text-gray-700 font-medium">Nhân viên</div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
                                     <i className="fa-solid fa-diagram-project text-3xl text-indigo-500 mb-2" />
                                     <div className="text-gray-700 font-medium">Dự án</div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
                                     <i className="fa-solid fa-list-check text-3xl text-purple-500 mb-2" />
                                     <div className="text-gray-700 font-medium">Tasks</div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
                                     <i className="fa-solid fa-clock text-3xl text-emerald-500 mb-2" />
                                     <div className="text-gray-700 font-medium">Time Tracking</div>
                                 </div>
@@ -110,7 +110,7 @@ export default function LandingPage() {
                                         <p className="text-sm">Burndown Chart</p>
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 h-48 flex items-center justify-center">
+                                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 h-48 flex items-center justify-center">
                                     <div className="text-center text-gray-400">
                                         <i className="fa-solid fa-chart-pie text-4xl mb-2 text-purple-300" />
                                         <p className="text-sm">Analytics</p>
@@ -134,7 +134,7 @@ export default function LandingPage() {
 
                     <div className="grid md:grid-cols-3 gap-8">
                         {[
-                            { icon: 'fa-users', color: 'bg-blue-500', title: 'Quản lý Nhân sự', desc: 'Hồ sơ nhân viên, phòng ban, chức vụ, hợp đồng. Quản lý toàn diện đội ngũ.' },
+                            { icon: 'fa-users', color: 'bg-indigo-500', title: 'Quản lý Nhân sự', desc: 'Hồ sơ nhân viên, phòng ban, chức vụ, hợp đồng. Quản lý toàn diện đội ngũ.' },
                             { icon: 'fa-list-check', color: 'bg-indigo-500', title: 'Quản lý Dự án', desc: 'Kanban board, Gantt chart, Sprint và Issue tracking. Theo dõi tiến độ trực quan.' },
                             { icon: 'fa-clock', color: 'bg-purple-500', title: 'Chấm công & Nghỉ phép', desc: 'GPS check-in, quản lý đơn nghỉ phép, tính công tự động.' },
                             { icon: 'fa-stopwatch', color: 'bg-cyan-500', title: 'Time Tracking', desc: 'Log thời gian làm việc cho từng task.' },
@@ -143,7 +143,7 @@ export default function LandingPage() {
                             { icon: 'fa-comments', color: 'bg-green-500', title: 'Chat', desc: 'Trò chuyện thời gian thực.' },
                             { icon: 'fa-money-bill-wave', color: 'bg-teal-500', title: 'Bảng lương tự động', desc: 'Tính lương dựa trên công, nghỉ phép. Xuất payslip PDF.' },
                         ].map((feature, idx) => (
-                            <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all group relative">
+                            <div key={idx} className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all group relative">
                                 {feature.new && (
                                     <span className="absolute top-4 right-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                                         MỚI
@@ -204,7 +204,7 @@ export default function LandingPage() {
                             { q: 'Có những tính năng nào?', a: 'Quản lý nhân viên, phòng ban, dự án Kanban/Sprint, chấm công GPS, đơn nghỉ phép, bảng lương, chat realtime, và calendar.' },
                             { q: 'Công nghệ sử dụng?', a: 'Backend: Spring Boot, SQL Server. Frontend: React, Vite, TailwindCSS. Realtime: WebSocket.' },
                         ].map((faq, idx) => (
-                            <details key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden group">
+                            <details key={idx} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 overflow-hidden group">
                                 <summary className="p-6 cursor-pointer font-semibold text-gray-900 flex justify-between items-center hover:bg-gray-50">
                                     {faq.q}
                                     <i className="fa-solid fa-chevron-down text-gray-400 group-open:rotate-180 transition-transform" />

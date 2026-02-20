@@ -129,7 +129,7 @@ export default function AdminCompaniesPage() {
         {
             header: 'Chủ sở hữu',
             accessorKey: 'ownerName',
-            cell: (row) => <span className="text-gray-600">{row.ownerName || '---'}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.ownerName || '---'}</span>
         },
         {
             header: '',
@@ -349,7 +349,7 @@ export default function AdminCompaniesPage() {
 function getPlanBadgeClass(plan) {
     const classes = {
         FREE: 'bg-gray-100 text-gray-700',
-        STARTER: 'bg-blue-100 text-blue-700',
+        STARTER: 'bg-indigo-100 text-indigo-700',
         PROFESSIONAL: 'bg-purple-100 text-purple-700',
         ENTERPRISE: 'bg-amber-100 text-amber-700',
     };

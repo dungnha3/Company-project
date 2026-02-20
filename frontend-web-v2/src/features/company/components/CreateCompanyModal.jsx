@@ -39,8 +39,8 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="modal-overlay">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div>
@@ -79,7 +79,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
                         />
                     </div>
 
-                    <div className="bg-blue-50 rounded-xl p-3 text-sm text-blue-700">
+                    <div className="bg-indigo-50 rounded-xl p-3 text-sm text-indigo-700">
                         <i className="fa-solid fa-circle-info mr-2" />
                         Bạn có thể thêm thông tin chi tiết (địa chỉ, email...) sau trong phần <strong>Cài đặt</strong>.
                     </div>

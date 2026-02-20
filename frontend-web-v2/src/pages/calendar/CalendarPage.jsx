@@ -190,7 +190,7 @@ export default function CalendarPage() {
                 </button>
                 <button
                     onClick={() => { setCurrentMonth(new Date()); setCurrentWeek(new Date()); }}
-                    className="px-3 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    className="px-3 py-2 text-sm bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
                 >
                     Hôm nay
                 </button>
@@ -240,7 +240,7 @@ export default function CalendarPage() {
 
             {/* Create Event Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
+                <div className="modal-overlay" onClick={() => setShowForm(false)}>
                     <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <h2 className="text-xl font-semibold text-white mb-5">Tạo sự kiện mới</h2>
                         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -273,7 +273,7 @@ export default function CalendarPage() {
 
             {/* Event Detail Modal */}
             {selectedEvent && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setSelectedEvent(null)}>
+                <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
                     <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                         <span className={`inline-block ${EVENT_TYPES[selectedEvent.eventType]?.color} px-3 py-1 rounded-full text-white text-xs font-medium mb-3`}>
                             {EVENT_TYPES[selectedEvent.eventType]?.icon} {EVENT_TYPES[selectedEvent.eventType]?.label}

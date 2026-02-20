@@ -7,7 +7,7 @@ import { formatDate } from '@shared/utils/formatters';
 
 const PHASE_STATUS = {
     PLANNING: { label: 'Lập kế hoạch', color: 'bg-gray-100 text-gray-700', icon: 'fa-clipboard-list' },
-    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-blue-100 text-blue-700', icon: 'fa-spinner' },
+    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700', icon: 'fa-spinner' },
     COMPLETED: { label: 'Hoàn thành', color: 'bg-green-100 text-green-700', icon: 'fa-check-circle' },
     ON_HOLD: { label: 'Tạm dừng', color: 'bg-yellow-100 text-yellow-700', icon: 'fa-pause-circle' },
 };
@@ -69,7 +69,7 @@ export default function PhaseTab({ projectId }) {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                    className="btn-primary flex items-center gap-2"
                 >
                     <i className="fa-solid fa-plus" />
                     Thêm giai đoạn
@@ -109,7 +109,7 @@ export default function PhaseTab({ projectId }) {
                                     {/* Circle indicator */}
                                     <div className={`absolute left-4 w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center text-[10px]
                                         ${phase.status === 'COMPLETED' ? 'bg-green-500 text-white' :
-                                            phase.status === 'IN_PROGRESS' ? 'bg-blue-500 text-white' :
+                                            phase.status === 'IN_PROGRESS' ? 'bg-indigo-500 text-white' :
                                                 'bg-gray-300 text-gray-600'}`}
                                     >
                                         {phase.status === 'COMPLETED' ? <i className="fa-solid fa-check" /> : index + 1}
@@ -198,7 +198,7 @@ export default function PhaseTab({ projectId }) {
                     <p className="text-sm text-gray-500 mb-4">Thêm giai đoạn để chia nhỏ dự án thành các phần dễ quản lý</p>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        className="btn-primary"
                     >
                         <i className="fa-solid fa-plus mr-2" />
                         Thêm giai đoạn đầu tiên
@@ -261,8 +261,8 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={onClose}>
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900">
                         {isEditing ? 'Chỉnh sửa giai đoạn' : 'Thêm giai đoạn mới'}
@@ -281,7 +281,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                             type="text"
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             placeholder="VD: Giai đoạn thiết kế"
                             required
                         />
@@ -305,7 +305,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                                 type="date"
                                 value={form.startDate}
                                 onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             />
                         </div>
                         <div>
@@ -314,7 +314,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                                 type="date"
                                 value={form.endDate}
                                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             />
                         </div>
                     </div>
@@ -325,7 +325,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                             <select
                                 value={form.status}
                                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             >
                                 {Object.entries(PHASE_STATUS).map(([key, val]) => (
                                     <option key={key} value={key}>{val.label}</option>
@@ -338,7 +338,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                                 type="number"
                                 value={form.orderIndex}
                                 onChange={(e) => setForm({ ...form, orderIndex: parseInt(e.target.value) || 1 })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                 min="1"
                             />
                         </div>
@@ -355,7 +355,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                         <button
                             type="submit"
                             disabled={mutation.isPending}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                            className="btn-primary disabled:opacity-50"
                         >
                             {mutation.isPending ? 'Đang lưu...' : isEditing ? 'Cập nhật' : 'Tạo giai đoạn'}
                         </button>

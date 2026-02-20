@@ -20,6 +20,16 @@ export const ENDPOINTS = {
         CHANGE_PASSWORD: '/api/auth/change-password',
     },
 
+    // Profile
+    PROFILE: {
+        UPDATE: '/api/profile',
+        UPLOAD_AVATAR: '/api/profile/avatar',
+        CHANGE_PASSWORD: '/api/profile/change-password',
+        NOTIFICATION_SETTINGS: '/api/profile/notification-settings',
+        SESSIONS: '/api/profile/sessions',
+        REVOKE_SESSION: (id) => `/api/profile/sessions/${id}`,
+    },
+
     // Admin (SaaS)
     ADMIN: {
         COMPANIES: '/api/sysadmin/companies', // Old: /api/companies/admin/all
@@ -107,10 +117,14 @@ export const ENDPOINTS = {
     // Profile
     PROFILE: {
         UPDATE: '/api/profile',
+        UPLOAD_AVATAR: '/api/profile/avatar',
         CHANGE_PASSWORD: '/api/profile/change-password',
         SET_ONLINE: '/api/profile/online',
         SET_OFFLINE: '/api/profile/offline',
         UPDATE_FCM: '/api/profile/fcm-token',
+        SESSIONS: '/api/profile/sessions',
+        REVOKE_SESSION: (sessionId) => `/api/profile/sessions/${sessionId}`,
+        NOTIFICATION_SETTINGS: '/api/profile/notification-settings',
     },
 
     // Employees
@@ -441,6 +455,28 @@ export const ENDPOINTS = {
         DELETE: (id) => `/api/projects/custom-fields/${id}`,
         // Values usually handled within Issue update or specific endpoint
         ISSUE_VALUES: (issueId) => `/api/issues/${issueId}/custom-fields`,
+    },
+
+    // Notifications
+    NOTIFICATIONS: {
+        LIST: '/api/notifications',
+        READ_ALL: '/api/notifications/read-all',
+        MARK_READ: (id) => `/api/notifications/${id}/read`,
+        DELETE: (id) => `/api/notifications/${id}`,
+        SETTINGS: '/api/notifications/settings',
+    },
+
+    // AI Assistant
+    AI: {
+        STATUS: '/api/ai/status',
+        CHAT: '/api/ai/chat',
+        CONVERSATIONS: '/api/ai/conversations',
+        CONVERSATION_BY_ID: (id) => `/api/ai/conversations/${id}`,
+        DELETE_CONVERSATION: (id) => `/api/ai/conversations/${id}`,
+        PROJECT_SUMMARY: (projectId) => `/api/ai/projects/${projectId}/summary`,
+        SUGGEST_TASKS: (projectId) => `/api/ai/projects/${projectId}/suggest-tasks`,
+        ANALYZE_PROGRESS: (projectId) => `/api/ai/projects/${projectId}/analyze`,
+        REPORT: (projectId) => `/api/ai/projects/${projectId}/report`,
     },
 
     // Integrations & SSO
