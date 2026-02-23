@@ -1,4 +1,4 @@
-﻿# Gemini ERP
+﻿# Company-project
 
 A multi-tenant SaaS platform I built for my graduation project. It handles HR management and project tracking for small-to-medium businesses.
 
