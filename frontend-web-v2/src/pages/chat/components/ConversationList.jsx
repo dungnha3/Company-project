@@ -2,13 +2,18 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate, formatTime as formatTimeUtil } from '@shared/utils/formatters';
+import { Avatar } from '@shared/components/OptimizedImage';
 
 export default function ConversationList({ selectedRoomId, onSelectRoom, onCreateRoom }) {
     const [searchQuery, setSearchQuery] = useState('');
 
     const { data: rooms = [], isLoading } = useQuery({
         queryKey: ['chat-rooms'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.CHAT.ROOMS)).data || [],
+        queryFn: async () => {
+            const response = (await apiClient.get(ENDPOINTS.CHAT.ROOMS)).data;
+            return response?.content || [];
+        },
     });
 
     const filteredRooms = rooms.filter(room =>
@@ -23,7 +28,7 @@ export default function ConversationList({ selectedRoomId, onSelectRoom, onCreat
                     <h2 className="font-bold text-lg text-gray-800">Tin nhắn</h2>
                     <button
                         onClick={onCreateRoom}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center hover:shadow-lg transition-shadow"
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center hover:shadow-lg transition-shadow"
                         title="Tạo phòng mới"
                     >
                         <i className="fa-solid fa-plus text-sm" />
@@ -38,7 +43,7 @@ export default function ConversationList({ selectedRoomId, onSelectRoom, onCreat
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Tìm kiếm..."
-                        className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-sm border-none outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-sm border-none outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all"
                     />
                 </div>
             </div>
@@ -68,7 +73,7 @@ export default function ConversationList({ selectedRoomId, onSelectRoom, onCreat
                         {!searchQuery && (
                             <button
                                 onClick={onCreateRoom}
-                                className="mt-4 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100"
+                                className="mt-4 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm hover:bg-indigo-100"
                             >
                                 <i className="fa-solid fa-plus mr-2" />
                                 Tạo phòng mới
@@ -94,7 +99,7 @@ function RoomItem({ room, isSelected, onClick }) {
     const getRoomIcon = () => {
         if (room.type === 'DIRECT') {
             return room.otherUser?.avatar ? (
-                <img src={room.otherUser.avatar} alt="" className="w-full h-full object-cover" />
+                <Avatar src={room.otherUser.avatar} name={room.otherUser?.name} className="w-full h-full" />
             ) : (
                 <span>{room.otherUser?.name?.charAt(0) || room.name?.charAt(0) || 'U'}</span>
             );
@@ -105,7 +110,7 @@ function RoomItem({ room, isSelected, onClick }) {
     const getGradient = () => {
         const gradients = [
             'from-purple-400 to-pink-500',
-            'from-blue-400 to-cyan-500',
+            'from-indigo-400 to-cyan-500',
             'from-green-400 to-emerald-500',
             'from-orange-400 to-red-500',
             'from-indigo-400 to-purple-500',
@@ -119,7 +124,7 @@ function RoomItem({ room, isSelected, onClick }) {
             className={`
                 p-3 mx-2 my-1 rounded-xl cursor-pointer transition-all
                 ${isSelected
-                    ? 'bg-blue-50 shadow-sm'
+                    ? 'bg-indigo-50 shadow-sm'
                     : 'hover:bg-gray-50'
                 }
             `}
@@ -142,7 +147,7 @@ function RoomItem({ room, isSelected, onClick }) {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
-                        <h4 className={`text-sm truncate ${isSelected ? 'font-bold text-blue-900' : 'font-semibold text-gray-700'}`}>
+                        <h4 className={`text-sm truncate ${isSelected ? 'font-bold text-indigo-900' : 'font-semibold text-gray-700'}`}>
                             {room.name || 'Phòng chat'}
                         </h4>
                         {room.lastMessageAt && (
@@ -157,7 +162,7 @@ function RoomItem({ room, isSelected, onClick }) {
                             {room.lastMessage?.content || 'Bắt đầu cuộc trò chuyện...'}
                         </p>
                         {room.unreadCount > 0 && (
-                            <span className="shrink-0 min-w-[20px] h-5 px-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            <span className="shrink-0 min-w-[20px] h-5 px-1.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                                 {room.unreadCount > 99 ? '99+' : room.unreadCount}
                             </span>
                         )}
@@ -175,10 +180,10 @@ function formatTime(dateString) {
 
     if (diff < 60000) return 'Vừa xong';
     if (diff < 3600000) return `${Math.floor(diff / 60000)}p`;
-    if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diff < 86400000) return formatTimeUtil(date);
     if (diff < 604800000) {
         const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
         return days[date.getDay()];
     }
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    return formatDate(date, { day: '2-digit', month: '2-digit' });
 }

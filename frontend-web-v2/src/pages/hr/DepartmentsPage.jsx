@@ -37,7 +37,7 @@ export default function DepartmentsPage() {
             cell: (row) => (
                 row.manager ? (
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold border border-blue-100">
+                        <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold border border-indigo-100">
                             {row.manager.fullName?.charAt(0) || 'M'}
                         </div>
                         <span className="text-sm text-gray-700">{row.manager.fullName}</span>
@@ -57,7 +57,7 @@ export default function DepartmentsPage() {
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedDept(row); setShowModal(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                     >
                         <i className="fa-solid fa-pen" />
                     </button>
@@ -127,7 +127,7 @@ function DepartmentModal({ isOpen, onClose, department }) {
     // Fetch potential managers
     const { data: employees } = useQuery({
         queryKey: ['employees-simple'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST, { params: { size: 100 } })).data.content // Fetch top 100 for dropdown
+        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data // Fetch list for dropdown
     });
 
     const mutation = useMutation({
@@ -156,13 +156,13 @@ function DepartmentModal({ isOpen, onClose, department }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">{isEdit ? 'Cập nhật phòng ban' : 'Thêm phòng ban'}</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
                     </div>
 
                     <div className="p-6 space-y-4">
@@ -179,7 +179,7 @@ function DepartmentModal({ isOpen, onClose, department }) {
                             <select name="managerId" className="input w-full" defaultValue={department?.manager?.employeeId}>
                                 <option value="">-- Chọn trưởng phòng --</option>
                                 {employees?.map(e => (
-                                    <option key={e.nhanvienId} value={e.nhanvienId}>{e.hoTen}</option>
+                                    <option key={e.employeeId} value={e.employeeId}>{e.fullName}</option>
                                 ))}
                             </select>
                         </div>

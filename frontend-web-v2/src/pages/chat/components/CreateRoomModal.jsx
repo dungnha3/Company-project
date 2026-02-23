@@ -64,13 +64,13 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+        <div className="modal-overlay" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl overflow-hidden"
+                className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md mx-4 shadow-2xl overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                             <i className="fa-solid fa-comments text-white" />
@@ -89,9 +89,9 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
 
                 {/* Progress */}
                 <div className="flex px-6 pt-4">
-                    <div className={`flex-1 h-1 rounded-full ${step >= 1 ? 'bg-blue-500' : 'bg-gray-200'}`} />
+                    <div className={`flex-1 h-1 rounded-full ${step >= 1 ? 'bg-indigo-500' : 'bg-gray-200'}`} />
                     <div className="w-2" />
-                    <div className={`flex-1 h-1 rounded-full ${step >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`} />
+                    <div className={`flex-1 h-1 rounded-full ${step >= 2 ? 'bg-indigo-500' : 'bg-gray-200'}`} />
                 </div>
 
                 {/* Content */}
@@ -105,18 +105,18 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                     <button
                                         onClick={() => setFormData({ ...formData, type: 'GROUP' })}
                                         className={`flex-1 p-4 rounded-xl border-2 transition-colors ${formData.type === 'GROUP'
-                                                ? 'border-blue-500 bg-blue-50'
+                                                ? 'border-indigo-500 bg-indigo-50'
                                                 : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
-                                        <i className="fa-solid fa-users text-2xl text-blue-500 mb-2" />
+                                        <i className="fa-solid fa-users text-2xl text-indigo-500 mb-2" />
                                         <div className="font-medium">Nhóm</div>
                                         <div className="text-xs text-gray-500">Nhiều người</div>
                                     </button>
                                     <button
                                         onClick={() => setFormData({ ...formData, type: 'DIRECT' })}
                                         className={`flex-1 p-4 rounded-xl border-2 transition-colors ${formData.type === 'DIRECT'
-                                                ? 'border-blue-500 bg-blue-50'
+                                                ? 'border-indigo-500 bg-indigo-50'
                                                 : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
@@ -135,7 +135,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="VD: Team Frontend"
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                 />
                             </div>
 
@@ -147,7 +147,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     placeholder="Mô tả ngắn về phòng chat..."
                                     rows={2}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                                 />
                             </div>
                         </div>
@@ -161,7 +161,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Tìm kiếm thành viên..."
-                                    className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                 />
                             </div>
 
@@ -173,10 +173,10 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                         return user ? (
                                             <span
                                                 key={id}
-                                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                                                className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
                                             >
                                                 {user.fullName}
-                                                <button onClick={() => toggleMember(id)} className="hover:text-blue-900">
+                                                <button onClick={() => toggleMember(id)} className="hover:text-indigo-900">
                                                     <i className="fa-solid fa-times text-xs" />
                                                 </button>
                                             </span>
@@ -197,7 +197,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                             key={user.userId}
                                             onClick={() => toggleMember(user.userId)}
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${formData.memberIds.includes(user.userId)
-                                                    ? 'bg-blue-50 border border-blue-200'
+                                                    ? 'bg-indigo-50 border border-indigo-200'
                                                     : 'hover:bg-gray-50'
                                                 }`}
                                         >
@@ -209,7 +209,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                                                 <div className="text-xs text-gray-500">{user.email}</div>
                                             </div>
                                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.memberIds.includes(user.userId)
-                                                    ? 'border-blue-500 bg-blue-500'
+                                                    ? 'border-indigo-500 bg-indigo-500'
                                                     : 'border-gray-300'
                                                 }`}>
                                                 {formData.memberIds.includes(user.userId) && (
@@ -234,7 +234,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                             <button
                                 onClick={() => setStep(2)}
                                 disabled={!formData.name.trim()}
-                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50"
                             >
                                 Tiếp tục
                             </button>
@@ -248,7 +248,7 @@ export default function CreateRoomModal({ onClose, onSuccess }) {
                             <button
                                 onClick={handleSubmit}
                                 disabled={createRoomMutation.isPending || formData.memberIds.length === 0}
-                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
+                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
                             >
                                 {createRoomMutation.isPending ? (
                                     <>

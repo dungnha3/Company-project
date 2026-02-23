@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import ProjectBoard from './tabs/ProjectBoard';
 import ProjectGantt from './tabs/ProjectGantt';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
@@ -77,12 +78,12 @@ export default function ProjectDetailPage() {
                     </div>
                     <div className="flex gap-2">
                         {showCalendar && (
-                            <Link to="/app/calendar" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Link to="/app/me/calendar" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                                 <i className="fa-solid fa-calendar mr-2" />Lịch
                             </Link>
                         )}
                         {showTimelogs && (
-                            <Link to="/app/my-timelogs" className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Link to="/app/me/timelogs" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                                 <i className="fa-solid fa-clock mr-2" />Time Logs
                             </Link>
                         )}
@@ -97,14 +98,14 @@ export default function ProjectDetailPage() {
                 <div className="flex gap-6 text-sm text-gray-600 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-2">
                         <i className="fa-regular fa-calendar text-primary" />
-                        <span>Start: {project.startDate ? new Date(project.startDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+                        <span>Start: {project.startDate ? formatDate(project.startDate) : 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-flag-checkered text-red-500" />
-                        <span>End: {project.endDate ? new Date(project.endDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+                        <span>End: {project.endDate ? formatDate(project.endDate) : 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <i className="fa-solid fa-chart-pie text-blue-500" />
+                        <i className="fa-solid fa-chart-pie text-indigo-500" />
                         <span>Status: {project.status}</span>
                     </div>
                 </div>
@@ -185,7 +186,10 @@ export default function ProjectDetailPage() {
 function OverviewTab({ project }) {
     const { data: activitiesData, isLoading } = useQuery({
         queryKey: ['project-activities', project.projectId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ACTIVITIES.BY_PROJECT(project.projectId))).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.ACTIVITIES.BY_PROJECT(project.projectId));
+            return response.data?.content || response.data || [];
+        },
     });
 
     const activities = activitiesData?.content || [];
@@ -203,7 +207,7 @@ function OverviewTab({ project }) {
                         <div className="space-y-4">
                             {activities.map(act => (
                                 <div key={act.activityId || act.id} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
                                         {act.user?.fullName?.charAt(0) || 'U'}
                                     </div>
                                     <div>
@@ -211,7 +215,7 @@ function OverviewTab({ project }) {
                                             <span className="font-medium">{act.user?.fullName}</span> {act.description}
                                         </p>
                                         <p className="text-xs text-gray-500 mt-0.5">
-                                            {new Date(act.createdAt).toLocaleString('vi-VN')}
+                                            {formatDateTime(act.createdAt)}
                                         </p>
                                     </div>
                                 </div>
@@ -226,11 +230,11 @@ function OverviewTab({ project }) {
                     <div className="space-y-4">
                         <div>
                             <div className="flex justify-between text-sm mb-1">
-                                <span className="text-gray-600">Tiến độ dự án</span>
+                                <span className="text-gray-600 dark:text-gray-400">Tiến độ dự án</span>
                                 <span className="font-bold">{project.progress || 0}%</span>
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-2">
-                                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${project.progress || 0}%` }}></div>
+                                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${project.progress || 0}%` }}></div>
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { Link } from 'react-router-dom';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function CompanyDashboardPage() {
     const { currentWorkspace } = useWorkspaceStore();
@@ -32,7 +33,7 @@ export default function CompanyDashboardPage() {
         planName: settings?.planName || currentWorkspace?.plan || 'Free',
         planExpiry: settings?.planExpiry || null,
         recentActivity: [
-            { id: 1, type: 'member_join', user: members[0]?.fullName || 'User', action: 'đã tham gia công ty', time: 'Gần đây', icon: 'fa-user-plus', color: 'green' },
+            { id: 1, type: 'member_join', user: members[0]?.fullName || 'User', action: 'đã tham gia Workspace', time: 'Gần đây', icon: 'fa-user-plus', color: 'green' },
             { id: 2, type: 'project_create', user: 'System', action: `Có ${projects.length} dự án`, time: '', icon: 'fa-folder-plus', color: 'blue' },
         ],
         quickStats: {
@@ -65,7 +66,7 @@ export default function CompanyDashboardPage() {
                         {currentWorkspace?.name || 'Company Dashboard'}
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        Tổng quan hoạt động công ty
+                        Tổng quan hoạt động Workspace
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -78,7 +79,7 @@ export default function CompanyDashboardPage() {
                     </Link>
                     <Link
                         to="/app/company/billing"
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
                     >
                         <i className="fa-solid fa-crown mr-2" />
                         Nâng cấp
@@ -90,8 +91,8 @@ export default function CompanyDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     icon="fa-users"
-                    iconBg="bg-blue-100"
-                    iconColor="text-blue-600"
+                    iconBg="bg-indigo-100"
+                    iconColor="text-indigo-600"
                     title="Thành viên"
                     value={dashboardData?.totalMembers}
                     subtitle={`${dashboardData?.activeMembers} đang hoạt động`}
@@ -123,7 +124,7 @@ export default function CompanyDashboardPage() {
                     iconColor="text-amber-600"
                     title="Gói dịch vụ"
                     value={dashboardData?.planName}
-                    subtitle={`Hết hạn: ${new Date(dashboardData?.planExpiry).toLocaleDateString('vi-VN')}`}
+                    subtitle={`Hết hạn: ${formatDate(dashboardData?.planExpiry)}`}
                     badge="Active"
                 />
             </div>
@@ -134,7 +135,7 @@ export default function CompanyDashboardPage() {
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-bold text-gray-800">Hoạt động gần đây</h2>
-                        <Link to="/app/company/activity" className="text-sm text-blue-600 hover:underline">
+                        <Link to="/app/company/activity" className="text-sm text-indigo-600 hover:underline">
                             Xem tất cả →
                         </Link>
                     </div>
@@ -162,7 +163,7 @@ export default function CompanyDashboardPage() {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                     <h2 className="text-lg font-bold text-gray-800 mb-6">Tuần này</h2>
                     <div className="space-y-4">
                         <QuickStatRow
@@ -195,7 +196,7 @@ export default function CompanyDashboardPage() {
                     <div className="mt-6 pt-6 border-t border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-500 mb-3">Truy cập nhanh</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <QuickLink to="/app/employees" icon="fa-users" label="Nhân viên" />
+                            <QuickLink to="/app/hr/employees" icon="fa-users" label="Nhân viên" />
                             <QuickLink to="/app/projects" icon="fa-folder" label="Dự án" />
                             <QuickLink to="/app/company/billing" icon="fa-credit-card" label="Thanh toán" />
                             <QuickLink to="/app/company/settings" icon="fa-cog" label="Cài đặt" />
@@ -209,7 +210,7 @@ export default function CompanyDashboardPage() {
 
 function StatCard({ icon, iconBg, iconColor, title, value, subtitle, trend, trendUp, progress, badge }) {
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+        <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
                 <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center`}>
                     <i className={`fa-solid ${icon} ${iconColor} text-lg`} />

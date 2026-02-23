@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
@@ -6,6 +6,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatCurrency, formatNumber } from '@shared/utils/formatters';
 
 export default function SalariesPage() {
     const { hasRole } = useWorkspaceStore();
@@ -17,7 +18,10 @@ export default function SalariesPage() {
 
     const { data: salaries, isLoading } = useQuery({
         queryKey: ['salaries', period],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.SALARIES.LIST, { params: { period } })).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.SALARIES.LIST, { params: { period } });
+            return response.data?.content || response.data || [];
+        },
     });
 
     const generateMutation = useMutation({
@@ -96,8 +100,8 @@ export default function SalariesPage() {
                 />
                 <StatCard
                     icon="fa-wallet"
-                    iconColor="text-blue-600"
-                    iconBg="bg-blue-100"
+                    iconColor="text-indigo-600"
+                    iconBg="bg-indigo-100"
                     label="Tổng thực lĩnh"
                     value={formatCurrency(stats.totalNet)}
                 />
@@ -148,9 +152,9 @@ export default function SalariesPage() {
     );
 }
 
-function StatCard({ icon, iconColor, iconBg, label, value }) {
+const StatCard = memo(function StatCard({ icon, iconColor, iconBg, label, value }) {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center`}>
                     <i className={`fa-solid ${icon} ${iconColor}`} />
@@ -162,9 +166,9 @@ function StatCard({ icon, iconColor, iconBg, label, value }) {
             </div>
         </div>
     );
-}
+});
 
-function TabButton({ active, onClick, icon, label }) {
+const TabButton = memo(function TabButton({ active, onClick, icon, label }) {
     return (
         <button
             onClick={onClick}
@@ -175,7 +179,7 @@ function TabButton({ active, onClick, icon, label }) {
             {label}
         </button>
     );
-}
+});
 
 function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasRole }) {
     const columns = [
@@ -184,7 +188,7 @@ function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasRole }) {
             accessorKey: 'employeeName',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-medium text-sm">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-medium text-sm">
                         {(row.employeeName || row.employee?.fullName)?.charAt(0)}
                     </div>
                     <div>
@@ -197,7 +201,7 @@ function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasRole }) {
         {
             header: 'Lương gross',
             accessorKey: 'grossSalary',
-            cell: (row) => <span className="text-gray-600">{formatCurrency(row.grossSalary || row.baseSalary)}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatCurrency(row.grossSalary || row.baseSalary)}</span>
         },
         {
             header: 'Thuế TNCN',
@@ -271,18 +275,18 @@ function SalaryCharts({ salaries, stats }) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Salary by Department */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Chi phí lương theo phòng ban</h3>
                 <div className="space-y-4">
                     {departments.map(([dept, value]) => (
                         <div key={dept}>
                             <div className="flex justify-between text-sm mb-1">
-                                <span className="text-gray-600">{dept}</span>
+                                <span className="text-gray-600 dark:text-gray-400">{dept}</span>
                                 <span className="font-medium text-gray-900">{formatCurrency(value)}</span>
                             </div>
                             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full"
                                     style={{ width: `${(value / maxDeptValue) * 100}%` }}
                                 />
                             </div>
@@ -292,7 +296,7 @@ function SalaryCharts({ salaries, stats }) {
             </div>
 
             {/* Tax Breakdown */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Cơ cấu khấu trừ</h3>
                 <div className="flex items-center justify-center gap-8">
                     {/* Donut Chart */}
@@ -301,7 +305,7 @@ function SalaryCharts({ salaries, stats }) {
                             <path
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none"
-                                stroke="#e5e7eb"
+                                stroke="var(--color-border)"
                                 strokeWidth="3"
                             />
                             <path
@@ -315,7 +319,7 @@ function SalaryCharts({ salaries, stats }) {
                             <path
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none"
-                                stroke="#8b5cf6"
+                                stroke="var(--color-secondary)"
                                 strokeWidth="3"
                                 strokeDasharray={`${(stats.totalInsurance / (stats.totalTax + stats.totalInsurance + stats.totalNet)) * 100}, 100`}
                                 strokeDashoffset={`-${(stats.totalTax / (stats.totalTax + stats.totalInsurance + stats.totalNet)) * 100}`}
@@ -350,7 +354,7 @@ function SalaryCharts({ salaries, stats }) {
             </div>
 
             {/* Payment Status */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Trạng thái thanh toán</h3>
                 <div className="flex items-center gap-8">
                     <div className="flex-1">
@@ -370,14 +374,14 @@ function SalaryCharts({ salaries, stats }) {
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-3xl font-bold text-green-600">{paidPercent.toFixed(0)}%</div>
+                        <div className="text-3xl font-bold text-green-600">{formatNumber(paidPercent, { maximumFractionDigits: 0 })}%</div>
                         <div className="text-sm text-gray-500">hoàn thành</div>
                     </div>
                 </div>
             </div>
 
             {/* Tax Rate Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Biểu thuế TNCN</h3>
                 <table className="w-full text-sm">
                     <thead>
@@ -410,14 +414,14 @@ function PayslipModal({ salary, onClose }) {
     const net = salary.netSalary || 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
+                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-600 to-indigo-600 text-white rounded-t-2xl">
                     <div>
                         <h2 className="text-lg font-bold">Phiếu lương</h2>
-                        <p className="text-blue-200 text-sm">Tháng {salary.month}/{salary.year}</p>
+                        <p className="text-indigo-200 text-sm">Tháng {salary.month}/{salary.year}</p>
                     </div>
                     <button onClick={onClose} className="text-white/70 hover:text-white">
                         <i className="fa-solid fa-xmark text-xl" />
@@ -426,7 +430,7 @@ function PayslipModal({ salary, onClose }) {
 
                 {/* Employee Info */}
                 <div className="px-6 py-4 bg-gray-50 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-lg font-bold">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-lg font-bold">
                         {(salary.employeeName || salary.employee?.fullName)?.charAt(0)}
                     </div>
                     <div>
@@ -460,7 +464,7 @@ function PayslipModal({ salary, onClose }) {
                     <button className="text-gray-500 hover:text-gray-700 flex items-center gap-2">
                         <i className="fa-solid fa-print" /> In phiếu
                     </button>
-                    <button className="text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                    <button className="text-indigo-600 hover:text-indigo-700 flex items-center gap-2">
                         <i className="fa-solid fa-download" /> Tải PDF
                     </button>
                 </div>
@@ -469,17 +473,15 @@ function PayslipModal({ salary, onClose }) {
     );
 }
 
-function PayslipRow({ label, value, positive }) {
+const PayslipRow = memo(function PayslipRow({ label, value, positive }) {
     return (
         <div className="flex justify-between items-center">
-            <span className="text-gray-600">{label}</span>
+            <span className="text-gray-600 dark:text-gray-400">{label}</span>
             <span className={`font-mono font-medium ${positive ? 'text-gray-900' : 'text-red-500'}`}>
                 {positive ? '' : '- '}{formatCurrency(value)}
             </span>
         </div>
     );
-}
+});
 
-function formatCurrency(value) {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value || 0);
-}
+

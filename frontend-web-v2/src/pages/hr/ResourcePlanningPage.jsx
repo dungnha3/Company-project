@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function ResourcePlanningPage() {
     const [viewMode, setViewMode] = useState('timeline'); // timeline, heatmap
@@ -37,7 +38,7 @@ export default function ResourcePlanningPage() {
             weekStart.setDate(weekStart.getDate() + (i * 7));
             result.push({
                 label: `W${i + 1}`,
-                date: weekStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+                date: formatDate(weekStart, { day: '2-digit', month: '2-digit' }),
                 fullDate: weekStart,
             });
         }
@@ -115,14 +116,14 @@ export default function ResourcePlanningPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4">
-                <StatCard label="Tổng nhân sự" value={stats.total} icon="fa-users" color="bg-blue-500" />
+                <StatCard label="Tổng nhân sự" value={stats.total} icon="fa-users" color="bg-indigo-500" />
                 <StatCard label="Tối ưu (70-100%)" value={stats.optimal} icon="fa-check-circle" color="bg-green-500" />
                 <StatCard label="Quá tải (>100%)" value={stats.overloaded} icon="fa-exclamation-triangle" color="bg-red-500" />
                 <StatCard label="Chưa đủ việc (<50%)" value={stats.underutilized} icon="fa-hourglass-half" color="bg-yellow-500" />
             </div>
 
             {/* Timeline/Heatmap View */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
@@ -185,7 +186,7 @@ export default function ResourcePlanningPage() {
             <div className="flex items-center justify-center gap-6 text-sm">
                 <LegendItem color="bg-gray-200" label="0%" />
                 <LegendItem color="bg-green-400" label="50-99%" />
-                <LegendItem color="bg-blue-500" label="100%" />
+                <LegendItem color="bg-indigo-500" label="100%" />
                 <LegendItem color="bg-red-500" label=">100%" />
             </div>
         </div>
@@ -194,7 +195,7 @@ export default function ResourcePlanningPage() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
                     <i className={`fa-solid ${icon} text-lg`} />
@@ -216,7 +217,7 @@ function WorkloadCell({ workload, viewMode }) {
         bgColor = 'bg-red-500';
         textColor = 'text-white';
     } else if (workload >= 80) {
-        bgColor = 'bg-blue-500';
+        bgColor = 'bg-indigo-500';
         textColor = 'text-white';
     } else if (workload >= 50) {
         bgColor = 'bg-green-400';
@@ -256,7 +257,7 @@ function LegendItem({ color, label }) {
     return (
         <div className="flex items-center gap-2">
             <div className={`w-4 h-4 rounded ${color}`} />
-            <span className="text-gray-600">{label}</span>
+            <span className="text-gray-600 dark:text-gray-400">{label}</span>
         </div>
     );
 }

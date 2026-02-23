@@ -12,8 +12,8 @@ export default function UpgradePrompt({
     const planConfig = getPlanConfig(requiredPlan);
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="modal-overlay">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
                 {/* Header with gradient */}
                 <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-6 text-white text-center">
                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -25,12 +25,12 @@ export default function UpgradePrompt({
                 {/* Body */}
                 <div className="p-6 text-center">
                     <p className="text-gray-600 mb-4">
-                        <strong className="text-gray-800">{feature}</strong> là tính năng
+                        <strong className="text-gray-800 dark:text-gray-100">{feature}</strong> là tính năng
                         yêu cầu gói <strong className="text-primary">{planConfig.name}</strong> trở lên.
                     </p>
 
                     {/* Plan benefits */}
-                    <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 mb-6 text-left">
                         <p className="text-sm font-semibold text-gray-700 mb-2">
                             Gói {planConfig.name} bao gồm:
                         </p>

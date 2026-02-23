@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function OnboardingPage() {
     const [activeTab, setActiveTab] = useState('active'); // active, templates
@@ -47,14 +48,14 @@ export default function OnboardingPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4">
-                <StatCard label="Đang onboarding" value={instances.length} icon="fa-user-clock" color="bg-blue-500" />
+                <StatCard label="Đang onboarding" value={instances.length} icon="fa-user-clock" color="bg-indigo-500" />
                 <StatCard label="Hoàn thành tháng này" value={0} icon="fa-user-check" color="bg-green-500" />
                 <StatCard label="Templates" value={templates.length} icon="fa-file-lines" color="bg-purple-500" />
                 <StatCard label="Thời gian TB" value="--" icon="fa-clock" color="bg-orange-500" />
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100">
                 <div className="border-b border-gray-100 px-6">
                     <div className="flex gap-6">
                         <button
@@ -106,7 +107,7 @@ export default function OnboardingPage() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
                     <i className={`fa-solid ${icon} text-lg`} />
@@ -125,7 +126,7 @@ function OnboardingInstanceCard({ instance }) {
     const currentStep = steps[Math.max(0, (instance.currentStep || 1) - 1)];
 
     return (
-        <div className="bg-gray-50 rounded-xl p-5 hover:bg-gray-100/80 transition-colors">
+        <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-5 hover:bg-gray-100/80 transition-colors">
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
@@ -137,7 +138,7 @@ function OnboardingInstanceCard({ instance }) {
                     </div>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${instance.progress >= 80 ? 'bg-green-100 text-green-700' :
-                    instance.progress >= 50 ? 'bg-blue-100 text-blue-700' :
+                    instance.progress >= 50 ? 'bg-indigo-100 text-indigo-700' :
                         'bg-yellow-100 text-yellow-700'
                     }`}>
                     {instance.progress}% hoàn thành
@@ -159,7 +160,7 @@ function OnboardingInstanceCard({ instance }) {
                     <span>Bước {instance.currentStep || 1}: {currentStep?.title || 'Đang cập nhật...'}</span>
                 </div>
                 <span className="text-gray-400">
-                    Bắt đầu: {instance.startDate ? new Date(instance.startDate).toLocaleDateString('vi-VN') : '--/--'}
+                    Bắt đầu: {formatDate(instance.startDate)}
                 </span>
             </div>
         </div>

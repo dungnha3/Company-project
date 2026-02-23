@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatNumber } from '@shared/utils/formatters';
 import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ReviewFormModal from './components/ReviewFormModal';
@@ -102,7 +103,7 @@ function ReviewStats() {
                 label="Tổng đánh giá"
                 value={stats.total}
                 icon="fa-clipboard-list"
-                color="bg-blue-100 text-blue-600"
+                color="bg-indigo-100 text-indigo-600"
             />
             <StatCard
                 label="Chờ duyệt"
@@ -128,7 +129,7 @@ function ReviewStats() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
@@ -185,7 +186,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             accessorKey: 'employeeName',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                         {(row.employeeName || row.employee?.fullName || 'N')?.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -199,7 +200,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             header: 'Kỳ đánh giá',
             accessorKey: 'reviewPeriod',
             cell: (row) => (
-                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm font-medium">
+                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-sm font-medium">
                     {row.reviewPeriod}
                 </span>
             )
@@ -214,7 +215,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             accessorKey: 'averageScore',
             cell: (row) => {
                 const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.leadershipScore].filter(s => s != null);
-                const avg = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
+                const avg = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
                 return <ScoreBadge score={avg} />;
             }
         },
@@ -245,7 +246,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                     {isManager && row.status === 'DRAFT' && (
                         <button
                             onClick={() => onEdit(row)}
-                            className="btn-xs bg-blue-100 text-blue-600 hover:bg-blue-200 rounded px-2 py-1"
+                            className="btn-xs bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded px-2 py-1"
                             title="Chỉnh sửa"
                         >
                             <i className="fa-solid fa-pen" />
@@ -371,7 +372,7 @@ function PendingReviewsTable({ canApprove }) {
             accessorKey: 'averageScore',
             cell: (row) => {
                 const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.leadershipScore].filter(s => s != null);
-                const avg = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
+                const avg = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
                 return <ScoreBadge score={avg} />;
             }
         },
@@ -379,7 +380,7 @@ function PendingReviewsTable({ canApprove }) {
             header: 'Người đánh giá',
             accessorKey: 'reviewer',
             cell: (row) => (
-                <span className="text-gray-600">{row.reviewer?.fullName || row.reviewerName || '-'}</span>
+                <span className="text-gray-600 dark:text-gray-400">{row.reviewer?.fullName || row.reviewerName || '-'}</span>
             )
         },
         {
@@ -413,7 +414,7 @@ function PendingReviewsTable({ canApprove }) {
 
             {/* Reject Modal */}
             {rejectingId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="modal-overlay">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setRejectingId(null)} />
                     <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -463,7 +464,7 @@ function StatusBadge({ status }) {
 
 function ReviewTypeBadge({ type }) {
     const styles = {
-        QUARTERLY: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Quý' },
+        QUARTERLY: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'Quý' },
         SEMI_ANNUAL: { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Nửa năm' },
         ANNUAL: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'Cuối năm' },
         PROBATION: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Thử việc' },
@@ -475,7 +476,7 @@ function ReviewTypeBadge({ type }) {
 function RankBadge({ rank }) {
     const styles = {
         A: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
-        B: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
+        B: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300' },
         C: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
         D: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
     };
@@ -496,7 +497,7 @@ function ScoreBadge({ score }) {
     const numScore = parseFloat(score);
     let color = 'text-gray-600';
     if (numScore >= 8) color = 'text-green-600';
-    else if (numScore >= 6) color = 'text-blue-600';
+    else if (numScore >= 6) color = 'text-indigo-600';
     else if (numScore >= 4) color = 'text-yellow-600';
     else color = 'text-red-600';
 

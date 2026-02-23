@@ -6,6 +6,13 @@
             "name": "BeApplication",
             "request": "launch",
             "mainClass": "DoAn.BE.BeApplication",
+            "projectName": ""
+        },
+        {
+            "type": "java",
+            "name": "BeApplication",
+            "request": "launch",
+            "mainClass": "DoAn.BE.BeApplication",
             "projectName": "BE"
         },
         {

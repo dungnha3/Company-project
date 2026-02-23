@@ -28,7 +28,7 @@ export default function PositionsPage() {
         {
             header: 'Hệ số lương',
             accessorKey: 'salaryCoefficient',
-            cell: (row) => <span className="font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded">{row.salaryCoefficient || row.heSoLuong}x</span>
+            cell: (row) => <span className="font-mono text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{row.salaryCoefficient || row.heSoLuong}x</span>
         },
         {
             header: 'Cấp bậc',
@@ -42,7 +42,7 @@ export default function PositionsPage() {
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedPos(row); setShowModal(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                     >
                         <i className="fa-solid fa-pen" />
                     </button>
@@ -135,13 +135,13 @@ function PositionModal({ isOpen, onClose, position }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">{isEdit ? 'Cập nhật chức vụ' : 'Thêm chức vụ'}</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
                     </div>
 
                     <div className="p-6 space-y-4">

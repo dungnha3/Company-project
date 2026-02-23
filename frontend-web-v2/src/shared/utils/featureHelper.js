@@ -170,27 +170,27 @@ export function isSectionEnabled(sectionKey, plan, settings) {
 
 /**
  * Kiểm tra menu item cụ thể có hiển thị không
- * @param {string} itemPath - Route path (e.g., '/app/attendance')
+ * @param {string} itemPath - Route path (e.g., '/app/hr/attendance')
  * @param {string} plan 
  * @param {object|null} settings 
  * @returns {boolean}
  */
-export function isMenuItemEnabled(itemPath, plan, settings) {
+export function isMenuItemEnabled(itemPath, plan, settings, permissions = null) {
     const pathFeatureMap = {
-        '/app/attendance': 'attendance',
-        '/app/leave-requests': 'leave',
-        '/app/salaries': 'salary',
-        '/app/contracts': 'contract',
-        '/app/employees': 'hr',
-        '/app/departments': 'hr',
-        '/app/positions': 'hr',
+        '/app/hr/attendance': 'attendance',
+        '/app/hr/leave-requests': 'leave',
+        '/app/hr/salaries': 'salary',
+        '/app/hr/contracts': 'contract',
+        '/app/hr/employees': 'hr',
+        '/app/hr/departments': 'hr',
+        '/app/hr/positions': 'hr',
         '/app/reviews': 'review',
         '/app/projects': 'project',
         '/app/chat': 'chat',
         '/app/storage': 'storage',
         // New competitive features
-        '/app/my-timelogs': 'timeTracking',
-        '/app/calendar': 'calendar',
+        '/app/me/timelogs': 'timeTracking',
+        '/app/me/calendar': 'calendar',
         '/app/hr-dashboard': 'hr',
         '/app/org-chart': 'orgChart',
         '/app/okr': 'okr',
@@ -202,7 +202,7 @@ export function isMenuItemEnabled(itemPath, plan, settings) {
     const feature = pathFeatureMap[itemPath];
     if (!feature) return true;
 
-    return isFeatureEnabled(plan, settings, feature);
+    return isFeatureEnabled(plan, settings, feature, permissions);
 }
 
 /**

@@ -29,7 +29,10 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
     // Fetch messages
     const { data: messages = [], isLoading } = useQuery({
         queryKey: ['chat-messages', roomId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.CHAT.MESSAGES(roomId))).data || [],
+        queryFn: async () => {
+            const response = (await apiClient.get(ENDPOINTS.CHAT.MESSAGES(roomId))).data;
+            return response?.content || [];
+        },
         enabled: !!roomId,
     });
 
@@ -64,6 +67,9 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
 
     // WebSocket subscription
     useEffect(() => {
+        // Guard: Only proceed if roomId is valid
+        if (!roomId) return;
+
         const topic = `/topic/room.${roomId}`;
         subscribe(topic, (newMessage) => {
             queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), newMessage]);
@@ -145,7 +151,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
                     {/* Search Toggle */}
                     <button
                         onClick={() => setShowSearch(!showSearch)}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${showSearch ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${showSearch ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:bg-gray-100'
                             }`}
                     >
                         <i className="fa-solid fa-search" />
@@ -181,7 +187,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Tìm trong cuộc trò chuyện..."
-                            className="w-full pl-9 pr-4 py-2 bg-white rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                            className="w-full pl-9 pr-4 py-2 bg-white rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
                             autoFocus
                         />
                         {searchQuery && (

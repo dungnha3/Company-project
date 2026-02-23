@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 // Layouts
@@ -9,6 +9,7 @@ import AuthLayout from '@layouts/AuthLayout';
 import { AuthGuard } from './guards/AuthGuard';
 import { CompanyGuard } from './guards/CompanyGuard';
 import { RoleGuard } from './guards/RoleGuard';
+import { WorkspaceTypeGuard } from './guards/WorkspaceTypeGuard';
 import SystemAdminGuard from './guards/SystemAdminGuard';
 import FeatureGuard from './guards/FeatureGuard';
 
@@ -20,6 +21,9 @@ import RegisterPage from '@pages/auth/RegisterPage';
 
 // Lazy load logout page
 const LogoutPage = lazy(() => import('@pages/auth/LogoutPage'));
+const ForgotPasswordPage = lazy(() => import('@pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@pages/auth/ResetPasswordPage'));
+
 
 // Lazy load feature pages
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
@@ -45,6 +49,11 @@ const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage')
 
 // Project pages
 const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
+
+// Personal Workspace pages
+const PersonalTasksPage = lazy(() => import('@pages/personal/PersonalTasksPage'));
+const PersonalStoragePage = lazy(() => import('@pages/personal/PersonalStoragePage'));
+const PersonalCalendarPage = lazy(() => import('@pages/personal/PersonalCalendarPage'));
 const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
 
 // New feature pages
@@ -66,6 +75,7 @@ const StoragePage = lazy(() => import('@pages/storage/StoragePage'));
 // System Admin
 const SystemAdminLayout = lazy(() => import('@layouts/SystemAdminLayout'));
 const AdminCompaniesPage = lazy(() => import('@pages/admin/AdminCompaniesPage'));
+const AdminCompanyDetailPage = lazy(() => import('@pages/admin/AdminCompanyDetailPage'));
 const AdminUsersPage = lazy(() => import('@pages/admin/AdminUsersPage'));
 const AdminAnalyticsPage = lazy(() => import('@pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = lazy(() => import('@pages/admin/AdminSettingsPage'));
@@ -91,8 +101,11 @@ const router = createBrowserRouter([
             { path: '/login', element: <LoginPage /> },
             { path: '/register', element: <RegisterPage /> },
             { path: '/logout', element: <Suspense fallback={<PageLoader />}><LogoutPage /></Suspense> },
+            { path: '/forgot-password', element: <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense> },
+            { path: '/reset-password', element: <Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense> },
         ],
     },
+
 
     // System Admin Routes
     {
@@ -112,6 +125,14 @@ const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={<PageLoader />}>
                         <AdminCompaniesPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'companies/:id',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminCompanyDetailPage />
                     </Suspense>
                 ),
             },
@@ -183,176 +204,255 @@ const router = createBrowserRouter([
                 ),
             },
 
-            // HR Module
+            // Personal Workspace (/app/me)
             {
-                path: 'employees',
-                element: (
-                    <FeatureGuard feature="hr">
-                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                path: 'me',
+                children: [
+                    {
+                        path: 'tasks',
+                        element: (
                             <Suspense fallback={<PageLoader />}>
-                                <EmployeesPage />
+                                <PersonalTasksPage />
                             </Suspense>
-                        </RoleGuard>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'employees/:id',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <EmployeeDetailPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'departments',
-                element: (
-                    <FeatureGuard feature="hr">
-                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                        ),
+                    },
+                    {
+                        path: 'issues',
+                        element: (
+                            <FeatureGuard feature="project">
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyIssuesPage />
+                                </Suspense>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'timelogs',
+                        element: (
+                            <FeatureGuard feature="timeTracking">
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyTimelogsPage />
+                                </Suspense>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'calendar',
+                        element: (
+                            <FeatureGuard feature="calendar">
+                                <Suspense fallback={<PageLoader />}>
+                                    <CalendarPage />
+                                </Suspense>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'personal-calendar',
+                        element: (
                             <Suspense fallback={<PageLoader />}>
-                                <DepartmentsPage />
+                                <PersonalCalendarPage />
                             </Suspense>
-                        </RoleGuard>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'positions',
-                element: (
-                    <FeatureGuard feature="hr">
-                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                        ),
+                    },
+                    {
+                        path: 'storage',
+                        element: (
                             <Suspense fallback={<PageLoader />}>
-                                <PositionsPage />
+                                <PersonalStoragePage />
                             </Suspense>
-                        </RoleGuard>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'attendance',
-                element: (
-                    <FeatureGuard feature="attendance">
-                        <Suspense fallback={<PageLoader />}>
-                            <AttendancePage />
-                        </Suspense>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'leave-requests',
-                element: (
-                    <FeatureGuard feature="leave">
-                        <Suspense fallback={<PageLoader />}>
-                            <LeaveRequestsPage />
-                        </Suspense>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'salaries',
-                element: (
-                    <FeatureGuard feature="salary">
-                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING']}>
+                        ),
+                    },
+                    {
+                        path: 'profile',
+                        element: (
                             <Suspense fallback={<PageLoader />}>
-                                <SalariesPage />
+                                <ProfilePage />
                             </Suspense>
-                        </RoleGuard>
-                    </FeatureGuard>
-                ),
+                        ),
+                    },
+                ]
             },
+
+            // HR Module (/app/hr)
             {
-                path: 'contracts',
+                path: 'hr',
                 element: (
-                    <FeatureGuard feature="contract">
-                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                    <WorkspaceTypeGuard types={['COMPANY']}>
+                        <Outlet />
+                    </WorkspaceTypeGuard>
+                ),
+                children: [
+                    {
+                        path: 'dashboard',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                <Suspense fallback={<PageLoader />}>
+                                    <HRDashboardPage />
+                                </Suspense>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'employees',
+                        element: (
+                            <FeatureGuard feature="hr">
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                    <Suspense fallback={<PageLoader />}>
+                                        <EmployeesPage />
+                                    </Suspense>
+                                </RoleGuard>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'employees/:id',
+                        element: (
                             <Suspense fallback={<PageLoader />}>
-                                <ContractsPage />
+                                <EmployeeDetailPage />
                             </Suspense>
-                        </RoleGuard>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'reviews',
-                element: (
-                    <FeatureGuard feature="review">
-                        <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                            <Suspense fallback={<PageLoader />}>
-                                <ReviewsPage />
-                            </Suspense>
-                        </RoleGuard>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'hr-dashboard',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <HRDashboardPage />
-                        </Suspense>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'org-chart',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                        <FeatureGuard feature="orgChart">
-                            <Suspense fallback={<PageLoader />}>
-                                <OrgChartPage />
-                            </Suspense>
-                        </FeatureGuard>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'okr',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                        <FeatureGuard feature="okr">
-                            <Suspense fallback={<PageLoader />}>
-                                <OKRPage />
-                            </Suspense>
-                        </FeatureGuard>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'skills-matrix',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                        <FeatureGuard feature="skillsMatrix">
-                            <Suspense fallback={<PageLoader />}>
-                                <SkillsMatrixPage />
-                            </Suspense>
-                        </FeatureGuard>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'onboarding',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                        <FeatureGuard feature="onboarding">
-                            <Suspense fallback={<PageLoader />}>
-                                <OnboardingPage />
-                            </Suspense>
-                        </FeatureGuard>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'resource-planning',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT']}>
-                        <FeatureGuard feature="resourcePlanning">
-                            <Suspense fallback={<PageLoader />}>
-                                <ResourcePlanningPage />
-                            </Suspense>
-                        </FeatureGuard>
-                    </RoleGuard>
-                ),
+                        ),
+                    },
+                    {
+                        path: 'departments',
+                        element: (
+                            <FeatureGuard feature="hr">
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                    <Suspense fallback={<PageLoader />}>
+                                        <DepartmentsPage />
+                                    </Suspense>
+                                </RoleGuard>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'positions',
+                        element: (
+                            <FeatureGuard feature="hr">
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                    <Suspense fallback={<PageLoader />}>
+                                        <PositionsPage />
+                                    </Suspense>
+                                </RoleGuard>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'attendance',
+                        element: (
+                            <FeatureGuard feature="attendance">
+                                <Suspense fallback={<PageLoader />}>
+                                    <AttendancePage />
+                                </Suspense>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'leave-requests',
+                        element: (
+                            <FeatureGuard feature="leave">
+                                <Suspense fallback={<PageLoader />}>
+                                    <LeaveRequestsPage />
+                                </Suspense>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'salaries',
+                        element: (
+                            <FeatureGuard feature="salary">
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR']}>
+                                    <Suspense fallback={<PageLoader />}>
+                                        <SalariesPage />
+                                    </Suspense>
+                                </RoleGuard>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'contracts',
+                        element: (
+                            <FeatureGuard feature="contract">
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                    <Suspense fallback={<PageLoader />}>
+                                        <ContractsPage />
+                                    </Suspense>
+                                </RoleGuard>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'reviews',
+                        element: (
+                            <FeatureGuard feature="review">
+                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                    <Suspense fallback={<PageLoader />}>
+                                        <ReviewsPage />
+                                    </Suspense>
+                                </RoleGuard>
+                            </FeatureGuard>
+                        ),
+                    },
+                    {
+                        path: 'org-chart',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                <FeatureGuard feature="orgChart">
+                                    <Suspense fallback={<PageLoader />}>
+                                        <OrgChartPage />
+                                    </Suspense>
+                                </FeatureGuard>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'okr',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                <FeatureGuard feature="okr">
+                                    <Suspense fallback={<PageLoader />}>
+                                        <OKRPage />
+                                    </Suspense>
+                                </FeatureGuard>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'skills-matrix',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                <FeatureGuard feature="skillsMatrix">
+                                    <Suspense fallback={<PageLoader />}>
+                                        <SkillsMatrixPage />
+                                    </Suspense>
+                                </FeatureGuard>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'onboarding',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                                <FeatureGuard feature="onboarding">
+                                    <Suspense fallback={<PageLoader />}>
+                                        <OnboardingPage />
+                                    </Suspense>
+                                </FeatureGuard>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'resource-planning',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT']}>
+                                <FeatureGuard feature="resourcePlanning">
+                                    <Suspense fallback={<PageLoader />}>
+                                        <ResourcePlanningPage />
+                                    </Suspense>
+                                </FeatureGuard>
+                            </RoleGuard>
+                        ),
+                    },
+                ]
             },
 
             // Project Module
@@ -377,16 +477,6 @@ const router = createBrowserRouter([
                 ),
             },
             {
-                path: 'my-issues',
-                element: (
-                    <FeatureGuard feature="project">
-                        <Suspense fallback={<PageLoader />}>
-                            <MyIssuesPage />
-                        </Suspense>
-                    </FeatureGuard>
-                ),
-            },
-            {
                 path: 'projects/:projectId/analytics',
                 element: (
                     <FeatureGuard feature="analytics">
@@ -397,78 +487,59 @@ const router = createBrowserRouter([
                 ),
             },
 
-            {
-                path: 'my-timelogs',
-                element: (
-                    <FeatureGuard feature="timeTracking">
-                        <Suspense fallback={<PageLoader />}>
-                            <MyTimelogsPage />
-                        </Suspense>
-                    </FeatureGuard>
-                ),
-            },
-            {
-                path: 'calendar',
-                element: (
-                    <FeatureGuard feature="calendar">
-                        <Suspense fallback={<PageLoader />}>
-                            <CalendarPage />
-                        </Suspense>
-                    </FeatureGuard>
-                ),
-            },
-
             // Company Module
             {
-                path: 'company/dashboard',
+                path: 'company',
                 element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <CompanyDashboardPage />
-                        </Suspense>
-                    </RoleGuard>
+                    <WorkspaceTypeGuard types={['COMPANY']}>
+                        <Outlet />
+                    </WorkspaceTypeGuard>
                 ),
-            },
-            {
-                path: 'company/activity',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <ActivityLogPage />
-                        </Suspense>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'company/billing',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <BillingPage />
-                        </Suspense>
-                    </RoleGuard>
-                ),
-            },
-            {
-                path: 'company/settings',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <CompanySettingsPage />
-                        </Suspense>
-                    </RoleGuard>
-                ),
+                children: [
+                    {
+                        path: 'dashboard',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                                <Suspense fallback={<PageLoader />}>
+                                    <CompanyDashboardPage />
+                                </Suspense>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'activity',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                                <Suspense fallback={<PageLoader />}>
+                                    <ActivityLogPage />
+                                </Suspense>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'billing',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                                <Suspense fallback={<PageLoader />}>
+                                    <BillingPage />
+                                </Suspense>
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'settings',
+                        element: (
+                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                                <Suspense fallback={<PageLoader />}>
+                                    <CompanySettingsPage />
+                                </Suspense>
+                            </RoleGuard>
+                        ),
+                    },
+                ]
             },
 
             // Common pages
-            {
-                path: 'profile',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <ProfilePage />
-                    </Suspense>
-                ),
-            },
             {
                 path: 'chat',
                 element: (
@@ -488,6 +559,14 @@ const router = createBrowserRouter([
                 ),
             },
             {
+                path: 'billing',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <BillingPage />
+                    </Suspense>
+                ),
+            },
+            {
                 path: 'storage',
                 element: (
                     <FeatureGuard feature="storage">
@@ -497,16 +576,10 @@ const router = createBrowserRouter([
                     </FeatureGuard>
                 ),
             },
-            // Workspace Settings
+            // Settings Redirect (Legacy/Cleanup)
             {
                 path: 'settings/workspace',
-                element: (
-                    <RoleGuard roles={['OWNER', 'ADMIN']}>
-                        <Suspense fallback={<PageLoader />}>
-                            <CompanySettingsPage />
-                        </Suspense>
-                    </RoleGuard>
-                ),
+                element: <Navigate to="/app/company/settings" replace />
             },
         ],
     },

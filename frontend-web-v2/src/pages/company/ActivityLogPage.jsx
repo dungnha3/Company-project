@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatRelativeTime, formatDateTime } from '@shared/utils/formatters';
 
 const ACTIVITY_TYPES = {
     all: { label: 'Tất cả', icon: 'fa-list' },
@@ -70,12 +71,12 @@ export default function ActivityLogPage() {
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Nhật ký hoạt động</h1>
                 <p className="text-gray-500 text-sm mt-1">
-                    Theo dõi tất cả hoạt động trong công ty
+                    Theo dõi tất cả hoạt động trong Workspace
                 </p>
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-4">
                 <div className="flex flex-wrap items-center gap-4">
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
@@ -85,7 +86,7 @@ export default function ActivityLogPage() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Tìm kiếm hoạt động..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:bg-white focus:ring-2 focus:ring-blue-100"
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
@@ -96,7 +97,7 @@ export default function ActivityLogPage() {
                                 key={key}
                                 onClick={() => setFilter(key)}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === key
-                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    ? 'bg-white text-indigo-600 shadow-sm'
                                     : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
@@ -110,7 +111,7 @@ export default function ActivityLogPage() {
                     <select
                         value={dateRange}
                         onChange={(e) => setDateRange(e.target.value)}
-                        className="px-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-100 text-sm"
+                        className="px-4 py-2.5 bg-gray-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-100 text-sm"
                     >
                         <option value="7d">7 ngày qua</option>
                         <option value="30d">30 ngày qua</option>
@@ -127,7 +128,7 @@ export default function ActivityLogPage() {
             </div>
 
             {/* Activity List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {isLoading ? (
                     <div className="p-8 text-center">
                         <i className="fa-solid fa-spinner fa-spin text-2xl text-gray-300" />
@@ -192,7 +193,7 @@ export default function ActivityLogPage() {
                                                 {formatRelativeTime(activity.time)}
                                             </p>
                                             <p className="text-xs text-gray-400">
-                                                {activity.time.toLocaleString('vi-VN')}
+                                                {formatDateTime(activity.time)}
                                             </p>
                                         </div>
                                     </td>
@@ -234,13 +235,4 @@ export default function ActivityLogPage() {
     );
 }
 
-function formatRelativeTime(date) {
-    const now = new Date();
-    const diff = now - date;
 
-    if (diff < 60000) return 'Vừa xong';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-}

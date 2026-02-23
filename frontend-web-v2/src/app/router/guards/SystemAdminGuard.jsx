@@ -1,7 +1,7 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
 
-export default function SystemAdminGuard() {
+export default function SystemAdminGuard({ children }) {
     const { user, isAuthenticated } = useAuthStore();
 
     if (!isAuthenticated) {
@@ -13,5 +13,6 @@ export default function SystemAdminGuard() {
         return <Navigate to="/app" replace />;
     }
 
-    return <Outlet />;
+    return children;
 }
+

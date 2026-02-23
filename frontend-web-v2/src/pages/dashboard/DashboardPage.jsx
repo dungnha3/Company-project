@@ -1,20 +1,226 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, memo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useAuthStore } from '@shared/stores/authStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from '@shared/components/LazyCharts';
 
 export default function DashboardPage() {
     const { user } = useAuthStore();
     const { workspaceType, currentWorkspace } = useWorkspaceStore();
+    const isPersonal = workspaceType === 'PERSONAL';
 
+    // Get current hour for greeting
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+
+    // ======= Personal Workspace Dashboard =======
+    if (isPersonal) {
+        return <PersonalDashboard user={user} greeting={greeting} />;
+    }
+
+    // ======= Company Workspace Dashboard =======
+    return <CompanyDashboard user={user} greeting={greeting} currentWorkspace={currentWorkspace} />;
+}
+
+// ==================== PERSONAL DASHBOARD ====================
+function PersonalDashboard({ user, greeting }) {
+    const queryClient = useQueryClient();
+
+    // Fetch personal tasks stats
+    const { data: stats } = useQuery({
+        queryKey: ['personal-tasks-stats'],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.PERSONAL_TASKS.STATS)).data,
+    });
+
+    // Fetch recent personal tasks
+    const { data: tasks = [] } = useQuery({
+        queryKey: ['personalTasks'],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.PERSONAL_TASKS.LIST);
+            return (res.data || []).slice(0, 5);
+        },
+    });
+
+    // Fetch pending invites
+    const { data: invites = [] } = useQuery({
+        queryKey: ['pending-invites'],
+        queryFn: async () => {
+            try {
+                return (await apiClient.get(ENDPOINTS.INVITES.PENDING)).data || [];
+            } catch {
+                return [];
+            }
+        },
+    });
+
+    const progressPercent = stats ? Math.round((stats.done / Math.max(stats.total, 1)) * 100) : 0;
+
+    return (
+        <div className="p-6 max-w-5xl mx-auto space-y-6 animate-fade-in">
+            {/* Welcome Banner - Personal Style */}
+            <div className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-2xl p-8 text-white relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute -top-20 -right-20 w-80 h-80 bg-white rounded-full" />
+                    <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white rounded-full" />
+                </div>
+
+                <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">
+                            {greeting}, {user?.fullName?.split(' ').pop() || user?.username}! 👋
+                        </h1>
+                        <p className="text-purple-100 text-lg">
+                            {formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                        <p className="text-purple-200 text-sm mt-2">
+                            Không gian cá nhân của bạn
+                        </p>
+                    </div>
+
+                    {/* Quick Actions - Personal */}
+                    <div className="flex gap-3">
+                        <QuickAction to="/app/me/tasks" icon="fa-list-check" label="Tasks" />
+                        <QuickAction to="/app/me/profile" icon="fa-user" label="Hồ sơ" />
+                        <QuickAction to="/app/notifications" icon="fa-bell" label="Thông báo" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Progress Overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Progress Ring Card */}
+                <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white">
+                    <h3 className="text-lg font-semibold mb-4">Tiến độ Tasks</h3>
+                    <div className="flex items-center gap-6">
+                        <div className="relative w-24 h-24">
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+                                <circle
+                                    cx="18" cy="18" r="16" fill="none"
+                                    stroke="white" strokeWidth="3"
+                                    strokeDasharray={`${progressPercent} 100`}
+                                    strokeLinecap="round"
+                                    className="transition-all duration-500"
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-2xl font-bold">{progressPercent}%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-4xl font-bold">{stats?.done || 0}/{stats?.total || 0}</p>
+                            <p className="text-purple-200">tasks hoàn thành</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stats */}
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Tổng quan</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <MiniStat icon="fa-circle" label="Cần làm" value={stats?.todo || 0} color="gray" />
+                        <MiniStat icon="fa-play" label="Đang làm" value={stats?.inProgress || 0} color="blue" />
+                        <MiniStat icon="fa-check" label="Hoàn thành" value={stats?.done || 0} color="green" />
+                        <MiniStat icon="fa-clock" label="Quá hạn" value={stats?.overdue || 0} color="red" />
+                    </div>
+                </div>
+
+                {/* Plan Status */}
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Gói của bạn</h3>
+                    <div className="flex items-center gap-4">
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${stats?.isPro ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gray-100'}`}>
+                            <i className={`fa-solid ${stats?.isPro ? 'fa-crown text-white' : 'fa-user text-gray-500'} text-xl`} />
+                        </div>
+                        <div>
+                            <p className="text-xl font-bold text-gray-900">{stats?.isPro ? 'PRO' : 'FREE'}</p>
+                            <p className="text-sm text-gray-500">
+                                {stats?.isPro ? 'Không giới hạn tasks' : `${stats?.total || 0}/${stats?.maxTasks || 10} tasks`}
+                            </p>
+                        </div>
+                    </div>
+                    {!stats?.isPro && stats?.atLimit && (
+                        <Link
+                            to="/app/company/billing"
+                            className="mt-4 block w-full text-center py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                        >
+                            <i className="fa-solid fa-sparkles mr-2" />
+                            Nâng cấp PRO
+                        </Link>
+                    )}
+                </div>
+            </div>
+
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Tasks */}
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Tasks gần đây</h3>
+                        <Link to="/app/me/tasks" className="text-sm text-violet-600 hover:underline">
+                            Xem tất cả →
+                        </Link>
+                    </div>
+                    <div className="space-y-3">
+                        {tasks.length > 0 ? tasks.map(task => (
+                            <PersonalTaskItem key={task.taskId} task={task} />
+                        )) : (
+                            <div className="text-center py-8 text-gray-500">
+                                <i className="fa-solid fa-inbox text-4xl text-gray-300 mb-3" />
+                                <p className="font-medium">Chưa có task nào</p>
+                                <Link to="/app/me/tasks" className="text-violet-600 text-sm hover:underline">
+                                    Tạo task đầu tiên →
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Pending Invites */}
+                <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Lời mời Workspace</h3>
+                        {invites.length > 0 && (
+                            <span className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
+                                {invites.length}
+                            </span>
+                        )}
+                    </div>
+
+                    {invites.length > 0 ? (
+                        <div className="space-y-3">
+                            {invites.slice(0, 4).map((invite) => (
+                                <InviteItem key={invite.id} invite={invite} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-400">
+                            <div className="w-12 h-12 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                                <i className="fa-regular fa-envelope-open text-xl" />
+                            </div>
+                            <p className="text-sm">Không có lời mời nào</p>
+                            <p className="text-xs mt-1">Bạn sẽ thấy lời mời tham gia Workspace ở đây</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* First Steps for Personal */}
+            <PersonalFirstSteps stats={stats} />
+        </div>
+    );
+}
+
+// ==================== COMPANY DASHBOARD ====================
+function CompanyDashboard({ user, greeting, currentWorkspace }) {
     // Fetch dashboard data
     const { data: stats } = useQuery({
         queryKey: ['dashboard-stats'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.DASHBOARD.STATS)).data,
-        enabled: workspaceType === 'COMPANY'
     });
 
     const { data: myTasks = [] } = useQuery({
@@ -27,10 +233,6 @@ export default function DashboardPage() {
         queryFn: async () => (await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST)).data?.content?.slice(0, 5) || []
     });
 
-    // Get current hour for greeting
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
-
     // Fetch attendance history for chart
     const { data: attendanceHistory = [] } = useQuery({
         queryKey: ['my-attendance-history'],
@@ -41,8 +243,8 @@ export default function DashboardPage() {
     const attendanceData = (() => {
         const today = new Date();
         const startOfWeek = new Date(today);
-        const day = startOfWeek.getDay() || 7; // Get current day number, convert Sun (0) to 7
-        if (day !== 1) startOfWeek.setHours(-24 * (day - 1)); // Set to Monday
+        const day = startOfWeek.getDay() || 7;
+        if (day !== 1) startOfWeek.setHours(-24 * (day - 1));
 
         const weekData = [];
         const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -51,13 +253,10 @@ export default function DashboardPage() {
             const current = new Date(startOfWeek);
             current.setDate(startOfWeek.getDate() + i);
             const dateStr = current.toDateString();
-
-            // Find record for this day
             const record = attendanceHistory.find(r => new Date(r.date).toDateString() === dateStr);
-
             weekData.push({
                 name: days[i],
-                workHours: record?.workHours ? Number(record.workHours.toFixed(1)) : 0,
+                workHours: record?.workHours ? Math.round(record.workHours * 10) / 10 : 0,
                 status: record?.status || 'ABSENT'
             });
         }
@@ -73,7 +272,7 @@ export default function DashboardPage() {
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute -top-20 -right-20 w-80 h-80 bg-white rounded-full" />
                     <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white rounded-full" />
@@ -84,10 +283,10 @@ export default function DashboardPage() {
                         <h1 className="text-3xl font-bold mb-2">
                             {greeting}, {user?.fullName?.split(' ').pop() || 'Admin'}! 👋
                         </h1>
-                        <p className="text-blue-100 text-lg">
-                            {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        <p className="text-indigo-100 text-lg">
+                            {formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
-                        <p className="text-blue-200 text-sm mt-2">
+                        <p className="text-indigo-200 text-sm mt-2">
                             Bạn có <span className="font-bold text-white">{myTasks.length}</span> công việc cần xử lý
                         </p>
                     </div>
@@ -96,8 +295,8 @@ export default function DashboardPage() {
                     <div className="flex gap-3">
                         <QuickAction to="/app/chat" icon="fa-comments" label="Chat" />
                         <QuickAction to="/app/projects" icon="fa-folder" label="Dự án" />
-                        <QuickAction to="/app/attendance" icon="fa-clock" label="Chấm công" />
-                        <QuickAction to="/app/leave-requests" icon="fa-calendar-check" label="Nghỉ phép" />
+                        <QuickAction to="/app/hr/attendance" icon="fa-clock" label="Chấm công" />
+                        <QuickAction to="/app/hr/leave-requests" icon="fa-calendar-check" label="Nghỉ phép" />
                     </div>
                 </div>
             </div>
@@ -142,20 +341,20 @@ export default function DashboardPage() {
                 {/* Left Column */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Attendance Chart */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-800">Chấm công của bạn</h3>
                                 <p className="text-sm text-gray-500">Giờ làm việc tuần này</p>
                             </div>
-                            <Link to="/app/attendance" className="text-sm text-blue-600 hover:underline">
+                            <Link to="/app/hr/attendance" className="text-sm text-indigo-600 hover:underline">
                                 Xem chi tiết →
                             </Link>
                         </div>
-                        <div className="h-64">
+                        <div className="h-64 w-full min-w-0">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={attendanceData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-surface)" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} />
                                     <YAxis axisLine={false} tickLine={false} />
                                     <Tooltip
@@ -169,10 +368,10 @@ export default function DashboardPage() {
                     </div>
 
                     {/* My Tasks */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-gray-800">Công việc của tôi</h3>
-                            <Link to="/app/my-issues" className="text-sm text-blue-600 hover:underline">
+                            <Link to="/app/me/issues" className="text-sm text-indigo-600 hover:underline">
                                 Xem tất cả →
                             </Link>
                         </div>
@@ -192,9 +391,9 @@ export default function DashboardPage() {
                 {/* Right Column */}
                 <div className="space-y-6">
                     {/* Project Status Pie */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Dự án theo trạng thái</h3>
-                        <div className="h-48 flex items-center justify-center">
+                        <div className="h-48 flex items-center justify-center w-full min-w-0">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -225,10 +424,10 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Notifications */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-gray-800">Thông báo</h3>
-                            <Link to="/app/notifications" className="text-sm text-blue-600 hover:underline">
+                            <Link to="/app/notifications" className="text-sm text-indigo-600 hover:underline">
                                 Xem tất cả →
                             </Link>
                         </div>
@@ -244,18 +443,15 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Pending Invites */}
-                    <PendingInvitesCard />
-
                     {/* Quick Links */}
                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
                         <h3 className="font-bold text-gray-800 mb-4">Truy cập nhanh</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <QuickLink to="/app/employees" icon="fa-users" label="Nhân viên" />
-                            <QuickLink to="/app/contracts" icon="fa-file-contract" label="Hợp đồng" />
-                            <QuickLink to="/app/salaries" icon="fa-money-bill" label="Bảng lương" />
+                            <QuickLink to="/app/hr/employees" icon="fa-users" label="Nhân viên" />
+                            <QuickLink to="/app/hr/contracts" icon="fa-file-contract" label="Hợp đồng" />
+                            <QuickLink to="/app/hr/salaries" icon="fa-money-bill" label="Bảng lương" />
                             <QuickLink to="/app/storage" icon="fa-folder" label="Tài liệu" />
-                            <QuickLink to="/app/calendar" icon="fa-calendar" label="Lịch" />
+                            <QuickLink to="/app/me/calendar" icon="fa-calendar" label="Lịch" />
                             <QuickLink to="/app/company/settings" icon="fa-cog" label="Cài đặt" />
                         </div>
                     </div>
@@ -265,7 +461,11 @@ export default function DashboardPage() {
     );
 }
 
-function QuickAction({ to, icon, label }) {
+// ==================== SHARED COMPONENTS ====================
+
+// ==================== MEMOIZED LIST COMPONENTS ====================
+
+const QuickAction = memo(function QuickAction({ to, icon, label }) {
     return (
         <Link
             to={to}
@@ -275,11 +475,31 @@ function QuickAction({ to, icon, label }) {
             <span className="text-xs font-medium">{label}</span>
         </Link>
     );
-}
+});
 
-function StatCard({ title, value, icon, color, trend, badge }) {
+const MiniStat = memo(function MiniStat({ icon, label, value, color }) {
+    const colorMap = {
+        gray: 'bg-gray-100 text-gray-600',
+        blue: 'bg-indigo-100 text-indigo-600',
+        green: 'bg-green-100 text-green-600',
+        red: 'bg-red-100 text-red-600',
+    };
+    return (
+        <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg ${colorMap[color]} flex items-center justify-center`}>
+                <i className={`fa-solid ${icon}`} />
+            </div>
+            <div>
+                <div className="text-xl font-bold text-gray-900">{value}</div>
+                <div className="text-xs text-gray-500">{label}</div>
+            </div>
+        </div>
+    );
+});
+
+const StatCard = memo(function StatCard({ title, value, icon, color, trend, badge }) {
     const colors = {
-        blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
+        blue: { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-200' },
         purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
         orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },
         green: { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200' },
@@ -311,9 +531,42 @@ function StatCard({ title, value, icon, color, trend, badge }) {
             </div>
         </div>
     );
-}
+});
 
-function TaskItem({ task }) {
+const PersonalTaskItem = memo(function PersonalTaskItem({ task }) {
+    const priorityDot = {
+        LOW: 'bg-gray-400',
+        MEDIUM: 'bg-amber-400',
+        HIGH: 'bg-red-500',
+    };
+    return (
+        <Link
+            to="/app/me/tasks"
+            className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors"
+        >
+            <div className={`w-2 h-2 rounded-full ${priorityDot[task.priority] || 'bg-gray-400'}`} />
+            <div className="flex-1 min-w-0">
+                <div className={`font-medium truncate ${task.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                    {task.title}
+                </div>
+                {task.dueDate && (
+                    <div className={`text-xs ${task.overdue ? 'text-red-600' : 'text-gray-400'}`}>
+                        <i className="fa-regular fa-calendar mr-1" />
+                        {formatDate(task.dueDate)}
+                    </div>
+                )}
+            </div>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'DONE' ? 'bg-green-100 text-green-600' :
+                task.status === 'IN_PROGRESS' ? 'bg-indigo-100 text-indigo-600' :
+                    'bg-gray-100 text-gray-600'
+                }`}>
+                {task.status === 'DONE' ? 'Xong' : task.status === 'IN_PROGRESS' ? 'Đang làm' : 'Cần làm'}
+            </span>
+        </Link>
+    );
+});
+
+const TaskItem = memo(function TaskItem({ task }) {
     const priorityColors = {
         HIGH: 'bg-red-100 text-red-600',
         MEDIUM: 'bg-orange-100 text-orange-600',
@@ -335,9 +588,9 @@ function TaskItem({ task }) {
             </span>
         </Link>
     );
-}
+});
 
-function NotificationItem({ notification }) {
+const NotificationItem = memo(function NotificationItem({ notification }) {
     const iconMap = {
         leave: 'fa-calendar-check',
         project: 'fa-folder',
@@ -348,20 +601,20 @@ function NotificationItem({ notification }) {
 
     return (
         <div className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                <i className={`fa-solid ${iconMap[notification.type] || iconMap.default} text-blue-600 text-sm`} />
+            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                <i className={`fa-solid ${iconMap[notification.type] || iconMap.default} text-indigo-600 text-sm`} />
             </div>
             <div className="min-w-0">
                 <p className="text-sm text-gray-700 line-clamp-2">{notification.message || notification.content}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                    {notification.createdAt ? new Date(notification.createdAt).toLocaleString('vi-VN') : 'Gần đây'}
+                    {notification.createdAt ? formatDateTime(notification.createdAt) : 'Gần đây'}
                 </p>
             </div>
         </div>
     );
-}
+});
 
-function QuickLink({ to, icon, label }) {
+const QuickLink = memo(function QuickLink({ to, icon, label }) {
     return (
         <Link
             to={to}
@@ -371,88 +624,144 @@ function QuickLink({ to, icon, label }) {
             {label}
         </Link>
     );
-}
+});
 
-function PendingInvitesCard() {
-    const { data: invites = [], isLoading, refetch } = useQuery({
-        queryKey: ['pending-invites'],
-        queryFn: async () => {
-            try {
-                return (await apiClient.get(ENDPOINTS.INVITES.PENDING)).data || [];
-            } catch {
-                return [];
-            }
-        },
-    });
+function InviteItem({ invite }) {
+    const queryClient = useQueryClient();
 
     const acceptMutation = useMutation({
         mutationFn: async (inviteId) => apiClient.post(ENDPOINTS.INVITES.ACCEPT, { inviteId }),
         onSuccess: () => {
-            refetch();
-            window.location.reload(); // Refresh to update workspaces
+            queryClient.invalidateQueries(['pending-invites']);
+            window.location.reload();
         }
     });
 
     const declineMutation = useMutation({
         mutationFn: async (inviteId) => apiClient.delete(ENDPOINTS.INVITES.CANCEL(inviteId)),
-        onSuccess: () => refetch()
+        onSuccess: () => queryClient.invalidateQueries(['pending-invites'])
     });
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                {invite.companyName?.[0] || 'W'}
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-800 truncate">{invite.companyName}</p>
+                <p className="text-xs text-gray-500">{invite.role || 'Member'}</p>
+            </div>
+            <div className="flex gap-1">
+                <button
+                    onClick={() => acceptMutation.mutate(invite.id)}
+                    disabled={acceptMutation.isPending}
+                    className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
+                    title="Chấp nhận"
+                    aria-label="Chấp nhận lời mời"
+                >
+                    <i className="fa-solid fa-check" />
+                </button>
+                <button
+                    onClick={() => declineMutation.mutate(invite.id)}
+                    disabled={declineMutation.isPending}
+                    className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                    title="Từ chối"
+                    aria-label="Từ chối lời mời"
+                >
+                    <i className="fa-solid fa-xmark" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function PersonalFirstSteps({ stats }) {
+    const [dismissed, setDismissed] = useState(false);
+
+    const steps = [
+        {
+            id: 'task',
+            label: 'Tạo task đầu tiên',
+            done: (stats?.total ?? 0) > 0,
+            link: '/app/me/tasks',
+            icon: 'fa-list-check'
+        },
+        {
+            id: 'complete',
+            label: 'Hoàn thành 1 task',
+            done: (stats?.done ?? 0) > 0,
+            link: '/app/me/tasks',
+            icon: 'fa-check'
+        },
+        {
+            id: 'profile',
+            label: 'Cập nhật hồ sơ',
+            done: false, // Can't check from stats
+            link: '/app/me/profile',
+            icon: 'fa-user'
+        },
+    ];
+
+    const completedCount = steps.filter(s => s.done).length;
+    const allDone = completedCount === steps.length;
+    const progress = (completedCount / steps.length) * 100;
+
+    if (dismissed || allDone) return null;
+
+    return (
+        <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl border border-violet-100 p-6">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-800">Lời mời Workspace</h3>
-                {invites.length > 0 && (
-                    <span className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
-                        {invites.length}
-                    </span>
-                )}
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+                        <i className="fa-solid fa-rocket text-violet-600" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Bắt đầu</h3>
+                        <p className="text-sm text-gray-500">{completedCount}/{steps.length} hoàn thành</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => setDismissed(true)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    title="Ẩn"
+                    aria-label="Ẩn hướng dẫn"
+                >
+                    <i className="fa-solid fa-xmark" />
+                </button>
             </div>
 
-            {isLoading ? (
-                <div className="text-center py-4">
-                    <i className="fa-solid fa-spinner fa-spin text-gray-400" />
-                </div>
-            ) : invites.length > 0 ? (
-                <div className="space-y-3">
-                    {invites.slice(0, 3).map((invite) => (
-                        <div key={invite.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                            <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                {invite.companyName?.[0] || 'W'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-800 truncate">{invite.companyName}</p>
-                                <p className="text-xs text-gray-500">{invite.role || 'Member'}</p>
-                            </div>
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={() => acceptMutation.mutate(invite.id)}
-                                    disabled={acceptMutation.isPending}
-                                    className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
-                                    title="Chấp nhận"
-                                >
-                                    <i className="fa-solid fa-check" />
-                                </button>
-                                <button
-                                    onClick={() => declineMutation.mutate(invite.id)}
-                                    disabled={declineMutation.isPending}
-                                    className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
-                                    title="Từ chối"
-                                >
-                                    <i className="fa-solid fa-xmark" />
-                                </button>
-                            </div>
+            <div className="h-2 bg-violet-100 rounded-full mb-4 overflow-hidden">
+                <div
+                    className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+
+            <div className="space-y-2">
+                {steps.map(step => (
+                    <Link
+                        key={step.id}
+                        to={step.link}
+                        className={`flex items-center gap-3 p-3 rounded-xl transition-all ${step.done
+                            ? 'bg-violet-100/50 text-violet-700'
+                            : 'bg-white hover:bg-violet-50 text-gray-700 hover:text-violet-700'
+                            }`}
+                    >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${step.done ? 'bg-violet-500 text-white' : 'bg-gray-100 text-gray-400'
+                            }`}>
+                            {step.done ? (
+                                <i className="fa-solid fa-check" />
+                            ) : (
+                                <i className={`fa-solid ${step.icon}`} />
+                            )}
                         </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-6 text-gray-400">
-                    <div className="w-12 h-12 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-3">
-                        <i className="fa-regular fa-envelope-open text-xl" />
-                    </div>
-                    <p className="text-sm">Không có lời mời</p>
-                </div>
-            )}
+                        <span className={step.done ? 'line-through' : 'font-medium'}>{step.label}</span>
+                        {!step.done && (
+                            <i className="fa-solid fa-arrow-right ml-auto text-sm text-gray-400" />
+                        )}
+                    </Link>
+                ))}
+            </div>
         </div>
     );
 }
@@ -460,7 +769,6 @@ function PendingInvitesCard() {
 function FirstStepsWidget({ stats }) {
     const [dismissed, setDismissed] = useState(false);
 
-    // Check completion based on stats
     const steps = [
         {
             id: 'project',
@@ -473,21 +781,21 @@ function FirstStepsWidget({ stats }) {
             id: 'member',
             label: 'Thêm thành viên',
             done: (stats?.totalEmployees ?? 0) > 1,
-            link: '/app/employees',
+            link: '/app/hr/employees',
             icon: 'fa-user-plus'
         },
         {
             id: 'task',
             label: 'Tạo task đầu tiên',
             done: (stats?.completedTasks ?? 0) > 0 || (stats?.totalTasks ?? 0) > 0,
-            link: '/app/my-issues',
+            link: '/app/me/issues',
             icon: 'fa-list-check'
         },
         {
             id: 'department',
             label: 'Thiết lập phòng ban',
             done: (stats?.totalDepartments ?? 0) > 0,
-            link: '/app/departments',
+            link: '/app/hr/departments',
             icon: 'fa-building'
         },
     ];
@@ -496,7 +804,6 @@ function FirstStepsWidget({ stats }) {
     const allDone = completedCount === steps.length;
     const progress = (completedCount / steps.length) * 100;
 
-    // Don't show if dismissed or all done
     if (dismissed || allDone) return null;
 
     return (
@@ -520,7 +827,6 @@ function FirstStepsWidget({ stats }) {
                 </button>
             </div>
 
-            {/* Progress bar */}
             <div className="h-2 bg-emerald-100 rounded-full mb-4 overflow-hidden">
                 <div
                     className="h-full bg-emerald-500 rounded-full transition-all duration-500"
@@ -528,7 +834,6 @@ function FirstStepsWidget({ stats }) {
                 />
             </div>
 
-            {/* Steps */}
             <div className="space-y-2">
                 {steps.map(step => (
                     <Link
@@ -557,4 +862,3 @@ function FirstStepsWidget({ stats }) {
         </div>
     );
 }
-

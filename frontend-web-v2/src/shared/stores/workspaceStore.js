@@ -159,6 +159,42 @@ export const useWorkspaceStore = create(
                 workspaceType: state.workspaceType,
                 personalWorkspace: state.personalWorkspace,
             }),
+            // [FIX] Re-fetch settings AND roles when store is rehydrated from localStorage
+            onRehydrateStorage: () => (state, error) => {
+                if (error) {
+                    console.error('Failed to rehydrate workspace store:', error);
+                    return;
+                }
+                if (state?.currentWorkspace?.type === 'COMPANY' && state?.currentWorkspace?.id) {
+                    const companyId = state.currentWorkspace.id;
+                    import('@shared/api/client').then(({ default: apiClient }) => {
+                        import('@shared/api/endpoints').then(({ ENDPOINTS }) => {
+                            // Fetch BOTH settings and workspaces to get fresh roles
+                            Promise.all([
+                                apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId)),
+                                apiClient.get(ENDPOINTS.WORKSPACES.LIST)
+                            ])
+                                .then(([settingsRes, workspacesRes]) => {
+                                    const freshCompany = workspacesRes.data.find(
+                                        w => w.type === 'COMPANY' && w.id === companyId
+                                    );
+                                    const freshRoles = freshCompany?.roles || state.currentWorkspace.roles || ['EMPLOYEE'];
+
+                                    useWorkspaceStore.setState((prev) => ({
+                                        workspaces: workspacesRes.data,
+                                        currentWorkspace: {
+                                            ...prev.currentWorkspace,
+                                            settings: settingsRes.data,
+                                            roles: freshRoles,
+                                        }
+                                    }));
+                                    console.log('✅ Re-fetched company settings and roles on rehydrate:', freshRoles);
+                                })
+                                .catch(err => console.warn('Failed to re-fetch on rehydrate:', err));
+                        });
+                    });
+                }
+            },
         }
     )
 );

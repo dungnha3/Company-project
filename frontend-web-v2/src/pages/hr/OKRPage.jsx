@@ -6,7 +6,7 @@ import { useToast } from '@app/providers/ToastProvider';
 
 const STATUS_CONFIG = {
     ON_TRACK: { label: 'Đúng tiến độ', color: 'bg-green-100 text-green-700', icon: 'fa-check-circle' },
-    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-blue-100 text-blue-700', icon: 'fa-spinner' },
+    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700', icon: 'fa-spinner' },
     AT_RISK: { label: 'Có rủi ro', color: 'bg-yellow-100 text-yellow-700', icon: 'fa-exclamation-triangle' },
     BEHIND: { label: 'Chậm tiến độ', color: 'bg-red-100 text-red-700', icon: 'fa-times-circle' },
     COMPLETED: { label: 'Hoàn thành', color: 'bg-purple-100 text-purple-700', icon: 'fa-trophy' },
@@ -131,11 +131,11 @@ export default function OKRPage() {
             </div>
 
             {/* Company OKR Overview */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold text-gray-800">
                         <i className="fa-solid fa-building text-indigo-500 mr-2" />
-                        Tiến độ công ty
+                        Tiến độ Workspace
                     </h2>
                     <span className="text-sm text-gray-500">{selectedPeriod}</span>
                 </div>
@@ -154,7 +154,7 @@ export default function OKRPage() {
             {/* Objectives List */}
             <div className={viewMode === 'grid' ? 'grid md:grid-cols-2 gap-4' : 'space-y-4'}>
                 {objectives.length === 0 && !isLoading ? (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center col-span-2">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-12 text-center col-span-2">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i className="fa-solid fa-bullseye text-2xl text-gray-400" />
                         </div>
@@ -177,7 +177,7 @@ export default function OKRPage() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
                     <i className={`fa-solid ${icon} text-lg`} />
@@ -196,7 +196,7 @@ function ObjectiveCard({ objective, viewMode }) {
     const status = STATUS_CONFIG[objective.status] || STATUS_CONFIG.IN_PROGRESS;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
             {/* Header */}
             <div
                 className="p-5 cursor-pointer"
@@ -257,7 +257,7 @@ function KeyResultItem({ keyResult }) {
     const progress = Math.min(100, Math.round(((keyResult.current || 0) / (keyResult.target || 1)) * 100));
 
     return (
-        <div className="bg-white rounded-lg p-3 border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-gray-100">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-gray-700">{keyResult.title}</span>
                 <span className="text-sm font-medium text-gray-900">
@@ -267,7 +267,7 @@ function KeyResultItem({ keyResult }) {
             <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                     className={`absolute left-0 top-0 h-full rounded-full ${progress >= 100 ? 'bg-green-500' :
-                        progress >= 70 ? 'bg-blue-500' :
+                        progress >= 70 ? 'bg-indigo-500' :
                             progress >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                         }`}
                     style={{ width: `${progress}%` }}
@@ -298,7 +298,7 @@ function OKRFormModal({ onClose, objective, onSubmit, isLoading }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
                 <form onSubmit={handleSubmit}>

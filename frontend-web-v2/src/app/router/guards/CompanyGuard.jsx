@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
 
 /**
@@ -9,11 +10,15 @@ import { useAuthStore } from '@shared/stores/authStore';
  * - Guard này chỉ kiểm tra authentication, không check company membership
  */
 export function CompanyGuard({ children }) {
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
 
-    // If not authenticated, they shouldn't be here (AuthGuard should catch this)
-    if (!isAuthenticated) {
-        return null; // Let AuthGuard handle redirect
+    // If not authenticated, let AuthGuard handle it
+    if (!isAuthenticated) return null;
+
+    // [SYSADMIN FIX] If user is System Admin, redirect to Admin Dashboard
+    // They shouldn't be in the regular User App flow
+    if (user?.isSystemAdmin) {
+        return <Navigate to="/admin" replace />;
     }
 
     // User is authenticated -> they have Personal Workspace -> allow access

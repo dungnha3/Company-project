@@ -8,6 +8,8 @@ import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
+import { formatDate, formatCurrency } from '@shared/utils/formatters';
+import { Avatar } from '@shared/components/OptimizedImage';
 import EmployeeFormModal from './components/EmployeeFormModal';
 
 export default function EmployeesPage() {
@@ -109,7 +111,7 @@ export default function EmployeesPage() {
                     type="checkbox"
                     checked={selectedIds.size > 0 && selectedIds.size === employeesData?.content?.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
             ),
             accessorKey: 'select',
@@ -119,7 +121,7 @@ export default function EmployeesPage() {
                     checked={selectedIds.has(row.nhanvienId)}
                     onChange={() => handleSelectOne(row.nhanvienId)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
             )
         },
@@ -128,13 +130,7 @@ export default function EmployeesPage() {
             accessorKey: 'hoTen',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    {row.avatarUrl ? (
-                        <img src={row.avatarUrl} alt={row.hoTen} className="w-10 h-10 rounded-full object-cover" />
-                    ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold border border-blue-100 uppercase">
-                            {row.hoTen ? row.hoTen.charAt(0) : 'U'}
-                        </div>
-                    )}
+                    <Avatar src={row.avatarUrl} name={row.hoTen} size="md" />
                     <div>
                         <div className="font-semibold text-gray-900">{row.hoTen}</div>
                         <div className="text-xs text-gray-500">{row.maNhanVien || `ID: ${row.nhanvienId}`}</div>
@@ -168,14 +164,14 @@ export default function EmployeesPage() {
             accessorKey: 'luongCoBan',
             cell: (row) => (
                 <span className="font-mono text-green-700 font-medium">
-                    {row.luongCoBan ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(row.luongCoBan) : '---'}
+                    {row.luongCoBan ? formatCurrency(row.luongCoBan) : '---'}
                 </span>
             )
         }] : []),
         {
             header: 'Ngày vào',
             accessorKey: 'ngayVaoLam',
-            cell: (row) => <span className="text-gray-600">{row.ngayVaoLam ? new Date(row.ngayVaoLam).toLocaleDateString('vi-VN') : '---'}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.ngayVaoLam ? formatDate(row.ngayVaoLam) : '---'}</span>
         },
         {
             header: 'Trạng thái',
@@ -188,7 +184,7 @@ export default function EmployeesPage() {
             cell: (row) => (
                 <div className="flex justify-end gap-2">
                     <button
-                        onClick={() => navigate(`/employees/${row.nhanvienId}`)}
+                        onClick={() => navigate(`/app/hr/employees/${row.nhanvienId}`)}
                         className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-all"
                         title="Xem chi tiết"
                     >
@@ -201,7 +197,7 @@ export default function EmployeesPage() {
                                     e.stopPropagation();
                                     setSelectedEmployeeId(row.nhanvienId);
                                 }}
-                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                                 title="Sửa"
                             >
                                 <i className="fa-solid fa-pen" />
@@ -247,7 +243,7 @@ export default function EmployeesPage() {
                     {hasRole('MANAGER_HR') && (
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
-                            filename={`NhanVien_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                            filename={`NhanVien_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
                             label="Xuất Excel"
                         />
                     )}
@@ -276,9 +272,9 @@ export default function EmployeesPage() {
 
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <span className="text-blue-700 font-medium">
+                        <span className="text-indigo-700 font-medium">
                             Đã chọn {selectedIds.size} nhân viên
                         </span>
                     </div>
@@ -286,7 +282,7 @@ export default function EmployeesPage() {
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
                             params={{ ids: Array.from(selectedIds).join(',') }}
-                            filename={`NhanVien_Selected_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                            filename={`NhanVien_Selected_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
                             label="Xuất đã chọn"
                             variant="secondary"
                         />

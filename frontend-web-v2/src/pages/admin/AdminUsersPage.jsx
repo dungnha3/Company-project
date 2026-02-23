@@ -1,243 +1,284 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import DataTable from '@shared/components/ui/DataTable';
+import { formatDateTime } from '@shared/utils/formatters';
 
 export default function AdminUsersPage() {
-    const toast = useToast();
+    const { showToast } = useToast();
     const queryClient = useQueryClient();
-    const [showResetModal, setShowResetModal] = useState(false);
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [keyword, setKeyword] = useState('');
+    const [debouncedKeyword, setDebouncedKeyword] = useState('');
+    const [filterStatus, setFilterStatus] = useState('ALL');
+    const [page, setPage] = useState(0);
+    const [pageSize] = useState(20);
 
-    // Fetch users
-    const { data: users = [], isLoading, error } = useQuery({
-        queryKey: ['admin-users'],
+    // Debounce keyword search
+    const handleKeywordChange = (value) => {
+        setKeyword(value);
+        // Simple debounce
+        clearTimeout(window.searchTimeout);
+        window.searchTimeout = setTimeout(() => {
+            setDebouncedKeyword(value);
+            setPage(0);
+        }, 300);
+    };
+
+    const { data: pagedData, isLoading } = useQuery({
+        queryKey: ['admin-users', page, pageSize, debouncedKeyword],
         queryFn: async () => {
-            const res = await apiClient.get('/api/users');
+            const params = new URLSearchParams({
+                page: page.toString(),
+                size: pageSize.toString(),
+            });
+            if (debouncedKeyword) params.append('keyword', debouncedKeyword);
+
+            const res = await apiClient.get(`${ENDPOINTS.SYSADMIN.USERS}?${params}`);
             return res.data;
         },
+        keepPreviousData: true,
     });
 
-    // Toggle user active status
-    const toggleUserMutation = useMutation({
-        mutationFn: async (userId) => {
-            return apiClient.put(`/api/users/${userId}/toggle-status`);
-        },
-        onSuccess: (res) => {
-            queryClient.invalidateQueries(['admin-users']);
-            toast.success(res.data?.message || 'Cập nhật trạng thái thành công');
-        },
-        onError: (err) => {
-            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-        },
-    });
+    const users = pagedData?.content || [];
+    const totalPages = pagedData?.totalPages || 0;
+    const totalElements = pagedData?.totalElements || 0;
 
-    // Force reset password
-    const resetPasswordMutation = useMutation({
-        mutationFn: async (userId) => {
-            return apiClient.post(`/api/users/${userId}/reset-password`);
-        },
+    const toggleStatusMutation = useMutation({
+        mutationFn: (userId) => apiClient.put(`${ENDPOINTS.SYSADMIN.USERS}/${userId}/toggle-status`),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-users']);
-            toast.success('Đã gửi email reset password');
-            setShowResetModal(false);
-            setSelectedUser(null);
+            showToast('Đã cập nhật trạng thái', 'success');
         },
-        onError: (err) => {
-            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-        },
+        onError: (err) => showToast(err.message, 'error'),
     });
 
-    // Stats
-    const totalUsers = users.length;
-    const activeUsers = users.filter(u => u.isActive !== false).length;
-    const systemAdmins = users.filter(u => u.isSystemAdmin).length;
+    const resetPasswordMutation = useMutation({
+        mutationFn: (userId) => apiClient.post(`${ENDPOINTS.SYSADMIN.USERS}/${userId}/reset-password`),
+        onSuccess: (res) => showToast(res.data.message || 'Đã gửi email reset password', 'success'),
+        onError: (err) => showToast(err.message, 'error'),
+    });
 
-    const handleToggleUser = (user) => {
-        if (!confirm(`Bạn có chắc muốn ${user.isActive !== false ? 'vô hiệu hóa' : 'kích hoạt'} user "${user.username}"?`)) return;
-        toggleUserMutation.mutate(user.userId);
+    // Client-side filter for status (server handles keyword)
+    const filteredUsers = filterStatus === 'ALL'
+        ? users
+        : users.filter(u => filterStatus === 'ACTIVE' ? u.isActive : !u.isActive);
+
+    // Stats from current page (or use totalElements for total)
+    const stats = {
+        total: totalElements,
+        active: users.filter(u => u.isActive).length,
+        sysadmins: users.filter(u => u.isSystemAdminAccount).length,
     };
 
-    const handleResetPassword = (user) => {
-        setSelectedUser(user);
-        setShowResetModal(true);
-    };
-
-    const confirmResetPassword = () => {
-        if (!selectedUser) return;
-        resetPasswordMutation.mutate(selectedUser.userId);
-    };
-
-    if (isLoading) return <div className="p-8 text-center text-gray-500">Đang tải danh sách user...</div>;
-    if (error) return <div className="p-8 text-center text-red-500">Lỗi: {error.message}</div>;
+    // Table columns
+    const columns = [
+        {
+            header: 'Người dùng',
+            accessorKey: 'username',
+            cell: (row) => (
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 font-bold border border-purple-100 uppercase">
+                        {row.username?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                        <div className="font-semibold text-gray-900 flex items-center gap-2">
+                            {row.username}
+                            {row.isSystemAdminAccount && (
+                                <span className="badge bg-purple-100 text-purple-700 text-xs">SYSADMIN</span>
+                            )}
+                        </div>
+                        <div className="text-xs text-gray-500">{row.email}</div>
+                    </div>
+                </div>
+            )
+        },
+        {
+            header: 'Workspace',
+            accessorKey: 'companyName',
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.companyName || '---'}</span>
+        },
+        {
+            header: 'Vai trò',
+            accessorKey: 'roles',
+            cell: (row) => (
+                <div className="flex gap-1 flex-wrap max-w-[200px]">
+                    {(row.roles || []).slice(0, 3).map((role) => (
+                        <span key={role} className="badge bg-gray-100 text-gray-600">{role.replace('ROLE_', '')}</span>
+                    ))}
+                    {(row.roles || []).length > 3 && (
+                        <span className="badge bg-gray-100 text-gray-400">+{row.roles.length - 3}</span>
+                    )}
+                </div>
+            )
+        },
+        {
+            header: 'Trạng thái',
+            accessorKey: 'isActive',
+            cell: (row) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (!row.isSystemAdminAccount) {
+                            toggleStatusMutation.mutate(row.userId);
+                        }
+                    }}
+                    disabled={row.isSystemAdminAccount}
+                    className={`${row.isActive ? 'badge-success' : 'badge-danger'} ${row.isSystemAdminAccount ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                >
+                    <i className={`fa-solid ${row.isActive ? 'fa-check' : 'fa-ban'} mr-1`} />
+                    {row.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                </button>
+            )
+        },
+        {
+            header: 'Lần đăng nhập cuối',
+            accessorKey: 'lastLoginAt',
+            cell: (row) => (
+                <span className="text-gray-500 text-sm">
+                    {row.lastLoginAt ? formatDateTime(row.lastLoginAt) : 'Chưa đăng nhập'}
+                </span>
+            )
+        },
+        {
+            header: '',
+            accessorKey: 'actions',
+            cell: (row) => (
+                <div className="flex justify-end gap-2">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Gửi email reset password cho ${row.email}?`)) {
+                                resetPasswordMutation.mutate(row.userId);
+                            }
+                        }}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                        title="Reset Password"
+                    >
+                        <i className="fa-solid fa-key" />
+                    </button>
+                </div>
+            )
+        }
+    ];
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Quản lý User</h1>
-                    <p className="text-gray-500 mt-1">Danh sách tất cả users trong hệ thống (metadata only)</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Quản lý người dùng</h1>
+                    <p className="text-gray-500 text-sm">Quản lý tất cả người dùng trong hệ thống</p>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                        <i className="fa-solid fa-users text-xl" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">Tổng Users</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{totalUsers}</h3>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30">
-                        <i className="fa-solid fa-user-check text-xl" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">Active</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{activeUsers}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="stat-card">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                            <i className="fa-solid fa-users text-indigo-600 text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Tổng người dùng</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        </div>
                     </div>
                 </div>
-
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/30">
-                        <i className="fa-solid fa-user-shield text-xl" />
+                <div className="stat-card">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                            <i className="fa-solid fa-user-check text-green-600 text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Đang hoạt động</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">System Admins</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{systemAdmins}</h3>
+                </div>
+                <div className="stat-card">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                            <i className="fa-solid fa-user-shield text-purple-600 text-xl" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">System Admins</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.sysadmins}</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Privacy Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                <i className="fa-solid fa-shield-halved text-blue-500 mt-0.5" />
-                <div>
-                    <p className="text-sm font-medium text-blue-800">Chính sách bảo mật</p>
-                    <p className="text-xs text-blue-600 mt-1">
-                        System Admin chỉ xem được metadata (email, trạng thái). Không thể truy cập dữ liệu riêng tư của user như chat, files, salary.
-                    </p>
+            {/* Filters */}
+            <div className="card p-4">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        {[
+                            { value: 'ALL', label: 'Tất cả' },
+                            { value: 'ACTIVE', label: 'Hoạt động' },
+                            { value: 'SUSPENDED', label: 'Tạm dừng' },
+                        ].map(s => (
+                            <button
+                                key={s.value}
+                                onClick={() => setFilterStatus(s.value)}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterStatus === s.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                {s.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <div className="relative w-full md:w-64">
+                            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                className="input pl-10"
+                                placeholder="Tìm tên, email..."
+                                value={keyword}
+                                onChange={(e) => handleKeywordChange(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Vai trò</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {users.map((user) => (
-                                <tr key={user.userId} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                                {user.username?.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-gray-900">{user.username}</p>
-                                                <p className="text-xs text-gray-400">ID: {user.userId}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
-                                        {user.email}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {user.isSystemAdmin ? (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                                <i className="fa-solid fa-crown mr-1" />
-                                                System Admin
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                                User
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isActive !== false
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
-                                            }`}>
-                                            {user.isActive !== false ? 'Active' : 'Disabled'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-1">
-                                            {!user.isSystemAdmin && (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleToggleUser(user)}
-                                                        disabled={toggleUserMutation.isPending}
-                                                        className={`p-2 rounded-lg transition-colors ${user.isActive !== false
-                                                            ? 'text-orange-500 hover:bg-orange-50'
-                                                            : 'text-green-500 hover:bg-green-50'
-                                                            }`}
-                                                        title={user.isActive !== false ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                                                    >
-                                                        <i className={`fa-solid ${user.isActive !== false ? 'fa-user-slash' : 'fa-user-check'}`} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleResetPassword(user)}
-                                                        className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
-                                                        title="Reset mật khẩu"
-                                                    >
-                                                        <i className="fa-solid fa-key" />
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <DataTable
+                loading={isLoading}
+                columns={columns}
+                data={filteredUsers}
+                totalCount={totalElements}
+            />
 
-            {/* Reset Password Modal */}
-            {showResetModal && selectedUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
-                            <h2 className="text-xl font-bold">Reset mật khẩu</h2>
-                            <p className="text-blue-100 text-sm mt-1">{selectedUser.username}</p>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-gray-600">
-                                Hệ thống sẽ gửi email chứa link reset mật khẩu đến <strong>{selectedUser.email}</strong>.
-                            </p>
-                            <div className="flex gap-3 justify-end">
-                                <button
-                                    onClick={() => setShowResetModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    onClick={confirmResetPassword}
-                                    disabled={resetPasswordMutation.isPending}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                >
-                                    {resetPasswordMutation.isPending ? 'Đang gửi...' : 'Gửi email'}
-                                </button>
-                            </div>
-                        </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white border rounded-lg">
+                    <div className="text-sm text-gray-500">
+                        Trang {page + 1} / {totalPages} ({totalElements} người dùng)
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                            disabled={page === 0}
+                            className="btn-secondary px-3 py-1 text-sm disabled:opacity-50"
+                        >
+                            <i className="fa-solid fa-chevron-left mr-1" />
+                            Trước
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                            disabled={page >= totalPages - 1}
+                            className="btn-secondary px-3 py-1 text-sm disabled:opacity-50"
+                        >
+                            Sau
+                            <i className="fa-solid fa-chevron-right ml-1" />
+                        </button>
                     </div>
                 </div>
             )}
         </div>
     );
 }
+

@@ -80,7 +80,7 @@ export default function LoginPage() {
                         </Link>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-100">
                         {/* Header */}
                         <div className="text-center mb-8">
                             <h2 className="text-2xl font-bold text-gray-900">Đăng nhập</h2>
@@ -89,8 +89,12 @@ export default function LoginPage() {
 
                         {/* Error */}
                         {error && (
-                            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                                <i className="fa-solid fa-circle-exclamation" />
+                            <div
+                                role="alert"
+                                aria-live="polite"
+                                className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2"
+                            >
+                                <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
                                 {error}
                             </div>
                         )}
@@ -98,15 +102,19 @@ export default function LoginPage() {
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                                     Tên đăng nhập
                                 </label>
                                 <div className="relative">
-                                    <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                                     <input
+                                        id="username"
+                                        name="username"
                                         type="text"
+                                        autoComplete="username"
+                                        spellCheck={false}
                                         className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                        placeholder="Nhập tên đăng nhập"
+                                        placeholder="Nhập tên đăng nhập…"
                                         value={form.username}
                                         onChange={(e) => setForm({ ...form, username: e.target.value })}
                                         required
@@ -116,7 +124,7 @@ export default function LoginPage() {
 
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                                         Mật khẩu
                                     </label>
                                     <Link to="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
@@ -124,9 +132,12 @@ export default function LoginPage() {
                                     </Link>
                                 </div>
                                 <div className="relative">
-                                    <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                                     <input
+                                        id="password"
+                                        name="password"
                                         type={showPassword ? 'text' : 'password'}
+                                        autoComplete="current-password"
                                         className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                         placeholder="••••••••"
                                         value={form.password}
@@ -137,8 +148,9 @@ export default function LoginPage() {
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                                     >
-                                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} />
+                                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>

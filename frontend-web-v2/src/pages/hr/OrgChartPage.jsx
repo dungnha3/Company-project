@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { Avatar } from '@shared/components/OptimizedImage';
 
 export default function OrgChartPage() {
     const navigate = useNavigate();
@@ -85,7 +86,7 @@ export default function OrgChartPage() {
                     label="Phòng ban"
                     value={deptList.length}
                     icon="fa-building"
-                    color="bg-blue-500"
+                    color="bg-indigo-500"
                 />
                 <StatCard
                     label="Nhân viên"
@@ -102,7 +103,7 @@ export default function OrgChartPage() {
             </div>
 
             {/* Org Chart */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 overflow-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6 overflow-auto">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <div className="loading-spinner" />
@@ -118,7 +119,7 @@ export default function OrgChartPage() {
                                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-3">
                                     <i className="fa-solid fa-building" />
                                 </div>
-                                <div className="text-lg font-bold text-gray-900">Công ty</div>
+                                <div className="text-lg font-bold text-gray-900">Workspace</div>
                                 <div className="text-sm text-gray-500">{deptList.length} Phòng ban</div>
                             </div>
 
@@ -141,7 +142,7 @@ export default function OrgChartPage() {
                                         onClick={() => setSelectedDept(
                                             selectedDept === dept.departmentId ? null : dept.departmentId
                                         )}
-                                        onViewEmployee={(empId) => navigate(`/app/employees/${empId}`)}
+                                        onViewEmployee={(empId) => navigate(`/app/hr/employees/${empId}`)}
                                     />
                                 ))}
                             </div>
@@ -153,7 +154,7 @@ export default function OrgChartPage() {
             {/* Legend */}
             <div className="flex items-center gap-6 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                    <div className="w-3 h-3 bg-indigo-500 rounded-full" />
                     <span>Phòng ban</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -171,7 +172,7 @@ export default function OrgChartPage() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
                     <i className={`fa-solid ${icon} text-lg`} />
@@ -199,10 +200,10 @@ function DepartmentNode({ department, isSelected, onClick, onViewEmployee }) {
             {/* Department Card */}
             <div
                 onClick={onClick}
-                className={`org-node org-node-dept cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'
+                className={`org-node org-node-dept cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-indigo-500 shadow-lg' : 'hover:shadow-md'
                     }`}
             >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow mb-2">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow mb-2">
                     {department.name?.charAt(0) || 'D'}
                 </div>
                 <div className="text-sm font-semibold text-gray-900 text-center">
@@ -265,7 +266,7 @@ function EmployeeCard({ employee, isManager, compact, onClick }) {
                 title={employee.fullName}
             >
                 {employee.avatarUrl ? (
-                    <img src={employee.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                    <Avatar src={employee.avatarUrl} name={employee.fullName} className="w-full h-full rounded-full" />
                 ) : (
                     <span className="text-xs font-semibold text-gray-600">{initials}</span>
                 )}
@@ -285,11 +286,11 @@ function EmployeeCard({ employee, isManager, compact, onClick }) {
                 }`}
         >
             <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold shadow mb-2 ${isManager
-                    ? 'bg-gradient-to-br from-purple-500 to-purple-600'
-                    : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                ? 'bg-gradient-to-br from-purple-500 to-purple-600'
+                : 'bg-gradient-to-br from-gray-400 to-gray-500'
                 }`}>
                 {employee.avatarUrl ? (
-                    <img src={employee.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                    <Avatar src={employee.avatarUrl} name={employee.fullName} className="w-full h-full rounded-full" />
                 ) : (
                     <span>{initials}</span>
                 )}

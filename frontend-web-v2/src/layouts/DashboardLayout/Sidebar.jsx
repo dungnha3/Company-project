@@ -14,81 +14,91 @@ const NAV_CONFIG = [
         roles: ['*'],
         items: [
             { path: '/app', icon: 'fa-house', label: 'Dashboard', exact: true },
-            { path: '/app/settings/workspace', icon: 'fa-sliders', label: 'Cài đặt Workspace', roles: ['OWNER', 'ADMIN'] },
+            { path: '/app/settings/workspace', icon: 'fa-sliders', label: 'Cài đặt Workspace', roles: ['OWNER', 'ADMIN'], companyOnly: true },
+        ],
+    },
+    {
+        key: 'personal-workspace',
+        title: 'Không gian cá nhân',
+        roles: ['*'],
+        personalOnly: true,  // Only show in Personal Workspace
+        items: [
+            { path: '/app/me/tasks', icon: 'fa-list-check', label: 'Tasks cá nhân' },
+            { path: '/app/me/storage', icon: 'fa-folder-open', label: 'Tài liệu cá nhân' },
+            { path: '/app/me/personal-calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân' },
+        ],
+    },
+    {
+        key: 'personal',
+        title: 'Cá nhân',
+        roles: ['*'],
+        items: [
+            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi', companyOnly: true },
+            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân', feature: 'calendar', companyOnly: true },
+            { path: '/app/me/timelogs', icon: 'fa-stopwatch', label: 'Chấm công (Logs)', feature: 'timeTracking', companyOnly: true },
         ],
     },
     {
         key: 'hr',
-        title: 'Nhân sự',
+        title: 'Quản trị Nhân sự',
         roles: ['OWNER', 'ADMIN', 'MANAGER_HR'],
         feature: 'hr',
-        companyOnly: true, // Ẩn trong Personal Workspace
+        companyOnly: true,
         items: [
-            { path: '/app/hr-dashboard', icon: 'fa-gauge-high', label: 'Tổng quan HR', feature: 'hr' },
-            { path: '/app/org-chart', icon: 'fa-sitemap', label: 'Sơ đồ tổ chức', feature: 'orgChart' },
-            { path: '/app/employees', icon: 'fa-users', label: 'Thành viên', feature: 'hr' },
-            { path: '/app/departments', icon: 'fa-building', label: 'Phòng ban', feature: 'hr' },
-            { path: '/app/positions', icon: 'fa-briefcase', label: 'Chức vụ', feature: 'hr' },
-            { path: '/app/contracts', icon: 'fa-file-contract', label: 'Hợp đồng', feature: 'contract' },
-            { path: '/app/reviews', icon: 'fa-star', label: 'Đánh giá', feature: 'review' },
-            { path: '/app/okr', icon: 'fa-bullseye', label: 'OKR/KPI', feature: 'okr' },
-            { path: '/app/skills-matrix', icon: 'fa-chart-bar', label: 'Ma trận kỹ năng', feature: 'skillsMatrix' },
-            { path: '/app/onboarding', icon: 'fa-user-plus', label: 'Onboarding', feature: 'onboarding' },
-            { path: '/app/resource-planning', icon: 'fa-calendar-check', label: 'Nguồn lực', feature: 'resourcePlanning' },
+            { path: '/app/hr/dashboard', icon: 'fa-gauge-high', label: 'Tổng quan HR', feature: 'hr' },
+            { path: '/app/hr/employees', icon: 'fa-users', label: 'Danh sách nhân viên', feature: 'hr' },
+            { path: '/app/hr/org-chart', icon: 'fa-sitemap', label: 'Sơ đồ tổ chức', feature: 'orgChart' },
+            { path: '/app/hr/departments', icon: 'fa-building', label: 'Phòng ban', feature: 'hr' },
+            { path: '/app/hr/positions', icon: 'fa-briefcase', label: 'Chức vụ', feature: 'hr' },
+            { path: '/app/hr/contracts', icon: 'fa-file-contract', label: 'Hợp đồng', feature: 'contract' },
+            { path: '/app/hr/reviews', icon: 'fa-star', label: 'Đánh giá', feature: 'review' },
+            { path: '/app/hr/okr', icon: 'fa-bullseye', label: 'OKR/KPI', feature: 'okr' },
+            { path: '/app/hr/skills-matrix', icon: 'fa-chart-bar', label: 'Ma trận kỹ năng', feature: 'skillsMatrix' },
+            { path: '/app/hr/onboarding', icon: 'fa-user-plus', label: 'Onboarding', feature: 'onboarding' },
+            { path: '/app/hr/resource-planning', icon: 'fa-calendar-check', label: 'Nguồn lực', feature: 'resourcePlanning' },
         ],
     },
     {
-        key: 'time',
-        title: 'Chấm công & Nghỉ phép',
+        key: 'payroll',
+        title: 'Lương & Chấm công',
         roles: ['*'],
         feature: 'hr',
-        companyOnly: true, // Ẩn trong Personal Workspace
+        companyOnly: true,
         items: [
-            { path: '/app/attendance', icon: 'fa-clock', label: 'Chấm công', feature: 'attendance' },
-            { path: '/app/leave-requests', icon: 'fa-calendar-check', label: 'Nghỉ phép', feature: 'leave' },
-        ],
-    },
-    {
-        key: 'finance',
-        title: 'Tài chính',
-        roles: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING'],
-        feature: 'hr',
-        companyOnly: true, // Ẩn trong Personal Workspace
-        items: [
-            { path: '/app/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary' },
+            { path: '/app/hr/attendance', icon: 'fa-clock', label: 'Chấm công', feature: 'attendance' },
+            { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
+            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', roles: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR'] },
         ],
     },
     {
         key: 'project',
-        title: 'Dự án',
+        title: 'Quản lý Dự án',
         roles: ['*'],
+        companyOnly: true,
         items: [
-            { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án', feature: 'project' },
-            { path: '/app/my-issues', icon: 'fa-list-check', label: 'Công việc' },
-            { path: '/app/my-timelogs', icon: 'fa-stopwatch', label: 'Time Logs', feature: 'timeTracking' },
-            { path: '/app/calendar', icon: 'fa-calendar-days', label: 'Lịch', feature: 'calendar' },
+            { path: '/app/projects', icon: 'fa-folder-open', label: 'Danh sách dự án', feature: 'project' },
         ],
     },
     {
         key: 'other',
-        title: 'Khác',
+        title: 'Tiện ích',
         roles: ['*'],
         items: [
-            { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu', feature: 'storage' },
+            { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu chung', feature: 'storage', companyOnly: true },
             { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện', feature: 'chat', companyOnly: true },
             { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },
         ],
     },
     {
         key: 'company',
-        title: 'Quản lý công ty',
+        title: 'Quản trị Workspace',
         roles: ['OWNER', 'ADMIN'],
-        companyOnly: true, // Ẩn trong Personal Workspace
+        companyOnly: true,
         items: [
             { path: '/app/company/dashboard', icon: 'fa-building', label: 'Tổng quan' },
-            { path: '/app/company/activity', icon: 'fa-history', label: 'Nhật ký' },
-            { path: '/app/company/billing', icon: 'fa-credit-card', label: 'Thanh toán' },
-            { path: '/app/company/settings', icon: 'fa-cog', label: 'Cài đặt' },
+            { path: '/app/company/activity', icon: 'fa-history', label: 'Nhật ký hoạt động' },
+            { path: '/app/billing', icon: 'fa-credit-card', label: 'Gói & Thanh toán' },
+            { path: '/app/company/settings', icon: 'fa-cog', label: 'Cài đặt chung' },
         ],
     },
 ];
@@ -118,9 +128,12 @@ const FEATURE_NAMES = {
 export default function Sidebar() {
     const { sidebarCollapsed, toggleSidebar } = useUIStore();
     const { currentWorkspace } = useWorkspaceStore();
-    const { logout } = useAuthStore();
+    const { user, logout } = useAuthStore();
     const navigate = useNavigate();
     const [upgradeModal, setUpgradeModal] = useState(null);
+
+    // [SYSADMIN FIX] If somehow here, return nothing
+    if (user?.isSystemAdmin) return null;
 
     // Get current role, plan, and settings from workspace context
     // Change: Roles is now array, but fallback to single role check if needed
@@ -136,6 +149,9 @@ export default function Sidebar() {
     const visibleSections = NAV_CONFIG.filter(section => {
         // Hide companyOnly sections in Personal Workspace
         if (section.companyOnly && isPersonalWorkspace) return false;
+
+        // Hide personalOnly sections in Company Workspace
+        if (section.personalOnly && !isPersonalWorkspace) return false;
 
         // Role check (Section level is broad, usually '*' or Admin)
         if (section.roles.includes('*')) return true;
@@ -278,8 +294,19 @@ export default function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-100">
-                <NavLink to="/app/profile" className="menu-item" title="Cài đặt">
+            <div className="p-4 border-t border-gray-100 space-y-2">
+                {/* Subtle Upgrade Prompt - Only for FREE Personal Workspace */}
+                {isPersonalWorkspace && currentPlan === 'FREE' && !sidebarCollapsed && (
+                    <NavLink
+                        to="/app/billing"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 text-violet-600 text-sm hover:from-violet-100 hover:to-purple-100 transition-all group"
+                    >
+                        <i className="fa-solid fa-sparkles text-xs group-hover:animate-pulse" />
+                        <span className="font-medium">Nâng cấp PRO</span>
+                        <i className="fa-solid fa-arrow-right text-xs ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </NavLink>
+                )}
+                <NavLink to="/app/me/profile" className="menu-item" title="Cài đặt">
                     <i className="fa-solid fa-gear" />
                     {!sidebarCollapsed && <span>Cài đặt</span>}
                 </NavLink>
@@ -295,8 +322,8 @@ export default function Sidebar() {
 
             {/* Upgrade Modal */}
             {upgradeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
+                <div className="modal-overlay">
+                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
                         <div className="p-6 text-center">
                             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
                                 <i className="fa-solid fa-crown text-2xl text-indigo-600" />
@@ -325,7 +352,7 @@ export default function Sidebar() {
                                 <button
                                     onClick={() => {
                                         closeUpgradeModal();
-                                        navigate('/app/company/billing');
+                                        navigate('/app/billing');
                                     }}
                                     className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
                                 >

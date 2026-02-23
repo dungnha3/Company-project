@@ -26,7 +26,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
@@ -55,7 +55,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
                             <div className="space-y-2">
                                 {category.items.map((shortcut, i) => (
                                     <div key={i} className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-gray-50">
-                                        <span className="text-gray-700">{shortcut.description}</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{shortcut.description}</span>
                                         <div className="flex items-center gap-1">
                                             {shortcut.keys.map((key, j) => (
                                                 <span key={j}>
@@ -123,16 +123,16 @@ export function useKeyboardShortcuts(navigate) {
                         navigate('/app/projects');
                         break;
                     case 'E':
-                        navigate('/app/employees');
+                        navigate('/app/hr/employees');
                         break;
                     case 'O':
                         navigate('/app/org-chart');
                         break;
                     case 'I':
-                        navigate('/app/my-issues');
+                        navigate('/app/me/issues');
                         break;
                     case 'C':
-                        navigate('/app/calendar');
+                        navigate('/app/me/calendar');
                         break;
                 }
                 setKeySequence([]);

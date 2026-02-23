@@ -6,6 +6,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function LeaveRequestsPage() {
     const { hasRole } = useWorkspaceStore();
@@ -86,7 +87,10 @@ export default function LeaveRequestsPage() {
 function MyLeaveRequests() {
     const { data: requests, isLoading } = useQuery({
         queryKey: ['my-leave-requests'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_REQUESTS)).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_REQUESTS);
+            return response.data?.content || response.data || [];
+        },
     });
 
     const columns = [
@@ -98,12 +102,12 @@ function MyLeaveRequests() {
         {
             header: 'Từ ngày',
             accessorKey: 'startDate',
-            cell: (row) => <span className="text-gray-600">{new Date(row.startDate).toLocaleDateString('vi-VN')}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatDate(row.startDate)}</span>
         },
         {
             header: 'Đến ngày',
             accessorKey: 'endDate',
-            cell: (row) => <span className="text-gray-600">{new Date(row.endDate).toLocaleDateString('vi-VN')}</span>
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatDate(row.endDate)}</span>
         },
         {
             header: 'Lý do',
@@ -127,7 +131,10 @@ function PendingLeaveRequests() {
 
     const { data: requests, isLoading } = useQuery({
         queryKey: ['pending-leave-requests'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } })).data,
+        queryFn: async () => {
+            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
+            return response.data?.content || response.data || [];
+        },
     });
 
     const approveMutation = useMutation({
@@ -188,7 +195,7 @@ function PendingLeaveRequests() {
                     type="checkbox"
                     checked={selectedIds.size > 0 && selectedIds.size === data.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                 />
             ),
             accessorKey: 'select',
@@ -198,7 +205,7 @@ function PendingLeaveRequests() {
                     checked={selectedIds.has(row.leaveRequestId || row.id)}
                     onChange={() => handleSelectOne(row.leaveRequestId || row.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                 />
             )
         },
@@ -220,7 +227,7 @@ function PendingLeaveRequests() {
         {
             header: 'Thời gian',
             accessorKey: 'dateRange',
-            cell: (row) => <span className="text-gray-600 text-xs">{new Date(row.startDate).toLocaleDateString()} - {new Date(row.endDate).toLocaleDateString()}</span>
+            cell: (row) => <span className="text-gray-600 text-xs">{formatDate(row.startDate)} - {formatDate(row.endDate)}</span>
         },
         {
             header: 'Trạng thái',
@@ -255,8 +262,8 @@ function PendingLeaveRequests() {
         <div className="space-y-4">
             {/* Batch Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
-                    <span className="text-blue-700 font-medium">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-indigo-700 font-medium">
                         Đã chọn {selectedIds.size} đơn
                     </span>
                     <div className="flex gap-2">
@@ -315,13 +322,13 @@ function CreateLeaveModal({ isOpen, onClose }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">Tạo đơn xin nghỉ</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
                     </div>
 
                     <div className="p-6 space-y-4">
@@ -418,7 +425,7 @@ function LeaveCalendar() {
     const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
     const LEAVE_COLORS = {
-        ANNUAL: 'bg-blue-100 text-blue-700 border-blue-200',
+        ANNUAL: 'bg-indigo-100 text-indigo-700 border-indigo-200',
         SICK: 'bg-red-100 text-red-700 border-red-200',
         UNPAID: 'bg-gray-100 text-gray-700 border-gray-200',
         MATERNITY: 'bg-pink-100 text-pink-700 border-pink-200',
@@ -426,7 +433,7 @@ function LeaveCalendar() {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -434,7 +441,7 @@ function LeaveCalendar() {
                         <i className="fa-solid fa-chevron-left text-gray-500" />
                     </button>
                     <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
-                        {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                        {formatDate(currentMonth, { month: 'long', year: 'numeric' })}
                     </h3>
                     <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
                         <i className="fa-solid fa-chevron-right text-gray-500" />
@@ -467,10 +474,10 @@ function LeaveCalendar() {
                             className={`
                                 h-24 p-2 rounded-lg border transition-all overflow-hidden
                                 ${isWeekend ? 'bg-gray-50' : 'bg-white'}
-                                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : 'border-gray-100'}
+                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}
                             `}
                         >
-                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-indigo-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
                                 {item.day}
                             </div>
                             <div className="space-y-0.5">
@@ -497,20 +504,20 @@ function LeaveCalendar() {
             {/* Legend */}
             <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 rounded bg-blue-100 border border-blue-200" />
-                    <span className="text-gray-600">Nghỉ phép</span>
+                    <div className="w-4 h-4 rounded bg-indigo-100 border border-indigo-200" />
+                    <span className="text-gray-600 dark:text-gray-400">Nghỉ phép</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
-                    <span className="text-gray-600">Nghỉ ốm</span>
+                    <span className="text-gray-600 dark:text-gray-400">Nghỉ ốm</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200" />
-                    <span className="text-gray-600">Không lương</span>
+                    <span className="text-gray-600 dark:text-gray-400">Không lương</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <div className="w-4 h-4 rounded bg-pink-100 border border-pink-200" />
-                    <span className="text-gray-600">Thai sản</span>
+                    <span className="text-gray-600 dark:text-gray-400">Thai sản</span>
                 </div>
             </div>
         </div>

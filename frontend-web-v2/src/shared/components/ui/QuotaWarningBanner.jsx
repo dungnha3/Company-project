@@ -2,17 +2,22 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 /**
  * QuotaWarningBanner - Displays upgrade prompts when quota reaches WARNING or CRITICAL level
  * 
- * Backend QuotaService returns:
+ * Backend QuotaService returns a flat object:
  * {
- *   items: [{ name, used, limit, percentage, level: 'OK'|'WARNING'|'CRITICAL' }],
- *   overallLevel: 'OK'|'WARNING'|'CRITICAL'
+ *   employees: { name, used, max, level, percentage },
+ *   projects: { ... },
+ *   storage: { ... }
  * }
  */
 export default function QuotaWarningBanner() {
+    const { workspaceType } = useWorkspaceStore();
+    const isCompanyWorkspace = workspaceType === 'COMPANY';
+
     const { data: quota } = useQuery({
         queryKey: ['quota-banner'],
         queryFn: async () => {
@@ -21,26 +26,44 @@ export default function QuotaWarningBanner() {
         },
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
         retry: 1,
+        enabled: isCompanyWorkspace, // Only fetch for Company Workspace
     });
 
-    // Don't show if no data or quota is OK
-    if (!quota || quota.overallLevel === 'OK') return null;
+    // Validate data structure
+    if (!quota || !quota.employees) return null;
 
-    const isWarning = quota.overallLevel === 'WARNING';
-    const isCritical = quota.overallLevel === 'CRITICAL';
+    // Transform to array
+    // Note: Backend returns keys like 'employees', 'projects', 'storage'
+    const items = [quota.employees, quota.projects, quota.storage].filter(Boolean);
 
-    // Find which quota items are at warning/critical level
-    const problemItems = quota.items?.filter(item =>
-        item.level === 'WARNING' || item.level === 'CRITICAL'
-    ) || [];
+    // Calculate overall level
+    let isCritical = false;
+    let isWarning = false;
+
+    for (const item of items) {
+        if (item.level === 'CRITICAL') isCritical = true;
+        if (item.level === 'WARNING') isWarning = true;
+    }
+
+    if (!isCritical && !isWarning) return null;
+
+    // Prioritize Critical over Warning
+    const currentLevel = isCritical ? 'CRITICAL' : 'WARNING';
+
+    // Find problem items
+    const problemItems = items.filter(item =>
+        (isCritical && item.level === 'CRITICAL') ||
+        (!isCritical && item.level === 'WARNING')
+    );
 
     const itemNames = problemItems.map(item => {
         const nameMap = {
-            members: 'thành viên',
+            employees: 'thành viên',
             projects: 'dự án',
             storage: 'lưu trữ',
         };
-        return nameMap[item.name] || item.name;
+        // Handle case where item.name might differ from key
+        return nameMap[item.name] || nameMap[item.key] || item.name;
     }).join(', ');
 
     return (

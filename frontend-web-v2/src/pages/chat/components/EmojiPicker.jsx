@@ -40,7 +40,7 @@ export default function EmojiPicker({ onSelect, onClose }) {
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
                             className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors ${activeCategory === cat
-                                    ? 'bg-blue-100 text-blue-600'
+                                    ? 'bg-indigo-100 text-indigo-600'
                                     : 'text-gray-500 hover:bg-gray-100'
                                 }`}
                         >

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatNumber } from '@shared/utils/formatters';
 
 export default function ReviewFormModal({ isOpen, onClose, review }) {
     const queryClient = useQueryClient();
@@ -103,17 +104,17 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
     const scores = [formData.technicalScore, formData.attitudeScore, formData.teamworkScore, formData.leadershipScore]
         .filter(s => s !== '' && s != null)
         .map(s => parseFloat(s));
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
+    const avgScore = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>
                     {/* Header */}
-                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-blue-50 to-purple-50">
+                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50">
                         <div>
                             <h2 className="text-lg font-bold text-gray-800">
                                 {isEdit ? 'Chỉnh sửa đánh giá' : 'Tạo đánh giá mới'}
@@ -179,11 +180,11 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
                         </div>
 
                         {/* Score Grid */}
-                        <div className="bg-gray-50 rounded-xl p-4 space-y-4">
+                        <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-4">
                             <div className="flex justify-between items-center">
                                 <h3 className="font-semibold text-gray-700">Điểm đánh giá (0-10)</h3>
                                 <div className="text-sm">
-                                    Điểm TB: <span className={`font-bold ${avgScore >= 8 ? 'text-green-600' : avgScore >= 6 ? 'text-blue-600' : avgScore >= 4 ? 'text-yellow-600' : 'text-gray-600'}`}>
+                                    Điểm TB: <span className={`font-bold ${avgScore >= 8 ? 'text-green-600' : avgScore >= 6 ? 'text-indigo-600' : avgScore >= 4 ? 'text-yellow-600' : 'text-gray-600'}`}>
                                         {avgScore}
                                     </span>
                                 </div>
@@ -287,7 +288,7 @@ function ScoreInput({ label, name, value, onChange, icon }) {
     let bgColor = 'bg-gray-100';
     if (numValue !== null) {
         if (numValue >= 8) bgColor = 'bg-green-100';
-        else if (numValue >= 6) bgColor = 'bg-blue-100';
+        else if (numValue >= 6) bgColor = 'bg-indigo-100';
         else if (numValue >= 4) bgColor = 'bg-yellow-100';
         else bgColor = 'bg-red-100';
     }

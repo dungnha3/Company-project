@@ -18,7 +18,7 @@ export const ROLES = {
     SYSTEM_ADMIN: { label: 'System Admin', color: 'red', icon: 'fa-user-cog' },
     MANAGER_HR: { label: 'HR Admin', color: 'purple', icon: 'fa-users' },
     MANAGER_PROJECT: { label: 'Project Lead', color: 'green', icon: 'fa-project-diagram' },
-    MANAGER_ACCOUNTING: { label: 'Accounting Lead', color: 'blue', icon: 'fa-calculator' },
+    MANAGER_ACCOUNTING: { label: 'Accounting Lead', color: 'indigo', icon: 'fa-calculator' },
     EMPLOYEE: { label: 'Member', color: 'gray', icon: 'fa-user' },
     MEMBER: { label: 'Member', color: 'gray', icon: 'fa-user' },
 };

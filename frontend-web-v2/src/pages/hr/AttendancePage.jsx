@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { formatDate, formatTime, formatNumber } from '@shared/utils/formatters';
 
 export default function AttendancePage() {
     const { hasRole } = useWorkspaceStore();
@@ -105,18 +106,18 @@ function AttendanceWidget() {
     const hasCheckedOut = !!todayRecord?.checkOutTime;
 
     return (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
-                <div className="text-base opacity-90 mb-1">{currentTime.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                <div className="text-base opacity-90 mb-1">{formatDate(currentTime, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                 <div className="text-4xl font-bold font-mono tracking-wider mb-2">
-                    {currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    {formatTime(currentTime, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
                 <div className="flex gap-4 text-sm mt-2">
                     <div className="bg-white/20 px-3 py-1 rounded backdrop-blur-sm">
-                        Check-in: <span className="font-bold">{todayRecord?.checkInTime ? new Date(todayRecord.checkInTime).toLocaleTimeString('vi-VN') : '--:--'}</span>
+                        Check-in: <span className="font-bold">{todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : '--:--'}</span>
                     </div>
                     <div className="bg-white/20 px-3 py-1 rounded backdrop-blur-sm">
-                        Check-out: <span className="font-bold">{todayRecord?.checkOutTime ? new Date(todayRecord.checkOutTime).toLocaleTimeString('vi-VN') : '--:--'}</span>
+                        Check-out: <span className="font-bold">{todayRecord?.checkOutTime ? formatTime(todayRecord.checkOutTime) : '--:--'}</span>
                     </div>
                 </div>
             </div>
@@ -129,7 +130,7 @@ function AttendanceWidget() {
                         px-6 py-3 rounded-lg font-bold shadow-lg transition-all transform hover:-translate-y-1 active:scale-95
                         ${hasCheckedIn
                             ? 'bg-gray-400 cursor-not-allowed opacity-50'
-                            : 'bg-white text-blue-600 hover:bg-blue-50'
+                            : 'bg-white text-indigo-600 hover:bg-indigo-50'
                         }
                     `}
                 >
@@ -163,22 +164,22 @@ function MyAttendanceHistory() {
         {
             header: 'Ngày',
             accessorKey: 'date',
-            cell: (row) => <span className="font-medium">{new Date(row.date).toLocaleDateString('vi-VN')}</span>
+            cell: (row) => <span className="font-medium">{formatDate(row.date)}</span>
         },
         {
             header: 'Giờ vào',
             accessorKey: 'checkInTime',
-            cell: (row) => row.checkInTime ? <span className="text-green-600 font-mono">{new Date(row.checkInTime).toLocaleTimeString('vi-VN')}</span> : '-'
+            cell: (row) => row.checkInTime ? <span className="text-green-600 font-mono">{formatTime(row.checkInTime)}</span> : '-'
         },
         {
             header: 'Giờ ra',
             accessorKey: 'checkOutTime',
-            cell: (row) => row.checkOutTime ? <span className="text-orange-600 font-mono">{new Date(row.checkOutTime).toLocaleTimeString('vi-VN')}</span> : '-'
+            cell: (row) => row.checkOutTime ? <span className="text-orange-600 font-mono">{formatTime(row.checkOutTime)}</span> : '-'
         },
         {
             header: 'Thời gian làm việc',
             accessorKey: 'workHours',
-            cell: (row) => row.workHours ? `${row.workHours.toFixed(2)}h` : '-'
+            cell: (row) => row.workHours ? `${formatNumber(row.workHours, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}h` : '-'
         },
         {
             header: 'Trạng thái',
@@ -192,7 +193,7 @@ function MyAttendanceHistory() {
     ];
 
     return (
-        <div className="bg-white rounded-xl shadow border border-gray-100 p-1">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-gray-100 p-1">
             <DataTable columns={columns} data={history || []} loading={isLoading} />
         </div>
     );
@@ -220,12 +221,12 @@ function ManagerAttendanceReport() {
         {
             header: 'Giờ vào',
             accessorKey: 'checkInTime',
-            cell: (row) => row.checkInTime ? <span className="text-green-600 font-mono">{new Date(row.checkInTime).toLocaleTimeString('vi-VN')}</span> : '-'
+            cell: (row) => row.checkInTime ? <span className="text-green-600 font-mono">{formatTime(row.checkInTime)}</span> : '-'
         },
         {
             header: 'Giờ ra',
             accessorKey: 'checkOutTime',
-            cell: (row) => row.checkOutTime ? <span className="text-orange-600 font-mono">{new Date(row.checkOutTime).toLocaleTimeString('vi-VN')}</span> : '-'
+            cell: (row) => row.checkOutTime ? <span className="text-orange-600 font-mono">{formatTime(row.checkOutTime)}</span> : '-'
         },
         {
             header: 'Trạng thái',
@@ -293,7 +294,7 @@ function AttendanceCalendar() {
     const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
             {/* Calendar Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -301,13 +302,13 @@ function AttendanceCalendar() {
                         <i className="fa-solid fa-chevron-left text-gray-500" />
                     </button>
                     <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
-                        {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                        {formatDate(currentMonth, { month: 'long', year: 'numeric' })}
                     </h3>
                     <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
                         <i className="fa-solid fa-chevron-right text-gray-500" />
                     </button>
                 </div>
-                <button onClick={goToToday} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+                <button onClick={goToToday} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium">
                     Hôm nay
                 </button>
             </div>
@@ -356,11 +357,11 @@ function AttendanceCalendar() {
                             className={`
                                 h-20 p-2 rounded-lg border transition-all
                                 ${statusColor}
-                                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : 'border-gray-100'}
+                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}
                             `}
                         >
                             <div className="flex justify-between items-start">
-                                <span className={`text-sm font-medium ${isToday ? 'text-blue-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <span className={`text-sm font-medium ${isToday ? 'text-indigo-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
                                     {item.day}
                                 </span>
                                 {statusIcon}
@@ -370,13 +371,13 @@ function AttendanceCalendar() {
                                     {record.checkInTime && (
                                         <div className="truncate">
                                             <i className="fa-solid fa-arrow-right-to-bracket text-green-500 mr-1" />
-                                            {new Date(record.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                            {formatTime(record.checkInTime)}
                                         </div>
                                     )}
                                     {record.checkOutTime && (
                                         <div className="truncate">
                                             <i className="fa-solid fa-arrow-right-from-bracket text-orange-500 mr-1" />
-                                            {new Date(record.checkOutTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                            {formatTime(record.checkOutTime)}
                                         </div>
                                     )}
                                 </div>

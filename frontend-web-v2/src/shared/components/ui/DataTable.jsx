@@ -38,7 +38,7 @@ export default function DataTable({
         <div className="w-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs border-b border-gray-100">
+                    <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-500 font-semibold uppercase text-xs border-b border-gray-100">
                         <tr>
                             {columns.map((column, idx) => (
                                 <th key={idx} className="px-6 py-4 whitespace-nowrap">

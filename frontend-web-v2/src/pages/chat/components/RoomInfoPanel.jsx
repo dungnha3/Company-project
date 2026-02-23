@@ -138,7 +138,7 @@ export default function RoomInfoPanel({ roomId, onClose }) {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 transition-colors ${activeTab === tab.id
-                                        ? 'text-blue-600 border-b-2 border-blue-600'
+                                        ? 'text-indigo-600 border-b-2 border-indigo-600'
                                         : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
@@ -156,9 +156,9 @@ export default function RoomInfoPanel({ roomId, onClose }) {
                                 {isOwner && (
                                     <button
                                         onClick={() => setShowAddMember(true)}
-                                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-blue-600 mb-2"
+                                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-indigo-600 mb-2"
                                     >
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
                                             <i className="fa-solid fa-plus" />
                                         </div>
                                         <span className="font-medium">Thêm thành viên</span>
@@ -184,7 +184,7 @@ export default function RoomInfoPanel({ roomId, onClose }) {
                                                 <div className="font-medium text-sm text-gray-700 truncate">
                                                     {member.fullName}
                                                     {member.userId === room?.createdBy && (
-                                                        <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] rounded-full">
+                                                        <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-600 text-[10px] rounded-full">
                                                             Chủ phòng
                                                         </span>
                                                     )}

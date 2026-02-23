@@ -6,29 +6,34 @@ export default function SystemAdminLayout() {
     const navigate = useNavigate();
 
     const menuItems = [
-        { icon: 'fa-building', label: 'Quản lý Công ty', path: '/admin/companies' },
+        { icon: 'fa-building', label: 'Quản lý Workspace', path: '/admin/companies' },
         { icon: 'fa-users', label: 'Quản lý Tài khoản', path: '/admin/users' },
         { icon: 'fa-chart-line', label: 'Thống kê hệ thống', path: '/admin/analytics' },
         { icon: 'fa-gear', label: 'Cấu hình Global', path: '/admin/settings' },
     ];
 
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="h-screen bg-gray-50 flex overflow-hidden">
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 text-white flex flex-col fixed h-screen z-10">
+            <aside className="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0">
                 {/* Logo */}
-                <div className="h-16 flex items-center px-6 border-b border-white/10">
+                <div className="h-16 flex items-center px-6 border-b border-white/10 flex-shrink-0">
                     <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center mr-3">
                         <i className="fa-solid fa-server text-white text-sm" />
                     </div>
                     <div>
                         <h1 className="font-bold text-lg">SaaS Admin</h1>
-                        <p className="text-xs text-gray-400">System Control Portal</p>
+                        <p className="text-xs text-gray-400">System Control</p>
                     </div>
                 </div>
 
                 {/* User Info */}
-                <div className="p-4 border-b border-white/10">
+                <div className="p-4 border-b border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
                         <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">
                             SA
@@ -63,11 +68,11 @@ export default function SystemAdminLayout() {
                     ))}
                 </nav>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-white/10">
+                {/* Footer with Logout */}
+                <div className="p-4 border-t border-white/10 flex-shrink-0">
                     <button
-                        onClick={logout}
-                        className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors"
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/20 hover:text-white transition-colors"
                     >
                         <i className="fa-solid fa-right-from-bracket w-5 text-center" />
                         <span className="font-medium">Đăng xuất</span>
@@ -76,11 +81,12 @@ export default function SystemAdminLayout() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-64 p-8">
-                <div className="max-w-7xl mx-auto">
+            <main className="flex-1 overflow-y-auto">
+                <div className="p-6 max-w-7xl mx-auto">
                     <Outlet />
                 </div>
             </main>
         </div>
     );
 }
+

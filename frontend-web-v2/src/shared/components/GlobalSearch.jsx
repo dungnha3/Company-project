@@ -5,14 +5,14 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
 const SEARCH_CATEGORIES = [
-    { id: 'employees', label: 'Nhân viên', icon: 'fa-users', color: 'text-blue-500' },
+    { id: 'employees', label: 'Nhân viên', icon: 'fa-users', color: 'text-indigo-500' },
     { id: 'projects', label: 'Dự án', icon: 'fa-folder-open', color: 'text-purple-500' },
     { id: 'issues', label: 'Công việc', icon: 'fa-list-check', color: 'text-green-500' },
     { id: 'departments', label: 'Phòng ban', icon: 'fa-building', color: 'text-orange-500' },
 ];
 
 const QUICK_ACTIONS = [
-    { id: 'new-employee', label: 'Thêm nhân viên', icon: 'fa-user-plus', path: '/app/employees', color: 'text-blue-500' },
+    { id: 'new-employee', label: 'Thêm nhân viên', icon: 'fa-user-plus', path: '/app/hr/employees', color: 'text-indigo-500' },
     { id: 'new-project', label: 'Tạo dự án mới', icon: 'fa-folder-plus', path: '/app/projects', color: 'text-purple-500' },
     { id: 'new-leave', label: 'Tạo đơn nghỉ phép', icon: 'fa-calendar-plus', path: '/app/leave-requests', color: 'text-green-500' },
     { id: 'hr-dashboard', label: 'HR Dashboard', icon: 'fa-gauge-high', path: '/app/hr-dashboard', color: 'text-indigo-500' },
@@ -62,10 +62,10 @@ export default function GlobalSearch({ isOpen, onClose }) {
                 searchResults?.employees,
                 'employee',
                 'fa-user',
-                'text-blue-500',
+                'text-indigo-500',
                 e => e.fullName,
                 e => e.position || e.email,
-                e => `/app/employees/${e.id}`
+                e => `/app/hr/employees/${e.id}`
             );
         }
 
@@ -91,7 +91,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
                 'text-orange-500',
                 d => d.name,
                 d => `${d.employeeCount || 0} nhân viên`,
-                d => '/app/departments'
+                d => '/app/hr/departments'
             );
         }
 

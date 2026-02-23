@@ -2,11 +2,12 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatNumber } from '@shared/utils/formatters';
 
 const SKILL_LEVELS = {
     0: { label: 'Chưa có', color: 'bg-gray-100 text-gray-400', icon: 'fa-circle' },
     1: { label: 'Cơ bản', color: 'bg-yellow-100 text-yellow-700', icon: 'fa-star-half-stroke' },
-    2: { label: 'Trung bình', color: 'bg-blue-100 text-blue-700', icon: 'fa-star' },
+    2: { label: 'Trung bình', color: 'bg-indigo-100 text-indigo-700', icon: 'fa-star' },
     3: { label: 'Thành thạo', color: 'bg-green-100 text-green-700', icon: 'fa-star' },
     4: { label: 'Chuyên gia', color: 'bg-purple-100 text-purple-700', icon: 'fa-crown' },
 };
@@ -114,7 +115,7 @@ export default function SkillsMatrixPage() {
             stats[skill] = {
                 coverage: Math.round((hasSkill.length / filteredEmployees.length) * 100) || 0,
                 avgLevel: hasSkill.length > 0
-                    ? (hasSkill.reduce((a, b) => a + b, 0) / hasSkill.length).toFixed(1)
+                    ? formatNumber(hasSkill.reduce((a, b) => a + b, 0) / hasSkill.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
                     : 0,
                 experts: levels.filter(l => l >= 3).length,
             };
@@ -155,7 +156,7 @@ export default function SkillsMatrixPage() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-4">
                 <div className="flex flex-wrap gap-4">
                     {/* Search */}
                     <div className="flex-1 min-w-[200px]">
@@ -211,7 +212,7 @@ export default function SkillsMatrixPage() {
                     label="Nhân viên"
                     value={filteredEmployees.length}
                     icon="fa-users"
-                    color="bg-blue-500"
+                    color="bg-indigo-500"
                 />
                 <StatCard
                     label="Chuyên gia (Lv3+)"
@@ -229,7 +230,7 @@ export default function SkillsMatrixPage() {
 
             {/* Matrix View */}
             {viewMode === 'matrix' ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -307,7 +308,7 @@ export default function SkillsMatrixPage() {
                 {Object.entries(SKILL_LEVELS).map(([level, config]) => (
                     <div key={level} className="flex items-center gap-2 text-sm">
                         <SkillBadge level={parseInt(level)} />
-                        <span className="text-gray-600">{config.label}</span>
+                        <span className="text-gray-600 dark:text-gray-400">{config.label}</span>
                     </div>
                 ))}
             </div>
@@ -317,7 +318,7 @@ export default function SkillsMatrixPage() {
 
 function StatCard({ label, value, icon, color }) {
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
                     <i className={`fa-solid ${icon} text-lg`} />
@@ -332,7 +333,7 @@ function StatCard({ label, value, icon, color }) {
 }
 
 function SkillBadge({ level }) {
-    const colors = ['bg-gray-200', 'bg-yellow-400', 'bg-blue-400', 'bg-green-500', 'bg-purple-500'];
+    const colors = ['bg-gray-200', 'bg-yellow-400', 'bg-indigo-400', 'bg-green-500', 'bg-purple-500'];
 
     return (
         <div className="flex items-center justify-center gap-0.5">
@@ -352,7 +353,7 @@ function EmployeeSkillCard({ employee, skills }) {
         .slice(0, 5);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
                     {(employee.fullName || 'U').charAt(0)}

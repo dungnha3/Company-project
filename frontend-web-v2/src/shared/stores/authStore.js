@@ -22,8 +22,17 @@ export const useAuthStore = create(
 
                 try {
                     const response = await apiClient.get(ENDPOINTS.AUTH.ME);
+                    // [FIX] API /auth/me returns AuthResponse, user is nested inside .user
+                    const authData = response.data;
+                    const userData = authData.user || authData; // Fallback if structure changes
+
+                    // Normalize userId -> id
+                    if (userData && userData.userId) {
+                        userData.id = userData.userId;
+                    }
+
                     set({
-                        user: response.data,
+                        user: userData,
                         isAuthenticated: true,
                     });
                 } catch (error) {
@@ -170,6 +179,12 @@ export const useAuthStore = create(
                     refreshToken: null,
                     isAuthenticated: false,
                 });
+            },
+
+            updateUser: (userData) => {
+                set((state) => ({
+                    user: { ...state.user, ...userData }
+                }));
             },
 
             setUser: (user) => set({ user }),

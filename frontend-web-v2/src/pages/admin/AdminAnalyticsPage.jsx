@@ -1,213 +1,225 @@
 import { useQuery } from '@tanstack/react-query';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from '@shared/components/LazyCharts';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatCurrency, formatBytes, formatNumber } from '@shared/utils/formatters';
+
+const COLORS = ['var(--color-accent)', '#14b8a6', '#f59e0b', '#ef4444', 'var(--color-secondary)'];
 
 export default function AdminAnalyticsPage() {
-    // Fetch companies for stats
-    const { data: companies = [], isLoading: loadingCompanies } = useQuery({
-        queryKey: ['admin-companies'],
+    const { data: stats = {}, isLoading: loadingStats } = useQuery({
+        queryKey: ['admin-stats'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.ADMIN.COMPANIES);
+            const res = await apiClient.get(ENDPOINTS.SYSADMIN.ANALYTICS.STATS);
             return res.data;
-        },
+        }
     });
 
-    // Fetch users for stats
-    const { data: users = [], isLoading: loadingUsers } = useQuery({
-        queryKey: ['admin-users'],
+    const { data: growth = [], isLoading: loadingGrowth } = useQuery({
+        queryKey: ['admin-growth'],
         queryFn: async () => {
-            const res = await apiClient.get('/api/users');
+            const res = await apiClient.get(ENDPOINTS.SYSADMIN.ANALYTICS.GROWTH);
             return res.data;
-        },
+        }
     });
 
-    const isLoading = loadingCompanies || loadingUsers;
-
-    // Calculate stats
-    const stats = {
-        totalCompanies: companies.length,
-        activeCompanies: companies.filter(c => c.isActive).length,
-        totalUsers: users.length,
-        activeUsers: users.filter(u => u.isActive !== false).length,
-        systemAdmins: users.filter(u => u.isSystemAdmin).length,
-        planDistribution: {
-            FREE: companies.filter(c => c.plan === 'FREE').length,
-            STARTER: companies.filter(c => c.plan === 'STARTER').length,
-            PROFESSIONAL: companies.filter(c => c.plan === 'PROFESSIONAL').length,
-            ENTERPRISE: companies.filter(c => c.plan === 'ENTERPRISE').length,
-        },
-    };
-
-    // Calculate average users per company
-    const avgUsersPerCompany = stats.totalCompanies > 0
-        ? Math.round(stats.totalUsers / stats.totalCompanies)
-        : 0;
-
-    if (isLoading) {
-        return <div className="p-8 text-center text-gray-500">Đang tải thống kê...</div>;
+    if (loadingStats || loadingGrowth) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="loading-spinner" />
+            </div>
+        );
     }
+
+    // Plan distribution data
+    const planData = [
+        { name: 'FREE', value: stats.freeCount || 0 },
+        { name: 'STARTER', value: stats.starterCount || 0 },
+        { name: 'PROFESSIONAL', value: stats.professionalCount || 0 },
+        { name: 'ENTERPRISE', value: stats.enterpriseCount || 0 },
+    ].filter(d => d.value > 0);
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Thống kê Hệ thống</h1>
-                <p className="text-gray-500 mt-1">Tổng quan về hoạt động của platform (aggregate data only)</p>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Thống kê hệ thống</h1>
+                    <p className="text-gray-500 text-sm">Tổng quan về hoạt động của hệ thống</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    Dữ liệu realtime
+                </div>
             </div>
 
-            {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <KPICard
+                    label="Doanh thu tháng này"
+                    value={formatCurrency(stats.monthlyRevenue || 0)}
+                    icon="fa-dollar-sign"
+                    color="indigo"
+                />
+                <KPICard
+                    label="Tổng workspace"
+                    value={stats.totalCompanies || 0}
                     icon="fa-building"
-                    iconBg="bg-blue-500"
-                    label="Tổng Công ty"
-                    value={stats.totalCompanies}
-                    subtext={`${stats.activeCompanies} đang hoạt động`}
+                    color="blue"
                 />
-                <StatCard
+                <KPICard
+                    label="Tổng người dùng"
+                    value={stats.totalUsers || 0}
                     icon="fa-users"
-                    iconBg="bg-green-500"
-                    label="Tổng Users"
-                    value={stats.totalUsers}
-                    subtext={`${stats.activeUsers} active`}
+                    color="green"
                 />
-                <StatCard
-                    icon="fa-user-group"
-                    iconBg="bg-purple-500"
-                    label="Trung bình Users/Công ty"
-                    value={avgUsersPerCompany}
-                    subtext="average"
-                />
-                <StatCard
-                    icon="fa-user-shield"
-                    iconBg="bg-amber-500"
-                    label="System Admins"
-                    value={stats.systemAdmins}
-                    subtext="administrators"
+                <KPICard
+                    label="Workspace mới tháng này"
+                    value={stats.newCompaniesThisMonth || 0}
+                    icon="fa-plus-circle"
+                    color="purple"
                 />
             </div>
 
-            {/* Plan Distribution */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Phân bổ Plan</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <PlanCard plan="FREE" count={stats.planDistribution.FREE} color="gray" />
-                    <PlanCard plan="STARTER" count={stats.planDistribution.STARTER} color="blue" />
-                    <PlanCard plan="PROFESSIONAL" count={stats.planDistribution.PROFESSIONAL} color="indigo" />
-                    <PlanCard plan="ENTERPRISE" count={stats.planDistribution.ENTERPRISE} color="purple" />
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-6">
-                    <div className="h-4 bg-gray-100 rounded-full overflow-hidden flex">
-                        {stats.totalCompanies > 0 && (
-                            <>
-                                <div
-                                    className="bg-gray-400 transition-all duration-500"
-                                    style={{ width: `${(stats.planDistribution.FREE / stats.totalCompanies) * 100}%` }}
-                                    title={`FREE: ${stats.planDistribution.FREE}`}
-                                />
-                                <div
-                                    className="bg-blue-500 transition-all duration-500"
-                                    style={{ width: `${(stats.planDistribution.STARTER / stats.totalCompanies) * 100}%` }}
-                                    title={`STARTER: ${stats.planDistribution.STARTER}`}
-                                />
-                                <div
-                                    className="bg-indigo-500 transition-all duration-500"
-                                    style={{ width: `${(stats.planDistribution.PROFESSIONAL / stats.totalCompanies) * 100}%` }}
-                                    title={`PROFESSIONAL: ${stats.planDistribution.PROFESSIONAL}`}
-                                />
-                                <div
-                                    className="bg-purple-500 transition-all duration-500"
-                                    style={{ width: `${(stats.planDistribution.ENTERPRISE / stats.totalCompanies) * 100}%` }}
-                                    title={`ENTERPRISE: ${stats.planDistribution.ENTERPRISE}`}
-                                />
-                            </>
-                        )}
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>Free tier</span>
-                        <span>Enterprise</span>
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* User Growth Chart */}
+                <div className="lg:col-span-2 card">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        <i className="fa-solid fa-chart-line text-indigo-500 mr-2" />
+                        Tăng trưởng người dùng
+                    </h3>
+                    <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={growth}>
+                                <defs>
+                                    <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface)" />
+                                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                                <YAxis tick={{ fontSize: 12 }} />
+                                <Tooltip />
+                                <Area type="monotone" dataKey="users" stroke="var(--color-accent)" strokeWidth={2} fill="url(#userGradient)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
-            </div>
 
-            {/* Privacy Notice */}
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                <i className="fa-solid fa-lock text-green-500 mt-0.5" />
-                <div>
-                    <p className="text-sm font-medium text-green-800">Dữ liệu tổng hợp</p>
-                    <p className="text-xs text-green-600 mt-1">
-                        Trang này chỉ hiển thị dữ liệu tổng hợp (aggregate). System Admin không có quyền truy cập dữ liệu cá nhân của users hoặc nội dung workspace.
-                    </p>
+                {/* Plan Distribution */}
+                <div className="card">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        <i className="fa-solid fa-chart-pie text-purple-500 mr-2" />
+                        Phân bố gói dịch vụ
+                    </h3>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={planData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={50}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    label={({ name, percent }) => `${name} ${formatNumber(percent * 100, { maximumFractionDigits: 0 })}% `}
+                                >
+                                    {planData.map((_, index) => (
+                                        <Cell key={`cell - ${index} `} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                        {planData.map((item, index) => (
+                            <div key={item.name} className="flex items-center gap-1 text-xs">
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                                {item.name}: {item.value}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Hành động nhanh</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <a href="/admin" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
-                            <i className="fa-solid fa-building" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-gray-900">Quản lý Công ty</p>
-                            <p className="text-sm text-gray-500">Xem, đổi plan, suspend</p>
-                        </div>
-                    </a>
-                    <a href="/admin/users" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
-                            <i className="fa-solid fa-users" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-gray-900">Quản lý Users</p>
-                            <p className="text-sm text-gray-500">Disable, reset password</p>
-                        </div>
-                    </a>
-                    <a href="/admin/settings" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
-                            <i className="fa-solid fa-cog" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-gray-900">Cài đặt hệ thống</p>
-                            <p className="text-sm text-gray-500">Feature flags, config</p>
-                        </div>
-                    </a>
+            {/* Company Growth Bar Chart */}
+            <div className="card">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <i className="fa-solid fa-chart-bar text-green-500 mr-2" />
+                    Workspace mới theo tháng
+                </h3>
+                <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={growth}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface)" />
+                            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="companies" name="Workspace mới" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <QuickStat label="Active Users Today" value={stats.activeUsersToday || 0} icon="fa-user-check" color="green" />
+                <QuickStat label="Projects Created" value={stats.totalProjects || 0} icon="fa-diagram-project" color="blue" />
+                <QuickStat label="Messages Sent" value={stats.totalMessages || 0} icon="fa-message" color="purple" />
+                <QuickStat label="Storage Used" value={formatBytes(stats.totalStorageUsed || 0)} icon="fa-database" color="amber" />
             </div>
         </div>
     );
 }
 
-function StatCard({ icon, iconBg, label, value, subtext }) {
-    return (
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-lg ${iconBg} flex items-center justify-center text-white shadow-lg`}>
-                    <i className={`fa-solid ${icon} text-xl`} />
-                </div>
-                <div>
-                    <p className="text-sm text-gray-500 font-medium">{label}</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-                    <p className="text-xs text-gray-400">{subtext}</p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function PlanCard({ plan, count, color }) {
-    const colorMap = {
-        gray: 'bg-gray-100 text-gray-800 border-gray-200',
-        blue: 'bg-blue-100 text-blue-800 border-blue-200',
-        indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        purple: 'bg-purple-100 text-purple-800 border-purple-200',
+function KPICard({ label, value, icon, color }) {
+    const colorClasses = {
+        indigo: 'bg-indigo-100 text-indigo-600',
+        blue: 'bg-indigo-100 text-indigo-600',
+        green: 'bg-green-100 text-green-600',
+        purple: 'bg-purple-100 text-purple-600',
+        amber: 'bg-amber-100 text-amber-600',
     };
 
     return (
-        <div className={`p-4 rounded-xl border ${colorMap[color]} text-center`}>
-            <p className="text-2xl font-bold">{count}</p>
-            <p className="text-sm font-medium mt-1">{plan}</p>
+        <div className="stat-card">
+            <div className="flex items-center gap-4">
+                <div className={`w - 12 h - 12 rounded - xl flex items - center justify - center ${colorClasses[color]} `}>
+                    <i className={`fa - solid ${icon} text - xl`} />
+                </div>
+                <div>
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{value}</p>
+                </div>
+            </div>
         </div>
     );
 }
+
+function QuickStat({ label, value, icon, color }) {
+    const colorClasses = {
+        green: 'text-green-500',
+        blue: 'text-indigo-500',
+        purple: 'text-purple-500',
+        amber: 'text-amber-500',
+    };
+
+    return (
+        <div className="card p-4 flex items-center gap-3">
+            <i className={`fa - solid ${icon} ${colorClasses[color]} `} />
+            <div>
+                <p className="text-lg font-bold text-gray-900">{value}</p>
+                <p className="text-xs text-gray-500">{label}</p>
+            </div>
+        </div>
+    );
+}
+
+
+
+

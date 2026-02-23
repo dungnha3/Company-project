@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { timelogApi } from '@shared/api/featureApi';
+import { formatNumber } from '@shared/utils/formatters';
 
 /**
  * Time logging section for Issue detail page
@@ -104,7 +105,7 @@ export default function TimeLogSection({ issueId, estimatedHours }) {
             {/* Progress bar */}
             <div className="mb-4">
                 <div className="flex gap-2 mb-1.5 text-sm">
-                    <span className="text-green-400 font-semibold">{totalHours.toFixed(1)}h logged</span>
+                    <span className="text-green-400 font-semibold">{formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h logged</span>
                     {estimatedHours > 0 && (
                         <span className="text-slate-400">/ {estimatedHours}h estimated</span>
                     )}

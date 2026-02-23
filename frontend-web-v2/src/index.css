@@ -1,11 +1,85 @@
 @import "tailwindcss";
 
+/* Tailwind v4: Dark mode configured in tailwind.config.js */
+
+/* ============================================
+   DESIGN TOKEN CSS VARIABLES
+   Primary = indigo (#5048e5)
+   ============================================ */
+:root {
+  /* Primary (indigo) palette */
+  --color-primary: #5048e5;
+  /* indigo-600  */
+  --color-primary-light: #6c63ff;
+  /* indigo-500  */
+  --color-primary-dark: #4038d0;
+  /* indigo-700  */
+  --color-primary-subtle: #eef2ff;
+  /* indigo-50   */
+  --color-primary-muted: #e0e7ff;
+  /* indigo-100  */
+  --color-primary-border: #c7d2fe;
+  /* indigo-200  */
+  --color-primary-soft: #818cf8;
+  /* indigo-400  */
+
+  /* Secondary (violet) palette */
+  --color-secondary: #8b5cf6;
+  /* violet-500  */
+  --color-secondary-dark: #7c3aed;
+  /* violet-600  */
+
+  /* Accent */
+  --color-accent: #6366f1;
+  /* indigo-500 alt */
+  --color-accent-subtle: #f0edff;
+
+  /* Semantic */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #14b8a6;
+
+  /* Neutral */
+  --color-text-muted: #9ca3af;
+  /* gray-400    */
+  --color-border: #e5e7eb;
+  /* gray-200    */
+  --color-surface: #f0f0f0;
+
+  /* Gradient shorthands */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  --gradient-hero: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary-dark) 100%);
+}
+
+.dark {
+  --color-primary-subtle: #1e1b4b;
+  --color-primary-muted: #312e81;
+  --color-primary-border: #3730a3;
+  --color-text-muted: #6b7280;
+  --color-border: #374151;
+  --color-surface: #1f2937;
+}
+
 /* Base Layer - Reset & Typography */
 @layer base {
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+  }
+
+  /* Accessibility: Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   body {
@@ -20,6 +94,16 @@
   .dark body {
     background: linear-gradient(135deg, #1e1e2e 0%, #1a1a2e 100%);
     color: #e2e8f0;
+  }
+
+  /* Focus visible for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 
   ::-webkit-scrollbar {
@@ -45,7 +129,7 @@
 
   /* Cards */
   .card {
-    @apply bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl;
+    @apply bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl dark:bg-slate-800/90 dark:border dark:border-gray-700;
   }
 
   .card-glass {
@@ -121,7 +205,11 @@
 
   /* Forms */
   .input {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-200 dark:bg-slate-800 dark:border-gray-600 dark:text-gray-100;
+  }
+
+  .focus-ring {
+    @apply focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all;
   }
 
   .label {
@@ -138,11 +226,19 @@
   }
 
   .table th {
-    @apply px-4 py-3 text-left font-semibold text-gray-600 bg-gray-50 border-b border-gray-100;
+    @apply px-4 py-3 text-left font-semibold text-gray-600 bg-gray-50 border-b border-gray-100 dark:bg-slate-800 dark:text-gray-300 dark:border-gray-700;
   }
 
   .table td {
-    @apply px-4 py-3 border-b border-gray-50;
+    @apply px-4 py-3 border-b border-gray-50 dark:border-gray-700;
+  }
+
+  .progress-bar {
+    @apply h-2 bg-gray-100 rounded-full overflow-hidden dark:bg-gray-700;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-indigo-500 rounded-full transition-all duration-300;
   }
 
   .table tr:hover {
@@ -167,7 +263,11 @@
   }
 
   .badge-info {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800;
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800;
   }
 
   /* Avatar */
@@ -194,7 +294,11 @@
   }
 
   .modal-content {
-    @apply bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden;
+    @apply bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden dark:bg-slate-800;
+  }
+
+  .modal-header-gradient {
+    @apply bg-gradient-to-r from-indigo-500 to-indigo-600 text-white;
   }
 
   .modal-header {
@@ -242,6 +346,30 @@
     @apply bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent;
   }
 
+  /* Content-visibility: skip rendering of off-screen list items */
+  .content-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+  }
+
+  /* Typography: Tabular numbers for aligned columns */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessibility: Screen reader only */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
   /* Glassmorphism */
   .glass {
     @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl;
@@ -261,7 +389,7 @@
   }
 
   .bg-gradient-accent {
-    @apply bg-gradient-to-br from-cyan-500 to-blue-600;
+    @apply bg-gradient-to-br from-cyan-500 to-indigo-600;
   }
 
   /* Bento Grid specific */
@@ -305,7 +433,7 @@
   }
 
   .org-node-dept {
-    @apply hover:border-blue-300;
+    @apply hover:border-indigo-300;
   }
 
   .org-node-manager {

@@ -4,6 +4,7 @@ import { useWebSocketStore } from '@shared/stores/websocketStore';
 import { useAuthStore } from '@shared/stores/authStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatTime } from '@shared/utils/formatters';
 import EmojiPicker from './EmojiPicker';
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
@@ -83,7 +84,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
 
                 {/* Reply Reference */}
                 {message.replyTo && (
-                    <div className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-1 mb-1 border-l-2 border-blue-400 truncate max-w-[200px]">
+                    <div className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-1 mb-1 border-l-2 border-indigo-400 truncate max-w-[200px]">
                         <i className="fa-solid fa-reply mr-1" />
                         {message.replyTo.content}
                     </div>
@@ -95,7 +96,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
                         className={`
                             px-4 py-2.5 rounded-2xl text-sm shadow-sm relative
                             ${isMe
-                                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-sm'
+                                ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm'
                                 : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
                             }
                             ${message.deleted ? 'italic opacity-60' : ''}
@@ -201,7 +202,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
                                 className={`
                                     flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors
                                     ${data.hasMe
-                                        ? 'bg-blue-50 border-blue-200 text-blue-600'
+                                        ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
                                         : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                                     }
                                 `}
@@ -216,9 +217,9 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
 
                 {/* Timestamp & Read Status */}
                 <div className={`flex items-center gap-1 text-[10px] text-gray-400 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                    {new Date(message.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatTime(message.createdAt || Date.now())}
                     {isMe && message.readBy?.length > 0 && (
-                        <i className="fa-solid fa-check-double text-blue-500" title="Đã xem" />
+                        <i className="fa-solid fa-check-double text-indigo-500" title="Đã xem" />
                     )}
                 </div>
             </div>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { formatDate } from '@shared/utils/formatters';
 
 export default function ProjectGantt({ project }) {
     // Fetch Sprints
@@ -56,8 +57,8 @@ export default function ProjectGantt({ project }) {
 
             {/* Timeline Header */}
             <div className="relative h-8 border-b border-gray-100 flex text-xs text-gray-400 mb-2">
-                <span>{startDate.toLocaleDateString('vi-VN')}</span>
-                <span className="absolute right-0">{endDate.toLocaleDateString('vi-VN')}</span>
+                <span>{formatDate(startDate)}</span>
+                <span className="absolute right-0">{formatDate(endDate)}</span>
                 <div className="absolute left-1/2 -translate-x-1/2">Duration: {Math.round(totalDays)} days</div>
             </div>
 
@@ -75,7 +76,7 @@ export default function ProjectGantt({ project }) {
                         <span className="text-xs font-normal text-gray-500">PROJECT</span>
                     </div>
                     <div className="relative h-6 bg-gray-100 rounded-full w-full overflow-hidden">
-                        <div className="absolute top-0 bottom-0 bg-blue-500 rounded-full group-hover:bg-blue-600 transition-colors shadow-sm" style={{ left: '0%', width: '100%' }}></div>
+                        <div className="absolute top-0 bottom-0 bg-indigo-500 rounded-full group-hover:bg-indigo-600 transition-colors shadow-sm" style={{ left: '0%', width: '100%' }}></div>
                     </div>
                 </div>
 
@@ -104,7 +105,7 @@ export default function ProjectGantt({ project }) {
                                             : isCompleted ? 'bg-green-400 group-hover:bg-green-500' : 'bg-orange-400 group-hover:bg-orange-500'}
                                    `}
                                     style={{ left: pos.left, width: pos.width }}
-                                    title={`${item.type}: ${item.name} \n${new Date(item.startDate).toLocaleDateString()} - ${new Date(item.endDate).toLocaleDateString()}`}
+                                    title={`${item.type}: ${item.name} \n${formatDate(item.startDate)} - ${formatDate(item.endDate)}`}
                                 ></div>
                             </div>
                         </div>
