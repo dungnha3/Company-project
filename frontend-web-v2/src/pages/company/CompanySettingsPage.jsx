@@ -5,7 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import InviteMemberModal from '@features/company/components/InviteMemberModal';
 import IntegrationsSettings from '@features/company/components/IntegrationsSettings';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function CompanySettingsPage() {
     const { currentWorkspace } = useWorkspaceStore();

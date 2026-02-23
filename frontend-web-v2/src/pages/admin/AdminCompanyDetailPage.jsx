@@ -5,16 +5,18 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import DataTable from '@shared/components/ui/DataTable';
-import { formatDate } from '@shared/utils/formatters';
+import { formatDate, formatBytes } from '@shared/utils/formatters';
 
 const PLANS = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'];
 
 export default function AdminCompanyDetailPage() {
     const { id: companyId } = useParams();
     const navigate = useNavigate();
-    const { showToast } = useToast();
+    const toast = useToast();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState('overview');
+    const [usersPagination, setUsersPagination] = useState({ pageIndex: 0, pageSize: 10 });
+    const [projectsPagination, setProjectsPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
     // Fetch Company Details
     const { data: company, isLoading } = useQuery({
@@ -60,27 +62,27 @@ export default function AdminCompanyDetailPage() {
         mutationFn: (data) => apiClient.put(ENDPOINTS.SYSADMIN.COMPANY_FEATURES(companyId), data),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-company-settings']);
-            showToast('Đã cập nhật tính năng', 'success');
+            toast.success('Đã cập nhật tính năng');
         },
-        onError: (err) => showToast(err.message, 'error')
+        onError: (err) => toast.error(err.message)
     });
 
     const updateQuotaMutation = useMutation({
         mutationFn: (data) => apiClient.put(ENDPOINTS.SYSADMIN.COMPANY_QUOTA(companyId), data),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-company-settings']);
-            showToast('Đã cập nhật quota', 'success');
+            toast.success('Đã cập nhật quota');
         },
-        onError: (err) => showToast(err.message, 'error')
+        onError: (err) => toast.error(err.message)
     });
 
     const updateSettingsMutation = useMutation({
         mutationFn: (data) => apiClient.put(ENDPOINTS.SYSADMIN.COMPANY_SETTINGS(companyId), data),
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-company-settings']);
-            showToast('Đã cập nhật cài đặt', 'success');
+            toast.success('Đã cập nhật cài đặt');
         },
-        onError: (err) => showToast(err.message, 'error')
+        onError: (err) => toast.error(err.message)
     });
 
     const changePlanMutation = useMutation({
@@ -88,9 +90,9 @@ export default function AdminCompanyDetailPage() {
         onSuccess: () => {
             queryClient.invalidateQueries(['admin-company']);
             queryClient.invalidateQueries(['admin-company-settings']);
-            showToast('Đã thay đổi gói dịch vụ', 'success');
+            toast.success('Đã thay đổi gói dịch vụ');
         },
-        onError: (err) => showToast(err.message, 'error')
+        onError: (err) => toast.error(err.message)
     });
 
     if (isLoading) {
@@ -351,8 +353,10 @@ export default function AdminCompanyDetailPage() {
                                     },
                                     { header: 'Ngày tham gia', accessorKey: 'joinedAt', cell: (row) => formatDate(row.joinedAt) },
                                 ]}
-                                data={users}
+                                data={users.slice(usersPagination.pageIndex * usersPagination.pageSize, (usersPagination.pageIndex + 1) * usersPagination.pageSize)}
                                 totalCount={users.length}
+                                pagination={usersPagination}
+                                onPaginationChange={setUsersPagination}
                             />
                         </div>
 
@@ -374,8 +378,10 @@ export default function AdminCompanyDetailPage() {
                                     },
                                     { header: 'PM', accessorKey: 'pmName' },
                                 ]}
-                                data={projects}
+                                data={projects.slice(projectsPagination.pageIndex * projectsPagination.pageSize, (projectsPagination.pageIndex + 1) * projectsPagination.pageSize)}
                                 totalCount={projects.length}
+                                pagination={projectsPagination}
+                                onPaginationChange={setProjectsPagination}
                             />
                         </div>
                     </div>

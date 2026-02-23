@@ -165,6 +165,10 @@ export const useWorkspaceStore = create(
                     console.error('Failed to rehydrate workspace store:', error);
                     return;
                 }
+                // Skip rehydration if user is not authenticated (e.g., after logout)
+                const token = localStorage.getItem('token');
+                if (!token) return;
+
                 if (state?.currentWorkspace?.type === 'COMPANY' && state?.currentWorkspace?.id) {
                     const companyId = state.currentWorkspace.id;
                     import('@shared/api/client').then(({ default: apiClient }) => {

@@ -43,7 +43,7 @@ const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
         if (window.google && window.google.accounts) {
             // Kiểm tra xem Client ID đã được config chưa
             if (!isGoogleConfigured()) {
-                console.warn("Chưa cấu hình Google Client ID");
+                console.debug("Chưa cấu hình Google Client ID");
                 return;
             }
 

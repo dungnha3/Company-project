@@ -90,7 +90,7 @@ export default function AdminAnalyticsPage() {
                         Tăng trưởng người dùng
                     </h3>
                     <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={280}>
                             <AreaChart data={growth}>
                                 <defs>
                                     <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
@@ -115,7 +115,7 @@ export default function AdminAnalyticsPage() {
                         Phân bố gói dịch vụ
                     </h3>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={250}>
                             <PieChart>
                                 <Pie
                                     data={planData}
@@ -153,7 +153,7 @@ export default function AdminAnalyticsPage() {
                     Workspace mới theo tháng
                 </h3>
                 <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={250}>
                         <BarChart data={growth}>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface)" />
                             <XAxis dataKey="month" tick={{ fontSize: 12 }} />
