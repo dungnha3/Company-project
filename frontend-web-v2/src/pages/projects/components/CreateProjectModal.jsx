@@ -68,7 +68,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
         setSearchError('');
 
         try {
-            const res = await apiClient.get(ENDPOINTS.USERS.SEARCH, { params: { q: memberEmail } });
+            const res = await apiClient.get(ENDPOINTS.USERS.SEARCH, { params: { query: memberEmail } });
             const users = res.data;
             const user = users.find(u => u.email?.toLowerCase() === memberEmail.toLowerCase());
 
@@ -108,7 +108,15 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             toast.error('Vui lòng điền tên và mã dự án');
             return;
         }
-        createMutation.mutate(form);
+        // Clean payload: convert empty strings to null for date fields
+        const payload = {
+            name: form.name,
+            keyProject: form.keyProject,
+            description: form.description || null,
+            startDate: form.startDate || null,
+            endDate: form.endDate || null,
+        };
+        createMutation.mutate(payload);
     };
 
     const handleClose = () => {

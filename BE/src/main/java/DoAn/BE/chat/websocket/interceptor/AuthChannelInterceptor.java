@@ -30,31 +30,33 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        
+
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
             // Extract JWT token from headers
             List<String> authHeaders = accessor.getNativeHeader("Authorization");
-            
+
             if (authHeaders != null && !authHeaders.isEmpty()) {
                 String authHeader = authHeaders.get(0);
-                
+
                 if (authHeader.startsWith("Bearer ")) {
                     String token = authHeader.substring(7);
-                    
+
                     try {
                         // Validate JWT token
                         if (jwtService.validateToken(token)) {
                             String username = jwtService.extractUsername(token);
-                            
+
                             // Load user from database
                             User user = userRepository.findByUsername(username)
-                                .orElse(null);
-                            
+                                    .orElse(null);
+
                             if (user != null) {
-                                // Create authentication object
+                                // Create authentication object with username as principal
+                                // so that getName() returns the plain username string
+                                // (required for convertAndSendToUser to match correctly)
                                 Authentication auth = new UsernamePasswordAuthenticationToken(
-                                    user, null, List.of());
-                                
+                                        username, null, List.of());
+
                                 // Set user in the accessor
                                 accessor.setUser(auth);
                                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -67,7 +69,7 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
                 }
             }
         }
-        
+
         return message;
     }
 }

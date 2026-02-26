@@ -4,6 +4,9 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDate } from '@shared/utils/formatters';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả', icon: 'fa-layer-group' },
@@ -34,7 +37,7 @@ const LABEL_PRESETS = [
 ];
 
 export default function PersonalTasksPage() {
-    const { showToast } = useToast();
+    const toast = useToast();
     const queryClient = useQueryClient();
     const [statusFilter, setStatusFilter] = useState('');
     const [showModal, setShowModal] = useState(false);
@@ -73,11 +76,11 @@ export default function PersonalTasksPage() {
         onSuccess: () => {
             queryClient.invalidateQueries(['personalTasks']);
             queryClient.invalidateQueries(['personalTasksStats']);
-            showToast('Đã tạo task mới', 'success');
+            toast.success('Đã tạo task mới');
             closeModal();
         },
         onError: (err) => {
-            showToast(err.response?.data?.message || 'Không thể tạo task', 'error');
+            toast.error(err.response?.data?.message || 'Không thể tạo task');
         }
     });
 
@@ -87,11 +90,11 @@ export default function PersonalTasksPage() {
         onSuccess: () => {
             queryClient.invalidateQueries(['personalTasks']);
             queryClient.invalidateQueries(['personalTasksStats']);
-            showToast('Đã cập nhật task', 'success');
+            toast.success('Đã cập nhật task');
             closeModal();
         },
         onError: (err) => {
-            showToast(err.response?.data?.message || 'Không thể cập nhật', 'error');
+            toast.error(err.response?.data?.message || 'Không thể cập nhật');
         }
     });
 
@@ -101,7 +104,7 @@ export default function PersonalTasksPage() {
         onSuccess: () => {
             queryClient.invalidateQueries(['personalTasks']);
             queryClient.invalidateQueries(['personalTasksStats']);
-            showToast('Đã xóa task', 'success');
+            toast.success('Đã xóa task');
         },
     });
 
@@ -382,55 +385,140 @@ function ListView({ tasks, onEdit, onDelete, onStatusChange, isPro }) {
     );
 }
 
-// Kanban Board Component
+// Kanban Board Component with Drag & Drop
 function KanbanBoard({ tasks, onEdit, onDelete, onStatusChange, isPro }) {
+    const [activeTask, setActiveTask] = useState(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 5 }, // 5px drag threshold to avoid accidental drags
+        })
+    );
+
     const columns = [
         { key: 'TODO', label: 'Cần làm', color: 'border-gray-300', bg: 'bg-gray-50' },
         { key: 'IN_PROGRESS', label: 'Đang làm', color: 'border-indigo-400', bg: 'bg-indigo-50' },
         { key: 'DONE', label: 'Hoàn thành', color: 'border-green-400', bg: 'bg-green-50' },
     ];
 
+    // Find the task by ID from all columns
+    const findTask = (taskId) => {
+        for (const key of ['TODO', 'IN_PROGRESS', 'DONE']) {
+            const task = tasks[key].find(t => t.taskId === taskId);
+            if (task) return { task, status: key };
+        }
+        return null;
+    };
+
+    const handleDragStart = (event) => {
+        const found = findTask(event.active.id);
+        if (found) setActiveTask(found.task);
+    };
+
+    const handleDragEnd = (event) => {
+        setActiveTask(null);
+        const { active, over } = event;
+        if (!over) return;
+
+        const taskId = active.id;
+        const found = findTask(taskId);
+        if (!found) return;
+
+        // The droppable ID is the column key (TODO, IN_PROGRESS, DONE)
+        const targetStatus = over.id;
+
+        // Only update if dropping into a different column
+        if (found.status !== targetStatus && ['TODO', 'IN_PROGRESS', 'DONE'].includes(targetStatus)) {
+            onStatusChange(taskId, targetStatus);
+        }
+    };
+
+    const handleDragCancel = () => setActiveTask(null);
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {columns.map(col => (
-                <div key={col.key} className={`${col.bg} rounded-2xl p-4 border-t-4 ${col.color}`}>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-700">{col.label}</h3>
-                        <span className="px-2 py-1 bg-white rounded-full text-xs font-medium text-gray-500 shadow-sm">
-                            {tasks[col.key].length}
-                        </span>
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+        >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {columns.map(col => (
+                    <KanbanColumn
+                        key={col.key}
+                        column={col}
+                        tasks={tasks[col.key]}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onStatusChange={onStatusChange}
+                        isPro={isPro}
+                    />
+                ))}
+            </div>
+
+            {/* Drag Overlay — follows cursor */}
+            <DragOverlay>
+                {activeTask ? (
+                    <div className="rotate-2 opacity-90">
+                        <KanbanCardContent task={activeTask} />
                     </div>
-                    <div className="space-y-3 min-h-[200px]">
-                        {tasks[col.key].map(task => (
-                            <KanbanCard
-                                key={task.taskId}
-                                task={task}
-                                onEdit={() => onEdit(task)}
-                                onDelete={() => onDelete(task.taskId)}
-                                onStatusChange={(status) => onStatusChange(task.taskId, status)}
-                                currentStatus={col.key}
-                                isPro={isPro}
-                            />
-                        ))}
-                        {tasks[col.key].length === 0 && (
-                            <div className="text-center py-8 text-gray-400 text-sm">
-                                <i className="fa-solid fa-inbox mb-2 block" />
-                                Kéo task vào đây
-                            </div>
-                        )}
+                ) : null}
+            </DragOverlay>
+        </DndContext>
+    );
+}
+
+// Droppable Column
+function KanbanColumn({ column, tasks, onEdit, onDelete, onStatusChange, isPro }) {
+    const { setNodeRef, isOver } = useDroppable({ id: column.key });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={`rounded-2xl p-4 border-t-4 transition-colors duration-200 ${column.color} ${isOver ? 'bg-indigo-100/60 ring-2 ring-indigo-300' : column.bg
+                }`}
+        >
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-700">{column.label}</h3>
+                <span className="px-2 py-1 bg-white rounded-full text-xs font-medium text-gray-500 shadow-sm">
+                    {tasks.length}
+                </span>
+            </div>
+            <div className="space-y-3 min-h-[200px]">
+                {tasks.map(task => (
+                    <DraggableKanbanCard
+                        key={task.taskId}
+                        task={task}
+                        onEdit={() => onEdit(task)}
+                        onDelete={() => onDelete(task.taskId)}
+                        onStatusChange={(status) => onStatusChange(task.taskId, status)}
+                        currentStatus={column.key}
+                        isPro={isPro}
+                    />
+                ))}
+                {tasks.length === 0 && (
+                    <div className={`text-center py-8 text-sm rounded-xl border-2 border-dashed transition-colors ${isOver ? 'border-indigo-400 text-indigo-500 bg-indigo-50' : 'border-gray-200 text-gray-400'
+                        }`}>
+                        <i className={`fa-solid ${isOver ? 'fa-plus' : 'fa-inbox'} mb-2 block`} />
+                        {isOver ? 'Thả vào đây' : 'Kéo task vào đây'}
                     </div>
-                </div>
-            ))}
+                )}
+            </div>
         </div>
     );
 }
 
-// Kanban Card Component
-function KanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isPro }) {
-    const priorityDot = {
-        LOW: 'bg-gray-400',
-        MEDIUM: 'bg-amber-400',
-        HIGH: 'bg-red-500',
+// Draggable Kanban Card wrapper
+function DraggableKanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isPro }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+        id: task.taskId,
+    });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.3 : 1,
+        cursor: 'grab',
     };
 
     const nextStatus = {
@@ -440,7 +528,40 @@ function KanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isP
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all group cursor-pointer">
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+            <KanbanCardContent task={task}>
+                {/* Actions on hover */}
+                <div className="flex justify-end gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => onStatusChange(nextStatus[currentStatus])}
+                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
+                        title="Chuyển trạng thái"
+                    >
+                        <i className="fa-solid fa-arrow-right" />
+                    </button>
+                    <button onPointerDown={(e) => e.stopPropagation()} onClick={onEdit} className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded">
+                        <i className="fa-solid fa-pen" />
+                    </button>
+                    <button onPointerDown={(e) => e.stopPropagation()} onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded">
+                        <i className="fa-solid fa-trash" />
+                    </button>
+                </div>
+            </KanbanCardContent>
+        </div>
+    );
+}
+
+// Pure visual card content (used by both real card and drag overlay)
+function KanbanCardContent({ task, children }) {
+    const priorityDot = {
+        LOW: 'bg-gray-400',
+        MEDIUM: 'bg-amber-400',
+        HIGH: 'bg-red-500',
+    };
+
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-start gap-3">
                 <div className={`w-2 h-2 rounded-full mt-2 ${priorityDot[task.priority]}`} />
                 <div className="flex-1 min-w-0">
@@ -471,22 +592,7 @@ function KanbanCard({ task, onEdit, onDelete, onStatusChange, currentStatus, isP
                     </div>
                 </div>
             </div>
-            {/* Actions on hover */}
-            <div className="flex justify-end gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={() => onStatusChange(nextStatus[currentStatus])}
-                    className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
-                    title="Chuyển trạng thái"
-                >
-                    <i className="fa-solid fa-arrow-right" />
-                </button>
-                <button onClick={onEdit} className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded">
-                    <i className="fa-solid fa-pen" />
-                </button>
-                <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded">
-                    <i className="fa-solid fa-trash" />
-                </button>
-            </div>
+            {children}
         </div>
     );
 }

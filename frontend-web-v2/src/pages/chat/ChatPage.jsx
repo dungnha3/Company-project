@@ -1,24 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useWebSocketStore } from '@shared/stores/websocketStore';
-import { useAuthStore } from '@shared/stores/authStore';
 import ConversationList from './components/ConversationList';
 import ChatWindow from './components/ChatWindow';
 import CreateRoomModal from './components/CreateRoomModal';
 import RoomInfoPanel from './components/RoomInfoPanel';
 
 export default function ChatPage() {
-    const { connect, disconnect, connected } = useWebSocketStore();
-    const { token } = useAuthStore();
+    const { connected } = useWebSocketStore();
     const [selectedRoomId, setSelectedRoomId] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
-
-    useEffect(() => {
-        if (token) {
-            connect();
-        }
-        return () => disconnect();
-    }, [token]);
 
     const handleRoomCreated = (room) => {
         setSelectedRoomId(room.roomId);

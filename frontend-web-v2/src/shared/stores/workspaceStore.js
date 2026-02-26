@@ -27,6 +27,10 @@ export const useWorkspaceStore = create(
             setPersonalWorkspace: (personalWorkspace) => set({ personalWorkspace }),
 
             fetchWorkspaces: async () => {
+                // Guard: skip if not authenticated
+                const token = localStorage.getItem('accessToken');
+                if (!token) return [];
+
                 set({ loading: true, error: null });
                 try {
                     const response = await apiClient.get(ENDPOINTS.WORKSPACES.LIST);
@@ -159,14 +163,23 @@ export const useWorkspaceStore = create(
                 workspaceType: state.workspaceType,
                 personalWorkspace: state.personalWorkspace,
             }),
+            // [FIX] Don't merge persisted state if user is not authenticated
+            merge: (persistedState, currentState) => {
+                const token = localStorage.getItem('accessToken');
+                if (!token) {
+                    // Discard stale workspace data — use clean defaults
+                    return currentState;
+                }
+                return { ...currentState, ...persistedState };
+            },
             // [FIX] Re-fetch settings AND roles when store is rehydrated from localStorage
             onRehydrateStorage: () => (state, error) => {
                 if (error) {
                     console.error('Failed to rehydrate workspace store:', error);
                     return;
                 }
-                // Skip rehydration if user is not authenticated (e.g., after logout)
-                const token = localStorage.getItem('token');
+                // Skip re-fetch if user is not authenticated
+                const token = localStorage.getItem('accessToken');
                 if (!token) return;
 
                 if (state?.currentWorkspace?.type === 'COMPANY' && state?.currentWorkspace?.id) {
