@@ -32,6 +32,14 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
         // Lấy tất cả members trong công ty
         List<CompanyMember> findByCompany_CompanyId(Long companyId);
 
+        // Eagerly fetch user and roles to avoid LazyInitializationException
+        @org.springframework.data.jpa.repository.Query("SELECT DISTINCT cm FROM CompanyMember cm " +
+                        "JOIN FETCH cm.user " +
+                        "LEFT JOIN FETCH cm.roles " +
+                        "WHERE cm.company.companyId = :companyId")
+        List<CompanyMember> findByCompanyIdWithUserAndRoles(
+                        @org.springframework.data.repository.query.Param("companyId") Long companyId);
+
         // Lấy members active trong công ty
         List<CompanyMember> findByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 

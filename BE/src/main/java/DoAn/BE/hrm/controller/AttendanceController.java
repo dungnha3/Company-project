@@ -34,6 +34,33 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final AttendanceMapper attendanceMapper;
+    private final DoAn.BE.hrm.repository.AttendanceRepository attendanceRepository;
+
+    // ==================== REPORT ====================
+
+    // [Today's attendance report summary] (Role: Manager/Admin)
+    @GetMapping("/report")
+    public ResponseEntity<Map<String, Object>> getAttendanceReport() {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        LocalDate today = LocalDate.now();
+
+        // Count today's check-ins for this company
+        List<Attendance> todayRecords = attendanceRepository
+                .findByAttendanceDateBetween(today, today)
+                .stream()
+                .filter(a -> a.getCompany() != null && companyId.equals(a.getCompany().getCompanyId()))
+                .toList();
+
+        long checkedIn = todayRecords.stream()
+                .filter(a -> a.getCheckInTime() != null)
+                .count();
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("date", today.toString());
+        report.put("checkedIn", checkedIn);
+        report.put("totalRecords", todayRecords.size());
+        return ResponseEntity.ok(report);
+    }
 
     // ==================== CRUD ====================
 

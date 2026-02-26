@@ -352,7 +352,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                             </Link>
                         </div>
                         <div className="h-64 w-full min-w-0">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={250}>
                                 <BarChart data={attendanceData}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-surface)" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} />
@@ -394,7 +394,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                     <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Dự án theo trạng thái</h3>
                         <div className="h-48 flex items-center justify-center w-full min-w-0">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={190}>
                                 <PieChart>
                                     <Pie
                                         data={projectStatusData}

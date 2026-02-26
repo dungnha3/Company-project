@@ -48,8 +48,8 @@ export default function DataTable({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {data.map((row) => (
-                            <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                        {data.map((row, rowIdx) => (
+                            <tr key={row.id ?? rowIdx} className="hover:bg-gray-50/50 transition-colors">
                                 {columns.map((column, idx) => (
                                     <td key={idx} className="px-6 py-4 align-middle">
                                         {column.cell ? column.cell(row) : (row[column.accessorKey] || '-')}

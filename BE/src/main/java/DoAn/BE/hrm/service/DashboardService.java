@@ -218,12 +218,8 @@ public class DashboardService {
                 return dashboard;
         }
 
-// ⭐⭐⭐ ADVANCED DASHBOARD - Charts and Detailed Stats
+        // ⭐⭐⭐ ADVANCED DASHBOARD - Charts and Detailed Stats
         public DashboardStatsDTO getDashboardStats(User currentUser) {
-                if (!accessControlService.isAnyManager()) {
-                        throw new DoAn.BE.common.exception.ForbiddenException(
-                                        "🚫 Only managers can view dashboard stats");
-                }
                 log.info("Fetching advanced dashboard statistics");
 
                 DashboardStatsDTO stats = new DashboardStatsDTO();

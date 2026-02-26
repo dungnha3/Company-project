@@ -70,7 +70,7 @@ export default function NotificationsPage() {
 
     // Mutations
     const readAllMutation = useMutation({
-        mutationFn: () => apiClient.put(ENDPOINTS.NOTIFICATIONS.READ_ALL),
+        mutationFn: () => apiClient.put(ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ),
         onSuccess: () => {
             queryClient.invalidateQueries(['notifications']);
             queryClient.invalidateQueries(['unread-count']);
@@ -107,7 +107,7 @@ export default function NotificationsPage() {
 
     const handleNotificationClick = (notification) => {
         if (!notification.isRead) {
-            markReadMutation.mutate(notification.id);
+            markReadMutation.mutate(notification.notificationId);
         }
 
         // Navigate based on type and workspace
@@ -225,12 +225,12 @@ export default function NotificationsPage() {
                         </div>
                     ) : (
                         <div className="divide-y divide-gray-50">
-                            {filteredNotifications.map(notification => (
+                            {filteredNotifications.map((notification, idx) => (
                                 <NotificationItem
-                                    key={notification.id}
+                                    key={notification.notificationId ?? idx}
                                     notification={notification}
                                     onClick={() => handleNotificationClick(notification)}
-                                    onDelete={() => deleteMutation.mutate(notification.id)}
+                                    onDelete={() => deleteMutation.mutate(notification.notificationId)}
                                     isPersonal={isPersonal}
                                 />
                             ))}
@@ -271,7 +271,7 @@ function NotificationItem({ notification, onClick, onDelete, isPersonal }) {
                 <h4 className={`text-sm mb-1 ${!notification.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
                     {notification.title}
                 </h4>
-                <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
+                <p className="text-sm text-gray-600 line-clamp-2">{notification.content}</p>
                 <div className="flex items-center gap-3 mt-2">
                     <span className="text-xs text-gray-400">
                         {formatRelativeTime(notification.createdAt)}

@@ -97,10 +97,12 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @OneToMany(mappedBy = "user")
     @BatchSize(size = 20) // N+1 Fix: Fetch memberships in batches
     @Builder.Default
+    @JsonIgnore
     private List<CompanyMember> memberships = new ArrayList<>();
 
     // Personal Workspace (1:1) - Không gian làm việc cá nhân
     @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY, cascade = jakarta.persistence.CascadeType.ALL)
+    @JsonIgnore
     private PersonalWorkspace personalWorkspace;
 
     // Personal Plan - Gói cước cá nhân (independent of company plans)
@@ -111,6 +113,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
 
     // Relation with Employee (New)
     @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY)
+    @JsonIgnore
     private DoAn.BE.hrm.entity.Employee employee;
 
     // Đặt trạng thái online

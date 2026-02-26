@@ -458,36 +458,8 @@ export const ENDPOINTS = {
     },
 
     // Notifications
-    NOTIFICATIONS: {
-        LIST: '/api/notifications',
-        READ_ALL: '/api/notifications/read-all',
-        MARK_READ: (id) => `/api/notifications/${id}/read`,
-        DELETE: (id) => `/api/notifications/${id}`,
-        SETTINGS: '/api/notifications/settings',
-    },
 
-    // AI Assistant
-    AI: {
-        STATUS: '/api/ai/status',
-        CHAT: '/api/ai/chat',
-        CONVERSATIONS: '/api/ai/conversations',
-        CONVERSATION_BY_ID: (id) => `/api/ai/conversations/${id}`,
-        DELETE_CONVERSATION: (id) => `/api/ai/conversations/${id}`,
-        PROJECT_SUMMARY: (projectId) => `/api/ai/projects/${projectId}/summary`,
-        SUGGEST_TASKS: (projectId) => `/api/ai/projects/${projectId}/suggest-tasks`,
-        ANALYZE_PROGRESS: (projectId) => `/api/ai/projects/${projectId}/analyze`,
-        REPORT: (projectId) => `/api/ai/projects/${projectId}/report`,
-    },
 
-    // Integrations & SSO
-    INTEGRATION: {
-        WEBHOOKS: '/api/integration/webhooks',
-        WEBHOOK_BY_ID: (id) => `/api/integration/webhooks/${id}`,
-        TEST_WEBHOOK: (id) => `/api/integration/webhooks/${id}/test`,
-        // SSO config
-        SSO_CONFIG: '/api/integration/sso/config',
-        SLACK_CONFIG: '/api/integration/slack/config',
-    },
 
 
     // Chat (merged from duplicates)

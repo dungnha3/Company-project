@@ -126,7 +126,9 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/hr/role-change-request/**")
                                                 .hasAnyRole(CompanyRole.OWNER.name(), CompanyRole.MANAGER_HR.name())
                                                 .requestMatchers("/api/reviews/**")
-                                                .hasAnyRole(CompanyRole.MANAGER_HR.name(),
+                                                .hasAnyRole(CompanyRole.OWNER.name(),
+                                                                CompanyRole.ADMIN.name(),
+                                                                CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name(),
                                                                 CompanyRole.EMPLOYEE.name())
 
@@ -155,7 +157,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/export/**")
                                                 .hasAnyRole(CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name())
-                                                .requestMatchers("/api/dashboard/**").hasAnyRole(ALL_MANAGERS)
+                                                .requestMatchers("/api/dashboard/**").hasAnyRole(ALL_EMPLOYEES)
 
                                                 // ===== PROJECT ENDPOINTS =====
                                                 .requestMatchers("/api/projects/**")
@@ -211,7 +213,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/salaries/my/**").authenticated()
                                                 .requestMatchers("/api/leave-requests/my/**").authenticated()
                                                 .requestMatchers("/api/leave-requests/**")
-                                                .hasAnyRole(CompanyRole.EMPLOYEE.name(), CompanyRole.MANAGER_HR.name(),
+                                                .hasAnyRole(CompanyRole.OWNER.name(),
+                                                                CompanyRole.ADMIN.name(),
+                                                                CompanyRole.EMPLOYEE.name(),
+                                                                CompanyRole.MANAGER_HR.name(),
                                                                 CompanyRole.MANAGER_ACCOUNTING.name(),
                                                                 CompanyRole.MANAGER_PROJECT.name())
 

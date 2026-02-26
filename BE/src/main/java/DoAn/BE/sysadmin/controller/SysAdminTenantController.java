@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/sysadmin/tenants")
@@ -21,18 +22,24 @@ public class SysAdminTenantController {
 
     // [VIEW] Get Users of a specific Tenant
     @GetMapping("/{companyId}/users")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getTenantUsers(
             @PathVariable Long companyId,
             Authentication authentication) {
         checkSysAdmin(authentication);
 
-        var members = companyMemberRepository.findByCompany_CompanyId(companyId).stream()
-                .map(m -> Map.of(
-                        "userId", m.getUser().getUserId(),
-                        "username", m.getUser().getUsername(),
-                        "email", m.getUser().getEmail(),
-                        "role", m.getRoles(),
-                        "joinedAt", m.getJoinedAt()))
+        var members = companyMemberRepository.findByCompanyIdWithUserAndRoles(companyId).stream()
+                .map(m -> {
+                    var map = new java.util.HashMap<String, Object>();
+                    map.put("userId", m.getUser().getUserId());
+                    map.put("username", m.getUser().getUsername());
+                    map.put("email", m.getUser().getEmail() != null ? m.getUser().getEmail() : "");
+                    map.put("role", m.getRoles() != null
+                            ? m.getRoles().stream().map(Enum::name).collect(Collectors.toList())
+                            : java.util.List.of());
+                    map.put("joinedAt", m.getJoinedAt() != null ? m.getJoinedAt().toString() : "");
+                    return map;
+                })
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(members);
@@ -40,6 +47,7 @@ public class SysAdminTenantController {
 
     // [VIEW] Get Projects of a specific Tenant
     @GetMapping("/{companyId}/projects")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getTenantProjects(
             @PathVariable Long companyId,
             Authentication authentication) {
