@@ -24,9 +24,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// [Controller managing contracts] (Role: HR Manager)
+import DoAn.BE.common.annotation.FeatureFlag;
 @RestController
 @RequestMapping("/api/contracts")
+@FeatureFlag("CONTRACT")
 @RequiredArgsConstructor
 public class ContractController {
 
@@ -34,21 +35,18 @@ public class ContractController {
     private final ContractMapper contractMapper;
     private final EmployeeService employeeService;
     private final AccessControlService accessControlService;
-
-    // [Check contract access permission] (Role: Internal)
     private void validateContractAccess(Long employeeId, User currentUser) {
-        if (accessControlService.isHRManager() || accessControlService.isOwnerOrAdmin()) {
+        try {
+            accessControlService.checkHrViewPermission();
             return;
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
         Employee employee = employeeService.getEmployeeByUserId(currentUser.getUserId());
         if (employee == null || !employee.getEmployeeId().equals(employeeId)) {
             throw new ForbiddenException("You do not have permission to view contracts of other employees");
         }
     }
-
-    // ==================== CRUD ====================
-
-    // [Create contract] (Role: HR Manager)
     @PostMapping
     public ResponseEntity<ContractDTO> createContract(
             @Valid @RequestBody ContractRequest request,
@@ -56,8 +54,6 @@ public class ContractController {
         Contract contract = contractService.createContract(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(contractMapper.toDTO(contract, currentUser));
     }
-
-    // [Get contract by ID] (Role: HR/Self)
     @GetMapping("/{id}")
     public ResponseEntity<ContractDTO> getContractById(
             @PathVariable Long id,
@@ -65,15 +61,11 @@ public class ContractController {
         Contract contract = contractService.getContractById(id);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
-
-    // [Get all contracts] (Role: HR Manager)
     @GetMapping
     public ResponseEntity<List<ContractDTO>> getAllContracts(@AuthenticationPrincipal User currentUser) {
         List<Contract> contracts = contractService.getAllContracts();
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
-
-    // [Update contract] (Role: HR Manager)
     @PutMapping("/{id}")
     public ResponseEntity<ContractDTO> updateContract(
             @PathVariable Long id,
@@ -82,8 +74,6 @@ public class ContractController {
         Contract contract = contractService.updateContract(id, request);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
-
-    // [Delete contract] (Role: HR Manager)
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteContract(@PathVariable Long id) {
         contractService.deleteContract(id);
@@ -91,10 +81,6 @@ public class ContractController {
         response.put("message", "Deleted contract successfully");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== QUERIES ====================
-
-    // [Get contracts by employee] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<ContractDTO>> getContractsByEmployee(
             @PathVariable Long employeeId,
@@ -103,8 +89,6 @@ public class ContractController {
         List<Contract> contracts = contractService.getContractsByEmployee(employeeId);
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
-
-    // [Get active contract of employee] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}/active")
     public ResponseEntity<ContractDTO> getActiveContract(
             @PathVariable Long employeeId,
@@ -113,8 +97,6 @@ public class ContractController {
         Contract contract = contractService.getActiveContract(employeeId);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
-
-    // [Get contracts by status] (Role: HR Manager)
     @GetMapping("/status/{status}")
     public ResponseEntity<List<ContractDTO>> getContractsByStatus(
             @PathVariable ContractStatus status,
@@ -122,8 +104,6 @@ public class ContractController {
         List<Contract> contracts = contractService.getContractsByStatus(status);
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
-
-    // [Get expiring contracts] (Role: HR Manager)
     @GetMapping("/expiring")
     public ResponseEntity<List<ContractDTO>> getExpiringContracts(
             @RequestParam(defaultValue = "30") int daysAhead,
@@ -131,10 +111,6 @@ public class ContractController {
         List<Contract> contracts = contractService.getExpiringContracts(daysAhead);
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
-
-    // ==================== ACTIONS ====================
-
-    // [Cancel contract] (Role: HR Manager)
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ContractDTO> cancelContract(
             @PathVariable Long id,
@@ -142,8 +118,6 @@ public class ContractController {
         Contract contract = contractService.cancelContract(id);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
-
-    // [Renew contract] (Role: HR Manager)
     @PatchMapping("/{id}/renew")
     public ResponseEntity<ContractDTO> renewContract(
             @PathVariable Long id,
@@ -152,8 +126,6 @@ public class ContractController {
         Contract contract = contractService.renewContract(id, newEndDate);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
-
-    // [Update expired contracts (batch job)] (Role: System)
     @PostMapping("/update-expired")
     public ResponseEntity<Map<String, Object>> updateExpiredContracts() {
         int count = contractService.updateExpiredContracts();
@@ -162,10 +134,6 @@ public class ContractController {
         response.put("updatedCount", count);
         return ResponseEntity.ok(response);
     }
-
-    // ==================== CHECKS ====================
-
-    // [Check if employee has active contract] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}/has-active")
     public ResponseEntity<Map<String, Object>> hasActiveContract(
             @PathVariable Long employeeId,

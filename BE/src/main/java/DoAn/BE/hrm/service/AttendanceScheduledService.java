@@ -17,8 +17,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
-// [Scheduled jobs service for Attendance - remind checkout, check missing] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -30,8 +28,6 @@ public class AttendanceScheduledService {
     private final DoAn.BE.notification.service.FCMService fcmService;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    // [Remind checkout at end of day - 5:30 PM] (Role: Scheduled)
     @Scheduled(cron = "0 30 17 * * MON-FRI")
     @Transactional(readOnly = true)
     public void remindCheckout() {
@@ -83,8 +79,6 @@ public class AttendanceScheduledService {
 
         log.info("✅ Finished checkout reminders. Sent {} reminders", reminderCount);
     }
-
-    // [Check missing attendance - 8:00 PM] (Role: Scheduled)
     @Scheduled(cron = "0 0 20 * * MON-FRI")
     @Transactional(readOnly = true)
     public void checkMissingAttendance() {
@@ -146,8 +140,6 @@ public class AttendanceScheduledService {
 
         log.info("✅ Finished missing attendance check. Sent {} notifications", missingCount);
     }
-
-    // [Send monthly summary - 1st of month 9:00 AM] (Role: Scheduled)
     @Scheduled(cron = "0 0 9 1 * *")
     @Transactional(readOnly = true)
     public void sendMonthlySummary() {

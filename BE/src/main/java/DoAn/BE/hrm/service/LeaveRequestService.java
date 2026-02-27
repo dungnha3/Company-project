@@ -68,7 +68,6 @@ public class LeaveRequestService {
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
         // 🔗 Dispatch webhook event
-        // 🔗 Dispatch webhook event
         eventPublisher
                 .publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_REQUESTED,
                         saved, currentUser.getUserId(), "Leave Requested: " + saved.getLeaveType()));
@@ -80,38 +79,29 @@ public class LeaveRequestService {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
 
-        if (accessControlService.canViewLeave(currentUser)) {
-            return leaveRequest;
+        boolean hasPermission;
+        try {
+            accessControlService.checkLeaveViewAllPermission();
+            hasPermission = true;
+        } catch (ForbiddenException e) {
+            hasPermission = false;
         }
 
-        if (!leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
+        if (!hasPermission && !leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You do not have permission to view this leave request");
         }
 
         return leaveRequest;
     }
 
-    public LeaveRequest getLeaveRequestById(Long id) {
+    private LeaveRequest getLeaveRequestById(Long id) {
         return leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
     }
 
-    public List<LeaveRequest> getAllLeaveRequests(User currentUser) {
-        if (!accessControlService.canViewLeave(currentUser)) {
-            throw new ForbiddenException("You do not have permission to view leave requests");
-        }
-        return leaveRequestRepository.findAll();
-    }
-
-    public List<LeaveRequest> getAllLeaveRequests() {
-        return leaveRequestRepository.findAll();
-    }
-
     public org.springframework.data.domain.Page<LeaveRequest> getAllLeaveRequestsPaged(User currentUser,
             org.springframework.data.domain.Pageable pageable) {
-        if (!accessControlService.canViewLeave(currentUser)) {
-            throw new ForbiddenException("You do not have permission to view leave requests");
-        }
+        accessControlService.checkLeaveViewAllPermission();
         return leaveRequestRepository.findAllRequests(pageable);
     }
 
@@ -153,8 +143,21 @@ public class LeaveRequestService {
         return leaveRequestRepository.save(leaveRequest);
     }
 
-    public void deleteLeaveRequest(Long id) {
-        LeaveRequest leaveRequest = getLeaveRequestById(id);
+    public void deleteLeaveRequest(Long id, User currentUser) {
+        LeaveRequest leaveRequest = getLeaveRequestById(id, currentUser);
+
+        // Ownership check: only the owner or someone with HR permission can delete
+        boolean hasPermission;
+        try {
+            accessControlService.checkLeaveApprovePermission();
+            hasPermission = true;
+        } catch (ForbiddenException e) {
+            hasPermission = false;
+        }
+
+        if (!hasPermission && !leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new ForbiddenException("You can only delete your own leave requests");
+        }
 
         if (leaveRequest.getStatus() != LeaveStatus.PENDING) {
             throw new BadRequestException("Can only delete pending requests");
@@ -163,17 +166,9 @@ public class LeaveRequestService {
         leaveRequestRepository.delete(leaveRequest);
     }
 
-    public List<LeaveRequest> getLeaveRequestsByEmployee(Long employeeId) {
-        return leaveRequestRepository.findByEmployee_EmployeeId(employeeId);
-    }
-
     public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsByEmployeePaged(Long employeeId,
             org.springframework.data.domain.Pageable pageable) {
         return leaveRequestRepository.findByEmployee_EmployeeId(employeeId, pageable);
-    }
-
-    public List<LeaveRequest> getLeaveRequestsInDateRange(LocalDate startDate, LocalDate endDate) {
-        return leaveRequestRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(endDate, startDate);
     }
 
     public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsInDateRangePaged(LocalDate startDate,
@@ -181,42 +176,19 @@ public class LeaveRequestService {
         return leaveRequestRepository.findByStartDateBetween(startDate, endDate, pageable);
     }
 
-    public LeaveRequest approvePM(Long id, String note, User currentUser) {
-        if (!accessControlService.isProjectManager()) {
-            throw new ForbiddenException("Only Project Manager can approve based on project schedule");
-        }
+    public LeaveRequest approveLeaveRequest(Long id, String note, User currentUser) {
+        accessControlService.checkLeaveApprovePermission();
 
-        log.info("PM {} approving leave request ID: {}", currentUser.getUsername(), id);
+        log.info("User {} approving leave request ID: {}", currentUser.getUsername(), id);
         LeaveRequest leaveRequest = getLeaveRequestById(id);
 
         if (leaveRequest.getStatus() != LeaveStatus.PENDING) {
             throw new BadRequestException("Request is not pending or already processed");
         }
 
-        leaveRequest.approvePM(currentUser, note);
+        leaveRequest.approve(currentUser, note);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
-        log.info("✅ PM approved leave request, waiting for Accounting");
-
-        return saved;
-    }
-
-    public LeaveRequest approveAccounting(Long id, String note, User currentUser) {
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accounting Manager can approve based on leave balance/salary");
-        }
-
-        log.info("Accounting {} approving leave request ID: {}", currentUser.getUsername(), id);
-        LeaveRequest leaveRequest = getLeaveRequestById(id);
-
-        if (leaveRequest.getStatus() != LeaveStatus.PM_APPROVED) {
-            throw new BadRequestException("Request needs PM approval first or is already processed");
-        }
-
-        leaveRequest.approveAccounting(currentUser, note);
-        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
-        log.info("✅ Accounting approved leave request - Completed 2-step approval");
-
-        // Notifications are now handled by InternalNotificationListener via HrmEvent
+        log.info("✅ Leave request approved by {}", currentUser.getUsername());
 
         // Publish Event
         eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_APPROVED,
@@ -225,31 +197,8 @@ public class LeaveRequestService {
         return saved;
     }
 
-    @Deprecated
-    public LeaveRequest approveLeaveRequest(Long id, String note, User currentUser) {
-        if (!accessControlService.canApproveLeave(currentUser)) {
-            throw new ForbiddenException("You do not have permission to approve leave requests");
-        }
-
-        log.info("Approving leave request ID: {} by user: {}", id, currentUser.getUsername());
-        LeaveRequest leaveRequest = getLeaveRequestById(id);
-
-        if (leaveRequest.getStatus() != LeaveStatus.PENDING) {
-            throw new BadRequestException("Request is already processed");
-        }
-
-        leaveRequest.approve(currentUser, note);
-        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
-
-        // Notifications handled by InternalNotificationListener
-
-        return saved;
-    }
-
     public LeaveRequest rejectLeaveRequest(Long id, String note, User currentUser) {
-        if (!accessControlService.canApproveLeave(currentUser)) {
-            throw new ForbiddenException("You do not have permission to reject leave requests");
-        }
+        accessControlService.checkLeaveApprovePermission();
 
         log.info("Rejecting leave request ID: {} by user: {}", id, currentUser.getUsername());
         LeaveRequest leaveRequest = getLeaveRequestById(id);
@@ -270,31 +219,9 @@ public class LeaveRequestService {
         return saved;
     }
 
-    public List<LeaveRequest> getPendingLeaveRequests() {
-        return leaveRequestRepository.findByStatus(LeaveStatus.PENDING);
-    }
-
-    public org.springframework.data.domain.Page<LeaveRequest> getPendingLeaveRequestsPaged(
-            org.springframework.data.domain.Pageable pageable) {
-        return leaveRequestRepository.findByStatus(LeaveStatus.PENDING, pageable);
-    }
-
-    public List<LeaveRequest> getApprovedLeaveRequests() {
-        return leaveRequestRepository.findByStatus(LeaveStatus.APPROVED);
-    }
-
-    public org.springframework.data.domain.Page<LeaveRequest> getApprovedLeaveRequestsPaged(
-            org.springframework.data.domain.Pageable pageable) {
-        return leaveRequestRepository.findByStatus(LeaveStatus.APPROVED, pageable);
-    }
-
-    public List<LeaveRequest> getRejectedLeaveRequests() {
-        return leaveRequestRepository.findByStatus(LeaveStatus.REJECTED);
-    }
-
-    public org.springframework.data.domain.Page<LeaveRequest> getRejectedLeaveRequestsPaged(
-            org.springframework.data.domain.Pageable pageable) {
-        return leaveRequestRepository.findByStatus(LeaveStatus.REJECTED, pageable);
+    public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsByStatus(
+            LeaveStatus status, org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByStatus(status, pageable);
     }
 
     public int getTotalLeaveDays(Long employeeId, int year) {

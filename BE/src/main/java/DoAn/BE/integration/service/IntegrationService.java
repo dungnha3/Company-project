@@ -25,9 +25,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Service for managing third-party integrations
- */
+// Service for managing third-party integrations
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -39,11 +38,8 @@ public class IntegrationService {
 
     private static final int MAX_INTEGRATIONS = 10;
 
-    // ==================== MARKETPLACE ====================
-
-    /**
-     * Get all available integrations with connection status
-     */
+    // Get all available integrations with connection status
+    // /
     public List<IntegrationDto.AvailableIntegration> getAvailableIntegrations() {
         Long companyId = TenantContext.getCompanyId();
         Set<IntegrationType> connectedTypes = integrationRepository.findByCompany_CompanyId(companyId)
@@ -56,11 +52,8 @@ public class IntegrationService {
                 .collect(Collectors.toList());
     }
 
-    // ==================== INTEGRATION MANAGEMENT ====================
-
-    /**
-     * Get all connected integrations for current company
-     */
+    // Get all connected integrations for current company
+    // /
     @Transactional(readOnly = true)
     public List<IntegrationDto.IntegrationResponse> getConnectedIntegrations() {
         Long companyId = TenantContext.getCompanyId();
@@ -70,9 +63,8 @@ public class IntegrationService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Connect a new integration
-     */
+    // Connect a new integration
+    // /
     @Transactional
     @CacheEvict(value = CacheConfig.CACHE_INTEGRATIONS, key = "#companyId")
     public IntegrationDto.IntegrationResponse connect(IntegrationDto.ConnectRequest request, User currentUser) {
@@ -104,9 +96,8 @@ public class IntegrationService {
         return toResponse(integration);
     }
 
-    /**
-     * Update integration config
-     */
+    // Update integration config
+    // /
     @Transactional
     @CacheEvict(value = CacheConfig.CACHE_INTEGRATIONS, key = "#integration.company.companyId")
     public IntegrationDto.IntegrationResponse update(Long integrationId, IntegrationDto.UpdateRequest request) {
@@ -131,9 +122,8 @@ public class IntegrationService {
         return toResponse(integration);
     }
 
-    /**
-     * Disconnect (delete) integration
-     */
+    // Disconnect (delete) integration
+    // /
     @Transactional
     @CacheEvict(value = CacheConfig.CACHE_INTEGRATIONS, key = "#integration.company.companyId")
     public void disconnect(Long integrationId) {
@@ -142,9 +132,8 @@ public class IntegrationService {
         log.info("Disconnected integration {}: {}", integrationId, integration.getIntegrationType());
     }
 
-    /**
-     * Test integration connection
-     */
+    // Test integration connection
+    // /
     public IntegrationDto.SyncStatus testConnection(Long integrationId) {
         Integration integration = findIntegrationSecure(integrationId);
         Map<String, String> config = deserializeConfig(integration.getConfig());
@@ -171,17 +160,6 @@ public class IntegrationService {
                         error = "Missing webhookUrl";
                     }
                     break;
-                case GENERIC_WEBHOOK:
-                    String genericUrl = config.get("webhookUrl");
-                    if (genericUrl != null) {
-                        Map<String, Object> data = new HashMap<>();
-                        data.put("event", "test_connection");
-                        data.put("timestamp", LocalDateTime.now().toString());
-                        success = webhookConnector.sendGenericWebhook(genericUrl, data);
-                    } else {
-                        error = "Missing webhookUrl";
-                    }
-                    break;
                 default:
                     // For others, we still return mock success for now
                     success = true;
@@ -202,9 +180,8 @@ public class IntegrationService {
                 .build();
     }
 
-    /**
-     * Send notification to all connected integrations of a specific type
-     */
+    // Send notification to all connected integrations of a specific type
+    // /
     @Async
     public void notifyIntegrations(IntegrationType type, String title, String message, Map<String, Object> extraData) {
         Long companyId = TenantContext.getCompanyId();
@@ -231,21 +208,11 @@ public class IntegrationService {
                 case DISCORD:
                     webhookConnector.sendDiscordNotification(webhookUrl, message, title);
                     break;
-                case GENERIC_WEBHOOK:
-                    Map<String, Object> payload = new HashMap<>();
-                    payload.put("title", title);
-                    payload.put("message", message);
-                    if (extraData != null)
-                        payload.putAll(extraData);
-                    webhookConnector.sendGenericWebhook(webhookUrl, payload);
-                    break;
                 default:
                     break;
             }
         }
     }
-
-    // ==================== HELPERS ====================
 
     @Cacheable(value = CacheConfig.CACHE_INTEGRATIONS, key = "#companyId")
     public List<Integration> getActiveIntegrationsCached(Long companyId) {
@@ -276,7 +243,6 @@ public class IntegrationService {
             case JIRA_IMPORT -> "Jira Import";
             case TRELLO_IMPORT -> "Trello Import";
             case GOOGLE_WORKSPACE -> "Google Workspace";
-            case GENERIC_WEBHOOK -> "Custom Webhook";
         };
     }
 
@@ -291,7 +257,6 @@ public class IntegrationService {
             case JIRA_IMPORT -> "Import projects and issues from Jira";
             case TRELLO_IMPORT -> "Import boards and cards from Trello";
             case GOOGLE_WORKSPACE -> "User provisioning from Google Workspace";
-            case GENERIC_WEBHOOK -> "Send events to custom webhook endpoints";
         };
     }
 
@@ -304,7 +269,6 @@ public class IntegrationService {
             case OUTLOOK_CALENDAR -> "microsoft";
             case JIRA_IMPORT -> "jira";
             case TRELLO_IMPORT -> "trello";
-            case GENERIC_WEBHOOK -> "webhook";
         };
     }
 
@@ -314,7 +278,6 @@ public class IntegrationService {
             case GOOGLE_CALENDAR, OUTLOOK_CALENDAR, GOOGLE_DRIVE -> "Productivity";
             case JIRA_IMPORT, TRELLO_IMPORT -> "Project Management";
             case GOOGLE_WORKSPACE -> "HR & Identity";
-            case GENERIC_WEBHOOK -> "Developer";
         };
     }
 
@@ -323,7 +286,6 @@ public class IntegrationService {
             case SLACK -> List.of("Issue notifications", "Leave request alerts", "Sprint updates");
             case GOOGLE_CALENDAR -> List.of("Leave sync", "Sprint events", "Meeting reminders");
             case JIRA_IMPORT -> List.of("One-time import", "Projects", "Issues", "Custom fields");
-            case GENERIC_WEBHOOK -> List.of("Custom events", "Flexible payload", "HMAC signing");
             default -> List.of("Notifications", "Data sync");
         };
     }

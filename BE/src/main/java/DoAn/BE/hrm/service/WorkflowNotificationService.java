@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
-
-// [Service workflow notifications - contracts, leaves, salary, birthday] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,8 +43,6 @@ public class WorkflowNotificationService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final NumberFormat CURRENCY_FORMATTER = NumberFormat
             .getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
-
-    // [Get HR Managers in current company] (Role: Internal)
     private List<User> getHRManagers() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)
@@ -54,8 +50,6 @@ public class WorkflowNotificationService {
         return companyMemberRepository.findHRManagersByCompany(companyId)
                 .stream().map(CompanyMember::getUser).collect(Collectors.toList());
     }
-
-    // [Get Project Managers in current company] (Role: Internal)
     private List<User> getProjectManagers() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)
@@ -63,8 +57,6 @@ public class WorkflowNotificationService {
         return companyMemberRepository.findProjectManagersByCompany(companyId)
                 .stream().map(CompanyMember::getUser).collect(Collectors.toList());
     }
-
-    // [Check contract expiry - 8:00 AM daily] (Role: Scheduled)
     @Scheduled(cron = "0 0 8 * * *")
     public void checkContractExpiry() {
         log.info("Checking contract expiry...");
@@ -91,8 +83,6 @@ public class WorkflowNotificationService {
 
         log.info("Sent notifications for {} expiring contracts", contractsExpiring30Days.size());
     }
-
-    // [Notify leave request submitted] (Role: System)
     @Async
     public void notifyLeaveRequestSubmitted(LeaveRequest leaveRequest) {
         log.info("Sending notification for submitted leave request: {}", leaveRequest.getLeaveRequestId());
@@ -109,8 +99,6 @@ public class WorkflowNotificationService {
                     leaveRequest.getTotalDays());
         }
     }
-
-    // [Notify leave request processed] (Role: System)
     @Async
     public void notifyLeaveRequestProcessed(LeaveRequest leaveRequest, boolean approved, String note) {
         log.info("Sending notification for processed leave request: {} - {}",
@@ -146,8 +134,6 @@ public class WorkflowNotificationService {
             log.error("Error sending leave email: {}", e.getMessage());
         }
     }
-
-    // [Notify salary approved] (Role: System)
     @Async
     public void notifySalaryApproved(Salary salary) {
         log.info("Sending notification for approved salary: {}", salary.getSalaryId());
@@ -173,8 +159,6 @@ public class WorkflowNotificationService {
             log.error("Error sending salary email: {}", e.getMessage());
         }
     }
-
-    // [Notify salary paid] (Role: System)
     @Async
     public void notifySalaryPaid(Salary salary) {
         log.info("Sending notification for paid salary: {}", salary.getSalaryId());
@@ -189,8 +173,6 @@ public class WorkflowNotificationService {
                 "/hr/salaries/" + salary.getSalaryId(),
                 String.valueOf(salary.getMonth()), String.valueOf(salary.getYear()), amount);
     }
-
-    // [Notify salary increase proposal] (Role: System)
     @Async
     public void notifySalaryIncreaseProposal(Long employeeId, BigDecimal currentSalary,
             BigDecimal proposedSalary, String reason, User proposedBy) {
@@ -230,8 +212,6 @@ public class WorkflowNotificationService {
             // I'll skip self notification for now to save time, or use SYSTEM_ALERT.
         }
     }
-
-    // [Notify new employee welcome] (Role: System)
     @Async
     public void notifyWelcomeNewEmployee(Employee employee, String tempPassword) {
         log.info("Sending welcome notification for new employee: {}", employee.getFullName());
@@ -256,8 +236,6 @@ public class WorkflowNotificationService {
             log.error("Error sending welcome email: {}", e.getMessage());
         }
     }
-
-    // [Check birthdays - 9:00 AM daily] (Role: Scheduled)
     @Scheduled(cron = "0 0 9 * * *")
     public void checkBirthdays() {
         log.info("Checking birthdays...");

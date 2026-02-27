@@ -71,7 +71,7 @@ export default function EmployeesPage() {
         if (selectedIds.size === employeesData?.content?.length) {
             setSelectedIds(new Set());
         } else {
-            setSelectedIds(new Set(employeesData?.content?.map(e => e.nhanvienId) || []));
+            setSelectedIds(new Set(employeesData?.content?.map(e => e.employeeId) || []));
         }
     };
 
@@ -118,8 +118,8 @@ export default function EmployeesPage() {
             cell: (row) => (
                 <input
                     type="checkbox"
-                    checked={selectedIds.has(row.nhanvienId)}
-                    onChange={() => handleSelectOne(row.nhanvienId)}
+                    checked={selectedIds.has(row.employeeId)}
+                    onChange={() => handleSelectOne(row.employeeId)}
                     onClick={(e) => e.stopPropagation()}
                     className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
@@ -127,13 +127,13 @@ export default function EmployeesPage() {
         },
         {
             header: 'Nhân viên',
-            accessorKey: 'hoTen',
+            accessorKey: 'fullName',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    <Avatar src={row.avatarUrl} name={row.hoTen} size="md" />
+                    <Avatar src={row.avatarUrl} name={row.fullName} size="md" />
                     <div>
-                        <div className="font-semibold text-gray-900">{row.hoTen}</div>
-                        <div className="text-xs text-gray-500">{row.maNhanVien || `ID: ${row.nhanvienId}`}</div>
+                        <div className="font-semibold text-gray-900">{row.fullName}</div>
+                        <div className="text-xs text-gray-500">{row.idCard || `ID: ${row.employeeId}`}</div>
                     </div>
                 </div>
             )
@@ -144,39 +144,39 @@ export default function EmployeesPage() {
             cell: (row) => (
                 <div className="flex flex-col">
                     <span className="text-sm text-gray-700" title={row.email}>{row.email}</span>
-                    <span className="text-xs text-gray-500">{row.soDienThoai || '---'}</span>
+                    <span className="text-xs text-gray-500">{row.phone || '---'}</span>
                 </div>
             )
         },
         {
             header: 'Vị trí',
-            accessorKey: 'phongban',
+            accessorKey: 'departmentName',
             cell: (row) => (
                 <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-800">{row.tenPhongBan || row.phongban?.tenPhongBan || '---'}</span>
-                    <span className="text-xs text-gray-500">{row.tenChucVu || row.chucvu?.tenChucVu || '---'}</span>
+                    <span className="text-sm font-medium text-gray-800">{row.departmentName || '---'}</span>
+                    <span className="text-xs text-gray-500">{row.positionName || '---'}</span>
                 </div>
             )
         },
         // Salary column - Only for OWNER, ADMIN, MANAGER_ACCOUNTING
         ...(hasRole('OWNER') || hasRole('ADMIN') || hasRole('MANAGER_ACCOUNTING') ? [{
             header: 'Mức lương',
-            accessorKey: 'luongCoBan',
+            accessorKey: 'baseSalary',
             cell: (row) => (
                 <span className="font-mono text-green-700 font-medium">
-                    {row.luongCoBan ? formatCurrency(row.luongCoBan) : '---'}
+                    {row.baseSalary ? formatCurrency(row.baseSalary) : '---'}
                 </span>
             )
         }] : []),
         {
             header: 'Ngày vào',
-            accessorKey: 'ngayVaoLam',
-            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.ngayVaoLam ? formatDate(row.ngayVaoLam) : '---'}</span>
+            accessorKey: 'hireDate',
+            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.hireDate ? formatDate(row.hireDate) : '---'}</span>
         },
         {
             header: 'Trạng thái',
-            accessorKey: 'trangThai',
-            cell: (row) => <StatusBadge status={row.trangThai} />
+            accessorKey: 'status',
+            cell: (row) => <StatusBadge status={row.status} />
         },
         {
             header: '',
@@ -184,7 +184,7 @@ export default function EmployeesPage() {
             cell: (row) => (
                 <div className="flex justify-end gap-2">
                     <button
-                        onClick={() => navigate(`/app/hr/employees/${row.nhanvienId}`)}
+                        onClick={() => navigate(`/app/hr/employees/${row.employeeId}`)}
                         className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-all"
                         title="Xem chi tiết"
                     >
@@ -195,7 +195,7 @@ export default function EmployeesPage() {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedEmployeeId(row.nhanvienId);
+                                    setSelectedEmployeeId(row.employeeId);
                                 }}
                                 className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                                 title="Sửa"
@@ -205,7 +205,7 @@ export default function EmployeesPage() {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDelete(row.nhanvienId);
+                                    handleDelete(row.employeeId);
                                 }}
                                 className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                 title="Xóa"
@@ -222,7 +222,7 @@ export default function EmployeesPage() {
     // Stats Calculation (Client-side approximation for now since API might paginate)
     // Ideally, backend should return stats in a separate endpoint or meta
     const stats = {
-        active: employeesData?.content?.filter(e => e.trangThai === 'DANG_LAM_VIEC').length || 0, // This is only for current page if paginated logic isn't adapted for stats. BE probably needs a stats endpoint.
+        active: employeesData?.content?.filter(e => e.status === 'DANG_LAM_VIEC').length || 0, // This is only for current page if paginated logic isn't adapted for stats. BE probably needs a stats endpoint.
         // For now let's use placeholders or if we want real stats we call another API. 
         // Let's use hardcoded 0 for safety or remove stats cards until we have API.
         // Actually the old code did client side filtering on ALL employees. 

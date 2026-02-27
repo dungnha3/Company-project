@@ -58,10 +58,7 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
 
         // [SAAS] Đếm tổng số user active trong công ty để check limit gói
         long countByCompany_CompanyIdAndIsActiveTrue(Long companyId);
-
-        // ==========================================
         // MULTI-ROLE SUPPORT (Derived Queries)
-        // ==========================================
 
         // Tìm members có chứa role cụ thể
         List<CompanyMember> findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
@@ -71,10 +68,7 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
 
         // Tìm members có chứa 1 trong các role (OR logic)
         List<CompanyMember> findByCompany_CompanyIdAndRolesInAndIsActiveTrue(Long companyId, Set<CompanyRole> roles);
-
-        // ==========================================
         // DEFAULT METHODS
-        // ==========================================
 
         // Lấy tất cả HR Managers trong công ty
         default List<CompanyMember> findHRManagersByCompany(Long companyId) {

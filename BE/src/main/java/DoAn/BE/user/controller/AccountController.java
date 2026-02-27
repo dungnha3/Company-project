@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.user.dto.UpdatePasswordRequest;
@@ -29,8 +30,6 @@ import DoAn.BE.user.mapper.UserMapper;
 import DoAn.BE.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
-// [Controller quản lý tài khoản nâng cao] (Role: Admin/HR/User)
 @RestController
 @RequestMapping("/api/accounts")
 @RequiredArgsConstructor
@@ -39,8 +38,6 @@ public class AccountController {
     private final UserService userService;
     private final UserMapper userMapper;
     private final AccessControlService accessControlService;
-
-    // ==================== READ ====================
 
     @GetMapping
     public ResponseEntity<Page<UserDTO>> getAllAccounts(
@@ -64,9 +61,12 @@ public class AccountController {
             return ResponseEntity.ok(users.map(userMapper::toDTO));
         }
 
-        if (accessControlService.isOwnerOrAdmin() || accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
             Page<User> users = userService.getUsersByCurrentCompany(pageable);
             return ResponseEntity.ok(users.map(userMapper::toDTO));
+        } catch (ForbiddenException ignored) {
+            // no permission
         }
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -76,8 +76,14 @@ public class AccountController {
     public ResponseEntity<UserDTO> getAccountById(
             @PathVariable Long userId,
             @AuthenticationPrincipal User currentUser) {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()
-                && !currentUser.getUserId().equals(userId)) {
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkHrViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+        if (!hasViewPermission && !currentUser.getUserId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         User user = userService.getUserById(userId);
@@ -86,22 +92,28 @@ public class AccountController {
 
     @GetMapping("/search")
     public ResponseEntity<List<UserDTO>> searchAccounts(@RequestParam String keyword) {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         List<User> users = userService.searchUsers(keyword);
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
 
-    // ==================== UPDATE ====================
-
     @PutMapping("/{userId}")
     public ResponseEntity<UserDTO> updateAccount(
             @PathVariable Long userId,
             @Valid @RequestBody UserDTO userDTO,
             @AuthenticationPrincipal User currentUser) {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()
-                && !currentUser.getUserId().equals(userId)) {
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
+        if (!hasEditPermission && !currentUser.getUserId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         User updatedUser = userService.updateUser(userId, userDTO, currentUser);
@@ -126,9 +138,14 @@ public class AccountController {
     public ResponseEntity<Map<String, String>> toggleAccountStatus(
             @PathVariable Long userId,
             @AuthenticationPrincipal User currentUser) {
-        if (!currentUser.isSystemAdminAccount()
-                && !accessControlService.isOwnerOrAdmin()
-                && !accessControlService.isHRManager()) {
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
+        if (!currentUser.isSystemAdminAccount() && !hasEditPermission) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         User user = userService.toggleUserStatus(userId, currentUser);
@@ -167,8 +184,6 @@ public class AccountController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== DELETE ====================
-
     @DeleteMapping("/{userId}")
     public ResponseEntity<Map<String, String>> deleteAccount(
             @PathVariable Long userId,
@@ -180,11 +195,11 @@ public class AccountController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== FILTER & STATISTICS ====================
-
     @GetMapping("/role/{role}")
     public ResponseEntity<List<UserDTO>> getUsersByRole(@PathVariable CompanyRole role) {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         List<User> users = userService.getUsersByRole(role);
@@ -193,7 +208,9 @@ public class AccountController {
 
     @GetMapping("/active")
     public ResponseEntity<List<UserDTO>> getActiveUsers() {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(userMapper.toDTOList(userService.getActiveUsers()));
@@ -201,7 +218,9 @@ public class AccountController {
 
     @GetMapping("/online")
     public ResponseEntity<List<UserDTO>> getOnlineUsers() {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(userMapper.toDTOList(userService.getOnlineUsers()));
@@ -209,7 +228,9 @@ public class AccountController {
 
     @GetMapping("/count/role/{role}")
     public ResponseEntity<Map<String, Long>> countUsersByRole(@PathVariable CompanyRole role) {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         Map<String, Long> response = new HashMap<>();
@@ -220,7 +241,9 @@ public class AccountController {
 
     @GetMapping("/count/online")
     public ResponseEntity<Map<String, Long>> countOnlineUsers() {
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         Map<String, Long> response = new HashMap<>();

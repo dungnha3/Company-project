@@ -6,8 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-
-// [Entity comment/thảo luận trên Issue] (Role: Data Model)
 @Entity
 @Table(name = "issue_comments")
 @Data
@@ -59,7 +57,6 @@ public class IssueComment {
         this.content = content;
     }
 
-    // Helper methods
     public boolean canBeEditedBy(User user) {
         return this.author.getUserId().equals(user.getUserId());
     }

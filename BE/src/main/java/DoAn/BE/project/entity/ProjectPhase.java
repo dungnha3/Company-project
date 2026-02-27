@@ -6,8 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-
-// [Entity Giai đoạn dự án - Waterfall Model] (Role: Data Model)
 @Entity
 @Table(name = "project_phases")
 @Data
@@ -48,7 +46,6 @@ public class ProjectPhase extends DoAn.BE.common.entity.BaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    // Helper methods
     public boolean isActive() {
         return this.status == PhaseStatus.IN_PROGRESS;
     }

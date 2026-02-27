@@ -72,7 +72,6 @@ public class ReactionService {
                 "REACTION_ADDED");
     }
 
-    // Xóa reaction khỏi tin nhắn
     public void removeReaction(Long messageId, Long userId, String emoji) {
         // Kiểm tra reaction tồn tại
         MessageReaction reaction = reactionRepository
@@ -90,7 +89,6 @@ public class ReactionService {
         notifyReactionChange(roomId, messageId, userId, username, emoji, "REACTION_REMOVED");
     }
 
-    // Lấy tất cả reactions của tin nhắn (grouped by emoji)
     @Transactional(readOnly = true)
     public Map<String, List<String>> getReactionsByMessageId(Long messageId) {
         List<MessageReaction> reactions = reactionRepository.findByMessage_MessageId(messageId);

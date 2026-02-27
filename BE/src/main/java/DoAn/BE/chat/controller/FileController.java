@@ -1,5 +1,7 @@
 package DoAn.BE.chat.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.chat.dto.MessDTO;
 import DoAn.BE.chat.service.ChatFileService;
 import DoAn.BE.user.entity.User;
@@ -17,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
+@FeatureFlag("CHAT")
 public class FileController {
 
     private final ChatFileService chatFileService;
@@ -43,7 +46,6 @@ public class FileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(message);
     }
 
-    // Lấy danh sách file trong phòng chat
     @GetMapping("/{roomId}/files")
     public ResponseEntity<List<MessDTO>> getFiles(
             @PathVariable Long roomId,
@@ -52,7 +54,6 @@ public class FileController {
         return ResponseEntity.ok(files);
     }
 
-    // Lấy danh sách hình ảnh trong phòng chat
     @GetMapping("/{roomId}/images")
     public ResponseEntity<List<MessDTO>> getImages(
             @PathVariable Long roomId,

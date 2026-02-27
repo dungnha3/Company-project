@@ -60,10 +60,7 @@ public class AccessControlService {
     public static void clearCache() {
         cachedMember.remove();
     }
-
-    // ========================================================================
     // GRANULAR PERMISSION CHECKS
-    // ========================================================================
 
     public void checkHrViewPermission() {
         checkDetailedPermission(PermissionKeys.HR_VIEW_LIST, "Bạn không có quyền xem danh sách nhân viên");
@@ -120,10 +117,7 @@ public class AccessControlService {
     public void checkStorageUploadPermission() {
         checkDetailedPermission(PermissionKeys.STORAGE_UPLOAD, "Bạn không có quyền upload file");
     }
-
-    // ========================================================================
     // CORE LOGIC
-    // ========================================================================
 
     private void checkDetailedPermission(String permissionKey, String errorMessage) {
         User currentUser = getCurrentUser();
@@ -156,23 +150,7 @@ public class AccessControlService {
     private boolean isCompanyAdminOrOwner(CompanyMember member) {
         return member.hasAnyRole(CompanyRole.OWNER, CompanyRole.ADMIN);
     }
-
-    // ========================================================================
     // HELPER METHODS
-    // ========================================================================
-
-    public boolean canViewEmployeeProfile(User currentUser, Long targetEmployeeUserId) {
-        if (currentUser == null)
-            return false;
-        if (currentUser.getUserId().equals(targetEmployeeUserId))
-            return true;
-        try {
-            checkHrViewPermission();
-            return true;
-        } catch (ForbiddenException e) {
-            return false;
-        }
-    }
 
     public void checkOwnership(User currentUser, Long targetUserId, String message) {
         if (currentUser == null) {
@@ -194,46 +172,9 @@ public class AccessControlService {
         }
     }
 
-    public boolean isHRManager() {
-        CompanyMember member = getCurrentMember();
-        if (member == null)
-            return false;
-        return isCompanyAdminOrOwner(member) || member.hasAnyRole(CompanyRole.MANAGER_HR)
-                || permissionService.hasPermission(member, "HR", "VIEW_LIST");
-    }
-
-    public boolean isAccountingManager() {
-        CompanyMember member = getCurrentMember();
-        if (member == null)
-            return false;
-        return isCompanyAdminOrOwner(member) || member.hasAnyRole(CompanyRole.MANAGER_ACCOUNTING)
-                || permissionService.hasPermission(member, "SALARY", "VIEW");
-    }
-
-    public boolean isProjectManager() {
-        CompanyMember member = getCurrentMember();
-        if (member == null)
-            return false;
-        return isCompanyAdminOrOwner(member) || member.hasAnyRole(CompanyRole.MANAGER_PROJECT)
-                || permissionService.hasPermission(member, "PROJECT", "CREATE");
-    }
-
-    public boolean isAnyManager() {
-        return isHRManager() || isAccountingManager() || isProjectManager();
-    }
-
     public boolean isOwnerOrAdmin() {
         CompanyMember member = getCurrentMember();
         return member != null && isCompanyAdminOrOwner(member);
-    }
-
-    public boolean canApproveLeave(User user) {
-        return isProjectManager() || isAccountingManager() || isOwnerOrAdmin();
-    }
-
-    public boolean canViewLeave(User user) {
-        // Employees can view their own (checked in service), Managers can view all
-        return isAnyManager();
     }
 
     public boolean canUseChat(User user) {
@@ -274,9 +215,4 @@ public class AccessControlService {
         }
     }
 
-    public void checkHRPermission(User user) {
-        if (!isHRManager()) {
-            throw new ForbiddenException("Yêu cầu quyền Quản lý nhân sự");
-        }
-    }
 }

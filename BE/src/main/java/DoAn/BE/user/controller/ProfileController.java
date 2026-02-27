@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
-
-// [Controller quản lý hồ sơ cá nhân] (Role: Authenticated User)
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
@@ -22,20 +20,12 @@ public class ProfileController {
 
     private final ProfileService profileService;
     private final UserMapper userMapper;
-
-    // ==================== UPDATE ====================
-
-    // [Cập nhật profile của user hiện tại] (Role: Self)
     @PutMapping
     public ResponseEntity<UserDTO> updateProfile(@Valid @RequestBody UpdateUserRequest request) {
         Long userId = getCurrentUserId();
         User user = profileService.updateProfile(userId, request);
         return ResponseEntity.ok(userMapper.toDTO(user));
     }
-
-    // ==================== PASSWORD ====================
-
-    // [Đổi mật khẩu] (Role: Self)
     @PostMapping("/change-password")
     public ResponseEntity<Map<String, String>> changePassword(
             @Valid @RequestBody DoAn.BE.user.dto.UpdatePasswordRequest request) {
@@ -46,10 +36,6 @@ public class ProfileController {
         response.put("message", "Đổi mật khẩu thành công");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== STATUS ====================
-
-    // [Đặt trạng thái online] (Role: Self)
     @PatchMapping("/online")
     public ResponseEntity<Map<String, String>> setOnline() {
         Long userId = getCurrentUserId();
@@ -59,8 +45,6 @@ public class ProfileController {
         response.put("message", "Đã set online");
         return ResponseEntity.ok(response);
     }
-
-    // [Đặt trạng thái offline] (Role: Self)
     @PatchMapping("/offline")
     public ResponseEntity<Map<String, String>> setOffline() {
         Long userId = getCurrentUserId();
@@ -70,10 +54,6 @@ public class ProfileController {
         response.put("message", "Đã set offline");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== FCM ====================
-
-    // [Cập nhật FCM token cho push notification] (Role: Self)
     @PutMapping("/fcm-token")
     public ResponseEntity<Map<String, String>> updateFcmToken(@RequestBody Map<String, String> request) {
         Long userId = getCurrentUserId();
@@ -84,10 +64,6 @@ public class ProfileController {
         response.put("message", "Cập nhật FCM token thành công");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== HELPER ====================
-
-    // [Lấy userId từ SecurityContext] (Role: Internal)
     private Long getCurrentUserId() {
         return SecurityUtil.getCurrentUserId();
     }

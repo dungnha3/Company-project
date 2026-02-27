@@ -16,9 +16,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Service for Gantt chart operations
- */
+// Service for Gantt chart operations
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -30,11 +29,8 @@ public class GanttService {
     private final IssueDependencyRepository dependencyRepository;
     private final ProjectMemberRepository memberRepository;
 
-    // ==================== GANTT DATA ====================
-
-    /**
-     * Get complete Gantt chart data for a project
-     */
+    // Get complete Gantt chart data for a project
+    // /
     @Transactional(readOnly = true)
     public GanttDto.GanttResponse getGanttData(Long projectId, Long userId) {
         validateProjectAccess(projectId, userId);
@@ -78,11 +74,8 @@ public class GanttService {
                 .build();
     }
 
-    // ==================== DATE UPDATES ====================
-
-    /**
-     * Update issue dates (drag-drop in Gantt)
-     */
+    // Update issue dates (drag-drop in Gantt)
+    // /
     @Transactional
     public GanttDto.GanttItem updateIssueDates(Long issueId, GanttDto.DateUpdateRequest request, Long userId) {
         Issue issue = issueRepository.findById(issueId)
@@ -114,9 +107,8 @@ public class GanttService {
         return buildIssueItem(issue);
     }
 
-    /**
-     * Move successor issues by specified days
-     */
+    // Move successor issues by specified days
+    // /
     private void moveSuccessors(Long issueId, int daysDiff) {
         List<IssueDependency> dependencies = dependencyRepository.findByPredecessor_IssueId(issueId);
 
@@ -135,11 +127,8 @@ public class GanttService {
         }
     }
 
-    // ==================== DEPENDENCIES ====================
-
-    /**
-     * Create dependency between issues
-     */
+    // Create dependency between issues
+    // /
     @Transactional
     public GanttDto.DependencyResponse createDependency(GanttDto.CreateDependencyRequest request, Long userId) {
         Issue predecessor = issueRepository.findById(request.getPredecessorId())
@@ -179,9 +168,8 @@ public class GanttService {
         return buildDependencyResponse(dependency);
     }
 
-    /**
-     * Delete dependency
-     */
+    // Delete dependency
+    // /
     @Transactional
     public void deleteDependency(Long dependencyId, Long userId) {
         IssueDependency dependency = dependencyRepository.findById(dependencyId)
@@ -193,9 +181,8 @@ public class GanttService {
         log.info("Deleted dependency {}", dependencyId);
     }
 
-    /**
-     * Get dependencies for an issue
-     */
+    // Get dependencies for an issue
+    // /
     @Transactional(readOnly = true)
     public List<GanttDto.DependencyResponse> getIssueDependencies(Long issueId, Long userId) {
         Issue issue = issueRepository.findById(issueId)
@@ -209,11 +196,8 @@ public class GanttService {
                 .collect(Collectors.toList());
     }
 
-    // ==================== CYCLE DETECTION ====================
-
-    /**
-     * Check if adding dependency would create a cycle
-     */
+    // Check if adding dependency would create a cycle
+    // /
     private boolean wouldCreateCycle(Long predecessorId, Long successorId) {
         // DFS to find if successor can reach predecessor
         Set<Long> visited = new HashSet<>();
@@ -237,8 +221,6 @@ public class GanttService {
         }
         return false;
     }
-
-    // ==================== BUILDERS ====================
 
     private GanttDto.GanttItem buildPhaseItem(ProjectPhase phase) {
         // Calculate progress from phase issues
@@ -361,8 +343,6 @@ public class GanttService {
                 .overallProgress(overallProgress)
                 .build();
     }
-
-    // ==================== HELPERS ====================
 
     private void validateProjectAccess(Long projectId, Long userId) {
         memberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)

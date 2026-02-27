@@ -13,10 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 
-/**
- * Service for AES-256-GCM encryption/decryption of sensitive data
- * Used for data encryption at rest
- */
+// Service for AES-256-GCM encryption/decryption of sensitive data
+// Used for data encryption at rest
+// /
 @Service
 @Slf4j
 public class EncryptionService {
@@ -36,10 +35,9 @@ public class EncryptionService {
         log.info("EncryptionService initialized with AES-256-GCM");
     }
 
-    /**
-     * Encrypt plaintext to Base64-encoded ciphertext
-     * Format: [IV (12 bytes)][Ciphertext + Auth Tag]
-     */
+    // Encrypt plaintext to Base64-encoded ciphertext
+    // Format: [IV (12 bytes)][Ciphertext + Auth Tag]
+    // /
     public String encrypt(String plaintext) {
         if (plaintext == null || plaintext.isEmpty()) {
             return plaintext;
@@ -71,9 +69,8 @@ public class EncryptionService {
         }
     }
 
-    /**
-     * Decrypt Base64-encoded ciphertext to plaintext
-     */
+    // Decrypt Base64-encoded ciphertext to plaintext
+    // /
     public String decrypt(String ciphertext) {
         if (ciphertext == null || ciphertext.isEmpty()) {
             return ciphertext;
@@ -106,9 +103,8 @@ public class EncryptionService {
         }
     }
 
-    /**
-     * Check if a string appears to be encrypted (Base64 encoded with proper length)
-     */
+    // Check if a string appears to be encrypted (Base64 encoded with proper length)
+    // /
     public boolean isEncrypted(String value) {
         if (value == null || value.length() < 20) {
             return false;
@@ -121,9 +117,8 @@ public class EncryptionService {
         }
     }
 
-    /**
-     * Ensure encryption key is exactly 32 bytes
-     */
+    // Ensure encryption key is exactly 32 bytes
+    // /
     private byte[] ensureKeyLength(String key) {
         byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
         byte[] result = new byte[32];
@@ -138,9 +133,8 @@ public class EncryptionService {
         return result;
     }
 
-    /**
-     * Generate a new random encryption key (Base64 encoded)
-     */
+    // Generate a new random encryption key (Base64 encoded)
+    // /
     public static String generateKey() {
         byte[] key = new byte[32];
         new SecureRandom().nextBytes(key);

@@ -49,7 +49,6 @@ public class AIMessage {
         this.createdAt = LocalDateTime.now();
     }
     
-    // Helper methods
     public boolean isUserMessage() {
         return "user".equals(this.role);
     }

@@ -41,7 +41,6 @@ public class AIController {
     private final AIActionExecutor actionExecutor;
     private final UserRepository userRepository;
 
-// Kiểm tra AI service status
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
         boolean isAvailable = geminiService.isAvailable();
@@ -122,7 +121,6 @@ public class AIController {
         return ResponseEntity.ok(response);
     }
 
-// Lấy danh sách conversations của user
     @GetMapping("/conversations")
     public ResponseEntity<Page<AIConversationDTO>> getConversations(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -134,7 +132,6 @@ public class AIController {
         return ResponseEntity.ok(conversations);
     }
 
-// Lấy chi tiết một conversation với tất cả messages
     @GetMapping("/conversations/{conversationId}")
     public ResponseEntity<AIConversationDTO> getConversation(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -145,7 +142,6 @@ public class AIController {
         return ResponseEntity.ok(conversation);
     }
 
-// Xóa một conversation
     @DeleteMapping("/conversations/{conversationId}")
     public ResponseEntity<Map<String, String>> deleteConversation(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -194,9 +190,6 @@ public class AIController {
         
         return ResponseEntity.ok(results);
     }
-    
-    // ==================== Helper Methods ====================
-// Lấy User ID từ Security Context
 
 // JWT Filter đặt User entity làm principal, không phải UserDetails
     private Long getCurrentUserId(UserDetails userDetails) {
@@ -239,8 +232,6 @@ public class AIController {
                 auth, auth != null ? auth.getPrincipal() : "null");
         throw new RuntimeException("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
     }
-    
-    // ==================== Exception Handlers ====================
     
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {

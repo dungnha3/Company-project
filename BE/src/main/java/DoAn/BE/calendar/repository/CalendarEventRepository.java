@@ -14,22 +14,17 @@ import DoAn.BE.calendar.entity.CalendarEvent.EventType;
 @Repository
 public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Long> {
 
-    // Find events by company in date range
     List<CalendarEvent> findByCompany_CompanyIdAndStartTimeBetween(
             Long companyId, LocalDateTime start, LocalDateTime end);
 
-    // Find events by user (created by)
     List<CalendarEvent> findByCreatedBy_UserIdAndStartTimeBetween(
             Long userId, LocalDateTime start, LocalDateTime end);
 
-    // Find events by project
     List<CalendarEvent> findByProject_ProjectIdAndStartTimeBetween(
             Long projectId, LocalDateTime start, LocalDateTime end);
 
-    // Find events by type
     List<CalendarEvent> findByCompany_CompanyIdAndEventType(Long companyId, EventType type);
 
-    // Find deadline events for issue
     List<CalendarEvent> findByIssue_IssueId(Long issueId);
 
     // Upcoming events for user (as creator or attendee)

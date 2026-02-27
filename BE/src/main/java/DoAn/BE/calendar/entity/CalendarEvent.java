@@ -10,10 +10,9 @@ import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.user.entity.User;
 
-/**
- * Entity lưu trữ các sự kiện calendar
- * Hỗ trợ: meetings, deadlines, reminders, holidays
- */
+// Entity lưu trữ các sự kiện calendar
+// Hỗ trợ: meetings, deadlines, reminders, holidays
+// /
 @Entity
 @Table(name = "calendar_events", indexes = {
         @Index(name = "idx_event_company", columnList = "company_id"),

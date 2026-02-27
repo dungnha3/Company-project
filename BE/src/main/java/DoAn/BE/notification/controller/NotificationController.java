@@ -13,18 +13,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
-
-// [Controller quản lý thông báo - lấy, đánh dấu đã đọc, xóa] (Role: Authenticated Users)
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
-
-    // ==================== READ ====================
-
-    // [Lấy danh sách thông báo của user - có phân trang] (Role: Self)
     @GetMapping
     public ResponseEntity<Page<NotificationResponse>> getMyNotifications(
             Pageable pageable,
@@ -44,8 +38,6 @@ public class NotificationController {
 
         return ResponseEntity.ok(response);
     }
-
-    // [Lấy số thông báo chưa đọc] (Role: Self)
     @GetMapping("/unread-count")
     public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal User currentUser) {
         long unreadCount = notificationService.getUnreadCount(currentUser.getUserId());
@@ -54,10 +46,6 @@ public class NotificationController {
         response.put("unreadCount", unreadCount);
         return ResponseEntity.ok(response);
     }
-
-    // ==================== UPDATE ====================
-
-    // [Đánh dấu thông báo đã đọc] (Role: Self)
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<Map<String, String>> markAsRead(
             @PathVariable Long notificationId,
@@ -68,8 +56,6 @@ public class NotificationController {
         response.put("message", "Đã đánh dấu thông báo đã đọc");
         return ResponseEntity.ok(response);
     }
-
-    // [Đánh dấu tất cả thông báo đã đọc] (Role: Self)
     @PutMapping("/mark-all-read")
     public ResponseEntity<Map<String, String>> markAllAsRead(@AuthenticationPrincipal User currentUser) {
         notificationService.markAllAsRead(currentUser.getUserId());
@@ -78,10 +64,6 @@ public class NotificationController {
         response.put("message", "Đã đánh dấu tất cả thông báo đã đọc");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== DELETE ====================
-
-    // [Xóa thông báo] (Role: Self)
     @DeleteMapping("/{notificationId}")
     public ResponseEntity<Map<String, String>> deleteNotification(
             @PathVariable Long notificationId,

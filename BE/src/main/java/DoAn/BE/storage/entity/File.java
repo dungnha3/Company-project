@@ -24,8 +24,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
-// [Entity quản lý file - upload, download, versioning, soft delete, quota] (Role: Data Model)
 @Entity
 @Table(name = "files", indexes = {
         // Index cho query: findByFolder (Files trong folder)
@@ -112,7 +110,6 @@ public class File extends TenantScopedEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Lấy extension của file
     public String getFileExtension() {
         if (originalFilename != null && originalFilename.contains(".")) {
             return originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
@@ -137,24 +134,20 @@ public class File extends TenantScopedEntity {
         return size + " " + units[unitIndex];
     }
 
-    // Kiểm tra file là ảnh
     public boolean isImage() {
         return mimeType != null && mimeType.startsWith("image/");
     }
 
-    // Kiểm tra file là document (PDF, Word, Excel)
     public boolean isDocument() {
         return mimeType != null && (mimeType.startsWith("application/pdf") ||
                 mimeType.startsWith("application/msword") ||
                 mimeType.startsWith("application/vnd.openxmlformats-officedocument"));
     }
 
-    // Kiểm tra file là video
     public boolean isVideo() {
         return mimeType != null && mimeType.startsWith("video/");
     }
 
-    // Kiểm tra đây có phải phiên bản mới nhất không
     public boolean isLatestVersion() {
         return parentFile == null;
     }

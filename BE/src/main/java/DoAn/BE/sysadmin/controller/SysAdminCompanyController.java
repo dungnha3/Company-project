@@ -1,7 +1,7 @@
 package DoAn.BE.sysadmin.controller;
 
 import DoAn.BE.company.dto.CompanyDto;
-import DoAn.BE.company.service.CompanyService;
+import DoAn.BE.company.service.CompanyAdminService;
 import DoAn.BE.sysadmin.dto.SysAdminCompanyDto;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +17,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SysAdminCompanyController {
 
-    private final CompanyService companyService;
+    private final CompanyAdminService companyAdminService;
 
     // [LIST] List all companies
     @GetMapping
     public ResponseEntity<List<CompanyDto.CompanyResponse>> getAllCompanies(Authentication authentication) {
         checkSysAdmin(authentication);
-        return ResponseEntity.ok(companyService.getAllCompanies());
+        return ResponseEntity.ok(companyAdminService.getAllCompanies());
     }
 
     // [GET] Get single company details
@@ -32,7 +32,7 @@ public class SysAdminCompanyController {
             @PathVariable Long companyId,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        return ResponseEntity.ok(companyService.getCompanyById(companyId));
+        return ResponseEntity.ok(companyAdminService.getCompanyById(companyId));
     }
 
     // [GET] Get company settings (for Features & Quotas tab)
@@ -41,7 +41,7 @@ public class SysAdminCompanyController {
             @PathVariable Long companyId,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        return ResponseEntity.ok(companyService.getCompanySettings(companyId));
+        return ResponseEntity.ok(companyAdminService.getCompanySettings(companyId));
     }
 
     // [UPDATE] Update basic info
@@ -51,7 +51,7 @@ public class SysAdminCompanyController {
             @RequestBody CompanyDto.CompanyUpdateRequest request,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        companyService.updateCompanyByAdmin(companyId, request);
+        companyAdminService.updateCompanyByAdmin(companyId, request);
         return ResponseEntity.ok(Map.of("message", "Company updated successfully"));
     }
 
@@ -62,7 +62,7 @@ public class SysAdminCompanyController {
             @RequestParam String plan,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        companyService.changePlan(companyId, plan);
+        companyAdminService.changePlan(companyId, plan);
         return ResponseEntity.ok(Map.of("message", "Plan changed successfully"));
     }
 
@@ -72,7 +72,7 @@ public class SysAdminCompanyController {
             @PathVariable Long companyId,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        boolean newStatus = companyService.toggleCompanyStatus(companyId);
+        boolean newStatus = companyAdminService.toggleCompanyStatus(companyId);
         return ResponseEntity.ok(Map.of(
                 "message", newStatus ? "Company activated" : "Company suspended",
                 "isActive", newStatus));
@@ -84,7 +84,7 @@ public class SysAdminCompanyController {
             @PathVariable Long companyId,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        companyService.deleteCompany(companyId);
+        companyAdminService.deleteCompany(companyId);
         return ResponseEntity.ok(Map.of("message", "Company deleted successfully"));
     }
 
@@ -95,7 +95,7 @@ public class SysAdminCompanyController {
             @RequestBody SysAdminCompanyDto.QuotaUpdateRequest request,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        companyService.updateCompanyQuota(companyId, request);
+        companyAdminService.updateCompanyQuota(companyId, request);
         return ResponseEntity.ok(Map.of("message", "Company quota updated (Plan overrides applied)"));
     }
 
@@ -106,7 +106,7 @@ public class SysAdminCompanyController {
             @RequestBody SysAdminCompanyDto.FeatureOverrideRequest request,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        companyService.updateCompanyFeatures(companyId, request);
+        companyAdminService.updateCompanyFeatures(companyId, request);
         return ResponseEntity.ok(Map.of("message", "Company features updated (Plan overrides applied)"));
     }
 
@@ -117,7 +117,7 @@ public class SysAdminCompanyController {
             @RequestBody CompanyDto.SettingsUpdateRequest request,
             Authentication authentication) {
         checkSysAdmin(authentication);
-        companyService.updateSettingsBySystemAdmin(companyId, request);
+        companyAdminService.updateSettingsBySystemAdmin(companyId, request);
         return ResponseEntity.ok(Map.of("message", "Settings updated successfully"));
     }
 

@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// Service quản lý session của user (đa phiên đăng nhập, timeout, concurrent sessions)
 @Service
 @Transactional
 public class SessionService {
@@ -28,8 +27,6 @@ public class SessionService {
     public SessionService(UserSessionRepository userSessionRepository) {
         this.userSessionRepository = userSessionRepository;
     }
-
-    // [Tạo session mới cho user] (Role: System)
     public UserSession createSession(User user, String ipAddress, String userAgent) {
         // Kiểm tra số lượng session hiện tại
         List<UserSession> activeSessions = userSessionRepository.findByUserAndIsActiveTrue(user);
@@ -54,8 +51,6 @@ public class SessionService {
 
         return userSessionRepository.save(session);
     }
-
-    // [Cập nhật hoạt động của session] (Role: System)
     public void updateSessionActivity(String sessionId) {
         Optional<UserSession> sessionOpt = userSessionRepository.findBySessionId(sessionId);
         if (sessionOpt.isPresent()) {
@@ -64,8 +59,6 @@ public class SessionService {
             userSessionRepository.save(session);
         }
     }
-
-    // [Vô hiệu hóa session] (Role: System)
     public void deactivateSession(String sessionId) {
         Optional<UserSession> sessionOpt = userSessionRepository.findBySessionId(sessionId);
         if (sessionOpt.isPresent()) {
@@ -74,14 +67,10 @@ public class SessionService {
             userSessionRepository.save(session);
         }
     }
-
-    // [Vô hiệu hóa tất cả session của user] (Role: System)
     // OPTIMIZED: Use bulk UPDATE instead of forEach+save
     public void deactivateAllUserSessions(User user) {
         userSessionRepository.deactivateAllSessionsByUser(user);
     }
-
-    // [Kiểm tra session có hợp lệ không] (Role: System)
     public boolean isValidSession(String sessionId) {
         Optional<UserSession> sessionOpt = userSessionRepository.findBySessionId(sessionId);
         if (sessionOpt.isEmpty()) {
@@ -91,18 +80,12 @@ public class SessionService {
         UserSession session = sessionOpt.get();
         return session.getIsActive() && !session.isExpired(sessionTimeoutMinutes);
     }
-
-    // [Lấy thông tin session] (Role: System)
     public Optional<UserSession> getSession(String sessionId) {
         return userSessionRepository.findBySessionId(sessionId);
     }
-
-    // [Lấy tất cả session active của user] (Role: System)
     public List<UserSession> getUserActiveSessions(User user) {
         return userSessionRepository.findByUserAndIsActiveTrue(user);
     }
-
-    // [Dọn dẹp session hết hạn] (Role: System)
     // OPTIMIZED: Use bulk update instead of loading all sessions
     @Transactional
     public void cleanupExpiredSessions() {
@@ -110,14 +93,10 @@ public class SessionService {
         // Use repository's optimized bulk deactivate method
         userSessionRepository.deactivateExpiredSessions(cutoffTime);
     }
-
-    // [Đếm số session active của user] (Role: System)
     // OPTIMIZED: Use COUNT query instead of loading all then .size()
     public long countActiveSessions(User user) {
         return userSessionRepository.countActiveSessionsByUser(user);
     }
-
-    // [Kiểm tra IP address có khác với session hiện tại không] (Role: Security)
     public boolean isSuspiciousActivity(String sessionId, String currentIp) {
         Optional<UserSession> sessionOpt = userSessionRepository.findBySessionId(sessionId);
         if (sessionOpt.isEmpty()) {

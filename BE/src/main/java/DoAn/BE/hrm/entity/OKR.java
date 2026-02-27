@@ -3,6 +3,8 @@ package DoAn.BE.hrm.entity;
 import DoAn.BE.common.entity.TenantScopedEntity;
 import DoAn.BE.user.entity.User;
 import org.hibernate.annotations.Filter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.ArrayList;
@@ -45,13 +47,17 @@ public class OKR extends TenantScopedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
+    @JsonIgnoreProperties({ "memberships", "personalWorkspaces", "passwordHash", "hibernateLazyInitializer",
+            "handler" })
     private User owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
+    @JsonIgnore
     private Department department;
 
     @OneToMany(mappedBy = "okr", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({ "okr", "hibernateLazyInitializer", "handler" })
     private List<KeyResult> keyResults = new ArrayList<>();
 
     public enum OKRStatus {
@@ -62,7 +68,6 @@ public class OKR extends TenantScopedEntity {
         COMPLETED
     }
 
-    // Helper method to add KeyResult
     public void addKeyResult(KeyResult kr) {
         keyResults.add(kr);
         kr.setOkr(this);

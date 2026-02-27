@@ -7,7 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -18,19 +18,20 @@ import java.io.IOException;
 
 // Áp dụng cho API public (như Login) để chống Brute Force
 @Component
-@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitingService rateLimitingService;
 
+    @Value("${rate.limit.enabled:true}")
+    private boolean enabled;
+
+    public RateLimitFilter(RateLimitingService rateLimitingService) {
+        this.rateLimitingService = rateLimitingService;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-
-        // Chỉ áp dụng Rate Limit cho các public endpoint hoặc login
-        // Ở đây ta áp dụng cho TẤT CẢ request để an toàn tối đa, nhưng set limit rộng
-        // (50 req/min)
-        // Production có thể tune lại
 
         String ip = getClientIP(request);
         Bucket bucket = rateLimitingService.resolveBucket(ip);
@@ -57,7 +58,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // Có thể skip rate limit cho swagger hoặc static resources nếu cần
+        // If rate limiting is disabled (e.g. in tests), skip this filter entirely
+        if (!enabled) {
+            return true;
+        }
         String path = request.getRequestURI();
         return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
     }

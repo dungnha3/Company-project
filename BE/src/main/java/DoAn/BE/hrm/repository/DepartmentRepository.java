@@ -15,7 +15,6 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
     boolean existsByName(String name);
 
-    // Find by manager
     List<Department> findByManager_EmployeeId(Long employeeId);
 
     // Count employees in department

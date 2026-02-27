@@ -18,6 +18,7 @@ public class UserPermissions implements Serializable {
     private boolean hrViewList = false; // Xem danh sách nhân viên
     private boolean hrEditProfile = false; // Sửa thông tin nhân viên
     private boolean hrManageContracts = false; // Quản lý hợp đồng
+    private boolean hrManageReviews = false; // Quản lý đánh giá nhân viên
 
     // ===== NHÓM LƯƠNG =====
     private boolean salaryView = false; // Xem bảng lương
@@ -50,6 +51,7 @@ public class UserPermissions implements Serializable {
         copy.hrViewList = this.hrViewList;
         copy.hrEditProfile = this.hrEditProfile;
         copy.hrManageContracts = this.hrManageContracts;
+        copy.hrManageReviews = this.hrManageReviews;
         copy.salaryView = this.salaryView;
         copy.salaryCalculate = this.salaryCalculate;
         copy.salaryApprove = this.salaryApprove;

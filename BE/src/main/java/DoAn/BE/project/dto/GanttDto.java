@@ -10,12 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * DTOs for Gantt Chart API
- */
+// DTOs for Gantt Chart API
+// /
 public class GanttDto {
-
-    // ==================== GANTT ITEM ====================
 
     @Data
     @Builder
@@ -41,8 +38,6 @@ public class GanttDto {
         private String color; // For phases
     }
 
-    // ==================== GANTT RESPONSE ====================
-
     @Data
     @Builder
     @NoArgsConstructor
@@ -58,8 +53,6 @@ public class GanttDto {
         private GanttStats stats;
     }
 
-    // ==================== DEPENDENCY LINK ====================
-
     @Data
     @Builder
     @NoArgsConstructor
@@ -73,8 +66,6 @@ public class GanttDto {
         private Integer lagDays;
     }
 
-    // ==================== STATS ====================
-
     @Data
     @Builder
     @NoArgsConstructor
@@ -87,8 +78,6 @@ public class GanttDto {
         private Integer overdueitems;
         private Double overallProgress;
     }
-
-    // ==================== REQUESTS ====================
 
     @Data
     @Builder
@@ -123,8 +112,6 @@ public class GanttDto {
         @Builder.Default
         private Integer lagDays = 0;
     }
-
-    // ==================== DEPENDENCY RESPONSE ====================
 
     @Data
     @Builder

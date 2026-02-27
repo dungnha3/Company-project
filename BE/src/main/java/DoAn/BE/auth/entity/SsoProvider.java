@@ -6,9 +6,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Entity for storing SSO/SAML provider configurations per company
- */
+// Entity for storing SSO/SAML provider configurations per company
+// /
 @Entity
 @Table(name = "sso_providers", indexes = {
         @Index(name = "idx_sso_company", columnList = "company_id"),

@@ -14,13 +14,12 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * OpenAPI/Swagger Configuration
- * 
- * Access documentation at:
- * - Swagger UI: http://localhost:8080/swagger-ui.html
- * - OpenAPI JSON: http://localhost:8080/v3/api-docs
- */
+// OpenAPI/Swagger Configuration
+//
+// Access documentation at:
+// - Swagger UI: http://localhost:8080/swagger-ui.html
+// - OpenAPI JSON: http://localhost:8080/v3/api-docs
+// /
 @Configuration
 public class OpenApiConfig {
 

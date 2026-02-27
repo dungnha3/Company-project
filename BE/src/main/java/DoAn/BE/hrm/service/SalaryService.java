@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.common.exception.BadRequestException;
@@ -66,10 +64,7 @@ public class SalaryService {
     }
 
     public Salary createSalary(CreateSalaryRequest request, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can create salary");
-        }
+        accessControlService.checkSalaryCalculatePermission();
 
         log.info("Accountant {} creating salary for employee ID: {}", currentUser.getUsername(),
                 request.getEmployeeId());
@@ -107,14 +102,15 @@ public class SalaryService {
         Salary salary = salaryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary record not found"));
 
-        if (accessControlService.isAccountingManager()) {
+        // Users with salaryView permission can see all salary records
+        try {
+            accessControlService.checkSalaryViewPermission();
             return salary;
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
 
-        if (accessControlService.isHRManager()) {
-            throw new ForbiddenException("HR does not have access to salary data. Please contact Accounting.");
-        }
-
+        // Otherwise, only allow viewing own salary
         if (salary.getEmployee().getUser() == null ||
                 !salary.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You can only view your own salary");
@@ -124,8 +120,16 @@ public class SalaryService {
     }
 
     public Salary getSalaryByEmployeeAndPeriod(Long employeeId, Integer month, Integer year, User currentUser) {
-        if (!accessControlService.isAccountingManager() && !accessControlService.isHRManager()
-                && !accessControlService.isOwnerOrAdmin()) {
+        // Users with salaryView permission can see any employee's salary
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkSalaryViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+
+        if (!hasViewPermission) {
             Employee emp = employeeRepository.findById(employeeId).orElseThrow();
             if (emp.getUser() == null || !emp.getUser().getUserId().equals(currentUser.getUserId())) {
                 throw new ForbiddenException("Not allowed to view other's salary");
@@ -140,54 +144,22 @@ public class SalaryService {
         throw new BadRequestException("Please provide both month and year");
     }
 
-    public Salary getSalaryById(Long id) {
+    private Salary getSalaryById(Long id) {
         return salaryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary not found"));
     }
 
-    public List<Salary> getAllSalaries(User currentUser) {
-        if (!accessControlService.isAccountingManager() && !accessControlService.isOwnerOrAdmin()) {
-            throw new ForbiddenException("Only Accounting or Admin can view all salaries");
-        }
-        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
-        if (companyId == null)
-            return java.util.Collections.emptyList();
-        // Since findByCompanyId(Long) is native query returning List<Salary>, we need
-        // to implement it in repo or use existing findAll() if it respects tenant by
-        // default (via aspects or criteria).
-        // However, we added findByCompanyId in previous step? Wait, let me check. No,
-        // we added findByCompanyId(Long, Pageable).
-        // We should add a List method if we want to support this List method correctly
-        // with tenant filter.
-        // But the previous getAllSalaries just called findAll(). That implies findAll()
-        // wasn't filtered by tenant? Or maybe AspectJ handles it?
-        // Let's assume AspectJ handles filtering for findAll.
-        return salaryRepository.findAll();
-    }
-
     public org.springframework.data.domain.Page<Salary> getAllSalariesPaged(User currentUser,
             org.springframework.data.domain.Pageable pageable) {
-        if (!accessControlService.isAccountingManager() && !accessControlService.isOwnerOrAdmin()) {
-            throw new ForbiddenException("Only Accounting or Admin can view all salaries");
-        }
+        accessControlService.checkSalaryViewPermission();
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (companyId == null)
             return org.springframework.data.domain.Page.empty(pageable);
         return salaryRepository.findByCompanyId(companyId, pageable);
     }
 
-    public Page<Salary> getAllSalariesPage(Pageable pageable, User currentUser) {
-        if (!accessControlService.isAccountingManager() && !accessControlService.isOwnerOrAdmin()) {
-            throw new ForbiddenException("Only Accounting or Admin can view all salaries");
-        }
-        return salaryRepository.findAll(pageable);
-    }
-
     public Salary updateSalary(Long id, UpdateSalaryRequest request, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can update salary");
-        }
+        accessControlService.checkSalaryCalculatePermission();
 
         Salary salary = getSalaryById(id);
 
@@ -218,34 +190,20 @@ public class SalaryService {
     }
 
     public void deleteSalary(Long id, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can delete salary");
-        }
+        accessControlService.checkSalaryCalculatePermission();
 
         Salary salary = getSalaryById(id);
         salaryRepository.delete(salary);
     }
 
-    public List<Salary> getSalariesByEmployee(Long employeeId, User currentUser) {
-        if (accessControlService.isAccountingManager() || accessControlService.isOwnerOrAdmin()) {
-            return salaryRepository.findByEmployee_EmployeeId(employeeId);
-        }
-
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
-
-        if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
-            throw new ForbiddenException("You can only view your own salary history");
-        }
-
-        return salaryRepository.findByEmployee_EmployeeId(employeeId);
-    }
-
     public org.springframework.data.domain.Page<Salary> getSalariesByEmployeePaged(Long employeeId, User currentUser,
             org.springframework.data.domain.Pageable pageable) {
-        if (accessControlService.isAccountingManager() || accessControlService.isOwnerOrAdmin()) {
+        // Users with salaryView permission can see any employee's salary
+        try {
+            accessControlService.checkSalaryViewPermission();
             return salaryRepository.findByEmployee_EmployeeId(employeeId, pageable);
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
 
         Employee employee = employeeRepository.findById(employeeId)
@@ -258,26 +216,19 @@ public class SalaryService {
         return salaryRepository.findByEmployee_EmployeeId(employeeId, pageable);
     }
 
-    public List<Salary> getSalariesByPeriod(Integer month, Integer year, User currentUser) {
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accounting can view salary reports by period");
-        }
+    private List<Salary> getSalariesByPeriod(Integer month, Integer year, User currentUser) {
+        accessControlService.checkSalaryViewPermission();
         return salaryRepository.findByMonthAndYear(month, year);
     }
 
     public org.springframework.data.domain.Page<Salary> getSalariesByPeriodPaged(Integer month, Integer year,
             User currentUser, org.springframework.data.domain.Pageable pageable) {
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accounting can view salary reports by period");
-        }
+        accessControlService.checkSalaryViewPermission();
         return salaryRepository.findByMonthAndYear(month, year, pageable);
     }
 
     public Salary markAsPaid(Long id, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can update payment status");
-        }
+        accessControlService.checkSalaryApprovePermission();
 
         Salary salary = getSalaryById(id);
         salary.setPaymentStatus(Salary.PaymentStatus.PAID);
@@ -324,41 +275,35 @@ public class SalaryService {
     }
 
     public Salary cancelSalary(Long id, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can cancel salary");
-        }
+        accessControlService.checkSalaryApprovePermission();
 
         Salary salary = getSalaryById(id);
         salary.setPaymentStatus(Salary.PaymentStatus.CANCELLED);
         return salaryRepository.save(salary);
     }
 
-    public List<Salary> getSalariesByStatus(Salary.PaymentStatus status, User currentUser) {
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can view salaries by status");
-        }
-        return salaryRepository.findByPaymentStatus(status);
-    }
-
     public org.springframework.data.domain.Page<Salary> getSalariesByStatusPaged(Salary.PaymentStatus status,
             User currentUser, org.springframework.data.domain.Pageable pageable) {
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can view salaries by status");
-        }
+        accessControlService.checkSalaryViewPermission();
         return salaryRepository.findByPaymentStatus(status, pageable);
     }
 
     public BigDecimal getTotalSalaryByPeriod(Integer month, Integer year, User currentUser) {
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Access Denied");
-        }
+        accessControlService.checkSalaryViewPermission();
         List<Salary> list = getSalariesByPeriod(month, year, currentUser);
         return list.stream().map(Salary::getNetSalary).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public BigDecimal getTotalSalaryByEmployeeAndYear(Long employeeId, Integer year, User currentUser) {
-        if (!accessControlService.isAccountingManager()) {
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkSalaryViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+
+        if (!hasViewPermission) {
             Employee emp = employeeRepository.findById(employeeId).orElseThrow();
             if (emp.getUser() == null || !emp.getUser().getUserId().equals(currentUser.getUserId())) {
                 throw new ForbiddenException("Access Denied");
@@ -373,10 +318,7 @@ public class SalaryService {
     }
 
     public Salary calculateSalaryAuto(Long employeeId, Integer month, Integer year, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can calculate salary");
-        }
+        accessControlService.checkSalaryCalculatePermission();
 
         log.info("Accountant {} auto-calculating salary for employee ID: {}", currentUser.getUsername(),
                 employeeId);
@@ -437,10 +379,7 @@ public class SalaryService {
     }
 
     public List<Salary> calculateSalaryAutoForAll(Integer month, Integer year, User currentUser) {
-
-        if (!accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only Accountant can calculate salary");
-        }
+        accessControlService.checkSalaryCalculatePermission();
 
         List<Employee> employees = employeeRepository.findByStatus(Employee.EmployeeStatus.ACTIVE);
         List<Salary> results = new ArrayList<>();
@@ -457,4 +396,3 @@ public class SalaryService {
         return results;
     }
 }
-

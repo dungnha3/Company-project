@@ -8,9 +8,8 @@ import lombok.*;
 
 import java.util.List;
 
-/**
- * DTOs for Custom Field operations
- */
+// DTOs for Custom Field operations
+// /
 public class CustomFieldDto {
 
     @Data
@@ -28,9 +27,8 @@ public class CustomFieldDto {
         @NotNull(message = "Field type is required")
         private FieldType fieldType;
 
-        /**
-         * Options for SELECT/MULTI_SELECT types
-         */
+        // Options for SELECT/MULTI_SELECT types
+        // /
         private List<String> options;
 
         @Builder.Default
@@ -86,15 +84,14 @@ public class CustomFieldDto {
         @NotNull(message = "Field ID is required")
         private Long fieldId;
 
-        /**
-         * Value can be:
-         * - String for TEXT, TEXTAREA, SELECT, URL
-         * - Number for NUMBER
-         * - "2024-01-15" for DATE
-         * - true/false for CHECKBOX
-         * - userId for USER
-         * - ["opt1", "opt2"] for MULTI_SELECT
-         */
+        // Value can be:
+        // - String for TEXT, TEXTAREA, SELECT, URL
+        // - Number for NUMBER
+        // - "2024-01-15" for DATE
+        // - true/false for CHECKBOX
+        // - userId for USER
+        // - ["opt1", "opt2"] for MULTI_SELECT
+        // /
         private Object value;
     }
 

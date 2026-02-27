@@ -9,12 +9,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * DTOs for Integration management
- */
+// DTOs for Integration management
+// /
 public class IntegrationDto {
-
-    // ==================== REQUEST DTOs ====================
 
     @Data
     @Builder
@@ -40,8 +37,6 @@ public class IntegrationDto {
         private Map<String, String> config;
         private Boolean isActive;
     }
-
-    // ==================== RESPONSE DTOs ====================
 
     @Data
     @Builder

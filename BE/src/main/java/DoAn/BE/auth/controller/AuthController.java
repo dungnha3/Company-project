@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-// Controller xử lý authentication (login, select-company, logout, refresh token)
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -35,7 +34,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // Helper: Create httpOnly cookie for refreshToken
     private ResponseCookie createRefreshTokenCookie(String refreshToken) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
                 .httpOnly(true)
@@ -46,7 +44,6 @@ public class AuthController {
                 .build();
     }
 
-    // Helper: Create cookie to clear refreshToken
     private ResponseCookie clearRefreshTokenCookie() {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
@@ -99,7 +96,6 @@ public class AuthController {
         }
     }
 
-    // Lấy thông tin user hiện tại (cho initAuth FE)
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -244,7 +240,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Kiểm tra token có hợp lệ không
     @GetMapping("/validate")
     public ResponseEntity<Map<String, Object>> validateToken(@RequestParam String token) {
         try {
@@ -300,7 +295,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Lấy thông tin client IP address
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {

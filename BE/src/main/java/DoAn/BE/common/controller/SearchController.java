@@ -10,9 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controller for unified search across entities
- */
+// Controller for unified search across entities
+// /
 @RestController
 @RequestMapping("/api/search")
 @Tag(name = "Search", description = "Unified search across issues, projects, employees")

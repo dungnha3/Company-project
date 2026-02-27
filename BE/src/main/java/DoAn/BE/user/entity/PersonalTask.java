@@ -6,12 +6,11 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * PersonalTask - Task cá nhân thuộc về Personal Workspace
- * 
- * FREE tier: Tối đa 10 tasks
- * PRO tier: Unlimited + Labels + Recurring + Reminders
- */
+// PersonalTask - Task cá nhân thuộc về Personal Workspace
+//
+// FREE tier: Tối đa 10 tasks
+// PRO tier: Unlimited + Labels + Recurring + Reminders
+// /
 @Entity
 @Table(name = "personal_tasks", indexes = {
         @Index(name = "idx_pt_workspace", columnList = "workspace_id"),
@@ -54,20 +53,20 @@ public class PersonalTask {
 
     // ===== PRO Features =====
 
-    /** Labels/Tags - PRO only (comma-separated) */
+    // Labels/Tags - PRO only (comma-separated)
     @Column(name = "labels", length = 500, columnDefinition = "NVARCHAR(500)")
     private String labels;
 
-    /** Recurring pattern - PRO only (DAILY, WEEKLY, MONTHLY, null=one-time) */
+    // Recurring pattern - PRO only (DAILY, WEEKLY, MONTHLY, null=one-time)
     @Column(name = "recurring_pattern", length = 20)
     @Enumerated(EnumType.STRING)
     private RecurringPattern recurringPattern;
 
-    /** Reminder datetime - PRO only */
+    // Reminder datetime - PRO only
     @Column(name = "reminder_at")
     private LocalDateTime reminderAt;
 
-    /** Reminder sent flag */
+    // Reminder sent flag
     @Builder.Default
     @Column(name = "reminder_sent", nullable = false)
     private Boolean reminderSent = false;

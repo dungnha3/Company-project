@@ -3,8 +3,6 @@ package DoAn.BE.auth.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-
-// [Request đổi mật khẩu khi đã login] (Role: Authenticated User)
 @Data
 public class ChangePasswordRequest {
     @NotBlank(message = "Mật khẩu cũ không được để trống")

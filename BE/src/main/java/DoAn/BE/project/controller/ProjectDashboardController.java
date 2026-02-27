@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.service.ProjectDashboardService;
 import DoAn.BE.user.entity.User;
@@ -13,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/project-dashboard")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class ProjectDashboardController {
 
     private final ProjectDashboardService dashboardService;

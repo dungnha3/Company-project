@@ -198,7 +198,6 @@ public class IssueCommentService {
         return comments.map(comment -> convertToDTO(comment, currentUser));
     }
 
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));

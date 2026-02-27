@@ -15,8 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
-// [Service tích hợp Storage với Project - files, folders] (Role: PM)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -25,8 +23,6 @@ public class StorageProjectIntegrationService {
     private final FolderRepository folderRepository;
     private final FileRepository fileRepository;
     private final ProjectRepository projectRepository;
-
-    // [Lấy hoặc tạo folder SHARED cho project] (Role: PM)
     @Transactional
     public Folder getOrCreateProjectFolder(Project project, User creator) {
         // Tìm folder theo project (CHỈ 1 folder cho project)
@@ -51,8 +47,6 @@ public class StorageProjectIntegrationService {
 
         return folder;
     }
-
-    // [Lấy tất cả files trong project] (Role: PM)
     @Transactional(readOnly = true)
     public List<File> getProjectFiles(Long projectId) {
         Project project = projectRepository.findById(projectId)
@@ -69,8 +63,6 @@ public class StorageProjectIntegrationService {
         // Lấy tất cả files trong folder
         return fileRepository.findByFolder(projectFolder);
     }
-
-    // [Lấy file statistics trong project] (Role: PM)
     @Transactional(readOnly = true)
     public ProjectFileStats getProjectFileStats(Long projectId) {
         List<File> files = getProjectFiles(projectId);
@@ -95,8 +87,6 @@ public class StorageProjectIntegrationService {
 
         return new ProjectFileStats(files.size(), documentCount, imageCount, otherCount, totalSize);
     }
-
-    // [Inner class cho statistics] (Role: Internal)
     public static class ProjectFileStats {
         private final long totalFiles;
         private final long documentCount;

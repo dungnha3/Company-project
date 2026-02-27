@@ -1,8 +1,7 @@
 package DoAn.BE.common.exception;
 
-/**
- * Exception thrown when a feature is disabled for the current company.
- */
+// Exception thrown when a feature is disabled for the current company.
+// /
 public class FeatureDisabledException extends RuntimeException {
 
     private final String featureCode;

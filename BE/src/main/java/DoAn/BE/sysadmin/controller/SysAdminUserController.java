@@ -22,9 +22,8 @@ public class SysAdminUserController {
 
     private final UserRepository userRepository;
 
-    /**
-     * [LIST] List all users with pagination
-     */
+    // [LIST] List all users with pagination
+    // /
     @GetMapping
     public ResponseEntity<Page<SysAdminUserDto.UserResponse>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
@@ -59,9 +58,8 @@ public class SysAdminUserController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * [ACTION] Toggle user status (Active/Suspend)
-     */
+    // [ACTION] Toggle user status (Active/Suspend)
+    // /
     @PutMapping("/{userId}/toggle-status")
     public ResponseEntity<?> toggleUserStatus(
             @PathVariable Long userId,
@@ -89,9 +87,8 @@ public class SysAdminUserController {
 
     // ... (existing code)
 
-    /**
-     * [ACTION] Reset user password (send email)
-     */
+    // [ACTION] Reset user password (send email)
+    // /
     @PostMapping("/{userId}/reset-password")
     public ResponseEntity<?> resetUserPassword(
             @PathVariable Long userId,

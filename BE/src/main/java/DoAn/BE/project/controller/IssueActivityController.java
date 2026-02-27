@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.project.dto.IssueActivityDTO;
 import DoAn.BE.project.service.IssueActivityService;
 import DoAn.BE.user.entity.User;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/activities")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class IssueActivityController {
 
     private final IssueActivityService issueActivityService;

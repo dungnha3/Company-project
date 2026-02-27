@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.time.format.DateTimeFormatter;
-
-// [Service gửi email notification - hợp đồng, nghỉ phép, lương] (Role: System)
 @Service
 @Slf4j
 public class EmailNotificationService {
@@ -35,7 +33,6 @@ public class EmailNotificationService {
     @Value("${app.base-url:http://localhost:3000}")
     private String baseUrl;
 
-    // Gửi email thông báo
     public void sendNotificationEmail(Notification notification) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật hoặc chưa config, bỏ qua gửi email cho thông báo {}",
@@ -44,9 +41,9 @@ public class EmailNotificationService {
         }
 
         try {
-            User nguoiNhan = notification.getUser();
-            if (nguoiNhan.getEmail() == null || nguoiNhan.getEmail().trim().isEmpty()) {
-                log.warn("User {} không có email, không thể gửi thông báo", nguoiNhan.getUserId());
+            User recipient = notification.getUser();
+            if (recipient.getEmail() == null || recipient.getEmail().trim().isEmpty()) {
+                log.warn("User {} has no email, skipping notification", recipient.getUserId());
                 return;
             }
 
@@ -54,22 +51,20 @@ public class EmailNotificationService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(fromEmail);
-            helper.setTo(nguoiNhan.getEmail());
+            helper.setTo(recipient.getEmail());
             helper.setSubject(notification.getTitle());
 
             String htmlContent = buildEmailContent(notification);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
-            log.info("Đã gửi email thông báo {} đến {}", notification.getNotificationId(), nguoiNhan.getEmail());
+            log.info("Sent notification email {} to {}", notification.getNotificationId(), recipient.getEmail());
 
         } catch (MessagingException e) {
             log.error("Lỗi gửi email thông báo {}: {}", notification.getNotificationId(), e.getMessage());
             throw new RuntimeException("Không thể gửi email", e);
         }
     }
-
-    // [Gửi email đơn giản] (Role: System)
     public void sendSimpleEmail(String to, String subject, String content) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật hoặc chưa config, bỏ qua gửi email đến {}", to);
@@ -91,9 +86,7 @@ public class EmailNotificationService {
             throw new RuntimeException("Không thể gửi email", e);
         }
     }
-
-    // [Gửi email hợp đồng hết hạn] (Role: System)
-    public void sendContractExpiryEmail(String email, String tenNhanVien, String loaiHopDong, String ngayHetHan) {
+    public void sendContractExpiryEmail(String email, String employeeName, String contractType, String expiryDate) {
         String subject = "Thông báo: Hợp đồng sắp hết hạn";
         String content = String.format(
                 "Kính gửi %s,\n\n" +
@@ -101,27 +94,23 @@ public class EmailNotificationService {
                         "Vui lòng liên hệ với phòng nhân sự để gia hạn hợp đồng.\n\n" +
                         "Trân trọng,\n" +
                         "Phòng Nhân sự",
-                tenNhanVien, loaiHopDong, ngayHetHan);
+                employeeName, contractType, expiryDate);
 
         sendSimpleEmail(email, subject, content);
     }
-
-    // [Gửi email nghỉ phép được duyệt] (Role: System)
-    public void sendLeaveApprovedEmail(String email, String tenNhanVien, String loaiNghi, String ngayBatDau,
-            String ngayKetThuc) {
+    public void sendLeaveApprovedEmail(String email, String employeeName, String leaveType, String startDate,
+            String endDate) {
         String subject = "Đơn nghỉ phép đã được duyệt";
         String content = String.format(
                 "Kính gửi %s,\n\n" +
                         "Đơn %s của bạn từ ngày %s đến %s đã được duyệt.\n\n" +
                         "Trân trọng,\n" +
                         "Phòng Nhân sự",
-                tenNhanVien, loaiNghi, ngayBatDau, ngayKetThuc);
+                employeeName, leaveType, startDate, endDate);
 
         sendSimpleEmail(email, subject, content);
     }
-
-    // [Gửi email lương đã duyệt] (Role: System)
-    public void sendSalaryApprovedEmail(String email, String tenNhanVien, String thangNam, String soTien) {
+    public void sendSalaryApprovedEmail(String email, String employeeName, String period, String amount) {
         String subject = "Lương đã được duyệt";
         String content = String.format(
                 "Kính gửi %s,\n\n" +
@@ -129,13 +118,11 @@ public class EmailNotificationService {
                         +
                         "Trân trọng,\n" +
                         "Phòng Kế toán",
-                tenNhanVien, thangNam, soTien);
+                employeeName, period, amount);
 
         sendSimpleEmail(email, subject, content);
     }
-
-    // [Gửi email chào mừng nhân viên mới] (Role: System)
-    public void sendWelcomeEmail(String email, String tenNhanVien, String username, String tempPassword) {
+    public void sendWelcomeEmail(String email, String employeeName, String username, String tempPassword) {
         String subject = "Chào mừng bạn đến với công ty";
         String content = String.format(
                 "Kính gửi %s,\n\n" +
@@ -147,12 +134,10 @@ public class EmailNotificationService {
                         "Link đăng nhập: %s/login\n\n" +
                         "Trân trọng,\n" +
                         "Phòng Nhân sự",
-                tenNhanVien, username, tempPassword, baseUrl);
+                employeeName, username, tempPassword, baseUrl);
 
         sendSimpleEmail(email, subject, content);
     }
-
-    // [Gửi email khôi phục mật khẩu] (Role: Admin reset)
     public void sendPasswordResetEmail(String email, String username, String newPassword) {
         String subject = "Thông báo: Mật khẩu tài khoản đã được đặt lại";
         String content = String.format(

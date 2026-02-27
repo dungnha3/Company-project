@@ -43,8 +43,6 @@ public class RedisConfig {
                                 "department", "position");
         }
 
-        // ==================== REDIS CACHE (Cần Docker Redis) ====================
-
         @Bean
         @ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
         public RedisCacheConfiguration cacheConfiguration() {

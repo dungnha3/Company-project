@@ -64,11 +64,11 @@ public class SkillService {
     }
 
     @Transactional
-    public Skill createSkill(Map<String, Object> request) {
+    public Skill createSkill(DoAn.BE.hrm.dto.CreateSkillRequest request) {
         Skill skill = new Skill();
-        skill.setName((String) request.get("name"));
-        skill.setCategory((String) request.get("category"));
-        skill.setDescription((String) request.get("description"));
+        skill.setName(request.getName());
+        skill.setCategory(request.getCategory());
+        skill.setDescription(request.getDescription());
         return skillRepository.save(skill);
     }
 
@@ -93,9 +93,7 @@ public class SkillService {
             Integer level = entry.getValue();
 
             // Find or create skill
-            Skill skill = skillRepository.findAll().stream()
-                    .filter(s -> s.getName().equalsIgnoreCase(skillName))
-                    .findFirst()
+            Skill skill = skillRepository.findByNameIgnoreCase(skillName)
                     .orElseGet(() -> {
                         Skill newSkill = new Skill();
                         newSkill.setName(skillName);

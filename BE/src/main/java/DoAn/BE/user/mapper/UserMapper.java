@@ -13,8 +13,6 @@ public class UserMapper {
 
     public UserMapper() {
     }
-
-    // [Convert User entity to UserDTO] (Role: System)
     public UserDTO toDTO(User user) {
         if (user == null) {
             return null;
@@ -74,8 +72,6 @@ public class UserMapper {
 
         return dto;
     }
-
-    // [Convert list of User entities to list of UserDTOs] (Role: System)
     public List<UserDTO> toDTOList(List<User> users) {
         if (users == null) {
             return null;

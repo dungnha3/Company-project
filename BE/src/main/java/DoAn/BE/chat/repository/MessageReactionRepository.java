@@ -15,17 +15,13 @@ import DoAn.BE.chat.entity.MessageReaction;
 @Repository
 public interface MessageReactionRepository extends JpaRepository<MessageReaction, Long> {
 
-    // Lấy tất cả reactions của 1 message (với user để hiển thị tên)
     @EntityGraph(attributePaths = { "user" })
     List<MessageReaction> findByMessage_MessageId(Long messageId);
 
-    // Kiểm tra user đã react emoji này chưa
     boolean existsByMessage_MessageIdAndUser_UserIdAndEmoji(Long messageId, Long userId, String emoji);
 
-    // Lấy reaction cụ thể để xóa
     Optional<MessageReaction> findByMessage_MessageIdAndUser_UserIdAndEmoji(Long messageId, Long userId, String emoji);
 
-    // Xóa reaction (bulk delete)
     @Modifying
     @Query("DELETE FROM MessageReaction r WHERE r.message.messageId = :messageId AND r.user.userId = :userId AND r.emoji = :emoji")
     int deleteByMessageIdAndUserIdAndEmoji(@Param("messageId") Long messageId, @Param("userId") Long userId,

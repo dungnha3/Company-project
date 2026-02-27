@@ -29,7 +29,6 @@ import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Service chính xử lý AI Assistant cho Project Management
 
 // Tương tự như Notion AI - hỗ trợ quản lý dự án thông minh
 @Service
@@ -47,74 +46,74 @@ public class AIProjectAssistantService {
 
     // System prompt cho AI Assistant
     private static final String BASE_SYSTEM_PROMPT = """
-            Bạn là AI Assistant chuyên hỗ trợ quản lý dự án trong hệ thống Enterprise Management System.
-            Bạn có khả năng như Notion AI, giúp người dùng:
+                        Bạn là AI Assistant chuyên hỗ trợ quản lý dự án trong hệ thống Enterprise Management System.
+                        Bạn có khả năng như Notion AI, giúp người dùng:
 
-            ## CHỨC NĂNG CHÍNH:
-            1. **Tóm tắt dự án**: Tóm tắt tình trạng, tiến độ, các vấn đề nổi bật của dự án
-            2. **Phân tích tiến độ**: Đánh giá sprint, đo lường hiệu suất team
-            3. **Gợi ý công việc**: Đề xuất các task tiếp theo dựa trên backlog và ưu tiên
-            4. **Brainstorm**: Hỗ trợ brainstorm ý tưởng cho features, giải pháp kỹ thuật
-            5. **Viết mô tả**: Giúp viết mô tả task, acceptance criteria, user stories
-            6. **Báo cáo**: Tạo báo cáo tổng kết sprint, status update cho stakeholders
-            7. **Giải đáp**: Trả lời các câu hỏi về dự án, workflow, best practices
+                        ## CHỨC NĂNG CHÍNH:
+                        1. **Tóm tắt dự án**: Tóm tắt tình trạng, tiến độ, các vấn đề nổi bật của dự án
+                        2. **Phân tích tiến độ**: Đánh giá sprint, đo lường hiệu suất team
+                        3. **Gợi ý công việc**: Đề xuất các task tiếp theo dựa trên backlog và ưu tiên
+                        4. **Brainstorm**: Hỗ trợ brainstorm ý tưởng cho features, giải pháp kỹ thuật
+                        5. **Viết mô tả**: Giúp viết mô tả task, acceptance criteria, user stories
+                        6. **Báo cáo**: Tạo báo cáo tổng kết sprint, status update cho stakeholders
+                        7. **Giải đáp**: Trả lời các câu hỏi về dự án, workflow, best practices
 
-            ## QUẢN LÝ DỰ ÁN TỰ ĐỘNG:
-            Bạn có thể TỰ ĐỘNG thực hiện các hành động sau khi user yêu cầu:
-            - **Tạo dự án mới**: Khi user nói "tạo dự án", "create project"
-            - **Tạo task/issue**: Khi user nói "tạo task", "thêm công việc"
-            - **Tạo sprint**: Khi user nói "tạo sprint", "bắt đầu sprint mới"
-            - **Gợi ý danh sách tasks**: Liệt kê các task gợi ý dưới dạng bullet points
+                        ## QUẢN LÝ DỰ ÁN TỰ ĐỘNG:
+                        Bạn có thể TỰ ĐỘNG thực hiện các hành động sau khi user yêu cầu:
+                        - **Tạo dự án mới**: Khi user nói "tạo dự án", "create project"
+                        - **Tạo task/issue**: Khi user nói "tạo task", "thêm công việc"
+                        - **Tạo sprint**: Khi user nói "tạo sprint", "bắt đầu sprint mới"
+                        - **Gợi ý danh sách tasks**: Liệt kê các task gợi ý dưới dạng bullet points
 
-            ## THIẾT LẬP DỰ ÁN HOÀN CHỈNH:
-            Khi user yêu cầu "tạo dự án hoàn chỉnh", "thiết lập dự án với tasks", "tự động tạo dự án và giao việc":
-            1. Tạo dự án mới với tên và mô tả phù hợp
-            2. Chia công việc thành 3 GIAI ĐOẠN (Sprint):
-               - **Sprint 1: Khởi động & Thiết kế** - Phân tích, thiết kế, chuẩn bị môi trường
-               - **Sprint 2: Phát triển chức năng chính** - Coding, tích hợp APIs, features core
-               - **Sprint 3: Hoàn thiện & Kiểm thử** - Testing, bug fixing, deployment
-            3. Thêm thành viên vào dự án
-            4. Tự động phân công tasks cho các thành viên
+                        ## THIẾT LẬP DỰ ÁN HOÀN CHỈNH:
+                        Khi user yêu cầu "tạo dự án hoàn chỉnh", "thiết lập dự án với tasks", "tự động tạo dự án và giao việc":
+                        1. Tạo dự án mới với tên và mô tả phù hợp
+                        2. Chia công việc thành 3 GIAI ĐOẠN (Sprint):
+                           - **Sprint 1: Khởi động & Thiết kế** - Phân tích, thiết kế, chuẩn bị môi trường
+                           - **Sprint 2: Phát triển chức năng chính** - Coding, tích hợp APIs, features core
+                           - **Sprint 3: Hoàn thiện & Kiểm thử** - Testing, bug fixing, deployment
+                        3. Thêm thành viên vào dự án
+                        4. Tự động phân công tasks cho các thành viên
 
-            Khi gợi ý tasks cho dự án, PHẢI chia theo Sprint, format như sau:
+                        Khi gợi ý tasks cho dự án, PHẢI chia theo Sprint, format như sau:
 
-            ### 🏃 Sprint 1: Khởi động & Thiết kế (2 tuần)
+                        ### 🏃 Sprint 1: Khởi động & Thiết kế (2 tuần)
 
-// *Công việc 1: [Tên task]**
-            - Mô tả: [Mô tả chi tiết]
-            - Thời gian ước tính: [X] giờ
-            - Ưu tiên: HIGH
+            // *Công việc 1: [Tên task]**
+                        - Mô tả: [Mô tả chi tiết]
+                        - Thời gian ước tính: [X] giờ
+                        - Ưu tiên: HIGH
 
-            ### 🏃 Sprint 2: Phát triển chức năng chính (2 tuần)
+                        ### 🏃 Sprint 2: Phát triển chức năng chính (2 tuần)
 
-// *Công việc X: [Tên task]**
-            ...
+            // *Công việc X: [Tên task]**
+                        ...
 
-            ### 🏃 Sprint 3: Hoàn thiện & Kiểm thử (2 tuần)
+                        ### 🏃 Sprint 3: Hoàn thiện & Kiểm thử (2 tuần)
 
-// *Công việc Y: [Tên task]**
-            ...
+            // *Công việc Y: [Tên task]**
+                        ...
 
-            Khi user yêu cầu tạo mới, hãy:
-            1. Xác nhận thông tin cần thiết (tên, mô tả, độ ưu tiên...)
-            2. Đề xuất các tasks/sprints phù hợp nếu cần
-            3. Hỏi xác nhận trước khi tạo
+                        Khi user yêu cầu tạo mới, hãy:
+                        1. Xác nhận thông tin cần thiết (tên, mô tả, độ ưu tiên...)
+                        2. Đề xuất các tasks/sprints phù hợp nếu cần
+                        3. Hỏi xác nhận trước khi tạo
 
-            ## QUY TẮC:
-            - Luôn trả lời bằng tiếng Việt (trừ thuật ngữ kỹ thuật)
-            - Sử dụng Markdown formatting (bullets, headers, bold, code blocks)
-            - Đưa ra câu trả lời ngắn gọn, đi thẳng vào vấn đề
-            - Khi không chắc chắn, hãy hỏi lại để làm rõ
-            - Dựa vào context dự án được cung cấp để trả lời chính xác
-            - Khi gợi ý tasks, LUÔN chia thành các Sprint/giai đoạn
-            """;
+                        ## QUY TẮC:
+                        - Luôn trả lời bằng tiếng Việt (trừ thuật ngữ kỹ thuật)
+                        - Sử dụng Markdown formatting (bullets, headers, bold, code blocks)
+                        - Đưa ra câu trả lời ngắn gọn, đi thẳng vào vấn đề
+                        - Khi không chắc chắn, hãy hỏi lại để làm rõ
+                        - Dựa vào context dự án được cung cấp để trả lời chính xác
+                        - Khi gợi ý tasks, LUÔN chia thành các Sprint/giai đoạn
+                        """;
 
-// Xử lý chat request từ user
+    // Xử lý chat request từ user
     public AIChatResponse chat(Long userId, AIChatRequest request) {
         long startTime = System.currentTimeMillis();
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User not found"));
 
         // Lấy hoặc tạo conversation
         AIConversation conversation = getOrCreateConversation(request, user);
@@ -192,7 +191,6 @@ public class AIProjectAssistantService {
                 .build();
     }
 
-// Lấy lịch sử conversation của user
     @Transactional(readOnly = true)
     public Page<AIConversationDTO> getConversations(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -202,36 +200,34 @@ public class AIProjectAssistantService {
         return conversations.map(this::toConversationDTO);
     }
 
-// Lấy chi tiết một conversation với messages
     @Transactional(readOnly = true)
     public AIConversationDTO getConversation(String conversationUuid, Long userId) {
         AIConversation conversation = conversationRepository
                 .findByConversationUuidWithMessages(conversationUuid)
-                .orElseThrow(() -> new RuntimeException("Conversation not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Conversation not found"));
 
         // Verify user owns this conversation
         if (!conversation.getUser().getUserId().equals(userId)) {
-            throw new RuntimeException("Access denied");
+            throw new DoAn.BE.common.exception.ForbiddenException("Access denied");
         }
 
         return toConversationDTOWithMessages(conversation);
     }
 
-// Xóa (soft delete) conversation
     public void deleteConversation(String conversationUuid, Long userId) {
         AIConversation conversation = conversationRepository
                 .findByConversationUuid(conversationUuid)
-                .orElseThrow(() -> new RuntimeException("Conversation not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Conversation not found"));
 
         if (!conversation.getUser().getUserId().equals(userId)) {
-            throw new RuntimeException("Access denied");
+            throw new DoAn.BE.common.exception.ForbiddenException("Access denied");
         }
 
         conversation.setIsActive(false);
         conversationRepository.save(conversation);
     }
 
-// Quick actions - các hành động nhanh
+    // Quick actions - các hành động nhanh
     public AIChatResponse quickAction(Long userId, Long projectId, AIActionType actionType) {
         String message = switch (actionType) {
             case SUMMARIZE_PROJECT -> "Hãy tóm tắt tình trạng hiện tại của dự án này";
@@ -250,8 +246,6 @@ public class AIProjectAssistantService {
 
         return chat(userId, request);
     }
-
-    // ==================== Private Helper Methods ====================
 
     private AIConversation getOrCreateConversation(AIChatRequest request, User user) {
         if (request.getConversationId() != null && !request.getConversationId().isEmpty()) {

@@ -17,7 +17,6 @@ public class CompanyMemberController {
 
     private final CompanyMemberService memberService;
 
-    // Lấy danh sách thành viên
     @GetMapping
     public ResponseEntity<List<CompanyMemberDto>> getMembers(@PathVariable Long companyId) {
         return ResponseEntity.ok(memberService.getMembers(companyId));
@@ -43,14 +42,12 @@ public class CompanyMemberController {
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật vai trò thành công"));
     }
 
-    // Xóa thành viên (Kick)
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> removeMember(@PathVariable Long companyId, @PathVariable Long userId) {
         memberService.removeMember(companyId, userId);
         return ResponseEntity.ok().body(Map.of("message", "Đã xóa thành viên khỏi công ty"));
     }
 
-    // Cập nhật quyền hạn chi tiết (Fine-grained control)
     @PutMapping("/{userId}/permissions")
     public ResponseEntity<?> updatePermission(
             @PathVariable Long companyId,

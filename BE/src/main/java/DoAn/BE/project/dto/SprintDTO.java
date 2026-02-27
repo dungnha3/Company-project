@@ -6,8 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// [DTO thông tin sprint] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

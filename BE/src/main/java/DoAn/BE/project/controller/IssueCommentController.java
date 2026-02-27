@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.service.IssueCommentService;
 import DoAn.BE.user.entity.User;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class IssueCommentController {
 
     private final IssueCommentService issueCommentService;

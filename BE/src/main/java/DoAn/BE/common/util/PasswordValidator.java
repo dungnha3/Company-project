@@ -13,7 +13,6 @@ public class PasswordValidator {
     
     private static final Pattern pattern = Pattern.compile(PASSWORD_PATTERN);
 
-// Kiểm tra mật khẩu có đáp ứng yêu cầu không
     public static boolean isValid(String password) {
         if (password == null || password.trim().isEmpty()) {
             return false;
@@ -21,13 +20,11 @@ public class PasswordValidator {
         return pattern.matcher(password).matches();
     }
 
-// Lấy mô tả yêu cầu mật khẩu
     public static String getPasswordRequirements() {
         return "Mật khẩu phải có ít nhất 8 ký tự, bao gồm: " +
                "chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)";
     }
 
-// Kiểm tra mật khẩu có phổ biến không
     public static boolean isCommonPassword(String password) {
         String[] commonPasswords = {
             "password", "123456", "123456789", "12345678", "12345",
@@ -78,7 +75,6 @@ public class PasswordValidator {
         return null; // Mật khẩu hợp lệ
     }
 
-// Kiểm tra độ mạnh mật khẩu (0-4)
 
 // 0: Rất yếu, 1: Yếu, 2: Trung bình, 3: Mạnh, 4: Rất mạnh
     public static int getPasswordStrength(String password) {

@@ -6,8 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-// [Entity trạng thái Issue - To Do, In Progress, Done] (Role: Data Model)
 @Entity
 @Table(name = "issue_statuses")
 @Data
@@ -41,7 +39,6 @@ public class IssueStatus {
         this.color = color;
     }
 
-    // Helper methods
     public boolean isToDo() {
         return "To Do".equals(this.name);
     }

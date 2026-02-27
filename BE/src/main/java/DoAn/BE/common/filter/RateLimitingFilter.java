@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -15,12 +16,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * Rate Limiting Filter
- * Applies rate limiting based on client IP and endpoint type
- * 
- * Order: Runs early in filter chain (before authentication)
- */
+// Rate Limiting Filter
+// Applies rate limiting based on client IP and endpoint type
+//
+// Order: Runs early in filter chain (before authentication)
+// /
 @Component
 @Order(1)
 @RequiredArgsConstructor
@@ -28,6 +28,9 @@ import java.io.IOException;
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final RateLimitingService rateLimitingService;
+
+    @Value("${rate.limit.enabled:true}")
+    private boolean enabled;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -62,9 +65,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Determine rate limit type based on request path
-     */
+    // Determine rate limit type based on request path
+    // /
     private RateLimitType determineRateLimitType(String path) {
         if (path.startsWith("/api/auth/login") ||
                 path.startsWith("/api/auth/register") ||
@@ -81,10 +83,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return RateLimitType.API;
     }
 
-    /**
-     * Extract client IP from request
-     * Handles reverse proxy scenarios with X-Forwarded-For header
-     */
+    // Extract client IP from request
+    // Handles reverse proxy scenarios with X-Forwarded-For header
+    // /
     private String extractClientIp(HttpServletRequest request) {
         // Check for proxy headers first
         String xForwardedFor = request.getHeader("X-Forwarded-For");
@@ -103,6 +104,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        // If rate limiting is disabled (e.g. in tests), skip entirely
+        if (!enabled) {
+            return true;
+        }
+
         String path = request.getRequestURI();
 
         // Skip rate limiting for health checks and static resources

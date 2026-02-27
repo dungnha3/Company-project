@@ -1,14 +1,13 @@
 package DoAn.BE.company.entity;
 
-/**
- * Enum định nghĩa các gói subscription
- * 
- * FREE: 5 users, 3 projects, 1GB - Test thử miễn phí
- * STARTER: 20 users, 20 projects, 10GB - Team nhỏ (99,000 VND/tháng)
- * PROFESSIONAL: 100 users, 100 projects, 100GB, HR enabled - Doanh nghiệp
- * (199,000 VND/tháng)
- * ENTERPRISE: Unlimited, SSO/API - Enterprise (Liên hệ báo giá)
- */
+// Enum định nghĩa các gói subscription
+//
+// FREE: 5 users, 3 projects, 1GB - Test thử miễn phí
+// STARTER: 20 users, 20 projects, 10GB - Team nhỏ (99,000 VND/tháng)
+// PROFESSIONAL: 100 users, 100 projects, 100GB, HR enabled - Doanh nghiệp
+// (199,000 VND/tháng)
+// ENTERPRISE: Unlimited, SSO/API - Enterprise (Liên hệ báo giá)
+// /
 public enum Plan {
     FREE(5, 3, 1L * 1024 * 1024 * 1024, 10 * 1024 * 1024L,
             false, false, false, false, 0, "Miễn phí"),

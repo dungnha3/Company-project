@@ -27,8 +27,6 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.stream.Collectors;
-
-// [Service quản lý Issue/Công việc trong dự án] (Role: Project Member)
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -360,8 +358,6 @@ public class IssueService {
 
         return convertToDTO(issue);
     }
-
-    // [Tự động cập nhật trạng thái Phase dựa trên Issues] (Role: Internal)
     private void updatePhaseStatusIfNeeded(Issue issue) {
         if (issue.getPhase() == null) {
             return;
@@ -402,7 +398,6 @@ public class IssueService {
         }
     }
 
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
@@ -472,12 +467,10 @@ public class IssueService {
         return dto;
     }
 
-    /**
-     * Dispatch webhook event for issue changes
-     */
-    /**
-     * Publish async event for issue changes
-     */
+    // Dispatch webhook event for issue changes
+    // /
+    // Publish async event for issue changes
+    // /
     private void publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType eventType, Issue issue, Long actorId) {
         try {
             eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, issue, eventType, actorId));
@@ -485,8 +478,6 @@ public class IssueService {
             log.warn("Failed to publish issue event {}: {}", eventType, e.getMessage());
         }
     }
-
-    // ==================== EDGE CASE HANDLERS ====================
 
     // [Global Ghost Cleanup] Khi User bị xóa khỏi hệ thống => Unassign tất cả
     // issues của user này

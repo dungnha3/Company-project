@@ -3,8 +3,6 @@ package DoAn.BE.auth.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-
-// [Request reset password với token] (Role: All)
 @Data
 public class ResetPasswordRequest {
     @NotBlank(message = "Token không được để trống")

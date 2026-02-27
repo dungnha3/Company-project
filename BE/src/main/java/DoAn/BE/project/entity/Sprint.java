@@ -6,8 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-
-// [Entity Sprint - quản lý chu kỳ Scrum] (Role: Data Model)
 @Entity
 @Table(name = "sprints")
 @Data

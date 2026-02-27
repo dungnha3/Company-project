@@ -2,6 +2,7 @@ package DoAn.BE.storage.controller;
 
 import DoAn.BE.storage.dto.*;
 import DoAn.BE.storage.service.FileStorageService;
+import DoAn.BE.storage.service.StorageQueryService;
 import DoAn.BE.storage.service.FolderService;
 import DoAn.BE.user.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,9 +30,8 @@ import DoAn.BE.common.annotation.FeatureFlag;
 public class StorageController {
 
     private final FileStorageService fileStorageService;
+    private final StorageQueryService storageQueryService;
     private final FolderService folderService;
-
-    // ==================== FILE ENDPOINTS ====================
 
     @PostMapping("/files/upload")
     public ResponseEntity<FileUploadResponse> uploadFile(
@@ -82,7 +82,7 @@ public class StorageController {
             Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         Long userId = user.getUserId();
-        List<FileDTO> files = fileStorageService.getFiles(userId, filter);
+        List<FileDTO> files = storageQueryService.getFiles(userId, filter);
         return ResponseEntity.ok(files);
     }
 
@@ -143,11 +143,9 @@ public class StorageController {
     public ResponseEntity<StorageStatsDTO> getStorageStats(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         Long userId = user.getUserId();
-        StorageStatsDTO stats = fileStorageService.getStorageStats(userId);
+        StorageStatsDTO stats = storageQueryService.getStorageStats(userId);
         return ResponseEntity.ok(stats);
     }
-
-    // ==================== FOLDER ENDPOINTS ====================
 
     @PostMapping("/folders")
     public ResponseEntity<FolderDTO> createFolder(
@@ -223,7 +221,6 @@ public class StorageController {
         return ResponseEntity.ok(response);
     }
 
-    // Helper method
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {

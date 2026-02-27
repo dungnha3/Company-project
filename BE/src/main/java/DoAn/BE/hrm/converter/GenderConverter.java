@@ -4,8 +4,6 @@ import DoAn.BE.hrm.entity.Employee.Gender;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import lombok.extern.slf4j.Slf4j;
-
-// [Custom converter for Gender enum - handle corrupted DB values] (Role: System)
 @Converter(autoApply = true)
 @Slf4j
 public class GenderConverter implements AttributeConverter<Gender, String> {

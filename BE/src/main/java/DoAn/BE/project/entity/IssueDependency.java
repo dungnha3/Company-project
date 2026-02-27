@@ -4,10 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
-/**
- * Entity representing dependencies between issues for Gantt chart
- * Supports 4 dependency types: FS (Finish-to-Start), SS, FF, SF
- */
+// Entity representing dependencies between issues for Gantt chart
+// Supports 4 dependency types: FS (Finish-to-Start), SS, FF, SF
+// /
 @Entity
 @Table(name = "issue_dependencies", indexes = {
         @Index(name = "idx_dep_predecessor", columnList = "predecessor_id"),
@@ -39,9 +38,8 @@ public class IssueDependency {
     @Builder.Default
     private DependencyType dependencyType = DependencyType.FINISH_TO_START;
 
-    /**
-     * Lag time in days (can be negative for lead time)
-     */
+    // Lag time in days (can be negative for lead time)
+    // /
     @Column(name = "lag_days")
     @Builder.Default
     private Integer lagDays = 0;
@@ -54,9 +52,8 @@ public class IssueDependency {
         this.createdAt = LocalDateTime.now();
     }
 
-    /**
-     * Dependency types for Gantt chart
-     */
+    // Dependency types for Gantt chart
+    // /
     public enum DependencyType {
         FINISH_TO_START, // FS: Successor starts when predecessor finishes
         START_TO_START, // SS: Both start at same time
@@ -64,9 +61,8 @@ public class IssueDependency {
         START_TO_FINISH // SF: Predecessor starts when successor finishes (rare)
     }
 
-    /**
-     * Check if this dependency creates a circular reference
-     */
+    // Check if this dependency creates a circular reference
+    // /
     public boolean wouldCreateCycle(Issue targetPredecessor) {
         // Simple check - more thorough check should be done at service level
         return predecessor.getIssueId().equals(targetPredecessor.getIssueId());

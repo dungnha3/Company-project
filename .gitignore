@@ -1,9 +1,11 @@
 # Project-wide ignores
 
-# Logs
+# Logs & temp output
 logs/
 *.log
 *.gz
+*.txt
+!README.txt
 
 # OS
 .DS_Store
@@ -17,6 +19,13 @@ Thumbs.db
 *.swo
 *~
 
+# AI tools
+.agents/
+.agent/
+_agents/
+_agent/
+.gemini/
+
 # Temp files
 *.tmp
 *.bak
@@ -28,10 +37,7 @@ Thumbs.db
 
 # Environment files
 .env
-.env.local
-.env.*.local
-.env.production
-.env.development
+.env.*
 
 # Application secrets
 **/application-local.properties

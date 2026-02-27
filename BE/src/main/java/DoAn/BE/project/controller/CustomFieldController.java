@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.project.dto.CustomFieldDto;
 import DoAn.BE.project.service.CustomFieldService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,19 +15,17 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller for managing custom fields
- * Allows creating project-specific custom fields for issues (like Jira)
- */
+// Controller for managing custom fields
+// Allows creating project-specific custom fields for issues (like Jira)
+// /
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Custom Fields", description = "Manage custom fields for issues")
+@FeatureFlag("PROJECT")
 public class CustomFieldController {
 
     private final CustomFieldService customFieldService;
-
-    // ==================== FIELD MANAGEMENT ====================
 
     @GetMapping("/projects/{projectId}/custom-fields")
     @Operation(summary = "Get all custom fields for a project")
@@ -66,8 +66,6 @@ public class CustomFieldController {
         customFieldService.reorderFields(projectId, request.getFieldIds());
         return ResponseEntity.ok().build();
     }
-
-    // ==================== VALUE MANAGEMENT ====================
 
     @GetMapping("/issues/{issueId}/custom-fields")
     @Operation(summary = "Get all custom field values for an issue")

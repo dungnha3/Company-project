@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
-// [Entity lưu refresh token - làm mới access token] (Role: Security)
 @Entity
 @Data
 @NoArgsConstructor
@@ -47,12 +45,10 @@ public class RefreshToken {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Kiểm tra token đã hết hạn chưa
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiresAt);
     }
 
-    // Kiểm tra token còn hợp lệ không (chưa hết hạn và chưa bị thu hồi)
     public boolean isValid() {
         return !this.isRevoked && !this.isExpired();
     }

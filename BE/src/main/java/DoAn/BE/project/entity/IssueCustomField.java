@@ -9,10 +9,9 @@ import lombok.*;
 
 import DoAn.BE.company.entity.Company;
 
-/**
- * Entity định nghĩa custom field cho project
- * Cho phép mỗi project có các trường tùy chỉnh riêng (giống Jira custom fields)
- */
+// Entity định nghĩa custom field cho project
+// Cho phép mỗi project có các trường tùy chỉnh riêng (giống Jira custom fields)
+// /
 @Entity
 @Table(name = "issue_custom_fields", indexes = {
         @Index(name = "idx_cf_project", columnList = "project_id"),
@@ -47,10 +46,9 @@ public class IssueCustomField {
     @Column(name = "field_type", nullable = false, length = 20)
     private FieldType fieldType;
 
-    /**
-     * JSON options for SELECT/MULTI_SELECT types
-     * Format: ["Option 1", "Option 2", "Option 3"]
-     */
+    // JSON options for SELECT/MULTI_SELECT types
+    // Format: ["Option 1", "Option 2", "Option 3"]
+    // /
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String options;
 
@@ -89,9 +87,8 @@ public class IssueCustomField {
         updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Enum định nghĩa loại custom field
-     */
+    // Enum định nghĩa loại custom field
+    // /
     public enum FieldType {
         TEXT, // Short text (single line)
         TEXTAREA, // Long text (multi-line)

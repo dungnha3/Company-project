@@ -15,8 +15,6 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-// [Entity thông báo đơn giản - dùng cho chat, general notifications] (Role: Data Model)
 @Entity
 @Table(name = "notifications", indexes = {
         // Index cho query: findByUser_UserId (User's notifications - CRITICAL)
@@ -84,12 +82,10 @@ public class Notification {
         this.priority = NotificationPriority.NORMAL;
     }
 
-    // Đánh dấu đã đọc
     public void markAsRead() {
         this.isRead = true;
     }
 
-    // Kiểm tra chưa đọc
     public boolean isUnread() {
         return !this.isRead;
     }

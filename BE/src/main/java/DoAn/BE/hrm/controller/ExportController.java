@@ -1,6 +1,7 @@
 package DoAn.BE.hrm.controller;
 
-import DoAn.BE.common.exception.ForbiddenException;
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.common.service.PdfExportService;
 import DoAn.BE.hrm.service.HrmExportService;
@@ -19,27 +20,24 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Controller for exporting reports to Excel and PDF
- */
+// Controller for exporting reports to Excel and PDF
+// /
 @RestController
 @RequestMapping("/api/export")
 @RequiredArgsConstructor
 @Tag(name = "Export", description = "Export reports to Excel and PDF")
-@DoAn.BE.common.annotation.FeatureFlag("HR")
+@FeatureFlag("HR")
 public class ExportController {
 
         private final HrmExportService exportService;
         private final AccessControlService accessControlService;
         private final PdfExportService pdfExportService;
 
-        // ==================== EXCEL EXPORTS ====================
-
         @GetMapping("/employees/excel")
         @Operation(summary = "Export employee list to Excel")
         public ResponseEntity<byte[]> exportEmployeesToExcel(@AuthenticationPrincipal User currentUser)
                         throws IOException {
-                accessControlService.checkHRPermission(currentUser);
+                accessControlService.checkHrViewPermission();
 
                 byte[] excelData = exportService.exportEmployeesToExcel();
                 String filename = "EmployeeList_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"))
@@ -53,11 +51,7 @@ public class ExportController {
         public ResponseEntity<byte[]> exportAttendanceToExcel(
                         @RequestParam int month,
                         @RequestParam int year) throws IOException {
-                if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()
-                                && !accessControlService.isOwnerOrAdmin()) {
-                        throw new ForbiddenException(
-                                        "Only HR Manager, Accounting Manager and Admin can export attendance");
-                }
+                accessControlService.checkHrViewPermission();
 
                 byte[] excelData = exportService.exportAttendanceToExcel(month, year);
                 String filename = "Attendance_" + String.format("%02d%d", month, year) + ".xlsx";
@@ -70,11 +64,7 @@ public class ExportController {
         public ResponseEntity<byte[]> exportSalaryToExcel(
                         @RequestParam int month,
                         @RequestParam int year) throws IOException {
-                if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()
-                                && !accessControlService.isOwnerOrAdmin()) {
-                        throw new ForbiddenException(
-                                        "Only HR Manager, Accounting Manager and Admin can export salary");
-                }
+                accessControlService.checkSalaryViewPermission();
 
                 byte[] excelData = exportService.exportSalaryToExcel(month, year);
                 String filename = "Salary_" + String.format("%02d%d", month, year) + ".xlsx";
@@ -88,9 +78,7 @@ public class ExportController {
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate)
                         throws IOException {
-                if (!accessControlService.isAnyManager()) {
-                        throw new ForbiddenException("Only Manager and Admin can export leave requests");
-                }
+                accessControlService.checkHrViewPermission();
 
                 byte[] excelData = exportService.exportLeavesToExcel(startDate, endDate);
                 String filename = "LeaveRequests_" + startDate.format(DateTimeFormatter.ofPattern("ddMMyyyy")) +
@@ -99,12 +87,10 @@ public class ExportController {
                 return createExcelResponse(excelData, filename);
         }
 
-        // ==================== PDF EXPORTS ====================
-
         @GetMapping("/employees/pdf")
         @Operation(summary = "Export employee list to PDF")
         public ResponseEntity<byte[]> exportEmployeesToPdf(@AuthenticationPrincipal User currentUser) {
-                accessControlService.checkHRPermission(currentUser);
+                accessControlService.checkHrViewPermission();
 
                 byte[] pdfData = exportService.exportEmployeesToPdf(pdfExportService);
                 String filename = "EmployeeList_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"))
@@ -118,19 +104,13 @@ public class ExportController {
         public ResponseEntity<byte[]> exportSalaryToPdf(
                         @RequestParam int month,
                         @RequestParam int year) {
-                if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()
-                                && !accessControlService.isOwnerOrAdmin()) {
-                        throw new ForbiddenException(
-                                        "Only HR Manager, Accounting Manager and Admin can export salary");
-                }
+                accessControlService.checkSalaryViewPermission();
 
                 byte[] pdfData = exportService.exportSalaryToPdf(pdfExportService, month, year);
                 String filename = "SalaryReport_" + String.format("%02d%d", month, year) + ".pdf";
 
                 return createPdfResponse(pdfData, filename);
         }
-
-        // ==================== HELPER METHODS ====================
 
         private ResponseEntity<byte[]> createExcelResponse(byte[] data, String filename) {
                 return ResponseEntity.ok()

@@ -12,13 +12,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Integration tests for AuthController
- * Uses Spring MockMvc for testing HTTP endpoints
- */
+// Integration tests for AuthController
+// Uses Spring MockMvc for testing HTTP endpoints
+// /
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -88,7 +88,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("Swagger UI should be accessible without authentication")
     void swaggerUiShouldBeAccessible() throws Exception {
-        mockMvc.perform(post("/v3/api-docs")
+        mockMvc.perform(get("/v3/api-docs")
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }

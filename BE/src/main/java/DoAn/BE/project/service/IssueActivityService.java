@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// Service quản lý lịch sử thay đổi của Issue (activity log)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -167,7 +166,6 @@ public class IssueActivityService {
         issueActivityRepository.save(activity);
     }
 
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));

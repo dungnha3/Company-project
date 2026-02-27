@@ -7,16 +7,16 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import DoAn.BE.common.service.AccessControlService;
 
 import java.util.List;
 
-/**
- * Controller for SSO/SAML provider management
- */
+// Controller for SSO/SAML provider management
+@Slf4j
 @RestController
 @RequestMapping("/api/auth/sso")
 @RequiredArgsConstructor
@@ -24,8 +24,7 @@ import java.util.List;
 public class SsoController {
 
     private final SsoService ssoService;
-
-    // ==================== PUBLIC ENDPOINTS ====================
+    private final AccessControlService accessControlService;
 
     @GetMapping("/providers/{companyId}/default")
     @Operation(summary = "Get default SSO provider for company", description = "Returns the default SSO provider for login button")
@@ -44,55 +43,51 @@ public class SsoController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== ADMIN ENDPOINTS ====================
-
     @GetMapping("/providers")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(summary = "List SSO providers", description = "Get all SSO providers for current company")
     public ResponseEntity<List<SsoDto.ProviderResponse>> getProviders() {
+        accessControlService.checkAdminPermission(null);
         List<SsoDto.ProviderResponse> providers = ssoService.getProviders();
         return ResponseEntity.ok(providers);
     }
 
     @GetMapping("/providers/{providerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(summary = "Get SSO provider details")
     public ResponseEntity<SsoDto.ProviderResponse> getProvider(@PathVariable Long providerId) {
+        accessControlService.checkAdminPermission(null);
         SsoDto.ProviderResponse provider = ssoService.getProvider(providerId);
         return ResponseEntity.ok(provider);
     }
 
     @PostMapping("/providers")
-    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create SSO provider", description = "Configure a new SSO/SAML provider for the company")
     public ResponseEntity<SsoDto.ProviderResponse> createProvider(
             @Valid @RequestBody SsoDto.CreateProviderRequest request,
             @AuthenticationPrincipal User currentUser) {
+        accessControlService.checkAdminPermission(null);
 
         SsoDto.ProviderResponse provider = ssoService.createProvider(request);
         return ResponseEntity.ok(provider);
     }
 
     @PutMapping("/providers/{providerId}")
-    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update SSO provider")
     public ResponseEntity<SsoDto.ProviderResponse> updateProvider(
             @PathVariable Long providerId,
             @Valid @RequestBody SsoDto.UpdateProviderRequest request) {
+        accessControlService.checkAdminPermission(null);
 
         SsoDto.ProviderResponse provider = ssoService.updateProvider(providerId, request);
         return ResponseEntity.ok(provider);
     }
 
     @DeleteMapping("/providers/{providerId}")
-    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete SSO provider")
     public ResponseEntity<Void> deleteProvider(@PathVariable Long providerId) {
+        accessControlService.checkAdminPermission(null);
         ssoService.deleteProvider(providerId);
         return ResponseEntity.noContent().build();
     }
-
-    // ==================== CALLBACK (for IdP response) ====================
 
     @PostMapping("/callback")
     @Operation(summary = "SSO callback", description = "Handle IdP response (SAML assertion or OAuth2 code)")
@@ -101,11 +96,10 @@ public class SsoController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String state) {
 
-        // Log the event for debugging
         if (SAMLResponse != null) {
-            System.out.println("Received SAMLResponse (Base64 length): " + SAMLResponse.length());
+            log.info("Received SAMLResponse (Base64 length): {}", SAMLResponse.length());
         } else if (code != null) {
-            System.out.println("Received OAuth code: " + code);
+            log.info("Received OAuth code: {}", code);
         }
 
         // Return a structured error/info response since we can't fully validate without
