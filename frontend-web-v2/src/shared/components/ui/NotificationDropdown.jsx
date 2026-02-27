@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocketStore } from '@shared/stores/websocketStore';
@@ -6,6 +6,26 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatRelativeTime } from '@shared/utils/formatters';
+import { useToast } from '@app/providers/ToastProvider';
+
+// Play a subtle notification sound using Web Audio API
+function playNotificationSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch {
+        // Silently ignore if audio context fails
+    }
+}
 
 export default function NotificationDropdown() {
     const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +34,29 @@ export default function NotificationDropdown() {
     const queryClient = useQueryClient();
     const { subscribe, unsubscribe } = useWebSocketStore();
     const { workspaceType } = useWorkspaceStore();
+    const { showToast } = useToast();
     const isCompanyWorkspace = workspaceType === 'COMPANY';
+
+    // Handle incoming real-time notification
+    const handleRealtimeNotification = useCallback((message) => {
+        // Refresh notification queries
+        queryClient.invalidateQueries(['unread-count']);
+        queryClient.invalidateQueries(['notifications-preview']);
+
+        // Extract notification data from WebSocket message
+        const data = message?.data;
+        const title = data?.title || message?.content || 'Bạn có thông báo mới';
+        const content = data?.content || '';
+
+        // Show toast with actual notification content
+        showToast(
+            content ? `${title}: ${content}` : title,
+            'info'
+        );
+
+        // Play notification sound
+        playNotificationSound();
+    }, [queryClient, showToast]);
 
     // Close on click outside
     useEffect(() => {
@@ -27,16 +69,13 @@ export default function NotificationDropdown() {
 
         // Subscribe to real-time notifications
         const topic = '/user/queue/notifications';
-        subscribe(topic, () => {
-            queryClient.invalidateQueries(['unread-count']);
-            queryClient.invalidateQueries(['notifications-preview']);
-        });
+        subscribe(topic, handleRealtimeNotification);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             unsubscribe(topic);
         };
-    }, []);
+    }, [handleRealtimeNotification]);
 
     const { data: unreadCount = 0 } = useQuery({
         queryKey: ['unread-count'],

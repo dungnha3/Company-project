@@ -8,6 +8,7 @@ import useThemeStore from '@shared/stores/themeStore';
 import { useKeyboardShortcuts } from '@shared/components/ShortcutsModal';
 import AIAssistantSidebar from '@shared/components/AIAssistantSidebar';
 import QuotaWarningBanner from '@shared/components/ui/QuotaWarningBanner';
+import { useWebSocketStore } from '@shared/stores/websocketStore';
 
 export default function DashboardLayout() {
     const { sidebarCollapsed } = useUIStore();
@@ -15,6 +16,8 @@ export default function DashboardLayout() {
     const navigate = useNavigate();
     const { projectId } = useParams();
     const [showAI, setShowAI] = useState(false);
+    const { connect, disconnect } = useWebSocketStore();
+    const { isAuthenticated } = useAuthStore();
 
     // Initialize keyboard shortcuts
     const { ShortcutsModal } = useKeyboardShortcuts(navigate);
@@ -23,6 +26,14 @@ export default function DashboardLayout() {
     useEffect(() => {
         initTheme();
     }, [initTheme]);
+
+    // Global WebSocket connection — connect once when authenticated
+    useEffect(() => {
+        if (isAuthenticated) {
+            connect();
+        }
+        return () => disconnect();
+    }, [isAuthenticated]);
 
     // [SYSADMIN FIX] Double check redirect
     const { user } = useAuthStore.getState();

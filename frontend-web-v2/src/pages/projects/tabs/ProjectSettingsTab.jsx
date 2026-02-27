@@ -106,7 +106,7 @@ export default function ProjectSettingsTab({ project }) {
         setSearchError('');
 
         try {
-            const res = await apiClient.get(ENDPOINTS.USERS.SEARCH, { params: { q: memberEmail } });
+            const res = await apiClient.get(ENDPOINTS.USERS.SEARCH, { params: { query: memberEmail } });
             const users = res.data;
             const user = users.find(u => u.email?.toLowerCase() === memberEmail.toLowerCase());
 

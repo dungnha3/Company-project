@@ -37,7 +37,8 @@ export default function CompanySwitcher({ collapsed }) {
         };
         checkStaleAuth();
 
-        console.log('Current Workspaces:', workspaces); // DEBUG
+
+
         if (workspaces.length === 0) {
             fetchWorkspaces();
         }

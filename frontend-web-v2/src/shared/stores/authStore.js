@@ -173,6 +173,7 @@ export const useAuthStore = create(
                 localStorage.removeItem('accessToken');
                 // refreshToken is cleared by backend via Set-Cookie with maxAge=0
                 localStorage.removeItem('expiresAt');
+                localStorage.removeItem('workspace-storage'); // Clear stale workspace data
                 set({
                     user: null,
                     accessToken: null,

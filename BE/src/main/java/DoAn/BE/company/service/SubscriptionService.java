@@ -28,10 +28,11 @@ public class SubscriptionService {
         long currentUsers = companyMemberRepository.countByCompany_CompanyIdAndIsActiveTrue(companyId);
         Plan plan = company.getPlan();
 
-        // Allow adding if current < max (So if max is 5, you can have 0-4 existing,
-        // adding 5th is ok. Wait, count includes existing. If count=5, adding 6th
-        // fails)
-        // Check logic: We usually check BEFORE adding.
+        // -1 means unlimited (e.g. ENTERPRISE plan)
+        if (plan.isUnlimitedUsers()) {
+            return;
+        }
+
         if (currentUsers >= plan.getMaxUsers()) {
             throw new BadRequestException(
                     String.format(
@@ -45,6 +46,11 @@ public class SubscriptionService {
         Company company = getCompany(companyId);
         long currentProjects = projectRepository.countByCompany_CompanyId(companyId);
         Plan plan = company.getPlan();
+
+        // -1 means unlimited (e.g. ENTERPRISE plan)
+        if (plan.isUnlimitedProjects()) {
+            return;
+        }
 
         if (currentProjects >= plan.getMaxProjects()) {
             throw new BadRequestException(

@@ -35,7 +35,10 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
     // Fetch projects
     const { data: projects = [] } = useQuery({
         queryKey: ['myProjects'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS)).data,
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS)).data;
+            return Array.isArray(res) ? res : (res?.content || []);
+        },
         enabled: isOpen,
     });
 
