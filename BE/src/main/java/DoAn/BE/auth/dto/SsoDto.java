@@ -9,12 +9,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-/**
- * DTOs for SSO Provider management
- */
+// DTOs for SSO Provider management
+// /
 public class SsoDto {
-
-    // ==================== REQUEST DTOs ====================
 
     @Data
     @Builder
@@ -69,8 +66,6 @@ public class SsoDto {
         private String defaultRole;
     }
 
-    // ==================== RESPONSE DTOs ====================
-
     @Data
     @Builder
     @NoArgsConstructor
@@ -113,8 +108,6 @@ public class SsoDto {
         private String errorMessage;
         private boolean userCreated; // True if new user was auto-provisioned
     }
-
-    // ==================== SAML SPECIFIC ====================
 
     @Data
     @Builder

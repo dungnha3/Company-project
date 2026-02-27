@@ -10,9 +10,8 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Service for sending webhook notifications (Slack, Discord, etc.)
- */
+// Service for sending webhook notifications (Slack, Discord, etc.)
+// /
 @Service
 @Slf4j
 public class WebhookConnector {

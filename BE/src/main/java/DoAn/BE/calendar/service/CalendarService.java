@@ -12,6 +12,7 @@ import DoAn.BE.calendar.entity.*;
 import DoAn.BE.calendar.entity.EventAttendee.ResponseStatus;
 import DoAn.BE.calendar.repository.*;
 import DoAn.BE.common.context.TenantContext;
+import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.util.SecurityUtil;
@@ -38,13 +39,18 @@ public class CalendarService {
     private final UserRepository userRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    /**
-     * Create a new calendar event
-     */
+    // Create a new calendar event
+    // /
     @Transactional
     public CalendarEventDTO createEvent(CreateEventRequest request) {
         User currentUser = SecurityUtil.getCurrentUser();
         Long companyId = TenantContext.getCompanyId();
+
+        // Validate endTime > startTime
+        if (request.getEndTime() != null && request.getStartTime() != null
+                && request.getEndTime().isBefore(request.getStartTime())) {
+            throw new BadRequestException("End time must be after start time");
+        }
 
         Company company = null;
         if (companyId != null) {
@@ -107,9 +113,8 @@ public class CalendarService {
         return dto;
     }
 
-    /**
-     * Get events in date range for current company
-     */
+    // Get events in date range for current company
+    // /
     public List<CalendarEventDTO> getEvents(LocalDateTime start, LocalDateTime end) {
         Long companyId = TenantContext.getCompanyId();
         User currentUser = SecurityUtil.getCurrentUser();
@@ -127,18 +132,16 @@ public class CalendarService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get event by ID
-     */
+    // Get event by ID
+    // /
     public CalendarEventDTO getEventById(Long eventId) {
         CalendarEvent event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sự kiện"));
         return toDTO(event);
     }
 
-    /**
-     * Update event
-     */
+    // Update event
+    // /
     @Transactional
     public CalendarEventDTO updateEvent(Long eventId, CreateEventRequest request) {
         User currentUser = SecurityUtil.getCurrentUser();
@@ -164,9 +167,8 @@ public class CalendarService {
         return toDTO(event);
     }
 
-    /**
-     * Delete event
-     */
+    // Delete event
+    // /
     @Transactional
     public void deleteEvent(Long eventId) {
         User currentUser = SecurityUtil.getCurrentUser();
@@ -182,9 +184,8 @@ public class CalendarService {
         eventRepository.delete(event);
     }
 
-    /**
-     * RSVP to an event
-     */
+    // RSVP to an event
+    // /
     @Transactional
     public void respondToEvent(Long eventId, ResponseStatus response) {
         User currentUser = SecurityUtil.getCurrentUser();
@@ -199,9 +200,8 @@ public class CalendarService {
         attendeeRepository.save(myAttendee);
     }
 
-    /**
-     * Convert entity to DTO
-     */
+    // Convert entity to DTO
+    // /
     private CalendarEventDTO toDTO(CalendarEvent event) {
         List<AttendeeDTO> attendees = attendeeRepository.findByEvent_EventId(event.getEventId())
                 .stream()

@@ -17,59 +17,61 @@ import org.springframework.data.domain.Pageable;
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
-    @EntityGraph(attributePaths = { "user", "department", "position" })
-    Optional<Employee> findByUser_UserId(Long userId);
+        @EntityGraph(attributePaths = { "user", "department", "position" })
+        Optional<Employee> findByUser_UserId(Long userId);
 
-    Optional<Employee> findByIdCard(String idCard);
+        Optional<Employee> findByIdCard(String idCard);
 
-    boolean existsByIdCard(String idCard);
+        boolean existsByIdCard(String idCard);
 
-    // ...
+        // ...
 
-    @EntityGraph(attributePaths = { "user" })
-    List<Employee> findByStatus(EmployeeStatus status);
+        @EntityGraph(attributePaths = { "user" })
+        List<Employee> findByStatus(EmployeeStatus status);
 
-    @EntityGraph(attributePaths = { "user" })
-    Page<Employee> findByStatus(EmployeeStatus status, Pageable pageable);
+        @EntityGraph(attributePaths = { "user" })
+        Page<Employee> findByStatus(EmployeeStatus status, Pageable pageable);
 
-    @EntityGraph(attributePaths = { "user", "department", "position" })
-    List<Employee> findByDepartment_DepartmentId(Long departmentId);
+        @EntityGraph(attributePaths = { "user", "department", "position" })
+        List<Employee> findByDepartment_DepartmentId(Long departmentId);
 
-    @EntityGraph(attributePaths = { "user", "department", "position" })
-    Page<Employee> findByDepartment_DepartmentId(Long departmentId, Pageable pageable);
+        @EntityGraph(attributePaths = { "user", "department", "position" })
+        Page<Employee> findByDepartment_DepartmentId(Long departmentId, Pageable pageable);
 
-    List<Employee> findByPosition_PositionId(Long positionId);
+        List<Employee> findByPosition_PositionId(Long positionId);
 
-    Page<Employee> findByPosition_PositionId(Long positionId, Pageable pageable);
+        Page<Employee> findByPosition_PositionId(Long positionId, Pageable pageable);
 
-    @Query("SELECT e FROM Employee e WHERE " +
-            "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(e.idCard) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    List<Employee> searchByKeyword(@Param("keyword") String keyword);
+        @Query("SELECT e FROM Employee e WHERE " +
+                        "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(e.idCard) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+        List<Employee> searchByKeyword(@Param("keyword") String keyword);
 
-    @Query("SELECT e FROM Employee e WHERE " +
-            "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(e.idCard) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<Employee> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+        @Query("SELECT e FROM Employee e WHERE " +
+                        "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(e.idCard) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+        Page<Employee> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
-    long countByStatus(EmployeeStatus status);
+        long countByStatus(EmployeeStatus status);
 
-    long countByDepartment_DepartmentId(Long departmentId);
+        long countByDepartment_DepartmentId(Long departmentId);
 
-    long countByPosition_PositionId(Long positionId);
+        long countByPosition_PositionId(Long positionId);
 
-    List<Employee> findByDepartment(Department department);
+        List<Employee> findByDepartment(Department department);
 
-    @EntityGraph(attributePaths = { "user" })
-    @Query("SELECT e FROM Employee e WHERE MONTH(e.dateOfBirth) = :month AND DAY(e.dateOfBirth) = :day AND e.status = 'ACTIVE'")
-    List<Employee> findByBirthday(@Param("month") int month, @Param("day") int day);
+        @EntityGraph(attributePaths = { "user" })
+        @Query("SELECT e FROM Employee e WHERE MONTH(e.dateOfBirth) = :month AND DAY(e.dateOfBirth) = :day AND e.status = 'ACTIVE'")
+        List<Employee> findByBirthday(@Param("month") int month, @Param("day") int day);
 
-    // ==================== TENANT-AWARE QUERIES ====================
+        @EntityGraph(attributePaths = { "user", "department", "position" })
+        @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId")
+        List<Employee> findByCompanyId(@Param("companyId") Long companyId);
 
-    @EntityGraph(attributePaths = { "user", "department", "position" })
-    @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId")
-    List<Employee> findByCompanyId(@Param("companyId") Long companyId);
+        @Query("SELECT COUNT(e) FROM Employee e WHERE e.company.companyId = :companyId")
+        long countByCompanyId(@Param("companyId") Long companyId);
 
-    @Query("SELECT COUNT(e) FROM Employee e WHERE e.company.companyId = :companyId")
-    long countByCompanyId(@Param("companyId") Long companyId);
+        // Multi-tenant-safe: Find employee by user ID within a specific company
+        @EntityGraph(attributePaths = { "user", "department", "position" })
+        Optional<Employee> findByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
 }

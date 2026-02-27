@@ -1,13 +1,12 @@
 package DoAn.BE.common.config;
 
-/**
- * Cache Configuration Constants
- * 
- * Cache names constants for use across the application.
- * CacheManager beans are defined in RedisConfig with proper conditional logic:
- * - SimpleCacheManager for local development (spring.cache.type=simple)
- * - RedisCacheManager for production (spring.cache.type=redis)
- */
+// Cache Configuration Constants
+//
+// Cache names constants for use across the application.
+// CacheManager beans are defined in RedisConfig with proper conditional logic:
+// - SimpleCacheManager for local development (spring.cache.type=simple)
+// - RedisCacheManager for production (spring.cache.type=redis)
+// /
 public class CacheConfig {
 
     // Cache name constants

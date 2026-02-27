@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -11,16 +13,13 @@ import org.springframework.web.bind.annotation.*;
 
 import DoAn.BE.project.service.ProjectExportService;
 import lombok.RequiredArgsConstructor;
-
-// [Controller xuất dữ liệu Project] (Role: Project Member)
 @RestController
 @RequestMapping("/api/project-export")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class ProjectExportController {
 
     private final ProjectExportService projectExportService;
-
-    // [Export Issues ra CSV] (Role: Project Member)
     @GetMapping("/{projectId}/issues/csv")
     public ResponseEntity<byte[]> exportIssuesToCsv(@PathVariable Long projectId) throws IOException {
         byte[] csvData = projectExportService.exportIssuesToCsv(projectId);
@@ -32,8 +31,6 @@ public class ProjectExportController {
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(csvData);
     }
-
-    // [Export Gantt Chart ra CSV] (Role: Project Member)
     @GetMapping("/{projectId}/gantt/csv")
     public ResponseEntity<byte[]> exportGanttToCsv(@PathVariable Long projectId) throws IOException {
         byte[] csvData = projectExportService.exportGanttToCsv(projectId);

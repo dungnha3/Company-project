@@ -9,11 +9,10 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * PersonalWorkspace - Không gian làm việc cá nhân của User
- * Mỗi User có đúng 1 PersonalWorkspace (1:1 relationship)
- * Tự động tạo khi User đăng ký
- */
+// PersonalWorkspace - Không gian làm việc cá nhân của User
+// Mỗi User có đúng 1 PersonalWorkspace (1:1 relationship)
+// Tự động tạo khi User đăng ký
+// /
 @Entity
 @Table(name = "personal_workspaces")
 @Data
@@ -40,7 +39,6 @@ public class PersonalWorkspace {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // Helper method to create default workspace for a user
     public static PersonalWorkspace createFor(User user) {
         return PersonalWorkspace.builder()
                 .user(user)

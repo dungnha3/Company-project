@@ -53,10 +53,7 @@ public class AttendanceService {
     }
 
     public Attendance createAttendance(AttendanceRequest request, User currentUser) {
-
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR Manager can create manual attendance");
-        }
+        accessControlService.checkHrEditPermission();
 
         Long employeeId = request.getEmployeeId();
         if (employeeId == null) {
@@ -84,8 +81,11 @@ public class AttendanceService {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
 
-        if (accessControlService.isHRManager() || accessControlService.isAccountingManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
             return attendance;
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
 
         if (!attendance.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
@@ -96,9 +96,7 @@ public class AttendanceService {
     }
 
     public List<Attendance> getAllAttendance(User currentUser) {
-        if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only HR/Accounting can view all attendance records");
-        }
+        accessControlService.checkHrViewPermission();
 
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -109,9 +107,7 @@ public class AttendanceService {
 
     public org.springframework.data.domain.Page<Attendance> getAllAttendancePaged(User currentUser,
             org.springframework.data.domain.Pageable pageable) {
-        if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
-            throw new ForbiddenException("Only HR/Accounting can view all attendance records");
-        }
+        accessControlService.checkHrViewPermission();
 
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -121,10 +117,7 @@ public class AttendanceService {
     }
 
     public Attendance updateAttendance(Long id, AttendanceRequest request, User currentUser) {
-
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR Manager can update attendance");
-        }
+        accessControlService.checkHrEditPermission();
 
         log.info("HR Manager {} updating attendance ID: {}", currentUser.getUsername(), id);
 
@@ -163,7 +156,15 @@ public class AttendanceService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
 
-        if (!accessControlService.isHRManager()) {
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
+
+        if (!hasEditPermission) {
             if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
                 throw new ForbiddenException("You can only check-in for yourself");
             }
@@ -206,10 +207,7 @@ public class AttendanceService {
     }
 
     public void deleteAttendance(Long id, User currentUser) {
-
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR Manager can delete attendance");
-        }
+        accessControlService.checkHrEditPermission();
 
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
@@ -221,7 +219,15 @@ public class AttendanceService {
         if (employeeId == null)
             throw new BadRequestException("Invalid Employee ID");
 
-        if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkHrViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+
+        if (!hasViewPermission) {
             Employee employee = employeeRepository.findById(employeeId)
                     .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
             if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
@@ -238,7 +244,15 @@ public class AttendanceService {
         if (employeeId == null)
             throw new BadRequestException("Invalid Employee ID");
 
-        if (!accessControlService.isHRManager() && !accessControlService.isAccountingManager()) {
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkHrViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+
+        if (!hasViewPermission) {
             Employee employee = employeeRepository.findById(employeeId)
                     .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
             if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
@@ -288,7 +302,7 @@ public class AttendanceService {
                 yearMonth.atEndOfMonth());
     }
 
-    public Map<String, Object> checkInGPS(AttendanceGPSRequest request, User currentUser) {
+    public DoAn.BE.hrm.dto.CheckInGPSResponse checkInGPS(AttendanceGPSRequest request, User currentUser) {
         log.info("GPS Attendance request from user: {}", currentUser.getUsername());
 
         Long employeeId = request.getEmployeeId();
@@ -298,7 +312,15 @@ public class AttendanceService {
                             "No employee profile found linked to this account"));
             employeeId = employee.getEmployeeId();
         } else {
-            if (!accessControlService.isHRManager()) {
+            boolean hasEditPermission;
+            try {
+                accessControlService.checkHrEditPermission();
+                hasEditPermission = true;
+            } catch (ForbiddenException e) {
+                hasEditPermission = false;
+            }
+
+            if (!hasEditPermission) {
                 Employee myEmp = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
                 if (myEmp == null || !myEmp.getEmployeeId().equals(employeeId)) {
                     throw new ForbiddenException("You can only check-in for yourself");
@@ -362,15 +384,14 @@ public class AttendanceService {
 
         sendAttendanceNotification(employee, attendance, isCheckIn);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", isCheckIn ? "Check-in successful!" : "Check-out successful!");
-        response.put("isCheckIn", isCheckIn);
-        response.put("time", isCheckIn ? attendance.getCheckInTime() : attendance.getCheckOutTime());
-        response.put("distance", Math.round(distance));
-        response.put("status", attendance.getStatus());
-
-        return response;
+        return DoAn.BE.hrm.dto.CheckInGPSResponse.builder()
+                .success(true)
+                .message(isCheckIn ? "Check-in successful!" : "Check-out successful!")
+                .isCheckIn(isCheckIn)
+                .time(isCheckIn ? attendance.getCheckInTime() : attendance.getCheckOutTime())
+                .distance(Math.round(distance))
+                .status(attendance.getStatus() != null ? attendance.getStatus().name() : null)
+                .build();
     }
 
     private void sendAttendanceNotification(Employee employee, Attendance attendance, boolean isCheckIn) {
@@ -421,5 +442,13 @@ public class AttendanceService {
             response.put("message", cc.getCheckOutTime() != null ? "Shift Completed" : "Working");
         }
         return response;
+    }
+
+    // Find the Employee profile linked to a User within the current tenant context.
+    // Returns null if the user has no employee profile in the current company.
+    // /
+    @Transactional(readOnly = true)
+    public Employee getEmployeeForUser(User user) {
+        return employeeRepository.findByUser_UserId(user.getUserId()).orElse(null);
     }
 }

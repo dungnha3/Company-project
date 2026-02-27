@@ -6,12 +6,8 @@ import DashboardLayout from '@layouts/DashboardLayout';
 import AuthLayout from '@layouts/AuthLayout';
 
 // Guards
-import { AuthGuard } from './guards/AuthGuard';
-import { CompanyGuard } from './guards/CompanyGuard';
-import { RoleGuard } from './guards/RoleGuard';
-import { WorkspaceTypeGuard } from './guards/WorkspaceTypeGuard';
+import { AccessControlGuard } from './guards/AccessControlGuard';
 import SystemAdminGuard from './guards/SystemAdminGuard';
-import FeatureGuard from './guards/FeatureGuard';
 
 // Auth pages (not lazy - critical path)
 import LoginPage from '@pages/auth/LoginPage';
@@ -111,13 +107,13 @@ const router = createBrowserRouter([
     {
         path: '/admin',
         element: (
-            <AuthGuard>
+            <AccessControlGuard requireAuth={true}>
                 <SystemAdminGuard>
                     <Suspense fallback={<PageLoader />}>
                         <SystemAdminLayout />
                     </Suspense>
                 </SystemAdminGuard>
-            </AuthGuard>
+            </AccessControlGuard>
         ),
         children: [
             {
@@ -171,9 +167,9 @@ const router = createBrowserRouter([
     {
         path: '/onboarding',
         element: (
-            <AuthGuard>
+            <AccessControlGuard requireAuth={true}>
                 <OnboardingPage />
-            </AuthGuard>
+            </AccessControlGuard>
         ),
     },
 
@@ -187,11 +183,9 @@ const router = createBrowserRouter([
     {
         path: '/app',
         element: (
-            <AuthGuard>
-                <CompanyGuard>
-                    <DashboardLayout />
-                </CompanyGuard>
-            </AuthGuard>
+            <AccessControlGuard requireAuth={true}>
+                <DashboardLayout />
+            </AccessControlGuard>
         ),
         children: [
             // Dashboard
@@ -219,31 +213,31 @@ const router = createBrowserRouter([
                     {
                         path: 'issues',
                         element: (
-                            <FeatureGuard feature="project">
+                            <AccessControlGuard requiredFeature="project">
                                 <Suspense fallback={<PageLoader />}>
                                     <MyIssuesPage />
                                 </Suspense>
-                            </FeatureGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'timelogs',
                         element: (
-                            <FeatureGuard feature="timeTracking">
+                            <AccessControlGuard requiredFeature="timeTracking">
                                 <Suspense fallback={<PageLoader />}>
                                     <MyTimelogsPage />
                                 </Suspense>
-                            </FeatureGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'calendar',
                         element: (
-                            <FeatureGuard feature="calendar">
+                            <AccessControlGuard requiredFeature="calendar">
                                 <Suspense fallback={<PageLoader />}>
                                     <CalendarPage />
                                 </Suspense>
-                            </FeatureGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
@@ -277,31 +271,35 @@ const router = createBrowserRouter([
             {
                 path: 'hr',
                 element: (
-                    <WorkspaceTypeGuard types={['COMPANY']}>
+                    <AccessControlGuard
+                        requireAuth={true}
+                        requireCompany={true}
+                    >
                         <Outlet />
-                    </WorkspaceTypeGuard>
+                    </AccessControlGuard>
                 ),
                 children: [
                     {
                         path: 'dashboard',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <HRDashboardPage />
                                 </Suspense>
-                            </RoleGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'employees',
                         element: (
-                            <FeatureGuard feature="hr">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <EmployeesPage />
-                                    </Suspense>
-                                </RoleGuard>
-                            </FeatureGuard>
+                            <AccessControlGuard
+                                requiredFeature="hr"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <EmployeesPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
@@ -315,141 +313,151 @@ const router = createBrowserRouter([
                     {
                         path: 'departments',
                         element: (
-                            <FeatureGuard feature="hr">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <DepartmentsPage />
-                                    </Suspense>
-                                </RoleGuard>
-                            </FeatureGuard>
+                            <AccessControlGuard
+                                requiredFeature="hr"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <DepartmentsPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'positions',
                         element: (
-                            <FeatureGuard feature="hr">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <PositionsPage />
-                                    </Suspense>
-                                </RoleGuard>
-                            </FeatureGuard>
+                            <AccessControlGuard
+                                requiredFeature="hr"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <PositionsPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'attendance',
                         element: (
-                            <FeatureGuard feature="attendance">
+                            <AccessControlGuard requiredFeature="attendance">
                                 <Suspense fallback={<PageLoader />}>
                                     <AttendancePage />
                                 </Suspense>
-                            </FeatureGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'leave-requests',
                         element: (
-                            <FeatureGuard feature="leave">
+                            <AccessControlGuard requiredFeature="leave">
                                 <Suspense fallback={<PageLoader />}>
                                     <LeaveRequestsPage />
                                 </Suspense>
-                            </FeatureGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'salaries',
                         element: (
-                            <FeatureGuard feature="salary">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR']}>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <SalariesPage />
-                                    </Suspense>
-                                </RoleGuard>
-                            </FeatureGuard>
+                            <AccessControlGuard
+                                requiredFeature="salary"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <SalariesPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'contracts',
                         element: (
-                            <FeatureGuard feature="contract">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <ContractsPage />
-                                    </Suspense>
-                                </RoleGuard>
-                            </FeatureGuard>
+                            <AccessControlGuard
+                                requiredFeature="contract"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <ContractsPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'reviews',
                         element: (
-                            <FeatureGuard feature="review">
-                                <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <ReviewsPage />
-                                    </Suspense>
-                                </RoleGuard>
-                            </FeatureGuard>
+                            <AccessControlGuard
+                                requiredFeature="review"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReviewsPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'org-chart',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                <FeatureGuard feature="orgChart">
-                                    <Suspense fallback={<PageLoader />}>
-                                        <OrgChartPage />
-                                    </Suspense>
-                                </FeatureGuard>
-                            </RoleGuard>
+                            <AccessControlGuard
+                                requiredFeature="orgChart"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <OrgChartPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'okr',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                <FeatureGuard feature="okr">
-                                    <Suspense fallback={<PageLoader />}>
-                                        <OKRPage />
-                                    </Suspense>
-                                </FeatureGuard>
-                            </RoleGuard>
+                            <AccessControlGuard
+                                requiredFeature="okr"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <OKRPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'skills-matrix',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                <FeatureGuard feature="skillsMatrix">
-                                    <Suspense fallback={<PageLoader />}>
-                                        <SkillsMatrixPage />
-                                    </Suspense>
-                                </FeatureGuard>
-                            </RoleGuard>
+                            <AccessControlGuard
+                                requiredFeature="skillsMatrix"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <SkillsMatrixPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'onboarding',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
-                                <FeatureGuard feature="onboarding">
-                                    <Suspense fallback={<PageLoader />}>
-                                        <OnboardingPage />
-                                    </Suspense>
-                                </FeatureGuard>
-                            </RoleGuard>
+                            <AccessControlGuard
+                                requiredFeature="onboarding"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <OnboardingPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'resource-planning',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT']}>
-                                <FeatureGuard feature="resourcePlanning">
-                                    <Suspense fallback={<PageLoader />}>
-                                        <ResourcePlanningPage />
-                                    </Suspense>
-                                </FeatureGuard>
-                            </RoleGuard>
+                            <AccessControlGuard
+                                requiredFeature="resourcePlanning"
+                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <ResourcePlanningPage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                 ]
@@ -459,31 +467,31 @@ const router = createBrowserRouter([
             {
                 path: 'projects',
                 element: (
-                    <FeatureGuard feature="project">
+                    <AccessControlGuard requiredFeature="project">
                         <Suspense fallback={<PageLoader />}>
                             <ProjectsPage />
                         </Suspense>
-                    </FeatureGuard>
+                    </AccessControlGuard>
                 ),
             },
             {
                 path: 'projects/:id',
                 element: (
-                    <FeatureGuard feature="project">
+                    <AccessControlGuard requiredFeature="project">
                         <Suspense fallback={<PageLoader />}>
                             <ProjectDetailPage />
                         </Suspense>
-                    </FeatureGuard>
+                    </AccessControlGuard>
                 ),
             },
             {
                 path: 'projects/:projectId/analytics',
                 element: (
-                    <FeatureGuard feature="analytics">
+                    <AccessControlGuard requiredFeature="analytics">
                         <Suspense fallback={<PageLoader />}>
                             <AnalyticsPage />
                         </Suspense>
-                    </FeatureGuard>
+                    </AccessControlGuard>
                 ),
             },
 
@@ -491,49 +499,56 @@ const router = createBrowserRouter([
             {
                 path: 'company',
                 element: (
-                    <WorkspaceTypeGuard types={['COMPANY']}>
+                    <AccessControlGuard
+                        requireAuth={true}
+                        requireCompany={true}
+                    >
                         <Outlet />
-                    </WorkspaceTypeGuard>
+                    </AccessControlGuard>
                 ),
                 children: [
                     {
                         path: 'dashboard',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <CompanyDashboardPage />
                                 </Suspense>
-                            </RoleGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'activity',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard
+                                requireAuth={true}
+                                requireCompany={true}
+                                allowedRoles={['OWNER', 'ADMIN']}
+                            >
                                 <Suspense fallback={<PageLoader />}>
                                     <ActivityLogPage />
                                 </Suspense>
-                            </RoleGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'billing',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <BillingPage />
                                 </Suspense>
-                            </RoleGuard>
+                            </AccessControlGuard>
                         ),
                     },
                     {
                         path: 'settings',
                         element: (
-                            <RoleGuard roles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <CompanySettingsPage />
                                 </Suspense>
-                            </RoleGuard>
+                            </AccessControlGuard>
                         ),
                     },
                 ]
@@ -543,11 +558,11 @@ const router = createBrowserRouter([
             {
                 path: 'chat',
                 element: (
-                    <FeatureGuard feature="chat">
+                    <AccessControlGuard requiredFeature="chat">
                         <Suspense fallback={<PageLoader />}>
                             <ChatPage />
                         </Suspense>
-                    </FeatureGuard>
+                    </AccessControlGuard>
                 ),
             },
             {
@@ -569,11 +584,11 @@ const router = createBrowserRouter([
             {
                 path: 'storage',
                 element: (
-                    <FeatureGuard feature="storage">
+                    <AccessControlGuard requiredFeature="storage">
                         <Suspense fallback={<PageLoader />}>
                             <StoragePage />
                         </Suspense>
-                    </FeatureGuard>
+                    </AccessControlGuard>
                 ),
             },
             // Settings Redirect (Legacy/Cleanup)

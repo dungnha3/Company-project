@@ -9,8 +9,6 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 import DoAn.BE.hrm.entity.Department;
-
-// [Entity quản lý dự án - thuộc về một công ty] (Role: Data Model)
 @Entity
 @Table(name = "projects", indexes = {
         // Index cho query: findByStatus (Active project list)
@@ -67,7 +65,6 @@ public class Project extends TenantScopedEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
-    // Helper methods
     public boolean isActive() {
         return this.isActive && this.status == ProjectStatus.ACTIVE;
     }

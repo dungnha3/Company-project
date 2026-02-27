@@ -31,8 +31,8 @@ import org.hibernate.annotations.SQLRestriction;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(callSuper = true)
-@ToString(exclude = { "memberships", "personalWorkspace", "employee" }) // [FIX] Exclude lazy collection to prevent
-                                                                        // circular
+@ToString(exclude = { "memberships", "personalWorkspace", "employees" }) // [FIX] Exclude lazy collection to prevent
+                                                                         // circular
 // ToString
 @Table(name = "users", indexes = {
         // Index cho query: findByIsOnlineTrue (Presence check)
@@ -91,6 +91,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     private LocalDateTime lastSeen;
 
     @Column(name = "fcm_token", length = 500, columnDefinition = "NVARCHAR(500)")
+    @JsonIgnore
     private String fcmToken;
 
     // Multi-tenant: User có thể join nhiều công ty
@@ -111,10 +112,12 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @Builder.Default
     private DoAn.BE.company.entity.Plan personalPlan = DoAn.BE.company.entity.Plan.FREE;
 
-    // Relation with Employee (New)
-    @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY)
+    // Relation with Employee (Multi-tenant: User can have Employee profiles in
+    // multiple companies)
+    @OneToMany(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY)
     @JsonIgnore
-    private DoAn.BE.hrm.entity.Employee employee;
+    @Builder.Default
+    private List<DoAn.BE.hrm.entity.Employee> employees = new ArrayList<>();
 
     // Đặt trạng thái online
     public void setOnline() {
@@ -128,7 +131,6 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
         this.lastSeen = LocalDateTime.now();
     }
 
-    // Kiểm tra user đang online
     public boolean isCurrentlyOnline() {
         return this.isOnline != null && this.isOnline;
     }
@@ -183,6 +185,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
         return this.username;
     }
 
+    @JsonIgnore
     public List<CompanyMember> getCompanyMemberships() {
         return this.memberships;
     }

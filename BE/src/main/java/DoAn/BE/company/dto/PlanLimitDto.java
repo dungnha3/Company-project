@@ -6,9 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO trả về thông tin Plan limits cho frontend
- */
+// DTO trả về thông tin Plan limits cho frontend
+// /
 @Data
 @Builder
 @NoArgsConstructor
@@ -39,7 +38,6 @@ public class PlanLimitDto {
     private boolean hrEnabled;
     private boolean apiEnabled;
 
-    // Helper checks
     private boolean canAddMember;
     private boolean canCreateProject;
 }

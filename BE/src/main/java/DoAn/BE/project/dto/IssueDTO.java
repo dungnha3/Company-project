@@ -8,8 +8,6 @@ import DoAn.BE.project.entity.Issue.Priority;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-// [DTO thông tin công việc/task] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

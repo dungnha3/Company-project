@@ -1,22 +1,30 @@
 package DoAn.BE.hrm.controller;
 
+import DoAn.BE.hrm.dto.CreateSkillRequest;
 import DoAn.BE.hrm.entity.Skill;
 import DoAn.BE.hrm.service.SkillService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import DoAn.BE.common.service.AccessControlService;
+
 import java.util.Map;
+
+import DoAn.BE.common.annotation.FeatureFlag;
 
 @RestController
 @RequestMapping("/api/skills")
+@FeatureFlag("SKILLS_MATRIX")
 @RequiredArgsConstructor
 public class SkillController {
 
     private final SkillService skillService;
+    private final AccessControlService accessControlService;
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getSkillCategories() {
@@ -34,16 +42,16 @@ public class SkillController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
-    public ResponseEntity<Skill> createSkill(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Skill> createSkill(@Valid @RequestBody CreateSkillRequest request) {
+        accessControlService.checkHrEditPermission();
         return ResponseEntity.status(HttpStatus.CREATED).body(skillService.createSkill(request));
     }
 
     @PutMapping("/employee/{empId}")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
     public ResponseEntity<Void> updateEmployeeSkills(
             @PathVariable Long empId,
             @RequestBody Map<String, Integer> skillLevels) {
+        accessControlService.checkHrEditPermission();
         skillService.updateEmployeeSkills(empId, skillLevels);
         return ResponseEntity.ok().build();
     }

@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
-// [Entity quản lý session - đa phiên đăng nhập] (Role: Security)
 @Entity
 @Data
 @NoArgsConstructor
@@ -65,7 +63,6 @@ public class UserSession {
         this.lastActivity = LocalDateTime.now();
     }
 
-    // Kiểm tra session đã hết hạn chưa
     public boolean isExpired(int timeoutMinutes) {
         if (this.lastActivity == null)
             return true;

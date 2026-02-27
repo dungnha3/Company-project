@@ -11,8 +11,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-// [Signaling Server for WebRTC (Peer-to-Peer Video/Voice Call)] (Role: System)
 @Component
 @Slf4j
 @RequiredArgsConstructor

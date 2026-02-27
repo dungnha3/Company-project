@@ -11,10 +11,9 @@ import DoAn.BE.company.entity.Company;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.user.entity.User;
 
-/**
- * Entity lưu trữ log thời gian làm việc cho từng issue
- * Cho phép track chi tiết ai làm gì, bao lâu, khi nào
- */
+// Entity lưu trữ log thời gian làm việc cho từng issue
+// Cho phép track chi tiết ai làm gì, bao lâu, khi nào
+// /
 @Entity
 @Table(name = "time_logs", indexes = {
         @Index(name = "idx_timelog_issue", columnList = "issue_id"),

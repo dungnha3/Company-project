@@ -19,9 +19,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Service for managing SSO providers
- */
+// Service for managing SSO providers
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,11 +31,8 @@ public class SsoService {
 
     private static final int MAX_PROVIDERS_PER_COMPANY = 5;
 
-    // ==================== PROVIDER MANAGEMENT ====================
-
-    /**
-     * Get all SSO providers for current company
-     */
+    // Get all SSO providers for current company
+    // /
     @Transactional(readOnly = true)
     public List<SsoDto.ProviderResponse> getProviders() {
         Long companyId = TenantContext.getCompanyId();
@@ -46,18 +42,16 @@ public class SsoService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get provider by ID
-     */
+    // Get provider by ID
+    // /
     @Transactional(readOnly = true)
     public SsoDto.ProviderResponse getProvider(Long providerId) {
         SsoProvider provider = findProviderSecure(providerId);
         return toResponse(provider);
     }
 
-    /**
-     * Create new SSO provider
-     */
+    // Create new SSO provider
+    // /
     @Transactional
     public SsoDto.ProviderResponse createProvider(SsoDto.CreateProviderRequest request) {
         Long companyId = TenantContext.getCompanyId();
@@ -95,9 +89,8 @@ public class SsoService {
         return toResponse(provider);
     }
 
-    /**
-     * Update SSO provider
-     */
+    // Update SSO provider
+    // /
     @Transactional
     public SsoDto.ProviderResponse updateProvider(Long providerId, SsoDto.UpdateProviderRequest request) {
         SsoProvider provider = findProviderSecure(providerId);
@@ -145,9 +138,8 @@ public class SsoService {
         return toResponse(provider);
     }
 
-    /**
-     * Delete SSO provider
-     */
+    // Delete SSO provider
+    // /
     @Transactional
     public void deleteProvider(Long providerId) {
         SsoProvider provider = findProviderSecure(providerId);
@@ -155,11 +147,8 @@ public class SsoService {
         log.info("Deleted SSO provider {}", providerId);
     }
 
-    // ==================== SSO LOGIN ====================
-
-    /**
-     * Initiate SSO login - returns URL to redirect user to IdP
-     */
+    // Initiate SSO login - returns URL to redirect user to IdP
+    // /
     public SsoDto.LoginInitResponse initiateLogin(Long providerId) {
         SsoProvider provider = findProviderSecure(providerId);
 
@@ -180,17 +169,14 @@ public class SsoService {
                 .build();
     }
 
-    /**
-     * Get default provider for company (for "Login with SSO" button)
-     */
+    // Get default provider for company (for "Login with SSO" button)
+    // /
     @Transactional(readOnly = true)
     public SsoDto.ProviderResponse getDefaultProvider(Long companyId) {
         return providerRepository.findByCompany_CompanyIdAndIsDefaultTrue(companyId)
                 .map(this::toResponse)
                 .orElse(null);
     }
-
-    // ==================== HELPERS ====================
 
     private String buildLoginUrl(SsoProvider provider, String requestId) {
         switch (provider.getProviderType()) {

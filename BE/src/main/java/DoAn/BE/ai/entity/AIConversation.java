@@ -74,7 +74,6 @@ public class AIConversation {
         this.updatedAt = LocalDateTime.now();
     }
     
-    // Helper methods
     public void addMessage(AIMessage message) {
         messages.add(message);
         message.setConversation(this);

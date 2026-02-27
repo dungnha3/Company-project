@@ -58,7 +58,6 @@ public class ChatRoom extends DoAn.BE.common.entity.TenantScopedEntity {
     @JsonIgnore
     private List<ChatRoomMember> members;
 
-    // Helper methods
     public boolean isDirectChat() {
         return this.type == RoomType.DIRECT;
     }

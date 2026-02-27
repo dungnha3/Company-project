@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-
-// [Service dọn dẹp notifications cũ - chạy scheduled hàng ngày] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -21,8 +19,6 @@ public class NotificationCleanupService {
 
     @Value("${notification.retention.days:30}")
     private int retentionDays;
-
-    // [Xóa notifications cũ hơn retention period - chạy 2:00 AM] (Role: Scheduled)
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void cleanupOldNotifications() {
@@ -45,8 +41,6 @@ public class NotificationCleanupService {
             log.error("❌ Lỗi khi dọn dẹp notifications: {}", e.getMessage(), e);
         }
     }
-
-    // [Manual cleanup - gọi từ Admin API] (Role: Admin)
     @Transactional
     public int manualCleanup(int days) {
         log.info("🧹 Manual cleanup: xóa notifications cũ hơn {} ngày", days);

@@ -3,8 +3,6 @@ package DoAn.BE.project.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import DoAn.BE.user.entity.User;
-
-// [Entity thành viên dự án - quản lý role] (Role: Data Model)
 @Entity
 @Table(name = "project_members", uniqueConstraints = @UniqueConstraint(columnNames = { "project_id",
         "user_id" }), indexes = {
@@ -42,7 +40,6 @@ public class ProjectMember extends DoAn.BE.common.entity.BaseEntity {
         this.role = role;
     }
 
-    // Helper methods
     public boolean isOwner() {
         return this.role == ProjectRole.OWNER;
     }

@@ -15,8 +15,6 @@ public interface MessageStatusRepository extends JpaRepository<MessageStatus, Me
     List<MessageStatus> findByMessage_MessageIdAndStatus(Long messageId, MessageStatus.MessageStatusType status);
 
     List<MessageStatus> findByUser_UserId(Long userId);
-
-    // [Đếm số tin nhắn chưa đọc trong phòng chat cho user] (Role: System)
     @Query("SELECT COUNT(m) FROM Message m " +
             "LEFT JOIN MessageStatus ms ON m.messageId = ms.message.messageId AND ms.user.userId = :userId " +
             "WHERE m.chatRoom.roomId = :roomId " +

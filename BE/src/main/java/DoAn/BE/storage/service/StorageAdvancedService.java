@@ -13,8 +13,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-// [Service tính năng nâng cao Storage - shared, recent, search] (Role: User)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -22,8 +20,6 @@ public class StorageAdvancedService {
 
     private final FileRepository fileRepository;
     private final FolderRepository folderRepository;
-
-    // [Lấy files được share với user] (Role: User)
     @Transactional(readOnly = true)
     public List<File> getSharedFiles(Long userId) {
         log.info("Getting shared files for user {}", userId);
@@ -44,8 +40,6 @@ public class StorageAdvancedService {
         log.info("Found {} shared files for user {}", sharedFiles.size(), userId);
         return sharedFiles;
     }
-
-    // [Lấy recent files - 30 ngày gần nhất] (Role: User)
     // OPTIMIZED: Use repository query with pagination instead of findAll + stream
     @Transactional(readOnly = true)
     public List<File> getRecentFiles(Long userId, int limit) {
@@ -60,8 +54,6 @@ public class StorageAdvancedService {
         log.info("Found {} recent files for user {}", recentFiles.size(), userId);
         return recentFiles;
     }
-
-    // [Search files by filename] (Role: User)
     // OPTIMIZED: Use repository query with LIKE instead of loading all + stream
     @Transactional(readOnly = true)
     public List<File> searchFiles(Long userId, String keyword) {
@@ -77,8 +69,6 @@ public class StorageAdvancedService {
         log.info("Found {} files matching keyword: {}", results.size(), keyword);
         return results;
     }
-
-    // [Lấy file statistics cho user] (Role: User)
     // OPTIMIZED: Use aggregate queries instead of loading all files
     @Transactional(readOnly = true)
     public FileStatistics getUserFileStatistics(Long userId) {

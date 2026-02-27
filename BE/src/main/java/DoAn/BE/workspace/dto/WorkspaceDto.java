@@ -6,9 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO cho workspace responses
- */
+// DTO cho workspace responses
+// /
 public class WorkspaceDto {
 
     @Data

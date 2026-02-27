@@ -12,10 +12,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-/**
- * JPA Entity Listener for automatic Elasticsearch indexing
- * Triggers indexing on entity create/update/delete
- */
+// JPA Entity Listener for automatic Elasticsearch indexing
+// Triggers indexing on entity create/update/delete
+// /
 @Component
 @Slf4j
 @ConditionalOnProperty(name = "spring.elasticsearch.enabled", havingValue = "true", matchIfMissing = false)
@@ -27,8 +26,6 @@ public class SearchIndexListener {
     public void setSearchService(SearchService service) {
         SearchIndexListener.searchService = service;
     }
-
-    // ==================== ISSUE INDEXING ====================
 
     @PostPersist
     @PostUpdate
@@ -57,8 +54,6 @@ public class SearchIndexListener {
         }
     }
 
-    // ==================== PROJECT INDEXING ====================
-
     @PostPersist
     @PostUpdate
     @Async
@@ -72,8 +67,6 @@ public class SearchIndexListener {
             }
         }
     }
-
-    // ==================== EMPLOYEE INDEXING ====================
 
     @PostPersist
     @PostUpdate

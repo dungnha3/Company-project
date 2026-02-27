@@ -14,10 +14,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller xử lý các lời mời tham gia công ty từ phía người dùng được mời.
- * Endpoint: /api/invites
- */
+// Controller xử lý các lời mời tham gia công ty từ phía người dùng được mời.
+// Endpoint: /api/invites
+// /
 @RestController
 @RequestMapping("/api/invites")
 @RequiredArgsConstructor
@@ -26,10 +25,9 @@ public class UserInvitesController {
 
     private final CompanyMemberRepository memberRepository;
 
-    /**
-     * Lấy danh sách lời mời đang chờ của user hiện tại
-     * GET /api/invites/pending
-     */
+    // Lấy danh sách lời mời đang chờ của user hiện tại
+    // GET /api/invites/pending
+    // /
     @GetMapping("/pending")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getPendingInvites() {
@@ -56,10 +54,9 @@ public class UserInvitesController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Chấp nhận lời mời tham gia công ty
-     * POST /api/invites/accept
-     */
+    // Chấp nhận lời mời tham gia công ty
+    // POST /api/invites/accept
+    // /
     @PostMapping("/accept")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> acceptInvite(@RequestBody Map<String, Long> request) {
@@ -101,10 +98,9 @@ public class UserInvitesController {
                 "companyName", invite.getCompany().getName()));
     }
 
-    /**
-     * Từ chối/hủy lời mời
-     * DELETE /api/invites/{inviteId}
-     */
+    // Từ chối/hủy lời mời
+    // DELETE /api/invites/{inviteId}
+    // /
     @DeleteMapping("/{inviteId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> declineInvite(@PathVariable Long inviteId) {

@@ -111,6 +111,6 @@ public class SubscriptionService {
 
     private Company getCompany(Long companyId) {
         return companyRepository.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("Company not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Company not found"));
     }
 }

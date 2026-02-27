@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-// [Listener xử lý notifications khi upload file vào project] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -21,8 +19,6 @@ public class StorageProjectFileUploadListener {
 
     private final ProjectMemberRepository projectMemberRepository;
     private final StorageNotificationService storageNotificationService;
-
-    // [Notify tất cả project members khi có file mới được upload] (Role: System)
     @Transactional
     public void notifyProjectMembersOnFileUpload(File file) {
         try {

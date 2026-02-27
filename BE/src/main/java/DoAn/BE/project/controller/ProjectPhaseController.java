@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class ProjectPhaseController {
 
     private final ProjectPhaseService projectPhaseService;

@@ -66,9 +66,8 @@ public class AsyncConfig {
         return executor;
     }
 
-    /**
-     * Decorator to propagate TenantContext to async threads
-     */
+    // Decorator to propagate TenantContext to async threads
+    // /
     public static class ContextAwareTaskDecorator implements org.springframework.core.task.TaskDecorator {
         @Override
         public Runnable decorate(Runnable runnable) {

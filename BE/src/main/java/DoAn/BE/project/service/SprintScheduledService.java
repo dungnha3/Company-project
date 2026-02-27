@@ -10,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-
-// [Service xử lý scheduled jobs cho Sprint] (Role: System/Scheduler)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,19 +17,13 @@ public class SprintScheduledService {
 
     private final SprintRepository sprintRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
-
-    // [Số ngày trước khi kết thúc để cảnh báo] (Role: Config)
     private static final int DAYS_BEFORE_ENDING_WARNING = 3;
-
-    // [Kiểm tra sprints sắp kết thúc - chạy mỗi ngày lúc 8:00 AM] (Role: Scheduler)
     @Scheduled(cron = "0 0 8 * * *")
     @Transactional
     public void checkSprintsEndingSoon() {
         log.info("🔍 Bắt đầu kiểm tra sprints sắp kết thúc...");
 
         LocalDate warningDate = LocalDate.now().plusDays(DAYS_BEFORE_ENDING_WARNING);
-
-        // [Lấy tất cả sprints đang active] (Role: Query)
         List<Sprint> activeSprints = sprintRepository.findByStatus(Sprint.SprintStatus.ACTIVE);
 
         int notifiedCount = 0;
@@ -41,11 +33,8 @@ public class SprintScheduledService {
 
         log.info("✅ Hoàn tất kiểm tra sprints. Đã gửi {} notifications", notifiedCount);
     }
-
-    // [Xử lý cảnh báo sprint sắp kết thúc] (Role: Internal)
     private int processSprintEndingWarning(Sprint sprint, LocalDate warningDate) {
         try {
-            // [Kiểm tra sprint có kết thúc vào ngày cảnh báo không] (Role: Business Rule)
             if (sprint.getEndDate() == null || !sprint.getEndDate().equals(warningDate)) {
                 return 0;
             }

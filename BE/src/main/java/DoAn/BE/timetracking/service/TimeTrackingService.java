@@ -37,9 +37,8 @@ public class TimeTrackingService {
     private final CompanyRepository companyRepository;
     private final AccessControlService accessControlService;
 
-    /**
-     * Log time for an issue
-     */
+    // Log time for an issue
+    // /
     @Transactional
     public TimeLogDTO logTime(CreateTimeLogRequest request) {
         User currentUser = SecurityUtil.getCurrentUser();
@@ -75,9 +74,8 @@ public class TimeTrackingService {
         return toDTO(timeLog);
     }
 
-    /**
-     * Get time logs for an issue
-     */
+    // Get time logs for an issue
+    // /
     public List<TimeLogDTO> getIssueTimeLogs(Long issueId) {
         return timeLogRepository.findByIssue_IssueIdOrderByWorkDateDesc(issueId)
                 .stream()
@@ -85,21 +83,24 @@ public class TimeTrackingService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get my time logs (paginated)
-     */
-    public Page<TimeLogDTO> getMyTimeLogs(Pageable pageable) {
-        User currentUser = SecurityUtil.getCurrentUser();
+    // Get my time logs (paginated)
+    // /
+    public Page<TimeLogDTO> getMyTimeLogs(User currentUser, Pageable pageable) {
+        if (currentUser == null) {
+            return Page.empty(pageable);
+        }
         Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            return Page.empty(pageable);
+        }
 
         return timeLogRepository.findByUser_UserIdAndCompany_CompanyIdOrderByWorkDateDesc(
                 currentUser.getUserId(), companyId, pageable)
                 .map(this::toDTO);
     }
 
-    /**
-     * Update a time log (only owner can update)
-     */
+    // Update a time log (only owner can update)
+    // /
     @Transactional
     public TimeLogDTO updateTimeLog(Long logId, CreateTimeLogRequest request) {
         User currentUser = SecurityUtil.getCurrentUser();
@@ -124,9 +125,8 @@ public class TimeTrackingService {
         return toDTO(timeLog);
     }
 
-    /**
-     * Delete a time log (only owner can delete)
-     */
+    // Delete a time log (only owner can delete)
+    // /
     @Transactional
     public void deleteTimeLog(Long logId) {
         User currentUser = SecurityUtil.getCurrentUser();
@@ -147,32 +147,28 @@ public class TimeTrackingService {
         updateIssueActualHours(issue);
     }
 
-    /**
-     * Get total hours logged for an issue
-     */
+    // Get total hours logged for an issue
+    // /
     public BigDecimal getTotalHoursByIssue(Long issueId) {
         return timeLogRepository.sumHoursByIssue(issueId);
     }
 
-    /**
-     * Get total hours by user in date range
-     */
+    // Get total hours by user in date range
+    // /
     public BigDecimal getTotalHoursByUserInRange(Long userId, LocalDate start, LocalDate end) {
         return timeLogRepository.sumHoursByUserAndDateRange(userId, start, end);
     }
 
-    /**
-     * Update issue's actualHours based on sum of time logs
-     */
+    // Update issue's actualHours based on sum of time logs
+    // /
     private void updateIssueActualHours(Issue issue) {
         BigDecimal totalHours = timeLogRepository.sumHoursByIssue(issue.getIssueId());
         issue.setActualHours(totalHours);
         issueRepository.save(issue);
     }
 
-    /**
-     * Convert entity to DTO
-     */
+    // Convert entity to DTO
+    // /
     private TimeLogDTO toDTO(TimeLog timeLog) {
         return TimeLogDTO.builder()
                 .logId(timeLog.getLogId())

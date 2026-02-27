@@ -7,9 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
-/**
- * Elasticsearch document for Employee search
- */
+// Elasticsearch document for Employee search
+// /
 @Document(indexName = "employees")
 @Data
 @Builder

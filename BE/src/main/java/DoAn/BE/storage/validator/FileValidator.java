@@ -6,16 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-
-// [Validator cho file upload security] (Role: System)
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class FileValidator {
 
     private final FileSecurityConfig fileSecurityConfig;
-
-    // [Validate file upload (extension, MIME type, size)] (Role: System)
     public void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File không được để trống");
@@ -79,8 +75,6 @@ public class FileValidator {
         log.info("✅ File validation passed: {} ({}, {} bytes)",
                 originalFilename, extension, fileSize);
     }
-
-    // [Validate filename only] (Role: System)
     public void validateFilename(String filename) {
         if (filename == null || filename.isEmpty()) {
             throw new BadRequestException("Tên file không hợp lệ");
@@ -96,8 +90,6 @@ public class FileValidator {
                     String.format("Loại file .%s không được phép", extension));
         }
     }
-
-    // [Get file extension] (Role: System)
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return "";

@@ -1,22 +1,28 @@
 package DoAn.BE.hrm.controller;
 
+import DoAn.BE.hrm.dto.CreateOKRRequest;
+import DoAn.BE.hrm.dto.UpdateOKRRequest;
 import DoAn.BE.hrm.entity.OKR;
 import DoAn.BE.hrm.service.OKRService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import DoAn.BE.common.service.AccessControlService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
+
+import DoAn.BE.common.annotation.FeatureFlag;
 
 @RestController
 @RequestMapping("/api/okrs")
+@FeatureFlag("OKR")
 @RequiredArgsConstructor
 public class OKRController {
 
     private final OKRService okrService;
+    private final AccessControlService accessControlService;
 
     @GetMapping
     public ResponseEntity<List<OKR>> getAll(@RequestParam(required = false) String period) {
@@ -39,21 +45,21 @@ public class OKRController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
-    public ResponseEntity<OKR> create(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<OKR> create(@Valid @RequestBody CreateOKRRequest request) {
+        accessControlService.checkHrEditPermission();
         OKR okr = okrService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(okr);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
-    public ResponseEntity<OKR> update(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+    public ResponseEntity<OKR> update(@PathVariable Long id, @Valid @RequestBody UpdateOKRRequest request) {
+        accessControlService.checkHrEditPermission();
         return ResponseEntity.ok(okrService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        accessControlService.checkAdminPermission(null);
         okrService.delete(id);
         return ResponseEntity.noContent().build();
     }

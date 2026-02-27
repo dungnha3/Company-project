@@ -6,15 +6,14 @@ import jakarta.persistence.Converter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-/**
- * JPA AttributeConverter for automatic field-level encryption
- * 
- * Usage:
- * 
- * @Column(name = "ssn")
- * @Convert(converter = EncryptedStringConverter.class)
- *                    private String ssn;
- */
+// JPA AttributeConverter for automatic field-level encryption
+//
+// Usage:
+//
+// @Column(name = "ssn")
+// @Convert(converter = EncryptedStringConverter.class)
+// private String ssn;
+// /
 @Converter
 @Component
 public class EncryptedStringConverter implements AttributeConverter<String, String> {

@@ -12,17 +12,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * Performance Monitoring Filter
- * 
- * Logs request execution time for performance monitoring.
- * Only logs slow requests (> 500ms) to reduce log noise.
- * 
- * Useful for:
- * - Identifying slow endpoints
- * - Performance regression detection
- * - Production troubleshooting
- */
+// Performance Monitoring Filter
+//
+// Logs request execution time for performance monitoring.
+// Only logs slow requests (> 500ms) to reduce log noise.
+//
+// Useful for:
+// - Identifying slow endpoints
+// - Performance regression detection
+// - Production troubleshooting
+// /
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @Slf4j

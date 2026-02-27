@@ -6,8 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-
-// [Entity lịch sử thay đổi Issue - audit trail] (Role: Data Model)
 @Entity
 @Table(name = "issue_activities")
 @Data
@@ -72,7 +70,6 @@ public class IssueActivity {
         this.description = description;
     }
 
-    // Helper methods
     private String generateDescription() {
         switch (activityType) {
             case STATUS_CHANGED:

@@ -3,6 +3,7 @@ package DoAn.BE.company.controller;
 import DoAn.BE.company.dto.CompanyDto;
 import DoAn.BE.company.dto.PlanLimitDto;
 import DoAn.BE.company.service.CompanyService;
+import DoAn.BE.company.service.CompanyAdminService;
 import DoAn.BE.company.service.CompanyMemberService;
 import DoAn.BE.common.service.QuotaService;
 import DoAn.BE.user.entity.User;
@@ -20,10 +21,10 @@ import java.util.Map;
 public class CompanyController {
 
     private final CompanyService companyService;
+    private final CompanyAdminService companyAdminService;
     private final CompanyMemberService memberService;
     private final QuotaService quotaService;
 
-    // Lấy danh sách công ty của tôi
     @GetMapping("/my")
     public ResponseEntity<List<CompanyDto.CompanyResponse>> getMyCompanies(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
@@ -39,18 +40,15 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.createCompany(request, user));
     }
 
-    // [SAAS] Lấy tất cả công ty trong hệ thống (System Admin only)
     @GetMapping("/admin/all")
     public ResponseEntity<List<CompanyDto.CompanyResponse>> getAllCompanies(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        // Chỉ System Admin mới được xem tất cả công ty
         if (!user.isSystemAdminAccount()) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
         }
-        return ResponseEntity.ok(companyService.getAllCompanies());
+        return ResponseEntity.ok(companyAdminService.getAllCompanies());
     }
 
-    // Lấy chi tiết công ty
     @GetMapping("/{companyId}")
     public ResponseEntity<CompanyDto.CompanyResponse> getCompany(@PathVariable Long companyId,
             Authentication authentication) {
@@ -82,7 +80,6 @@ public class CompanyController {
         return ResponseEntity.ok().body(Map.of("message", "Đã rời công ty thành công"));
     }
 
-    // Cập nhật thông tin công ty
     @PutMapping("/{companyId}")
     public ResponseEntity<?> updateCompany(@PathVariable Long companyId,
             @RequestBody CompanyDto.CompanyUpdateRequest request) {
@@ -90,21 +87,17 @@ public class CompanyController {
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật thông tin công ty thành công"));
     }
 
-    // Lấy cài đặt module công ty (GET)
     @GetMapping("/{companyId}/settings")
     public ResponseEntity<?> getSettings(@PathVariable Long companyId) {
         return ResponseEntity.ok(companyService.getSettingsCached(companyId));
     }
 
-    // Cập nhật cài đặt module
     @PutMapping("/{companyId}/settings")
     public ResponseEntity<?> updateSettings(@PathVariable Long companyId,
             @RequestBody CompanyDto.SettingsUpdateRequest request) {
         companyService.updateSettings(companyId, request);
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật cài đặt thành công"));
     }
-
-    // ==================== SYSTEM ADMIN ENDPOINTS ====================
     // MOVED TO SysAdminCompanyController
     /*
      * The following endpoints have been moved to /api/sysadmin/companies/*

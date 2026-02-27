@@ -14,7 +14,6 @@ import DoAn.BE.user.entity.User;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // Find by unique fields
     Optional<User> findByUsername(String username);
 
     Optional<User> findByEmail(String email);
@@ -24,7 +23,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    // Find by status
     List<User> findByIsActiveTrue();
 
     List<User> findByIsActiveFalse();
@@ -33,14 +31,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByIsOnlineTrue();
 
-    // Find inactive users
     List<User> findByIsOnlineTrueAndLastSeenBefore(LocalDateTime cutoffTime);
 
     // Search users
     @Query("SELECT u FROM User u WHERE u.username LIKE %:keyword% OR u.email LIKE %:keyword% OR u.phoneNumber LIKE %:keyword%")
     List<User> searchByKeyword(@Param("keyword") String keyword);
 
-    // Find by reset password token
     Optional<User> findByResetPasswordToken(String token);
 
     // [OPTIMIZED: Bulk update for resetAllUsersStatus]

@@ -7,8 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
-// [Configuration cho file security - Whitelist/Blacklist extensions] (Role: System)
 @Configuration
 @ConfigurationProperties(prefix = "app.storage.security")
 @Getter
@@ -100,8 +98,6 @@ public class FileSecurityConfig {
     public void setAllowedMimeTypes(Set<String> allowedMimeTypes) {
         this.allowedMimeTypes = allowedMimeTypes;
     }
-
-    // [Kiểm tra extension có được phép không] (Role: System)
     public boolean isExtensionAllowed(String extension) {
         if (extension == null || extension.isEmpty()) {
             return false;
@@ -117,8 +113,6 @@ public class FileSecurityConfig {
         // Check whitelist
         return allowedExtensions.contains(ext);
     }
-
-    // [Kiểm tra MIME type có được phép không] (Role: System)
     public boolean isMimeTypeAllowed(String mimeType) {
         if (mimeType == null || mimeType.isEmpty()) {
             return false;
@@ -126,8 +120,6 @@ public class FileSecurityConfig {
 
         return allowedMimeTypes.contains(mimeType.toLowerCase());
     }
-
-    // [Kiểm tra file size có vượt quá giới hạn không] (Role: System)
     public boolean isFileSizeAllowed(long fileSize) {
         return fileSize <= maxFileSize;
     }

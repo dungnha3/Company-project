@@ -20,8 +20,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
-
-// [Controller managing salaries] (Role: Accounting/HR)
 @RestController
 @RequestMapping("/api/salaries")
 @RequiredArgsConstructor
@@ -31,10 +29,6 @@ public class SalaryController {
 
     private final SalaryService salaryService;
     private final SalaryMapper salaryMapper;
-
-    // ==================== CRUD ====================
-
-    // [Create salary] (Role: Accounting)
     @PostMapping
     public ResponseEntity<SalaryDTO> createSalary(
             @Valid @RequestBody CreateSalaryRequest request,
@@ -42,8 +36,6 @@ public class SalaryController {
         Salary salary = salaryService.createSalary(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(salaryMapper.toDTO(salary));
     }
-
-    // [Get salary by ID] (Role: Accounting/Self)
     @GetMapping("/{id}")
     public ResponseEntity<SalaryDTO> getSalaryById(
             @PathVariable Long id,
@@ -51,8 +43,6 @@ public class SalaryController {
         Salary salary = salaryService.getSalaryById(id, currentUser);
         return ResponseEntity.ok(salaryMapper.toDTO(salary));
     }
-
-    // [Get all salaries] (Role: Accounting)
     @GetMapping
     public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getAllSalaries(
             @AuthenticationPrincipal User currentUser,
@@ -61,8 +51,6 @@ public class SalaryController {
                 pageable);
         return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
-
-    // [Update salary] (Role: Accounting)
     @PutMapping("/{id}")
     public ResponseEntity<SalaryDTO> updateSalary(
             @PathVariable Long id,
@@ -71,8 +59,6 @@ public class SalaryController {
         Salary salary = salaryService.updateSalary(id, request, currentUser);
         return ResponseEntity.ok(salaryMapper.toDTO(salary));
     }
-
-    // [Delete salary] (Role: Accounting)
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteSalary(
             @PathVariable Long id,
@@ -82,10 +68,6 @@ public class SalaryController {
         response.put("message", "Deleted salary record successfully");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== QUERIES ====================
-
-    // [Get salaries by employee] (Role: Accounting/Self)
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getSalariesByEmployee(
             @PathVariable Long employeeId,
@@ -95,8 +77,6 @@ public class SalaryController {
                 currentUser, pageable);
         return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
-
-    // [Get salaries by period (month/year)] (Role: Accounting)
     @GetMapping("/period")
     public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getSalariesByPeriod(
             @RequestParam Integer month,
@@ -107,8 +87,6 @@ public class SalaryController {
                 currentUser, pageable);
         return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
-
-    // [Get salary by employee and period] (Role: Accounting/Self)
     @GetMapping("/employee/{employeeId}/period")
     public ResponseEntity<SalaryDTO> getSalaryByEmployeeAndPeriod(
             @PathVariable Long employeeId,
@@ -121,9 +99,6 @@ public class SalaryController {
         }
         return ResponseEntity.ok(salaryMapper.toDTO(salary));
     }
-
-    // [Get salaries by status] (Role: Accounting)
-    // [Get salaries by status] (Role: Accounting)
     @GetMapping("/status/{status}")
     public ResponseEntity<org.springframework.data.domain.Page<SalaryDTO>> getSalariesByStatus(
             @PathVariable String status,
@@ -139,10 +114,6 @@ public class SalaryController {
                 currentUser, pageable);
         return ResponseEntity.ok(salaries.map(salaryMapper::toDTO));
     }
-
-    // ==================== ACTIONS ====================
-
-    // [Mark as paid] (Role: Accounting)
     @PatchMapping("/{id}/mark-paid")
     public ResponseEntity<SalaryDTO> markAsPaid(
             @PathVariable Long id,
@@ -150,8 +121,6 @@ public class SalaryController {
         Salary salary = salaryService.markAsPaid(id, currentUser);
         return ResponseEntity.ok(salaryMapper.toDTO(salary));
     }
-
-    // [Cancel salary] (Role: Accounting)
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<SalaryDTO> cancelSalary(
             @PathVariable Long id,
@@ -159,10 +128,6 @@ public class SalaryController {
         Salary salary = salaryService.cancelSalary(id, currentUser);
         return ResponseEntity.ok(salaryMapper.toDTO(salary));
     }
-
-    // ==================== STATISTICS ====================
-
-    // [Get total salary by period] (Role: Accounting)
     @GetMapping("/statistics/total")
     public ResponseEntity<Map<String, Object>> getTotalSalaryByPeriod(
             @RequestParam Integer month,

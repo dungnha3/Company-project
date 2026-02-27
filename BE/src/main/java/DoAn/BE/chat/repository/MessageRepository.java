@@ -41,8 +41,6 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                      "m.isDeleted = false ORDER BY m.createdAt DESC")
        List<Message> searchMessagesByContent(@Param("roomId") Long roomId, @Param("keyword") String keyword);
 
-       // ==================== PAGINATED QUERIES ====================
-
        // [PAGINATED: For large chat rooms - load messages in chunks]
        @EntityGraph(attributePaths = { "sender" })
        @Query("SELECT m FROM Message m WHERE m.chatRoom.roomId = :roomId AND m.isDeleted = false ORDER BY m.createdAt DESC")

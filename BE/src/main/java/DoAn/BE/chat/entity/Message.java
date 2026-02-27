@@ -64,7 +64,6 @@ public class Message extends DoAn.BE.common.entity.BaseEntity {
         this.messageType = MessageType.TEXT;
     }
 
-    // Helper methods
     public boolean isTextMessage() {
         return this.messageType == MessageType.TEXT;
     }
@@ -76,8 +75,6 @@ public class Message extends DoAn.BE.common.entity.BaseEntity {
     public void markAsEdited() {
         this.setUpdatedAt(LocalDateTime.now());
     }
-
-    // [Loại tin nhắn] (Role: Enum)
     public enum MessageType {
         TEXT,
         FILE,

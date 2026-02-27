@@ -28,8 +28,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-// [Service quản lý chat rooms - tạo, sửa, xóa, quản lý members] (Role: Chat Users)
 @Service
 @Transactional
 @Slf4j
@@ -62,7 +60,6 @@ public class ChatRoomService {
         this.accessControlService = accessControlService;
     }
 
-    // Tạo phòng chat mới
     public ChatRoomDTO createChatRoom(CreateChatRoomRequest request, User currentUser) {
         try {
             // [Granular Permission] Kiểm tra quyền tạo nhóm chat
@@ -136,7 +133,6 @@ public class ChatRoomService {
         }
     }
 
-    // Lấy danh sách phòng chat của user
     public List<ChatRoomDTO> getChatRoomsByUserId(User currentUser) {
         if (!accessControlService.canUseChat(currentUser)) {
             throw new ForbiddenException("Admin không có quyền sử dụng chat");
@@ -160,7 +156,6 @@ public class ChatRoomService {
         return chatRooms.map(this::convertToChatRoomDTO);
     }
 
-    // Lấy thông tin phòng chat
     public ChatRoomDTO getChatRoomById(Long roomId, Long userId) {
         if (roomId == null || userId == null) {
             throw new BadRequestException("Room ID và User ID không được để trống");
@@ -178,7 +173,6 @@ public class ChatRoomService {
         return convertToChatRoomDTO(chatRoom);
     }
 
-    // Tìm hoặc tạo chat 1-1
     // OPTIMIZED: Use existing repository query instead of loop
     public ChatRoomDTO findOrCreateDirectChat(Long userId1, Long userId2) {
         if (userId1 == null || userId2 == null) {
@@ -389,7 +383,6 @@ public class ChatRoomService {
         return chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
     }
 
-    // Lấy project chat room theo projectId
     public ChatRoomDTO getProjectChatRoom(Long projectId, Long userId) {
         if (projectId == null || userId == null) {
             throw new BadRequestException("Project ID và User ID không được để trống");

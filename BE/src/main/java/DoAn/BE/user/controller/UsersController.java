@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.user.dto.UserDTO;
 import DoAn.BE.user.entity.User;
@@ -23,8 +24,6 @@ import DoAn.BE.user.mapper.UserMapper;
 import DoAn.BE.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-// [Controller xử lý các endpoint /api/users] (Role: Admin/HR/User)
 
 // Đây là alias controller cho frontend gọi /api/users thay vì /api/accounts
 @RestController
@@ -42,10 +41,6 @@ public class UsersController {
     private final DoAn.BE.company.service.RoleTemplateService roleTemplateService;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final DoAn.BE.company.service.SubscriptionService subscriptionService;
-
-    // ==================== CREATE ====================
-
-    // [Tạo user mới] (Role: Admin/Owner)
     @PostMapping
     public ResponseEntity<?> createUser(
             @RequestBody DoAn.BE.auth.dto.RegisterRequest request,
@@ -79,9 +74,10 @@ public class UsersController {
             // Next line in file is 'if(companyId!=null)' which matches the structure
             {
                 newUser = userService.findByEmail(request.getEmail())
-                        .orElseThrow(() -> new RuntimeException("User not found after creation"));
+                        .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException(
+                                "User not found after creation"));
                 DoAn.BE.company.entity.Company company = companyRepository.findById(companyId)
-                        .orElseThrow(() -> new RuntimeException("Company not found"));
+                        .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Company not found"));
 
                 // Tạo CompanyMember với role EMPLOYEE mặc định
                 DoAn.BE.company.entity.CompanyMember member = new DoAn.BE.company.entity.CompanyMember();
@@ -121,10 +117,6 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
         }
     }
-
-    // ==================== READ ====================
-
-    // [Lấy danh sách users] (Role: Admin/HR Manager)
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers(
             @AuthenticationPrincipal User currentUser) {
@@ -142,17 +134,18 @@ public class UsersController {
             return ResponseEntity.ok(userMapper.toDTOList(users));
         }
 
-        // Company Admin/HR có thể xem users trong công ty mình
-        if (accessControlService.isOwnerOrAdmin() || accessControlService.isHRManager()) {
+        // Company users with hrViewList permission can view all
+        try {
+            accessControlService.checkHrViewPermission();
             List<User> users = userService.getUsersByCurrentCompanyWithoutPaging();
             return ResponseEntity.ok(userMapper.toDTOList(users));
+        } catch (ForbiddenException ignored) {
+            // no permission
         }
 
         log.warn("User {} không có quyền truy cập /api/users", currentUser.getUsername());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
-
-    // [Lấy thông tin user theo ID] (Role: Admin/HR/Self)
     @GetMapping("/{userId}")
     public ResponseEntity<UserDTO> getUserById(
             @PathVariable Long userId,
@@ -162,17 +155,22 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // Kiểm tra quyền: Admin/HR xem tất cả, user xem của mình
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()
-                && !currentUser.getUserId().equals(userId)) {
+        // Permission check: users with hrViewList can view any user, otherwise only
+        // self
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkHrViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+        if (!hasViewPermission && !currentUser.getUserId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         User user = userService.getUserById(userId);
         return ResponseEntity.ok(userMapper.toDTO(user));
     }
-
-    // [Tìm kiếm users] (Role: Authenticated)
     @GetMapping("/search")
     public ResponseEntity<List<UserDTO>> searchUsers(
             @RequestParam(required = false) String keyword,
@@ -192,8 +190,6 @@ public class UsersController {
         List<User> users = userService.searchUsers(searchTerm);
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
-
-    // [Lấy danh sách users đang active] (Role: Admin/HR/Project Manager)
     @GetMapping("/active")
     public ResponseEntity<List<UserDTO>> getActiveUsers(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -203,25 +199,21 @@ public class UsersController {
         List<User> users = userService.getActiveUsers();
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
-
-    // [Lấy danh sách users đang online] (Role: Admin/HR)
     @GetMapping("/online")
     public ResponseEntity<List<UserDTO>> getOnlineUsers(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (!accessControlService.isOwnerOrAdmin() && !accessControlService.isHRManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         List<User> users = userService.getOnlineUsers();
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
-
-    // ==================== UPDATE ====================
-
-    // [Cập nhật user] (Role: Admin/HR/Owner)
     @PutMapping("/{userId}")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable Long userId,
@@ -234,9 +226,15 @@ public class UsersController {
 
         // Kiểm tra quyền: Admin/HR cập nhật tất cả, user cập nhật của mình, System
         // Admin cập nhật tất cả
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
         if (!currentUser.isSystemAdminAccount() &&
-                !accessControlService.isOwnerOrAdmin() &&
-                !accessControlService.isHRManager() &&
+                !hasEditPermission &&
                 !currentUser.getUserId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -244,10 +242,6 @@ public class UsersController {
         User updatedUser = userService.updateUser(userId, userDTO, currentUser);
         return ResponseEntity.ok(userMapper.toDTO(updatedUser));
     }
-
-    // ==================== DELETE ====================
-
-    // [Xóa user] (Role: Admin/Owner only)
     @DeleteMapping("/{userId}")
     public ResponseEntity<java.util.Map<String, String>> deleteUser(
             @PathVariable Long userId,
@@ -268,10 +262,6 @@ public class UsersController {
         response.put("message", "Xóa user thành công");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== ACTIVATE/DEACTIVATE ====================
-
-    // [Kích hoạt tài khoản] (Role: Admin/HR/Owner)
     @PatchMapping("/{userId}/activate")
     public ResponseEntity<UserDTO> activateUser(
             @PathVariable Long userId,
@@ -281,9 +271,14 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // System Admin allowed
-        if (!currentUser.isSystemAdminAccount() && !accessControlService.isOwnerOrAdmin()
-                && !accessControlService.isHRManager()) {
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
+        if (!currentUser.isSystemAdminAccount() && !hasEditPermission) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -303,8 +298,6 @@ public class UsersController {
 
         return ResponseEntity.ok(userMapper.toDTO(user));
     }
-
-    // [Vô hiệu hóa tài khoản] (Role: Admin/HR/Owner)
     @PatchMapping("/{userId}/deactivate")
     public ResponseEntity<UserDTO> deactivateUser(
             @PathVariable Long userId,
@@ -314,9 +307,14 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // System Admin allowed
-        if (!currentUser.isSystemAdminAccount() && !accessControlService.isOwnerOrAdmin()
-                && !accessControlService.isHRManager()) {
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
+        if (!currentUser.isSystemAdminAccount() && !hasEditPermission) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

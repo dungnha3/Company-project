@@ -36,28 +36,4 @@ public class Department extends TenantScopedEntity {
     @JsonIgnore
     private List<Employee> employees;
 
-    // Legacy getters/setters for backward compatibility
-    public Long getPhongbanId() {
-        return departmentId;
-    }
-
-    public void setPhongbanId(Long id) {
-        this.departmentId = id;
-    }
-
-    public String getTenPhongBan() {
-        return name;
-    }
-
-    public void setTenPhongBan(String ten) {
-        this.name = ten;
-    }
-
-    public String getMoTa() {
-        return description;
-    }
-
-    public void setMoTa(String moTa) {
-        this.description = moTa;
-    }
 }

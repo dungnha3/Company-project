@@ -1,5 +1,8 @@
 package DoAn.BE.hrm.service;
 
+import DoAn.BE.hrm.dto.CreateOnboardingTemplateRequest;
+import DoAn.BE.hrm.dto.StartOnboardingRequest;
+import DoAn.BE.hrm.dto.UpdateOnboardingProgressRequest;
 import DoAn.BE.hrm.entity.*;
 import DoAn.BE.hrm.repository.*;
 import DoAn.BE.common.exception.ResourceNotFoundException;
@@ -9,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -33,26 +35,24 @@ public class OnboardingService {
     }
 
     @Transactional
-    public OnboardingTemplate createTemplate(Map<String, Object> request) {
+    public OnboardingTemplate createTemplate(CreateOnboardingTemplateRequest request) {
         OnboardingTemplate template = new OnboardingTemplate();
-        template.setName((String) request.get("name"));
-        template.setDescription((String) request.get("description"));
+        template.setName(request.getName());
+        template.setDescription(request.getDescription());
 
-        if (request.containsKey("duration")) {
-            template.setDuration(((Number) request.get("duration")).intValue());
+        if (request.getDuration() != null) {
+            template.setDuration(request.getDuration());
         }
 
         // Add steps if provided
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> stepsData = (List<Map<String, Object>>) request.get("steps");
-        if (stepsData != null) {
+        if (request.getSteps() != null) {
             int order = 1;
-            for (Map<String, Object> stepData : stepsData) {
+            for (CreateOnboardingTemplateRequest.StepRequest stepData : request.getSteps()) {
                 OnboardingStep step = new OnboardingStep();
-                step.setTitle((String) stepData.get("title"));
-                step.setDescription((String) stepData.get("description"));
+                step.setTitle(stepData.getTitle());
+                step.setDescription(stepData.getDescription());
                 step.setOrderIndex(order++);
-                step.setRequired(stepData.get("required") != null ? (Boolean) stepData.get("required") : true);
+                step.setRequired(stepData.getRequired() != null ? stepData.getRequired() : true);
                 template.addStep(step);
             }
         }
@@ -61,14 +61,11 @@ public class OnboardingService {
     }
 
     @Transactional
-    public OnboardingInstance startOnboarding(Map<String, Object> request) {
-        Long employeeId = ((Number) request.get("employeeId")).longValue();
-        Long templateId = ((Number) request.get("templateId")).longValue();
-
-        Employee employee = employeeRepository.findById(employeeId)
+    public OnboardingInstance startOnboarding(StartOnboardingRequest request) {
+        Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
-        OnboardingTemplate template = templateRepository.findById(templateId)
+        OnboardingTemplate template = templateRepository.findById(request.getTemplateId())
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found"));
 
         OnboardingInstance instance = new OnboardingInstance();
@@ -83,16 +80,16 @@ public class OnboardingService {
     }
 
     @Transactional
-    public OnboardingInstance updateProgress(Long instanceId, Map<String, Object> request) {
+    public OnboardingInstance updateProgress(Long instanceId, UpdateOnboardingProgressRequest request) {
         OnboardingInstance instance = getInstanceById(instanceId);
 
-        if (request.containsKey("currentStep")) {
-            instance.setCurrentStep(((Number) request.get("currentStep")).intValue());
+        if (request.getCurrentStep() != null) {
+            instance.setCurrentStep(request.getCurrentStep());
             instance.updateProgress();
         }
 
-        if (request.containsKey("status")) {
-            instance.setStatus(OnboardingInstance.OnboardingStatus.valueOf((String) request.get("status")));
+        if (request.getStatus() != null) {
+            instance.setStatus(request.getStatus());
         }
 
         // Auto-complete if all steps done

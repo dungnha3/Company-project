@@ -25,7 +25,6 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
 
     Optional<ChatRoomMember> findByChatRoom_RoomIdAndUser_UserId(Long roomId, Long userId);
 
-    // Find members by role
     List<ChatRoomMember> findByChatRoom_RoomIdAndRole(Long roomId, ChatRoomMember.MemberRole role);
 
     // Count members by role

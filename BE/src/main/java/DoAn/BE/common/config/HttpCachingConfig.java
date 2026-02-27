@@ -12,18 +12,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 
-/**
- * HTTP Caching Configuration
- * 
- * Adds proper HTTP cache headers for:
- * - Static resources: long cache (1 year)
- * - API responses: short cache for read-only endpoints
- * 
- * Benefits:
- * - Reduces server load
- * - Faster page loads for users
- * - Lower bandwidth usage
- */
+// HTTP Caching Configuration
+//
+// Adds proper HTTP cache headers for:
+// - Static resources: long cache (1 year)
+// - API responses: short cache for read-only endpoints
+//
+// Benefits:
+// - Reduces server load
+// - Faster page loads for users
+// - Lower bandwidth usage
+// /
 @Configuration
 public class HttpCachingConfig implements WebMvcConfigurer {
 
@@ -42,9 +41,8 @@ public class HttpCachingConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**");
     }
 
-    /**
-     * Interceptor to add cache headers based on request type
-     */
+    // Interceptor to add cache headers based on request type
+    // /
     static class ApiCacheInterceptor implements HandlerInterceptor {
 
         @Override

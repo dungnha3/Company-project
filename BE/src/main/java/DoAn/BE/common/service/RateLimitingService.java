@@ -10,15 +10,14 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Service quản lý Rate Limiting
- * Sử dụng Bucket4j để giới hạn số lượng request từ mỗi IP
- * 
- * Different limits for different endpoint types:
- * - AUTH: 10 requests/minute (login, register)
- * - API: 100 requests/minute (general API)
- * - UPLOAD: 20 requests/minute (file uploads)
- */
+// Service quản lý Rate Limiting
+// Sử dụng Bucket4j để giới hạn số lượng request từ mỗi IP
+//
+// Different limits for different endpoint types:
+// - AUTH: 10 requests/minute (login, register)
+// - API: 100 requests/minute (general API)
+// - UPLOAD: 20 requests/minute (file uploads)
+// /
 @Service
 @Slf4j
 public class RateLimitingService {
@@ -34,9 +33,8 @@ public class RateLimitingService {
         UPLOAD // Limit for file uploads
     }
 
-    /**
-     * Get bucket for IP based on endpoint type
-     */
+    // Get bucket for IP based on endpoint type
+    // /
     public Bucket resolveBucket(String ipAddress, RateLimitType type) {
         return switch (type) {
             case AUTH -> authCache.computeIfAbsent(ipAddress, key -> createAuthBucket());
@@ -45,16 +43,14 @@ public class RateLimitingService {
         };
     }
 
-    /**
-     * Default API bucket resolution (backward compatible)
-     */
+    // Default API bucket resolution (backward compatible)
+    // /
     public Bucket resolveBucket(String ipAddress) {
         return resolveBucket(ipAddress, RateLimitType.API);
     }
 
-    /**
-     * Try to consume a token, returns true if allowed
-     */
+    // Try to consume a token, returns true if allowed
+    // /
     public boolean tryConsume(String ipAddress, RateLimitType type) {
         Bucket bucket = resolveBucket(ipAddress, type);
         boolean consumed = bucket.tryConsume(1);
@@ -64,9 +60,8 @@ public class RateLimitingService {
         return consumed;
     }
 
-    /**
-     * Get remaining tokens for an IP
-     */
+    // Get remaining tokens for an IP
+    // /
     public long getRemainingTokens(String ipAddress, RateLimitType type) {
         return resolveBucket(ipAddress, type).getAvailableTokens();
     }
@@ -89,9 +84,8 @@ public class RateLimitingService {
         return Bucket.builder().addLimit(limit).build();
     }
 
-    /**
-     * Clear buckets for an IP (useful for admin override or testing)
-     */
+    // Clear buckets for an IP (useful for admin override or testing)
+    // /
     public void clearBuckets(String ipAddress) {
         authCache.remove(ipAddress);
         apiCache.remove(ipAddress);

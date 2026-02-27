@@ -24,7 +24,6 @@ public class MessageStatusService {
         this.messageRepository = messageRepository;
     }
 
-    // Đánh dấu tin nhắn đã gửi
     public void markMessageAsDelivered(@NonNull Long messageId, @NonNull Long userId) {
         messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));
@@ -40,7 +39,6 @@ public class MessageStatusService {
         }
     }
 
-    // Đánh dấu tin nhắn đã đọc
     public void markMessageAsSeen(@NonNull Long messageId, @NonNull Long userId) {
         messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tin nhắn không tồn tại"));

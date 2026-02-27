@@ -22,7 +22,6 @@ public class WebSocketNotificationService {
         this.chatRoomMemberRepository = chatRoomMemberRepository;
     }
 
-    // Gửi thông báo tin nhắn mới
     public void notifyNewMessage(Long roomId, MessDTO message) {
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.CHAT_MESSAGE,
@@ -112,7 +111,6 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
     }
 
-    // Gửi typing indicator
     public void notifyTyping(Long roomId, Long userId, String username, boolean isTyping) {
         WebSocketMessage.MessageType type = isTyping ? WebSocketMessage.MessageType.TYPING_START
                 : WebSocketMessage.MessageType.TYPING_STOP;
@@ -142,7 +140,6 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
     }
 
-    // Gửi notification chung
     public void sendNotification(String username, String message, Object data) {
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.NOTIFICATION,
@@ -155,7 +152,6 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSendToUser(username, "/queue/notifications", wsMessage);
     }
 
-    // Gửi notification đến tất cả thành viên trong phòng
     public void sendNotificationToRoom(Long roomId, String type, String message, Object data) {
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.NOTIFICATION,

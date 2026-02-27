@@ -16,7 +16,6 @@ public class PermissionService {
         this.companyService = companyService;
     }
 
-    // Helper interfaces for type-safe checks (optional if we use strings)
 
     public boolean hasPermission(CompanyMember member, String feature, String action) {
         if (member == null || member.getRoles() == null || member.getPermissions() == null) {
@@ -62,6 +61,8 @@ public class PermissionService {
                 return p.isHrEditProfile();
             case "HR.MANAGE_CONTRACTS":
                 return p.isHrManageContracts();
+            case "HR.MANAGE_REVIEWS":
+                return p.isHrManageReviews();
 
             case "SALARY.VIEW":
                 return p.isSalaryView();
@@ -97,10 +98,9 @@ public class PermissionService {
         }
     }
 
-    /**
-     * CẤP ĐỘ 0: Kiểm tra Plan Tier có cho phép feature không
-     * Đây là cấp cao nhất - KHÔNG THỂ BYPASS
-     */
+    // CẤP ĐỘ 0: Kiểm tra Plan Tier có cho phép feature không
+    // Đây là cấp cao nhất - KHÔNG THỂ BYPASS
+    // /
     private boolean isPlanFeatureEnabled(Plan plan, String feature) {
         if (plan == null) {
             plan = Plan.FREE;
@@ -129,9 +129,8 @@ public class PermissionService {
         }
     }
 
-    /**
-     * CẤP ĐỘ 1: Kiểm tra Feature Flag của công ty (Admin có thể tắt/bật)
-     */
+    // CẤP ĐỘ 1: Kiểm tra Feature Flag của công ty (Admin có thể tắt/bật)
+    // /
     private boolean isFeatureEnabledForCompany(DoAn.BE.company.entity.CompanySettings settings, String feature) {
         if (settings == null) {
             // Personal Workspace hoặc missing settings = áp dụng FREE plan limits

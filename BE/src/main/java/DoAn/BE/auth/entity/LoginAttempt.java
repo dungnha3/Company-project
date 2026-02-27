@@ -6,8 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
-// [Entity lưu lịch sử đăng nhập - ngăn brute force] (Role: Security)
 @Entity
 @Data
 @NoArgsConstructor

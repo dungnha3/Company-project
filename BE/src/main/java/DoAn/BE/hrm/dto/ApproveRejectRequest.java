@@ -3,8 +3,6 @@ package DoAn.BE.hrm.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-// [Request duyệt/từ chối đơn] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

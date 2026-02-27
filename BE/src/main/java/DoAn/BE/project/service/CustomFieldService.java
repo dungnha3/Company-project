@@ -29,9 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Service for managing custom fields
- */
+// Service for managing custom fields
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,11 +44,8 @@ public class CustomFieldService {
 
     private static final int MAX_CUSTOM_FIELDS_PER_PROJECT = 50;
 
-    // ==================== FIELD MANAGEMENT ====================
-
-    /**
-     * Get all custom fields for a project
-     */
+    // Get all custom fields for a project
+    // /
     public List<CustomFieldDto.Response> getFieldsByProject(Long projectId) {
         List<IssueCustomField> fields = fieldRepository
                 .findByProject_ProjectIdAndIsActiveTrueOrderByDisplayOrderAsc(projectId);
@@ -59,9 +55,8 @@ public class CustomFieldService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Create a new custom field for a project
-     */
+    // Create a new custom field for a project
+    // /
     @Transactional
     public CustomFieldDto.Response createField(Long projectId, CustomFieldDto.CreateRequest request) {
         Project project = projectRepository.findById(projectId)
@@ -106,9 +101,8 @@ public class CustomFieldService {
         return toResponse(field);
     }
 
-    /**
-     * Update an existing custom field
-     */
+    // Update an existing custom field
+    // /
     @Transactional
     public CustomFieldDto.Response updateField(Long fieldId, CustomFieldDto.UpdateRequest request) {
         IssueCustomField field = fieldRepository.findById(fieldId)
@@ -153,9 +147,8 @@ public class CustomFieldService {
         return toResponse(field);
     }
 
-    /**
-     * Delete a custom field (soft delete)
-     */
+    // Delete a custom field (soft delete)
+    // /
     @Transactional
     public void deleteField(Long fieldId) {
         IssueCustomField field = fieldRepository.findById(fieldId)
@@ -167,9 +160,8 @@ public class CustomFieldService {
         log.info("Deleted (soft) custom field {}", fieldId);
     }
 
-    /**
-     * Reorder custom fields
-     */
+    // Reorder custom fields
+    // /
     @Transactional
     public void reorderFields(Long projectId, List<Long> fieldIds) {
         for (int i = 0; i < fieldIds.size(); i++) {
@@ -180,11 +172,8 @@ public class CustomFieldService {
         }
     }
 
-    // ==================== VALUE MANAGEMENT ====================
-
-    /**
-     * Get all custom field values for an issue
-     */
+    // Get all custom field values for an issue
+    // /
     public List<CustomFieldDto.ValueResponse> getValuesByIssue(Long issueId) {
         List<IssueCustomFieldValue> values = valueRepository.findByIssue_IssueId(issueId);
 
@@ -193,9 +182,8 @@ public class CustomFieldService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Set custom field values for an issue (batch update)
-     */
+    // Set custom field values for an issue (batch update)
+    // /
     @Transactional
     public void setValues(Long issueId, List<CustomFieldDto.ValueRequest> requests) {
         Issue issue = issueRepository.findById(issueId)
@@ -227,8 +215,6 @@ public class CustomFieldService {
 
         log.debug("Updated {} custom field values for issue {}", requests.size(), issueId);
     }
-
-    // ==================== HELPER METHODS ====================
 
     private void setTypedValue(IssueCustomFieldValue value, FieldType fieldType, Object rawValue) {
         if (rawValue == null) {

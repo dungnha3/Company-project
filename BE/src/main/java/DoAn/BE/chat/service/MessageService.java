@@ -34,8 +34,6 @@ import java.util.regex.Matcher;
 import org.springframework.data.domain.Pageable;
 
 import lombok.extern.slf4j.Slf4j;
-
-// [Service quản lý tin nhắn chat] (Role: All Chat Users)
 @Service
 @Transactional
 @Slf4j
@@ -74,7 +72,6 @@ public class MessageService {
         this.fcmService = fcmService;
     }
 
-    // Gửi tin nhắn
     public MessDTO sendMessage(SendMessageRequest request, @NonNull Long senderId) {
         if (request.getRoomId() == null) {
             throw new BadRequestException("Room ID không được null");
@@ -197,34 +194,22 @@ public class MessageService {
 
         return messageDTO;
     }
-
-    // [Phát hiện và xử lý mentions trong message] (Role: Internal)
     private void processMentions(Message message, User sender, ChatRoom chatRoom) {
         String content = message.getContent();
         if (content == null || content.isEmpty()) {
             return;
         }
-
-        // [Pattern 1: @username - mention user] (Role: Mention Detection)
         processUserMentions(content, message, sender, chatRoom);
-
-        // [Pattern 2: @TASK-123 hoặc @ISSUE-456] (Role: Mention Detection)
         processTaskIssueMentions(content, message, sender, chatRoom);
     }
-
-    // [Xử lý @username mentions] (Role: Internal)
     private void processUserMentions(String content, Message message, User sender, ChatRoom chatRoom) {
         Pattern userPattern = Pattern.compile("@(\\w+)");
         Matcher userMatcher = userPattern.matcher(content);
         while (userMatcher.find()) {
             String username = userMatcher.group(1);
-
-            // [Bỏ qua nếu là task/issue pattern] (Role: Filter)
             if (username.startsWith("TASK-") || username.startsWith("ISSUE-")) {
                 continue;
             }
-
-            // [Tìm user và gửi notification] (Role: Notification)
             Optional<User> mentionedUserOpt = userRepository.findByUsername(username);
             if (mentionedUserOpt.isPresent()) {
                 User mentionedUser = mentionedUserOpt.get();
@@ -232,8 +217,6 @@ public class MessageService {
             }
         }
     }
-
-    // [Thông báo cho user được mention] (Role: Internal)
     private void notifyMentionedUser(User mentionedUser, User sender, Message message, ChatRoom chatRoom) {
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(
                 chatRoom.getRoomId(), mentionedUser.getUserId());
@@ -242,8 +225,6 @@ public class MessageService {
 
         }
     }
-
-    // [Xử lý @TASK-123 và @ISSUE-456 mentions] (Role: Internal)
     private void processTaskIssueMentions(String content, Message message, User sender, ChatRoom chatRoom) {
         Pattern taskPattern = Pattern.compile("@(TASK|ISSUE)-(\\w+)");
         Matcher taskMatcher = taskPattern.matcher(content);
@@ -251,11 +232,7 @@ public class MessageService {
             String type = taskMatcher.group(1);
             String key = taskMatcher.group(2);
             String fullKey = type + "-" + key;
-
-            // [Log mention cho audit trail] (Role: Logging)
             log.debug("🔗 Phát hiện {} mention: {} trong tin nhắn {}", type, fullKey, message.getMessageId());
-
-            // [Gửi notification cho project chat nếu có] (Role: Notification)
             if (chatRoom.getProject() != null) {
                 chatNotificationService.createTaskMentionNotification(
                         sender.getUserId(),
@@ -267,7 +244,6 @@ public class MessageService {
         }
     }
 
-    // Lấy tin nhắn trong phòng chat
     public List<MessDTO> getMessagesByRoomId(@NonNull Long roomId, @NonNull Long userId, int page, int size) {
         // Validate phòng chat tồn tại
         chatRoomRepository.findById(roomId)
@@ -288,7 +264,6 @@ public class MessageService {
                 .collect(Collectors.toList());
     }
 
-    // Đánh dấu tin nhắn đã đọc
     public void markMessageAsSeen(@NonNull Long messageId, @NonNull Long userId) {
         // Validate message tồn tại
         messageRepository.findById(messageId)
@@ -316,7 +291,6 @@ public class MessageService {
         }
     }
 
-    // Tự động xác định loại tin nhắn
     private Message.MessageType detectMessageType(SendMessageRequest request) {
         if (request.getFileId() != null) {
             String fileName = request.getFileName();
@@ -331,7 +305,6 @@ public class MessageService {
         return Message.MessageType.TEXT;
     }
 
-    // Chuyển đổi Message entity sang DTO - PUBLIC for reuse by ChatFileService
     public MessDTO convertToMessageDTO(Message message) {
         MessDTO dto = new MessDTO();
         dto.setMessageId(message.getMessageId());
@@ -395,7 +368,6 @@ public class MessageService {
         return dto;
     }
 
-    // Tìm kiếm tin nhắn theo nội dung
     public List<MessDTO> searchMessages(@NonNull Long roomId, String keyword, @NonNull Long userId, Pageable pageable) {
         // Validate phòng chat tồn tại
         chatRoomRepository.findById(roomId)
@@ -420,7 +392,6 @@ public class MessageService {
                 .collect(Collectors.toList());
     }
 
-    // Sửa tin nhắn
     public MessDTO editMessage(@NonNull Long messageId, String newContent, @NonNull Long userId) {
         // Validate message tồn tại
         Message message = messageRepository.findById(messageId)
@@ -452,7 +423,6 @@ public class MessageService {
         return messageDTO;
     }
 
-    // Xóa tin nhắn (soft delete)
     public void deleteMessage(@NonNull Long messageId, @NonNull Long userId) {
         // Validate message tồn tại
         Message message = messageRepository.findById(messageId)

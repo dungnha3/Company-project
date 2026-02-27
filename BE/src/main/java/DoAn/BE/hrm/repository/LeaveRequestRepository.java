@@ -46,8 +46,6 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         long countByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
 
         List<LeaveRequest> findByStartDateBetween(LocalDate startDate, LocalDate endDate);
-
-        // ==================== PAGINATION SUPPORT ====================
         @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
         org.springframework.data.domain.Page<LeaveRequest> findByEmployee_EmployeeId(Long employeeId,
                         org.springframework.data.domain.Pageable pageable);

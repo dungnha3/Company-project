@@ -9,9 +9,8 @@ import org.springframework.data.elasticsearch.annotations.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Elasticsearch document for Issue search
- */
+// Elasticsearch document for Issue search
+// /
 @Document(indexName = "issues")
 @Setting(settingPath = "elasticsearch/settings.json")
 @Data

@@ -71,10 +71,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
         List<Attendance> findByEmployee_User_UserIdIn(List<Long> userIds);
 
-        // ==================== TENANT-AWARE QUERIES ====================
-
-        // ==================== PAGINATION SUPPORT ====================
-
         @EntityGraph(attributePaths = { "employee", "employee.user" })
         @Query("SELECT a FROM Attendance a WHERE a.company.companyId = :companyId ORDER BY a.attendanceDate DESC")
         List<Attendance> findByCompanyId(@Param("companyId") Long companyId);

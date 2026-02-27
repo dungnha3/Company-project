@@ -52,8 +52,6 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
 
         void deleteByEmployee_EmployeeIdAndMonthAndYear(Long employeeId, Integer month, Integer year);
 
-        // ==================== PAGINATION SUPPORT ====================
-
         @Query("SELECT s FROM Salary s WHERE s.company.companyId = :#{T(DoAn.BE.common.context.TenantContext).getCompanyId()} ORDER BY s.year DESC, s.month DESC")
         org.springframework.data.domain.Page<Salary> findAllByCompany(
                         org.springframework.data.domain.Pageable pageable);

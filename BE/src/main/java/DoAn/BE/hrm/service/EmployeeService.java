@@ -21,7 +21,6 @@ import DoAn.BE.hrm.repository.PositionRepository;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.repository.DepartmentRepository;
 import DoAn.BE.user.entity.User;
-import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,59 +31,9 @@ import lombok.extern.slf4j.Slf4j;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
-    private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final PositionRepository positionRepository;
     private final AccessControlService accessControlService;
-
-    // [DEPRECATED - Use InviteService instead]
-    @Deprecated
-    public Employee createEmployee(EmployeeRequest request, User currentUser) {
-        if (request == null) {
-            throw new BadRequestException("Request cannot be empty");
-        }
-
-        accessControlService.checkHrEditPermission();
-
-        log.info("HR Manager {} is creating new employee profile", currentUser.getUsername());
-
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User account not found"));
-
-        if (employeeRepository.findByUser_UserId(request.getUserId()).isPresent()) {
-            throw new DuplicateException("This account is already linked to another employee profile");
-        }
-
-        if (request.getIdCard() != null && employeeRepository.existsByIdCard(request.getIdCard())) {
-            throw new DuplicateException("ID Card already exists in the system");
-        }
-
-        Employee employee = new Employee();
-        employee.setUser(user);
-        employee.setFullName(request.getFullName());
-        employee.setIdCard(request.getIdCard());
-        employee.setDateOfBirth(request.getDateOfBirth());
-        employee.setGender(request.getGender());
-        employee.setAddress(request.getAddress());
-        employee.setHireDate(request.getHireDate());
-        employee.setStatus(EmployeeStatus.ACTIVE);
-        employee.setBaseSalary(request.getBaseSalary());
-        employee.setAllowance(request.getAllowance());
-
-        if (request.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
-            employee.setDepartment(department);
-        }
-
-        if (request.getPositionId() != null) {
-            Position position = positionRepository.findById(request.getPositionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
-            employee.setPosition(position);
-        }
-
-        return employeeRepository.save(employee);
-    }
 
     @Transactional(readOnly = true)
     public Employee getEmployeeById(Long id, User currentUser) {
@@ -94,8 +43,11 @@ public class EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
 
-        if (accessControlService.isHRManager() || accessControlService.isAccountingManager()) {
+        try {
+            accessControlService.checkHrViewPermission();
             return employee;
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
 
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
@@ -238,12 +190,22 @@ public class EmployeeService {
     }
 
     public Employee getEmployeeByUserId(Long userId) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            return employeeRepository.findByUser_UserIdAndCompany_CompanyId(userId, companyId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "No employee profile found for this User in current company"));
+        }
+        // Fallback when no tenant context (e.g., system admin operations)
         return employeeRepository.findByUser_UserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("No employee profile found for this User"));
     }
 
     public boolean hasEmployeeProfile(Long userId) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            return employeeRepository.findByUser_UserIdAndCompany_CompanyId(userId, companyId).isPresent();
+        }
         return employeeRepository.findByUser_UserId(userId).isPresent();
     }
 }
-

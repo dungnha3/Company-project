@@ -11,9 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controller API cho Workspace management
- */
+// Controller API cho Workspace management
+// /
 @RestController
 @RequestMapping("/api/workspaces")
 @RequiredArgsConstructor
@@ -22,9 +21,8 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
 
-    /**
-     * Lấy tất cả workspaces của user (Personal + Company memberships)
-     */
+    // Lấy tất cả workspaces của user (Personal + Company memberships)
+    // /
     @GetMapping("")
     public ResponseEntity<List<WorkspaceDto.WorkspaceResponse>> getAllWorkspaces(
             @AuthenticationPrincipal User currentUser) {
@@ -34,18 +32,16 @@ public class WorkspaceController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Lấy thông tin Personal Workspace
-     */
+    // Lấy thông tin Personal Workspace
+    // /
     @GetMapping("/personal")
     public ResponseEntity<WorkspaceDto.PersonalWorkspaceResponse> getPersonalWorkspace(
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(workspaceService.getPersonalWorkspace(currentUser));
     }
 
-    /**
-     * Kiểm tra và tạo Personal Workspace nếu chưa có (cho users cũ)
-     */
+    // Kiểm tra và tạo Personal Workspace nếu chưa có (cho users cũ)
+    // /
     @PostMapping("/personal/ensure")
     public ResponseEntity<WorkspaceDto.PersonalWorkspaceResponse> ensurePersonalWorkspace(
             @AuthenticationPrincipal User currentUser) {

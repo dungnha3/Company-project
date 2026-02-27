@@ -27,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Service xử lý các chức năng multi-tenant (SAAS)
 
 // - Truy vấn users theo company
 
@@ -45,9 +44,6 @@ public class UserSaasService {
     private final CompanyRepository companyRepository;
     private final RoleTemplateService roleTemplateService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
-
-    // ==================== QUERY BY COMPANY ====================
-    // Lấy users thuộc công ty hiện tại (cho Company Admin)
     public Page<User> getUsersByCurrentCompany(Pageable pageable) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -57,7 +53,6 @@ public class UserSaasService {
                 .map(CompanyMember::getUser);
     }
 
-    // Lấy users thuộc công ty hiện tại (không phân trang)
     public List<User> getUsersByCurrentCompanyWithoutPaging() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -69,7 +64,6 @@ public class UserSaasService {
                 .collect(Collectors.toList());
     }
 
-    // Lấy users thuộc một công ty cụ thể (cho System Admin)
     public Page<User> getUsersByCompanyId(Long companyId, Pageable pageable) {
         if (companyId == null) {
             return Page.empty();
@@ -87,9 +81,6 @@ public class UserSaasService {
         List<User> pageContent = users.subList(start, end);
         return new PageImpl<>(pageContent, pageable, users.size());
     }
-
-    // ==================== ROLE MANAGEMENT ====================
-    // Cập nhật role của user trong một công ty (System Admin only)
     public void updateUserRoleInCompany(Long userId, Long companyId, String roleName, User currentUser) {
         log.info("System Admin {} cập nhật role cho user {} trong công ty {}",
                 currentUser.getUsername(), userId, companyId);
@@ -150,7 +141,6 @@ public class UserSaasService {
         }
     }
 
-    // Cập nhật isSystemAdmin cho user (System Admin only)
     public void updateSystemAdminStatus(Long userId, Boolean isSystemAdmin, User currentUser) {
         if (!currentUser.isSystemAdminAccount()) {
             throw new BadRequestException("Chỉ System Admin mới có thể thay đổi quyền System Admin");

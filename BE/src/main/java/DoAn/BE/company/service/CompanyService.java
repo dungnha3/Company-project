@@ -25,24 +25,22 @@ import org.springframework.cache.annotation.CacheEvict;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// [Service quản lý công ty] (Role: Admin/Owner)
+// Member-facing company operations: CRUD, settings, caching, plan limits.
+// SysAdmin operations are in {@link CompanyAdminService}.
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CompanyService {
 
     private final DoAn.BE.common.service.AccessControlService accessControlService;
-
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySettingsRepository companySettingsRepository;
     private final DoAn.BE.project.repository.ProjectRepository projectRepository;
-    private final DoAn.BE.hrm.repository.EmployeeRepository employeeRepository;
 
-    // [Lấy danh sách công ty của user hiện tại] (Role: Authenticated User)
     @Transactional(readOnly = true)
     public List<CompanyDto.CompanyResponse> getMyCompanies(User currentUser) {
-        // [Validate input] (Role: Guard)
         if (currentUser == null) {
             throw new BadRequestException("Người dùng không hợp lệ");
         }
@@ -53,61 +51,14 @@ public class CompanyService {
                 .collect(Collectors.toList());
     }
 
-    // [SAAS] Lấy tất cả công ty trong hệ thống (System Admin only)
-    @Transactional(readOnly = true)
-    public List<CompanyDto.CompanyResponse> getAllCompanies() {
-        return companyRepository.findAll()
-                .stream()
-                .map(this::mapCompanyToResponse)
-                .collect(Collectors.toList());
-    }
-
-    // [SAAS] Lấy thông tin công ty theo ID (System Admin - không yêu cầu
-    // membership)
-    @Transactional(readOnly = true)
-    public CompanyDto.CompanyResponse getCompanyById(Long companyId) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty với ID: " + companyId));
-        return mapCompanyToResponse(company);
-    }
-
-    // [SAAS] Lấy settings công ty (System Admin - wrapper cho getSettingsCached)
-    @Transactional(readOnly = true)
-    public CompanySettings getCompanySettings(Long companyId) {
-        return getSettingsCached(companyId);
-    }
-
-    // [Helper] Map Company entity trực tiếp sang Response (không qua CompanyMember)
-    private CompanyDto.CompanyResponse mapCompanyToResponse(Company company) {
-        CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
-        resp.setCompanyId(company.getCompanyId());
-        resp.setName(company.getName());
-        resp.setLogoUrl(company.getLogoUrl());
-        resp.setAddress(company.getAddress());
-        resp.setPlan(company.getPlan());
-        resp.setRole(null); // Không có role vì không phải CompanyMember context
-        resp.setOwner(false);
-        resp.setIsActive(company.getIsActive());
-        return resp;
-    }
-
-    // [Lấy thông tin công ty theo ID] (Role: Company Member)
     @Transactional(readOnly = true)
     public CompanyDto.CompanyResponse getCompanyById(Long companyId, User currentUser) {
-        // [Validate input] (Role: Guard)
         if (companyId == null) {
             throw new BadRequestException("ID công ty không được để trống");
         }
-
-        // [Kiểm tra công ty tồn tại] (Role: Validation)
         if (!companyRepository.existsById(companyId)) {
             throw new ResourceNotFoundException("Không tìm thấy công ty");
         }
-
-        // [Kiểm tra quyền truy cập] (Role: Authorization)
         CompanyMember member = companyMemberRepository
                 .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(currentUser.getUserId(), companyId)
                 .orElseThrow(() -> new ForbiddenException("Bạn không phải là thành viên của công ty này"));
@@ -115,13 +66,9 @@ public class CompanyService {
         return mapToResponse(member);
     }
 
-    // [Lấy cài đặt của công ty] (Role: Company Member)
-    // Cache kết quả để giảm tải DB vì method này được gọi RẤT NHIỀU lần (mỗi lần
-    // check permission)
     @Transactional(readOnly = true)
     @Cacheable(value = "companySettings", key = "#companyId")
     public CompanySettings getSettingsCached(Long companyId) {
-        // [Validate input] (Role: Guard)
         if (companyId == null) {
             throw new BadRequestException("ID công ty không được để trống");
         }
@@ -129,15 +76,11 @@ public class CompanyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
     }
 
-    // [Tạo công ty mới] (Role: Authenticated User)
     @Transactional
     public CompanyDto.CompanyResponse createCompany(CompanyDto.CompanyCreateRequest req, User currentUser) {
-        // [Validate input] (Role: Guard)
         if (req.getName() == null || req.getName().isBlank()) {
             throw new BadRequestException("Tên công ty không được để trống");
         }
-
-        // [Tạo company] (Role: Create)
         Company company = new Company();
         company.setName(req.getName());
         company.setDescription(req.getDescription());
@@ -147,8 +90,6 @@ public class CompanyService {
         company.setEmail(req.getEmail());
         company.setPlan(Plan.FREE);
         company.setIsActive(true);
-
-        // [Tạo slug] (Role: Logic)
         String normalized = java.text.Normalizer.normalize(req.getName(), java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
                 .toLowerCase()
@@ -158,8 +99,6 @@ public class CompanyService {
         company.setSlug(slug);
 
         company = companyRepository.save(company);
-
-        // [Tạo settings mặc định dựa vào Plan] (Role: Create)
         CompanySettings settings = new CompanySettings();
         settings.setCompany(company);
         settings.initFromPlan(company.getPlan());
@@ -167,8 +106,6 @@ public class CompanyService {
         settings.setChatModuleEnabled(true);
         settings.setStorageModuleEnabled(true);
         companySettingsRepository.save(settings);
-
-        // [Tạo owner member] (Role: Create)
         CompanyMember owner = new CompanyMember();
         owner.setCompany(company);
         owner.setUser(currentUser);
@@ -179,142 +116,40 @@ public class CompanyService {
 
         log.info("User {} đã tạo công ty mới: {}", currentUser.getUsername(), company.getName());
 
-        // Return response with OWNER role
-        CompanyDto.CompanyResponse resp = mapToResponse(owner);
-        return resp;
+        return mapToResponse(owner);
     }
 
-    // [Cập nhật thông tin công ty] (Role: Owner only)
     @Transactional
     public Company updateCompany(Long companyId, CompanyDto.CompanyUpdateRequest req) {
-        // [Validate input] (Role: Guard)
         if (companyId == null) {
             throw new BadRequestException("ID công ty không được để trống");
         }
-
-        // [Kiểm tra quyền Owner] (Role: Authorization)
         accessControlService.checkPermission(companyId, CompanyRole.OWNER);
 
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
-
-        // [Cập nhật các field] (Role: Update)
         updateCompanyFields(company, req);
 
         log.info("Đã cập nhật thông tin công ty: {}", company.getName());
         return companyRepository.save(company);
     }
 
-    // [Cập nhật cài đặt công ty] (Role: Admin+)
-    // Xóa cache khi update để lần gọi sau lấy dữ liệu mới nhất
     @Transactional
     @CacheEvict(value = "companySettings", key = "#companyId")
     public CompanySettings updateSettings(Long companyId, CompanyDto.SettingsUpdateRequest req) {
-        // [Validate input] (Role: Guard)
         if (companyId == null) {
             throw new BadRequestException("ID công ty không được để trống");
         }
-
-        // [Kiểm tra quyền Admin] (Role: Authorization)
         accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
 
         CompanySettings settings = companySettingsRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));
-
-        // [Cập nhật module settings] (Role: Update)
         updateModuleSettings(settings, req);
-
-        // [Cập nhật module settings] (Role: Update)
-        updateModuleSettings(settings, req);
-
-        // [GPS Settings] - RESTRICTED: Chỉ System Admin mới được sửa GPS (đã chuyển
-        // sang updateSettingsBySystemAdmin)
-        // updateGpsSettings(settings, req); -> REMOVED
 
         log.info("Đã cập nhật cài đặt công ty: {}", companyId);
         return companySettingsRepository.save(settings);
     }
 
-    // ==================== PRIVATE METHODS ====================
-
-    // [Cập nhật fields công ty] (Role: Internal)
-    private void updateCompanyFields(Company company, CompanyDto.CompanyUpdateRequest req) {
-        if (req.getName() != null && !req.getName().isBlank()) {
-            company.setName(req.getName());
-        }
-        if (req.getLogoUrl() != null) {
-            company.setLogoUrl(req.getLogoUrl());
-        }
-        if (req.getAddress() != null) {
-            company.setAddress(req.getAddress());
-        }
-    }
-
-    // [Cập nhật module settings] (Role: Internal)
-    // [Cập nhật module settings] (Role: Internal)
-    private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
-        DoAn.BE.company.entity.Plan plan = settings.getCompany().getPlan();
-
-        if (req.getHrModuleEnabled() != null) {
-            settings.setHrModuleEnabled(req.getHrModuleEnabled());
-        }
-        if (req.getProjectModuleEnabled() != null) {
-            settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-        }
-        if (req.getChatModuleEnabled() != null) {
-            settings.setChatModuleEnabled(req.getChatModuleEnabled());
-        }
-
-        // [SAAS CHECK] Chỉ gói ENTERPRISE mới được bật AI & Automation
-        if (req.getAiModuleEnabled() != null) {
-            if (req.getAiModuleEnabled() && !plan.isApiAccessEnabled()) { // Using apiAccessEnabled as proxy for
-                                                                          // "Premium/Enterprise" features
-                throw new DoAn.BE.common.exception.ForbiddenException(
-                        "Gói " + plan.name() + " không hỗ trợ tính năng AI");
-            }
-            settings.setAiModuleEnabled(req.getAiModuleEnabled());
-        }
-
-        // Automation check (Assuming similar restriction)
-        // locally yet,
-        // if it's there update it similarly. For now securing AI is the priority
-        // requested.
-
-        if (req.getStorageModuleEnabled() != null) {
-            settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
-        }
-    }
-
-    // [Cập nhật GPS settings] (Role: Internal)
-    private void updateGpsSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
-        if (req.getOfficeLatitude() != null) {
-            settings.setOfficeLatitude(req.getOfficeLatitude());
-        }
-        if (req.getOfficeLongitude() != null) {
-            settings.setOfficeLongitude(req.getOfficeLongitude());
-        }
-        if (req.getAllowedRadius() != null) {
-            settings.setAllowedRadius(req.getAllowedRadius());
-        }
-    }
-
-    // [Chuyển đổi CompanyMember sang Response] (Role: Internal)
-    private CompanyDto.CompanyResponse mapToResponse(CompanyMember member) {
-        CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
-        Company company = member.getCompany();
-        resp.setCompanyId(company.getCompanyId());
-        resp.setName(company.getName());
-        resp.setLogoUrl(company.getLogoUrl());
-        resp.setAddress(company.getAddress());
-        resp.setPlan(company.getPlan());
-        resp.setRole(member.getRoles().stream().findFirst().map(Enum::name).orElse(null));
-        resp.setPermissions(member.getPermissions());
-        resp.setOwner(member.hasAnyRole(CompanyRole.OWNER));
-        resp.setIsActive(company.getIsActive());
-        return resp;
-    }
-
-    // [PLAN LIMITS] Lấy thông tin giới hạn plan của company
     @Transactional(readOnly = true)
     public PlanLimitDto getPlanLimits(Long companyId) {
         Company company = companyRepository.findById(companyId)
@@ -346,222 +181,53 @@ public class CompanyService {
                 .build();
     }
 
-    // ==================== SYSTEM ADMIN METHODS ====================
-
-    // [SAAS] Cập nhật thông tin công ty (System Admin - không cần member check)
-    @Transactional
-    public Company updateCompanyByAdmin(Long companyId, CompanyDto.CompanyUpdateRequest req) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
-
-        updateCompanyFields(company, req);
-
-        log.info("[System Admin] Đã cập nhật thông tin công ty: {}", company.getName());
-        return companyRepository.save(company);
+    private CompanyDto.CompanyResponse mapToResponse(CompanyMember member) {
+        CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
+        Company company = member.getCompany();
+        resp.setCompanyId(company.getCompanyId());
+        resp.setName(company.getName());
+        resp.setLogoUrl(company.getLogoUrl());
+        resp.setAddress(company.getAddress());
+        resp.setPlan(company.getPlan());
+        resp.setRole(member.getRoles().stream().findFirst().map(Enum::name).orElse(null));
+        resp.setPermissions(member.getPermissions());
+        resp.setOwner(member.hasAnyRole(CompanyRole.OWNER));
+        resp.setIsActive(company.getIsActive());
+        return resp;
     }
 
-    // [SAAS] Đổi plan công ty (System Admin only)
-    @Transactional
-    public Company changePlan(Long companyId, String planName) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
+    private void updateCompanyFields(Company company, CompanyDto.CompanyUpdateRequest req) {
+        if (req.getName() != null && !req.getName().isBlank()) {
+            company.setName(req.getName());
         }
-
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
-
-        try {
-            Plan newPlan = Plan.valueOf(planName.toUpperCase());
-            Plan oldPlan = company.getPlan();
-
-            // [DOWNGRADE VALIDATION] Kiểm tra nếu hạ gói có vượt quá giới hạn mới
-            if (newPlan.isLowerThan(oldPlan)) {
-                validateDowngrade(companyId, newPlan);
-            }
-
-            company.setPlan(newPlan);
-            companyRepository.save(company);
-
-            // [SYNC] Cập nhật CompanySettings từ Plan
-            CompanySettings settings = companySettingsRepository.findById(companyId).orElse(null);
-            if (settings != null) {
-                settings.initFromPlan(newPlan);
-                settings.applyDependencies();
-                companySettingsRepository.save(settings);
-                log.info("[Sync] Đã cập nhật CompanySettings cho công ty {} theo gói {}", companyId, newPlan);
-            }
-
-            log.info("[System Admin] Đã đổi plan công ty {} từ {} sang {}",
-                    company.getName(), oldPlan, newPlan);
-            return company;
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Plan không hợp lệ: " + planName +
-                    ". Các plan hợp lệ: FREE, STARTER, PROFESSIONAL, ENTERPRISE");
+        if (req.getLogoUrl() != null) {
+            company.setLogoUrl(req.getLogoUrl());
+        }
+        if (req.getAddress() != null) {
+            company.setAddress(req.getAddress());
         }
     }
 
-    // [SAAS] Kiểm tra downgrade có vượt quá giới hạn mới không
-    private void validateDowngrade(Long companyId, Plan newPlan) {
-        long employeeCount = employeeRepository.countByCompanyId(companyId);
-        long projectCount = projectRepository.countByCompany_CompanyId(companyId);
+    private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
+        Plan plan = settings.getCompany().getPlan();
 
-        StringBuilder errors = new StringBuilder();
-
-        if (!newPlan.isUnlimitedUsers() && employeeCount > newPlan.getMaxUsers()) {
-            errors.append(String.format("Nhân viên: %d/%d (vượt %d). ",
-                    employeeCount, newPlan.getMaxUsers(), employeeCount - newPlan.getMaxUsers()));
-        }
-
-        if (!newPlan.isUnlimitedProjects() && projectCount > newPlan.getMaxProjects()) {
-            errors.append(String.format("Dự án: %d/%d (vượt %d). ",
-                    projectCount, newPlan.getMaxProjects(), projectCount - newPlan.getMaxProjects()));
-        }
-
-        if (errors.length() > 0) {
-            throw new BadRequestException("Không thể hạ gói. " + errors.toString() +
-                    "Vui lòng giảm số lượng trước khi hạ gói.");
-        }
-    }
-
-    // [SAAS] Bật/tắt trạng thái công ty (System Admin only)
-    @Transactional
-    public boolean toggleCompanyStatus(Long companyId) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
-
-        boolean newStatus = !Boolean.TRUE.equals(company.getIsActive());
-        company.setIsActive(newStatus);
-        companyRepository.save(company);
-
-        log.info("[System Admin] Đã {} công ty: {}",
-                newStatus ? "kích hoạt" : "tạm ngưng", company.getName());
-        return newStatus;
-    }
-
-    // [SAAS] Xóa công ty (System Admin only - Hard Delete)
-    @Transactional
-    public void deleteCompany(Long companyId) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
-
-        String companyName = company.getName();
-
-        // Xóa tất cả members trước (batch delete để tránh N+1)
-        List<CompanyMember> members = companyMemberRepository.findByCompany_CompanyId(companyId);
-        if (!members.isEmpty()) {
-            companyMemberRepository.deleteAll(members);
-        }
-
-        // Xóa công ty
-        companyRepository.delete(company);
-
-        log.info("[System Admin] Đã xóa công ty: {}", companyName);
-    }
-
-    // [SAAS] Cập nhật cài đặt công ty bởi System Admin (Bao gồm cả GPS)
-    @Transactional
-    public CompanySettings updateSettingsBySystemAdmin(Long companyId, CompanyDto.SettingsUpdateRequest req) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));
-
-        // System Admin được quyền sửa tất cả
-        updateModuleSettings(settings, req);
-        updateGpsSettings(settings, req); // GPS update allowed here
-
-        log.info("[System Admin] Đã cập nhật cài đặt (bao gồm GPS) cho công ty: {}", companyId);
-        return companySettingsRepository.save(settings);
-    }
-
-    // [SAAS] Override Quota (God Mode)
-    @Transactional
-    public CompanySettings updateCompanyQuota(Long companyId,
-            DoAn.BE.sysadmin.dto.SysAdminCompanyDto.QuotaUpdateRequest req) {
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
-
-        if (req.getMaxEmployees() != null)
-            settings.setMaxEmployees(req.getMaxEmployees());
-        if (req.getMaxProjects() != null)
-            settings.setMaxProjects(req.getMaxProjects());
-        if (req.getMaxStorageBytes() != null)
-            settings.setMaxStorageBytes(req.getMaxStorageBytes());
-        if (req.getUserStorageQuotaBytes() != null)
-            settings.setUserStorageQuotaBytes(req.getUserStorageQuotaBytes());
-
-        log.info("[System Admin] Đã override Quota cho công ty {}: Emp={}, Proj={}, Store={}",
-                companyId, settings.getMaxEmployees(), settings.getMaxProjects(), settings.getMaxStorageBytes());
-
-        return companySettingsRepository.save(settings);
-    }
-
-    // [SAAS] Override Features (God Mode)
-    @Transactional
-    public CompanySettings updateCompanyFeatures(Long companyId,
-            DoAn.BE.sysadmin.dto.SysAdminCompanyDto.FeatureOverrideRequest req) {
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
-
-        // Core Modules
-        if (req.getHrModuleEnabled() != null)
+        if (req.getHrModuleEnabled() != null) {
             settings.setHrModuleEnabled(req.getHrModuleEnabled());
-        if (req.getProjectModuleEnabled() != null)
+        }
+        if (req.getProjectModuleEnabled() != null) {
             settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-        if (req.getChatModuleEnabled() != null)
+        }
+        if (req.getChatModuleEnabled() != null) {
             settings.setChatModuleEnabled(req.getChatModuleEnabled());
-        if (req.getAiModuleEnabled() != null)
+        }
+        if (req.getAiModuleEnabled() != null) {
+            if (req.getAiModuleEnabled() && !plan.isApiAccessEnabled()) {
+                throw new ForbiddenException("Gói " + plan.name() + " không hỗ trợ tính năng AI");
+            }
             settings.setAiModuleEnabled(req.getAiModuleEnabled());
-        if (req.getStorageModuleEnabled() != null)
+        }
+        if (req.getStorageModuleEnabled() != null) {
             settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
-
-        // HR Sub-features
-        if (req.getAttendanceEnabled() != null)
-            settings.setAttendanceEnabled(req.getAttendanceEnabled());
-        if (req.getLeaveEnabled() != null)
-            settings.setLeaveEnabled(req.getLeaveEnabled());
-        if (req.getSalaryEnabled() != null)
-            settings.setSalaryEnabled(req.getSalaryEnabled());
-        if (req.getContractEnabled() != null)
-            settings.setContractEnabled(req.getContractEnabled());
-        if (req.getReviewEnabled() != null)
-            settings.setReviewEnabled(req.getReviewEnabled());
-
-        // Competitive Features
-        if (req.getOkrEnabled() != null)
-            settings.setOkrEnabled(req.getOkrEnabled());
-        if (req.getSkillsMatrixEnabled() != null)
-            settings.setSkillsMatrixEnabled(req.getSkillsMatrixEnabled());
-        if (req.getOnboardingEnabled() != null)
-            settings.setOnboardingEnabled(req.getOnboardingEnabled());
-        if (req.getResourcePlanningEnabled() != null)
-            settings.setResourcePlanningEnabled(req.getResourcePlanningEnabled());
-        if (req.getOrgChartEnabled() != null)
-            settings.setOrgChartEnabled(req.getOrgChartEnabled());
-
-        // Project Sub-features
-        if (req.getTimeTrackingEnabled() != null)
-            settings.setTimeTrackingEnabled(req.getTimeTrackingEnabled());
-        if (req.getAnalyticsEnabled() != null)
-            settings.setAnalyticsEnabled(req.getAnalyticsEnabled());
-        if (req.getCalendarEnabled() != null)
-            settings.setCalendarEnabled(req.getCalendarEnabled());
-
-        log.info("[System Admin] Đã override Features cho công ty {}", companyId);
-        return companySettingsRepository.save(settings);
+        }
     }
 }

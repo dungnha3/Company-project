@@ -8,9 +8,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Entity for storing third-party integrations per company
- */
+// Entity for storing third-party integrations per company
+// /
 @Entity
 @Table(name = "integrations", indexes = {
         @Index(name = "idx_integration_company", columnList = "company_id"),
@@ -38,11 +37,11 @@ public class Integration {
     private IntegrationType integrationType;
 
     @Column(name = "name", length = 100)
-    private String name; // Custom name for this integration
+    private String name;
 
     @Column(name = "config", columnDefinition = "TEXT")
     @Convert(converter = EncryptedStringConverter.class)
-    private String config; // Encrypted JSON config (tokens, webhooks, etc.)
+    private String config;
 
     @Column(name = "is_active")
     @Builder.Default
@@ -75,9 +74,8 @@ public class Integration {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Supported integration types
-     */
+    // Supported integration types
+    // /
     public enum IntegrationType {
         // Communication
         SLACK,
@@ -94,9 +92,6 @@ public class Integration {
         TRELLO_IMPORT,
 
         // HR & Payroll
-        GOOGLE_WORKSPACE,
-
-        // Webhooks
-        GENERIC_WEBHOOK
+        GOOGLE_WORKSPACE
     }
 }

@@ -17,9 +17,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Service for unified search across multiple entity types using Elasticsearch
- */
+// Service for unified search across multiple entity types using Elasticsearch
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,11 +28,8 @@ public class SearchService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final IssueSearchRepository issueSearchRepository;
 
-    // ==================== SEARCH ====================
-
-    /**
-     * Unified search across all entity types
-     */
+    // Unified search across all entity types
+    // /
     public SearchResult search(String query, List<String> types, int limit) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -57,9 +53,8 @@ public class SearchService {
         return result;
     }
 
-    /**
-     * Search issues
-     */
+    // Search issues
+    // /
     public List<IssueDocument> searchIssues(String query, Long companyId, int limit) {
         try {
             Criteria criteria = new Criteria("companyId").is(companyId)
@@ -80,9 +75,8 @@ public class SearchService {
         }
     }
 
-    /**
-     * Search projects
-     */
+    // Search projects
+    // /
     public List<ProjectDocument> searchProjects(String query, Long companyId, int limit) {
         try {
             Criteria criteria = new Criteria("companyId").is(companyId)
@@ -103,9 +97,8 @@ public class SearchService {
         }
     }
 
-    /**
-     * Search employees
-     */
+    // Search employees
+    // /
     public List<EmployeeDocument> searchEmployees(String query, Long companyId, int limit) {
         try {
             Criteria criteria = new Criteria("companyId").is(companyId)
@@ -126,11 +119,8 @@ public class SearchService {
         }
     }
 
-    // ==================== INDEXING ====================
-
-    /**
-     * Index an issue
-     */
+    // Index an issue
+    // /
     public void indexIssue(Issue issue) {
         try {
             Long companyId = issue.getProject().getCompany() != null
@@ -162,9 +152,8 @@ public class SearchService {
         }
     }
 
-    /**
-     * Index a project
-     */
+    // Index a project
+    // /
     public void indexProject(Project project) {
         try {
             Long companyId = project.getCompany() != null
@@ -191,9 +180,8 @@ public class SearchService {
         }
     }
 
-    /**
-     * Index an employee
-     */
+    // Index an employee
+    // /
     public void indexEmployee(Employee employee) {
         try {
             Long companyId = employee.getCompany() != null
@@ -220,9 +208,8 @@ public class SearchService {
         }
     }
 
-    /**
-     * Remove issue from index
-     */
+    // Remove issue from index
+    // /
     public void removeIssue(Long issueId) {
         try {
             issueSearchRepository.deleteByIssueId(issueId);
@@ -230,8 +217,6 @@ public class SearchService {
             log.error("Failed to remove issue from index: {}", e.getMessage());
         }
     }
-
-    // ==================== RESULT TYPE ====================
 
     @lombok.Data
     @lombok.NoArgsConstructor

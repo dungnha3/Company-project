@@ -17,9 +17,8 @@ import java.util.List;
 import jakarta.persistence.EntityManager;
 import org.hibernate.Session;
 
-/**
- * Service quản lý workspace context (Personal + Company)
- */
+// Service quản lý workspace context (Personal + Company)
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,9 +28,8 @@ public class WorkspaceService {
     private final CompanyMemberRepository companyMemberRepository;
     private final EntityManager entityManager;
 
-    /**
-     * Lấy tất cả workspaces của user (Personal + Company memberships)
-     */
+    // Lấy tất cả workspaces của user (Personal + Company memberships)
+    // /
     @Transactional
     public List<WorkspaceDto.WorkspaceResponse> getAllWorkspaces(User user) {
         List<WorkspaceDto.WorkspaceResponse> workspaces = new ArrayList<>();
@@ -89,9 +87,8 @@ public class WorkspaceService {
         return workspaces;
     }
 
-    /**
-     * Lấy Personal Workspace của user
-     */
+    // Lấy Personal Workspace của user
+    // /
     @Transactional(readOnly = true)
     public WorkspaceDto.PersonalWorkspaceResponse getPersonalWorkspace(User user) {
         PersonalWorkspace pw = personalWorkspaceRepository.findByUser_UserId(user.getUserId())
@@ -106,16 +103,14 @@ public class WorkspaceService {
                 .build();
     }
 
-    /**
-     * Kiểm tra user có Personal Workspace chưa (dùng cho migration)
-     */
+    // Kiểm tra user có Personal Workspace chưa (dùng cho migration)
+    // /
     public boolean hasPersonalWorkspace(Long userId) {
         return personalWorkspaceRepository.existsByUser_UserId(userId);
     }
 
-    /**
-     * Tạo Personal Workspace cho user (nếu chưa có - dùng cho migration/fix)
-     */
+    // Tạo Personal Workspace cho user (nếu chưa có - dùng cho migration/fix)
+    // /
     @Transactional
     public PersonalWorkspace createPersonalWorkspaceIfNotExists(User user) {
         if (hasPersonalWorkspace(user.getUserId())) {

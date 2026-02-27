@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// Service quản lý folder (CRUD, tree structure, project integration)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -78,8 +77,6 @@ public class FolderService {
 
         return convertToDTO(folder);
     }
-
-    // [Check if user can access folder - owner or project member] (Role: Internal)
     private boolean canAccessFolder(Folder folder, Long userId) {
         // Owner can always access
         if (folder.getOwner().getUserId().equals(userId)) {
@@ -244,7 +241,6 @@ public class FolderService {
         folderRepository.delete(folder);
     }
 
-    // Helper methods
     private FolderDTO convertToDTO(Folder folder) {
         FolderDTO dto = new FolderDTO();
         dto.setFolderId(folder.getFolderId());

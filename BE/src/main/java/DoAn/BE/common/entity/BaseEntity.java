@@ -5,8 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-
-// [Entity cơ sở - cung cấp trường thời gian tạo/cập nhật cho tất cả entities] (Role: Data Model)
 @MappedSuperclass
 @Getter
 @Setter

@@ -16,8 +16,6 @@ import org.springframework.stereotype.Controller;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-// [WebSocket handler xử lý real-time chat messages, typing indicators, user presence] (Role: System)
 @Controller
 @Slf4j
 public class ChatWebSocketHandler {
@@ -88,8 +86,6 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi gửi tin nhắn qua WebSocket: {}", e.getMessage(), e);
         }
     }
-
-    // [Handle typing start] (Role: System)
     @MessageMapping("/chat.typing.start")
     public void handleTypingStart(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -125,8 +121,6 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
         }
     }
-
-    // [Handle typing stop] (Role: System)
     @MessageMapping("/chat.typing.stop")
     public void handleTypingStop(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -162,8 +156,6 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
         }
     }
-
-    // [Handle user join room] (Role: System)
     @MessageMapping("/chat.join")
     public void handleUserJoin(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -198,8 +190,6 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
         }
     }
-
-    // [Handle user leave room] (Role: System)
     @MessageMapping("/chat.leave")
     public void handleUserLeave(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -238,8 +228,6 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
         }
     }
-
-    // [Handle WebRTC signaling] (Role: System)
     @MessageMapping("/chat.signal")
     public void handleSignal(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
@@ -266,8 +254,6 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý video call signal: {}", e.getMessage(), e);
         }
     }
-
-    // [Get typing users for a room] (Role: System)
     public List<String> getTypingUsers(Long roomId) {
         if (roomId == null) {
             return List.of();

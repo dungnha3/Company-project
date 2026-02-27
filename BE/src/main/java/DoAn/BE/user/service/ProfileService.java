@@ -14,7 +14,6 @@ import DoAn.BE.user.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
-// Service managing user profile (update, change password, online/offline status)
 @Service
 @Transactional
 @Slf4j
@@ -61,21 +60,27 @@ public class ProfileService {
     }
 
     private void updateEmployeeInfo(Long userId, UpdateUserRequest request) {
-        // Find Employee by userId (if exists)
-        Employee employee = employeeRepository.findByUser_UserId(userId).orElse(null);
+        // Find Employee by userId in the current company context
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        Employee employee;
+        if (companyId != null) {
+            employee = employeeRepository.findByUser_UserIdAndCompany_CompanyId(userId, companyId).orElse(null);
+        } else {
+            employee = employeeRepository.findByUser_UserId(userId).orElse(null);
+        }
         if (employee == null) {
             return; // User has no Employee record
         }
 
         // Update Employee fields from request
-        if (request.getHoTen() != null) {
-            employee.setFullName(request.getHoTen());
+        if (request.getFullName() != null) {
+            employee.setFullName(request.getFullName());
         }
-        if (request.getSdt() != null) {
-            employee.setPhone(request.getSdt());
+        if (request.getPhoneNumber() != null) {
+            employee.setPhone(request.getPhoneNumber());
         }
-        if (request.getDiaChi() != null) {
-            employee.setAddress(request.getDiaChi());
+        if (request.getAddress() != null) {
+            employee.setAddress(request.getAddress());
         }
 
         employeeRepository.save(employee);

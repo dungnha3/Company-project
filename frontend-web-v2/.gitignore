@@ -24,6 +24,9 @@ build/
 Thumbs.db
 
 # Debug logs
+*.log
+*.txt
+!README.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

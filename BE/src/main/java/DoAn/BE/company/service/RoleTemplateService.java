@@ -8,7 +8,6 @@ import DoAn.BE.company.entity.UserPermissions;
 @Service
 public class RoleTemplateService {
 
-    // Lấy mẫu phân quyền mặc định dựa trên tập hợp Vai trò (Roles)
     public UserPermissions getTemplate(java.util.Set<CompanyRole> roles) {
         UserPermissions mergedPermissions = new UserPermissions();
 
@@ -128,7 +127,6 @@ public class RoleTemplateService {
         return merged;
     }
 
-    // Helper: Cấp full quyền (Admin/Owner)
     private void setAllTrue(UserPermissions p) {
         p.setHrViewList(true);
         p.setHrEditProfile(true);

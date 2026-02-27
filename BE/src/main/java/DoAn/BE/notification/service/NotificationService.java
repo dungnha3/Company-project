@@ -14,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-// [Service core quản lý thông báo - CRUD operations] (Role: System/All Users)
 // Domain-specific notifications đã được tách ra:
 // - AuthNotificationService: Auth & Security
 // - ChatNotificationService: Chat
@@ -31,11 +29,6 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
-
-    // ==================== CREATE ====================
-
-    // [Tạo thông báo mới] (Role: System)
-    // [Gửi thông báo theo Template] (Role: System)
     public Notification send(Long userId, DoAn.BE.notification.entity.NotificationType type, String link,
             Object... args) {
         if (userId == null) {
@@ -63,34 +56,18 @@ public class NotificationService {
         log.debug("Đã gửi thông báo {} cho user {}", type, userId);
         return saved;
     }
-
-    // [Tạo thông báo thủ công check deprecated] (Role: Legacy)
-    @Deprecated
-    public Notification createNotification(Long userId, String typeStr, String title, String content, String link) {
-        return send(userId, DoAn.BE.notification.entity.NotificationType.SYSTEM_ALERT, link, content);
-    }
-
-    // ==================== READ ====================
-
-    // [Lấy danh sách thông báo của user - có phân trang] (Role: Self)
     public Page<Notification> getUserNotifications(Long userId, Pageable pageable) {
         if (userId == null) {
             throw new IllegalArgumentException("User ID không được null");
         }
         return notificationRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
     }
-
-    // [Đếm số thông báo chưa đọc] (Role: Self)
     public long getUnreadCount(Long userId) {
         if (userId == null) {
             return 0L;
         }
         return notificationRepository.countByUser_UserIdAndIsReadFalse(userId);
     }
-
-    // ==================== UPDATE ====================
-
-    // [Đánh dấu thông báo đã đọc] (Role: Self)
     public void markAsRead(Long notificationId, Long userId) {
         if (notificationId == null || userId == null) {
             return;
@@ -105,8 +82,6 @@ public class NotificationService {
             }
         });
     }
-
-    // [Đánh dấu tất cả thông báo đã đọc] (Role: Self)
     public void markAllAsRead(Long userId) {
         if (userId == null) {
             return;
@@ -125,10 +100,6 @@ public class NotificationService {
 
         log.info("Đã đánh dấu {} thông báo đã đọc cho user {}", unreadNotifications.size(), userId);
     }
-
-    // ==================== DELETE ====================
-
-    // [Xóa thông báo] (Role: Self)
     public void deleteNotification(Long notificationId, Long userId) {
         if (notificationId == null || userId == null) {
             return;
@@ -141,4 +112,3 @@ public class NotificationService {
         });
     }
 }
-

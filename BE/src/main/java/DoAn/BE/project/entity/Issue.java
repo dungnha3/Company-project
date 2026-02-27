@@ -10,8 +10,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-
-// [Entity công việc/task trong dự án] (Role: Data Model)
 @Entity
 @Table(name = "issues", indexes = {
         // Index cho query: findByProject (Project's issues)
@@ -85,13 +83,11 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
-    /**
-     * Custom field values for this issue
-     */
+    // Custom field values for this issue
+    // /
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueCustomFieldValue> customFieldValues = new ArrayList<>();
 
-    // Helper methods
     public boolean isOverdue() {
         return this.dueDate != null &&
                 LocalDate.now().isAfter(this.dueDate) &&

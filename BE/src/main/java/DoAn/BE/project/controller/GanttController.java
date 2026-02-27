@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.project.dto.GanttDto;
 import DoAn.BE.project.service.GanttService;
 import DoAn.BE.user.entity.User;
@@ -13,18 +15,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controller for Gantt chart operations
- */
+// Controller for Gantt chart operations
+// /
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Gantt Chart", description = "Gantt chart visualization and management")
+@FeatureFlag("PROJECT")
 public class GanttController {
 
     private final GanttService ganttService;
-
-    // ==================== GANTT DATA ====================
 
     @GetMapping("/projects/{projectId}/gantt")
     @Operation(summary = "Get Gantt chart data", description = "Returns complete Gantt data including phases, issues, and dependencies")
@@ -36,8 +36,6 @@ public class GanttController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== DATE UPDATES ====================
-
     @PutMapping("/issues/{issueId}/gantt")
     @Operation(summary = "Update issue dates", description = "Update start and end dates for an issue (drag-drop support)")
     public ResponseEntity<GanttDto.GanttItem> updateIssueDates(
@@ -48,8 +46,6 @@ public class GanttController {
         GanttDto.GanttItem updated = ganttService.updateIssueDates(issueId, request, currentUser.getUserId());
         return ResponseEntity.ok(updated);
     }
-
-    // ==================== DEPENDENCIES ====================
 
     @PostMapping("/issues/dependencies")
     @Operation(summary = "Create dependency", description = "Create a dependency link between two issues")

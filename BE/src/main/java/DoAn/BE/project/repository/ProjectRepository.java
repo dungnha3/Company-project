@@ -29,8 +29,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByStatus(Project.ProjectStatus status);
 
-    // ==================== OPTIMIZED QUERIES ====================
-
     // [OPTIMIZED: Fetch project with members to avoid N+1]
     @EntityGraph(attributePaths = { "createdBy", "members" })
     @Query("SELECT p FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")

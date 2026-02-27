@@ -30,13 +30,10 @@ public class UpdateUserRequest {
 
     private Boolean isSystemAdmin; // Field mới
 
-    // Fields for NhanVien entity
+    // Fields for Employee entity
     @Size(max = 100, message = "Họ tên không được quá 100 ký tự")
-    private String hoTen;
-
-    @Size(max = 20, message = "Số điện thoại không được quá 20 ký tự")
-    private String sdt;
+    private String fullName;
 
     @Size(max = 255, message = "Địa chỉ không được quá 255 ký tự")
-    private String diaChi;
+    private String address;
 }

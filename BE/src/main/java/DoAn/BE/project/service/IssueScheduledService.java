@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-
-// [Service scheduled jobs cho Issue - check overdue, send reminders] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,8 +17,6 @@ public class IssueScheduledService {
 
     private final IssueRepository issueRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
-
-    // [Check overdue issues - 9:00 AM hàng ngày] (Role: Scheduled)
     @Scheduled(cron = "0 0 9 * * *")
     @Transactional
     public void checkOverdueIssues() {
@@ -53,8 +49,6 @@ public class IssueScheduledService {
 
         log.info("✅ Hoàn tất kiểm tra overdue issues. Đã gửi {} notifications", overdueCount);
     }
-
-    // [Reminder deadline sắp tới (3 ngày) - 10:00 AM hàng ngày] (Role: Scheduled)
     @Scheduled(cron = "0 0 10 * * *")
     @Transactional
     public void remindUpcomingDeadlines() {

@@ -6,9 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for RateLimitingService
- */
+// Unit tests for RateLimitingService
+// /
 class RateLimitingServiceTest {
 
     private RateLimitingService rateLimitingService;

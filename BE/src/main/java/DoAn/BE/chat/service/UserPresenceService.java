@@ -42,10 +42,9 @@ public class UserPresenceService {
 
     private final Set<Long> onlineUsers = ConcurrentHashMap.newKeySet(); // Lưu danh sách user đang online
 
-    // Đánh dấu user online
     public void markUserOnline(@NonNull Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User không tồn tại"));
 
         boolean wasOffline = !onlineUsers.contains(userId);
         onlineUsers.add(userId);
@@ -59,10 +58,9 @@ public class UserPresenceService {
         }
     }
 
-    // Đánh dấu user offline
     public void markUserOffline(@NonNull Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User không tồn tại"));
 
         boolean wasOnline = onlineUsers.contains(userId);
         onlineUsers.remove(userId);

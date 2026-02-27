@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-// Service quản lý audit logs
 
 // Sử dụng @Async để không block main thread
 @Service
@@ -119,31 +118,26 @@ public class AuditLogService {
         }
     }
 
-    // Lấy audit logs của actor
     @Transactional(readOnly = true)
     public Page<AuditLog> getLogsByActor(Long actorId, Pageable pageable) {
         return auditLogRepository.findByActor_UserId(actorId, pageable);
     }
 
-    // Lấy audit logs về target user
     @Transactional(readOnly = true)
     public Page<AuditLog> getLogsByTargetUser(Long targetUserId, Pageable pageable) {
         return auditLogRepository.findByTargetUser_UserId(targetUserId, pageable);
     }
 
-    // Lấy critical logs trong khoảng thời gian
     @Transactional(readOnly = true)
     public Page<AuditLog> getCriticalLogs(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
         return auditLogRepository.findCriticalLogsBetween(startDate, endDate, pageable);
     }
 
-    // Lấy tất cả Admin actions trên Manager accounts
     @Transactional(readOnly = true)
     public Page<AuditLog> getAdminActionsOnManagers(Pageable pageable) {
         return auditLogRepository.findAdminActionsOnManagers(pageable);
     }
 
-    // Lấy recent logs
     @Transactional(readOnly = true)
     public Page<AuditLog> getRecentLogs(Pageable pageable) {
         return auditLogRepository.findAllLogs(pageable);

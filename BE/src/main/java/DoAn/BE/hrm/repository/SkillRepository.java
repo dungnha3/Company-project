@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface SkillRepository extends JpaRepository<Skill, Long> {
     List<Skill> findByCategory(String category);
+
+    java.util.Optional<Skill> findByNameIgnoreCase(String name);
 }

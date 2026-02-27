@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
-
-// [Service quản lý thành viên công ty] (Role: Admin/Owner)
 // Chịu trách nhiệm: Thêm/Xóa/Sửa thành viên và Phân quyền chi tiết
 @Service
 @RequiredArgsConstructor
@@ -157,8 +155,6 @@ public class CompanyMemberService {
                 permissionKey, enabled, targetUserId, companyId);
     }
 
-    // ==================== PRIVATE HELPERS ====================
-
     private CompanyMember findActiveMember(Long userId, Long companyId) {
         return memberRepository
                 .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(userId, companyId)
@@ -178,13 +174,13 @@ public class CompanyMemberService {
         return dto;
     }
 
-    // Helper: Map string key sang setter của UserPermissions
     private void setPermissionByString(UserPermissions p, String key, boolean value) {
         switch (key) {
             // [HR GROUP]
             case PermissionKeys.HR_VIEW_LIST -> p.setHrViewList(value);
             case PermissionKeys.HR_EDIT_PROFILE -> p.setHrEditProfile(value);
             case PermissionKeys.HR_MANAGE_CONTRACTS -> p.setHrManageContracts(value);
+            case PermissionKeys.HR_MANAGE_REVIEWS -> p.setHrManageReviews(value);
 
             // [SALARY GROUP]
             case PermissionKeys.SALARY_VIEW -> p.setSalaryView(value);
@@ -206,6 +202,9 @@ public class CompanyMemberService {
 
             // [CHAT GROUP]
             case PermissionKeys.CHAT_CREATE_GROUP -> p.setChatCreateGroup(value);
+
+            // [STORAGE GROUP]
+            case PermissionKeys.STORAGE_UPLOAD -> p.setStorageUpload(value);
 
             default -> throw new BadRequestException("Mã quyền không tồn tại: " + key);
         }
