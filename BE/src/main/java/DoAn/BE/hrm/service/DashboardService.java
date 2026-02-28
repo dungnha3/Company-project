@@ -31,7 +31,6 @@ public class DashboardService {
         private final NotificationRepository notificationRepository;
 
         // General Dashboard for Accounting/PM/HR Managers.
-        // /
         public DashboardDTO getOverview(User currentUser) {
                 log.info("Fetching general dashboard overview");
 
@@ -93,7 +92,7 @@ public class DashboardService {
                                 .collect(Collectors.toList());
                 dashboard.setPendingLeaveRequestsList(leaveList);
 
-                log.info("✅ Dashboard: {} employees, {} pending leave requests, {} expiring contracts",
+                log.info("Dashboard: {} employees, {} pending leave requests, {} expiring contracts",
                                 dashboard.getTotalEmployees(), dashboard.getPendingLeaveRequests(),
                                 dashboard.getExpiringContracts());
 
@@ -101,7 +100,6 @@ public class DashboardService {
         }
 
         // Monthly Statistics for Managers.
-        // /
         public DashboardDTO getMonthlyStats(int month, int year, User currentUser) {
                 log.info("Fetching monthly dashboard stats for {}/{}", month, year);
 
@@ -128,7 +126,6 @@ public class DashboardService {
         }
 
         // Advanced Dashboard with charts and detailed stats.
-        // /
         public DashboardStatsDTO getDashboardStats(User currentUser) {
                 log.info("Fetching advanced dashboard statistics");
 

@@ -23,6 +23,7 @@ export default function RegisterPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return; // Guard against double submit
 
         if (!acceptTerms) {
             setError('Vui lòng đồng ý với điều khoản sử dụng');

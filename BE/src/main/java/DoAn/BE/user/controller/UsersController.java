@@ -41,6 +41,7 @@ public class UsersController {
     private final DoAn.BE.company.service.RoleTemplateService roleTemplateService;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final DoAn.BE.company.service.SubscriptionService subscriptionService;
+
     @PostMapping
     public ResponseEntity<?> createUser(
             @RequestBody DoAn.BE.auth.dto.RegisterRequest request,
@@ -71,15 +72,13 @@ public class UsersController {
             DoAn.BE.auth.dto.AuthResponse response = authService.register(request, ipAddress, userAgent);
 
             User newUser = null;
-            // Next line in file is 'if(companyId!=null)' which matches the structure
-            {
+            if (companyId != null) {
                 newUser = userService.findByEmail(request.getEmail())
                         .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException(
                                 "User not found after creation"));
                 DoAn.BE.company.entity.Company company = companyRepository.findById(companyId)
                         .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Company not found"));
 
-                // Tạo CompanyMember với role EMPLOYEE mặc định
                 DoAn.BE.company.entity.CompanyMember member = new DoAn.BE.company.entity.CompanyMember();
                 member.setUser(newUser);
                 member.setCompany(company);
@@ -90,14 +89,13 @@ public class UsersController {
                 member.setIsActive(true);
                 companyMemberRepository.save(member);
 
-                log.info("✅ Đã thêm user {} vào công ty {} với role EMPLOYEE",
+                log.info("Đã thêm user {} vào công ty {} với role EMPLOYEE",
                         newUser.getUsername(), company.getName());
             }
 
-            // Log audit action
             if (newUser != null) {
                 auditLogService.logAction(
-                        currentUser,
+                        currentUser.getUserId(),
                         "CREATE_USER",
                         "USER",
                         newUser.getUserId(),
@@ -117,6 +115,7 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
         }
     }
+
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers(
             @AuthenticationPrincipal User currentUser) {
@@ -146,6 +145,7 @@ public class UsersController {
         log.warn("User {} không có quyền truy cập /api/users", currentUser.getUsername());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
+
     @GetMapping("/{userId}")
     public ResponseEntity<UserDTO> getUserById(
             @PathVariable Long userId,
@@ -171,6 +171,7 @@ public class UsersController {
         User user = userService.getUserById(userId);
         return ResponseEntity.ok(userMapper.toDTO(user));
     }
+
     @GetMapping("/search")
     public ResponseEntity<List<UserDTO>> searchUsers(
             @RequestParam(required = false) String keyword,
@@ -190,6 +191,7 @@ public class UsersController {
         List<User> users = userService.searchUsers(searchTerm);
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
+
     @GetMapping("/active")
     public ResponseEntity<List<UserDTO>> getActiveUsers(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -199,6 +201,7 @@ public class UsersController {
         List<User> users = userService.getActiveUsers();
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
+
     @GetMapping("/online")
     public ResponseEntity<List<UserDTO>> getOnlineUsers(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -214,6 +217,7 @@ public class UsersController {
         List<User> users = userService.getOnlineUsers();
         return ResponseEntity.ok(userMapper.toDTOList(users));
     }
+
     @PutMapping("/{userId}")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable Long userId,
@@ -242,6 +246,7 @@ public class UsersController {
         User updatedUser = userService.updateUser(userId, userDTO, currentUser);
         return ResponseEntity.ok(userMapper.toDTO(updatedUser));
     }
+
     @DeleteMapping("/{userId}")
     public ResponseEntity<java.util.Map<String, String>> deleteUser(
             @PathVariable Long userId,
@@ -262,6 +267,7 @@ public class UsersController {
         response.put("message", "Xóa user thành công");
         return ResponseEntity.ok(response);
     }
+
     @PatchMapping("/{userId}/activate")
     public ResponseEntity<UserDTO> activateUser(
             @PathVariable Long userId,
@@ -286,7 +292,7 @@ public class UsersController {
 
         // Log audit action
         auditLogService.logAction(
-                currentUser,
+                currentUser.getUserId(),
                 "ACTIVATE_USER",
                 "USER",
                 userId,
@@ -298,6 +304,7 @@ public class UsersController {
 
         return ResponseEntity.ok(userMapper.toDTO(user));
     }
+
     @PatchMapping("/{userId}/deactivate")
     public ResponseEntity<UserDTO> deactivateUser(
             @PathVariable Long userId,
@@ -322,7 +329,7 @@ public class UsersController {
 
         // Log audit action
         auditLogService.logAction(
-                currentUser,
+                currentUser.getUserId(),
                 "DEACTIVATE_USER",
                 "USER",
                 userId,

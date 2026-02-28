@@ -14,15 +14,18 @@ import java.time.LocalDateTime;
 }, uniqueConstraints = {
         @UniqueConstraint(name = "uk_dependency", columnNames = { "predecessor_id", "successor_id" })
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class IssueDependency {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "dependency_id")
+    @EqualsAndHashCode.Include
     private Long dependencyId;
 
     @ManyToOne(fetch = FetchType.LAZY)

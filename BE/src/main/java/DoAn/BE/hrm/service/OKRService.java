@@ -22,12 +22,20 @@ public class OKRService {
 
     private final OKRRepository okrRepository;
     private final KeyResultRepository keyResultRepository;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
 
     public List<OKR> findAll(String period) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (period != null && !period.isEmpty()) {
+            if (companyId != null) {
+                return okrRepository.findByPeriodAndCompany_CompanyId(period, companyId);
+            }
             return okrRepository.findByPeriod(period);
         }
-        return okrRepository.findAll();
+        if (companyId != null) {
+            return okrRepository.findByCompany_CompanyId(companyId);
+        }
+        return java.util.Collections.emptyList();
     }
 
     public List<OKR> findByCurrentUser() {
@@ -95,10 +103,9 @@ public class OKRService {
     @Transactional
     public OKR update(Long id, UpdateOKRRequest request) {
         OKR okr = findById(id);
-
-        // IDOR Protection: Only the owner can update their OKR
         User currentUser = SecurityUtil.getCurrentUser();
-        if (okr.getOwner() != null && !okr.getOwner().getUserId().equals(currentUser.getUserId())) {
+        boolean isOwner = okr.getOwner() != null && okr.getOwner().getUserId().equals(currentUser.getUserId());
+        if (!isOwner && !accessControlService.hasPermission("hr.editProfile")) {
             throw new DoAn.BE.common.exception.ForbiddenException(
                     "Bạn không có quyền chỉnh sửa OKR của người khác");
         }
@@ -150,6 +157,12 @@ public class OKRService {
     @Transactional
     public void delete(Long id) {
         OKR okr = findById(id);
+        User currentUser = DoAn.BE.common.util.SecurityUtil.getCurrentUser();
+        boolean isOwner = okr.getOwner() != null && okr.getOwner().getUserId().equals(currentUser.getUserId());
+        if (!isOwner && !accessControlService.hasPermission("hr.editProfile")) {
+            throw new DoAn.BE.common.exception.ForbiddenException(
+                    "Bạn không có quyền xóa OKR của người khác");
+        }
         okrRepository.delete(okr);
     }
 }

@@ -3,28 +3,20 @@ package DoAn.BE.chat.entity;
 import java.time.LocalDateTime;
 
 import DoAn.BE.user.entity.User;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "message_status")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class MessageStatus {
 
     @EmbeddedId
+    @EqualsAndHashCode.Include
     private MessageStatusId id;
 
     @ManyToOne
@@ -54,4 +46,3 @@ public class MessageStatus {
         SEEN
     }
 }
-

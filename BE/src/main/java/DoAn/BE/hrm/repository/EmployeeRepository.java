@@ -67,6 +67,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
         @EntityGraph(attributePaths = { "user", "department", "position" })
         @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId")
         List<Employee> findByCompanyId(@Param("companyId") Long companyId);
+        @EntityGraph(attributePaths = { "user", "department", "position" })
+        @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId")
+        Page<Employee> findByCompanyId(@Param("companyId") Long companyId, Pageable pageable);
 
         @Query("SELECT COUNT(e) FROM Employee e WHERE e.company.companyId = :companyId")
         long countByCompanyId(@Param("companyId") Long companyId);
@@ -74,4 +77,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
         // Multi-tenant-safe: Find employee by user ID within a specific company
         @EntityGraph(attributePaths = { "user", "department", "position" })
         Optional<Employee> findByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
+        @EntityGraph(attributePaths = { "user" })
+        Page<Employee> findByStatusAndCompany_CompanyId(EmployeeStatus status, Long companyId, Pageable pageable);
+        @EntityGraph(attributePaths = { "user" })
+        List<Employee> findByStatusAndCompany_CompanyId(EmployeeStatus status, Long companyId);
 }

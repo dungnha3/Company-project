@@ -17,15 +17,18 @@ import lombok.*;
         @Index(name = "idx_pt_status", columnList = "workspace_id, status"),
         @Index(name = "idx_pt_due", columnList = "workspace_id, due_date")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class PersonalTask {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "task_id")
+    @EqualsAndHashCode.Include
     private Long taskId;
 
     @ManyToOne(fetch = FetchType.LAZY)

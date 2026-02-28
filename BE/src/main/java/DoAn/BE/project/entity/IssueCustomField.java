@@ -17,15 +17,18 @@ import DoAn.BE.company.entity.Company;
         @Index(name = "idx_cf_project", columnList = "project_id"),
         @Index(name = "idx_cf_company", columnList = "company_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class IssueCustomField {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "field_id")
+    @EqualsAndHashCode.Include
     private Long fieldId;
 
     @ManyToOne(fetch = FetchType.LAZY)

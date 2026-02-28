@@ -126,6 +126,51 @@ Each rule file contains:
 - Correct code example with explanation
 - Additional context and references
 
+### Rule: quality-no-javadoc
+- **ID**: quality-no-javadoc
+- **Severity**: warning
+- **Description**: Do NOT use Javadoc (`/** */`) for internal code. Use single-line comments (`//`) instead. Javadoc is only appropriate for public library APIs. For internal services, controllers, repositories, and DTOs, always prefer `//` comments.
+
+### Rule: test-no-conditional-skip
+- **ID**: test-no-conditional-skip
+- **Severity**: error
+- **Description**: NEVER wrap test assertions inside `if (status == 200) { ... }` or `if (id != null) { ... }`. This pattern causes tests to **silently pass without testing anything** when setup fails. Instead, use `assertTrue(status == 200 || status == 201, "Setup failed: " + status)` and `assertNotNull(id, "Failed to extract ID")` so failures are loud and visible.
+
+### Rule: test-no-weak-assertions
+- **ID**: test-no-weak-assertions
+- **Severity**: error
+- **Description**: Do NOT use weak assertions like `assertNotEquals(500, status)` or `assertTrue(status != 500)`. Assert the **specific expected status code**: `assertEquals(200, status)` or `assertTrue(status == 200 || status == 204, "msg")`. Weak assertions hide real bugs by passing on unexpected status codes like 403, 404, or 302.
+
+### Rule: test-no-java-assert
+- **ID**: test-no-java-assert
+- **Severity**: error
+- **Description**: NEVER use Java `assert` keyword in tests. Java `assert` can be disabled by JVM flags (`-da`) causing all assertions to silently pass. Always use JUnit `assertEquals()`, `assertTrue()`, `assertNotNull()`, `assertThrows()` from `org.junit.jupiter.api.Assertions.*`.
+
+### Rule: test-correct-endpoint
+- **ID**: test-correct-endpoint
+- **Severity**: error
+- **Description**: Integration tests MUST call endpoints that actually exist in the controller. Do NOT test made-up URLs (e.g., `/api/timelogs?userId=X` when the controller only has `/api/timelogs/my`). Verify the endpoint exists in the `@RequestMapping` before writing the test.
+
+### Rule: test-complete-dto
+- **ID**: test-complete-dto
+- **Severity**: error
+- **Description**: When testing POST/PUT endpoints with `@Valid @RequestBody`, the test JSON MUST include ALL `@NotNull`/`@NotBlank` fields from the DTO. Missing required fields → 400 validation error → test silently skips if wrapped in conditional. Always check the DTO class for required fields before writing test payloads.
+
+### Rule: arch-no-god-class
+- **ID**: arch-no-god-class
+- **Severity**: warning
+- **Description**: Service classes should not exceed ~300 LOC. When a class grows beyond this, extract cohesive groups of methods into focused services. Examples: `DashboardService` (505 LOC) → `HRDashboardService` + `FinancialDashboardService`; `AIActionExecutor` (852 LOC) → `ProjectActionHandler` + `IssueActionHandler` + `SprintActionHandler`.
+
+### Rule: arch-no-security-util-in-controller
+- **ID**: arch-no-security-util-in-controller
+- **Severity**: error
+- **Description**: Controllers MUST use `@AuthenticationPrincipal User currentUser` parameter instead of `SecurityUtil.getCurrentUser()`. `SecurityUtil` depends on `SecurityContextHolder` which may not be populated in all contexts (e.g., tests, async calls). `@AuthenticationPrincipal` is injected by Spring and is always reliable.
+
+### Rule: arch-cache-evict-on-write
+- **ID**: arch-cache-evict-on-write
+- **Severity**: error
+- **Description**: Any method that modifies a `@Cacheable` entity MUST have `@CacheEvict` on the same cache key. Without eviction, stale cached data persists indefinitely. Example: `getSettingsCached()` uses `@Cacheable("companySettings")`, so `updateSettings()`, `changePlan()`, `updateCompanyFeatures()` must all use `@CacheEvict(value = "companySettings", key = "#companyId")`.
+
 ## Full Compiled Document
 
 For the complete guide with all rules expanded: `AGENTS.md`

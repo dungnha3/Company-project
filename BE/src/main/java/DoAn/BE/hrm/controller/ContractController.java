@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+
 @RestController
 @RequestMapping("/api/contracts")
 @FeatureFlag("CONTRACT")
@@ -35,6 +36,7 @@ public class ContractController {
     private final ContractMapper contractMapper;
     private final EmployeeService employeeService;
     private final AccessControlService accessControlService;
+
     private void validateContractAccess(Long employeeId, User currentUser) {
         try {
             accessControlService.checkHrViewPermission();
@@ -47,6 +49,7 @@ public class ContractController {
             throw new ForbiddenException("You do not have permission to view contracts of other employees");
         }
     }
+
     @PostMapping
     public ResponseEntity<ContractDTO> createContract(
             @Valid @RequestBody ContractRequest request,
@@ -54,6 +57,7 @@ public class ContractController {
         Contract contract = contractService.createContract(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(contractMapper.toDTO(contract, currentUser));
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<ContractDTO> getContractById(
             @PathVariable Long id,
@@ -61,11 +65,13 @@ public class ContractController {
         Contract contract = contractService.getContractById(id);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
+
     @GetMapping
     public ResponseEntity<List<ContractDTO>> getAllContracts(@AuthenticationPrincipal User currentUser) {
         List<Contract> contracts = contractService.getAllContracts();
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
+
     @PutMapping("/{id}")
     public ResponseEntity<ContractDTO> updateContract(
             @PathVariable Long id,
@@ -74,13 +80,16 @@ public class ContractController {
         Contract contract = contractService.updateContract(id, request);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteContract(@PathVariable Long id) {
+        accessControlService.checkHrEditPermission();
         contractService.deleteContract(id);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted contract successfully");
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<ContractDTO>> getContractsByEmployee(
             @PathVariable Long employeeId,
@@ -89,6 +98,7 @@ public class ContractController {
         List<Contract> contracts = contractService.getContractsByEmployee(employeeId);
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
+
     @GetMapping("/employee/{employeeId}/active")
     public ResponseEntity<ContractDTO> getActiveContract(
             @PathVariable Long employeeId,
@@ -97,6 +107,7 @@ public class ContractController {
         Contract contract = contractService.getActiveContract(employeeId);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<ContractDTO>> getContractsByStatus(
             @PathVariable ContractStatus status,
@@ -104,6 +115,7 @@ public class ContractController {
         List<Contract> contracts = contractService.getContractsByStatus(status);
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
+
     @GetMapping("/expiring")
     public ResponseEntity<List<ContractDTO>> getExpiringContracts(
             @RequestParam(defaultValue = "30") int daysAhead,
@@ -111,6 +123,7 @@ public class ContractController {
         List<Contract> contracts = contractService.getExpiringContracts(daysAhead);
         return ResponseEntity.ok(contractMapper.toDTOList(contracts, currentUser));
     }
+
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ContractDTO> cancelContract(
             @PathVariable Long id,
@@ -118,6 +131,7 @@ public class ContractController {
         Contract contract = contractService.cancelContract(id);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
+
     @PatchMapping("/{id}/renew")
     public ResponseEntity<ContractDTO> renewContract(
             @PathVariable Long id,
@@ -126,14 +140,17 @@ public class ContractController {
         Contract contract = contractService.renewContract(id, newEndDate);
         return ResponseEntity.ok(contractMapper.toDTO(contract, currentUser));
     }
+
     @PostMapping("/update-expired")
     public ResponseEntity<Map<String, Object>> updateExpiredContracts() {
+        accessControlService.checkHrEditPermission();
         int count = contractService.updateExpiredContracts();
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Updated expired contracts successfully");
         response.put("updatedCount", count);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}/has-active")
     public ResponseEntity<Map<String, Object>> hasActiveContract(
             @PathVariable Long employeeId,

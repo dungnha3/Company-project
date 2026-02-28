@@ -152,27 +152,19 @@ public class AttendanceService {
     }
 
     public Attendance checkIn(Long employeeId, LocalDate attendanceDate) {
-        User currentUser = employeeRepository.findById(employeeId).map(Employee::getUser).orElseThrow();
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
-
-        boolean hasEditPermission;
-        try {
-            accessControlService.checkHrEditPermission();
-            hasEditPermission = true;
-        } catch (ForbiddenException e) {
-            hasEditPermission = false;
-        }
-
-        if (!hasEditPermission) {
-            if (!employee.getUser().getUserId().equals(currentUser.getUserId())) {
+        User currentUser = employee.getUser();
+        if (!accessControlService.hasPermission("hr.editProfile")) {
+            if (currentUser == null || !currentUser.getUserId().equals(
+                    accessControlService.getCurrentUser().getUserId())) {
                 throw new ForbiddenException("You can only check-in for yourself");
             }
         }
-
-        LocalDate today = LocalDate.now();
+        // today
+        LocalDate effectiveDate = (attendanceDate != null) ? attendanceDate : LocalDate.now();
         Optional<Attendance> existingOpt = attendanceRepository
-                .findByEmployee_EmployeeIdAndAttendanceDate(employeeId, today)
+                .findByEmployee_EmployeeIdAndAttendanceDate(employeeId, effectiveDate)
                 .stream().findFirst();
 
         if (existingOpt.isPresent()) {
@@ -181,7 +173,7 @@ public class AttendanceService {
 
         Attendance attendance = new Attendance();
         attendance.setEmployee(employee);
-        attendance.setAttendanceDate(today);
+        attendance.setAttendanceDate(effectiveDate);
         attendance.setCheckInTime(LocalTime.now());
         attendance.setCheckInMethod(CheckInMethod.MANUAL); // Explicitly MANUAL
 
@@ -191,9 +183,14 @@ public class AttendanceService {
         return attendance;
     }
 
-    public Attendance checkOut(Long attendanceId) {
+    public Attendance checkOut(Long attendanceId, User currentUser) {
         Attendance attendance = attendanceRepository.findById(attendanceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
+        if (!accessControlService.hasPermission("hr.editProfile")) {
+            if (!attendance.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
+                throw new ForbiddenException("You can only check-out for yourself");
+            }
+        }
 
         if (attendance.getCheckOutTime() != null) {
             throw new BadRequestException("You have already checked out");
@@ -262,16 +259,20 @@ public class AttendanceService {
 
         return attendanceRepository.findByEmployee_EmployeeIdOrderByAttendanceDateDesc(employeeId, pageable);
     }
-
     @Transactional(readOnly = true)
     public List<Attendance> getAttendanceByDateRange(LocalDate startDate, LocalDate endDate) {
-        return attendanceRepository.findByAttendanceDateBetween(startDate, endDate);
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null)
+            return java.util.Collections.emptyList();
+        return attendanceRepository.findByAttendanceDateBetweenAndCompanyId(startDate, endDate, companyId);
     }
-
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<Attendance> getAttendanceByDateRangePaged(LocalDate startDate,
             LocalDate endDate, org.springframework.data.domain.Pageable pageable) {
-        return attendanceRepository.findByAttendanceDateBetween(startDate, endDate, pageable);
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null)
+            return org.springframework.data.domain.Page.empty(pageable);
+        return attendanceRepository.findByAttendanceDateBetweenAndCompanyId(startDate, endDate, companyId, pageable);
     }
 
     @Transactional(readOnly = true)

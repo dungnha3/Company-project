@@ -31,6 +31,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.stream.Collectors;
+
 // Member operations delegated to ProjectMemberService
 @Service
 @RequiredArgsConstructor
@@ -96,7 +97,7 @@ public class ProjectService {
 
         // Auto-create project chat room
         ChatRoom projectChatRoom = new ChatRoom();
-        projectChatRoom.setName("💼 " + project.getName());
+        projectChatRoom.setName(project.getName());
         projectChatRoom.setType(ChatRoom.RoomType.PROJECT);
         projectChatRoom.setProject(project);
         projectChatRoom.setCreatedBy(currentUser);
@@ -140,6 +141,9 @@ public class ProjectService {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+        if (project.getIsActive() != null && !project.getIsActive()) {
+            throw new ResourceNotFoundException("Dự án đã bị xóa");
+        }
 
         // Kiểm tra xem user có quyền truy cập dự án này không
         validateProjectAccess(projectId, currentUser.getUserId());

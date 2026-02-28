@@ -20,16 +20,18 @@ import org.hibernate.annotations.Filter;
         @Index(name = "idx_att_date", columnList = "attendance_date"),
         @Index(name = "idx_att_status", columnList = "status")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Attendance extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "attendance_id")
+    @EqualsAndHashCode.Include
     private Long attendanceId;
 
     @ManyToOne

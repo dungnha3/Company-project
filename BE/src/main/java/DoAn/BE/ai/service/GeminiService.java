@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -22,8 +21,9 @@ public class GeminiService {
     private final WebClient webClient;
     private final GeminiConfig config;
 
-    @Autowired
-    public GeminiService(@Autowired(required = false) WebClient geminiWebClient, GeminiConfig config) {
+    public GeminiService(
+            @org.springframework.beans.factory.annotation.Autowired(required = false) WebClient geminiWebClient,
+            GeminiConfig config) {
         this.webClient = geminiWebClient;
         this.config = config;
     }
@@ -124,10 +124,10 @@ public class GeminiService {
 
         // Safety settings (allow all for project management content)
         List<Map<String, String>> safetySettings = List.of(
-                Map.of("category", "HARM_CATEGORY_HARASSMENT", "threshold", "BLOCK_NONE"),
-                Map.of("category", "HARM_CATEGORY_HATE_SPEECH", "threshold", "BLOCK_NONE"),
-                Map.of("category", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold", "BLOCK_NONE"),
-                Map.of("category", "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold", "BLOCK_NONE"));
+                Map.of("category", "HARM_CATEGORY_HARASSMENT", "threshold", "BLOCK_LOW_AND_ABOVE"),
+                Map.of("category", "HARM_CATEGORY_HATE_SPEECH", "threshold", "BLOCK_LOW_AND_ABOVE"),
+                Map.of("category", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold", "BLOCK_LOW_AND_ABOVE"),
+                Map.of("category", "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold", "BLOCK_LOW_AND_ABOVE"));
         body.put("safetySettings", safetySettings);
 
         return body;

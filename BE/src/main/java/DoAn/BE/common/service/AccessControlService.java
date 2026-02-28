@@ -21,9 +21,6 @@ public class AccessControlService {
     private final CompanyMemberRepository memberRepository;
     private final PermissionService permissionService;
 
-    // Cache member per request để tránh duplicate DB queries
-    private static final ThreadLocal<CompanyMember> cachedMember = new ThreadLocal<>();
-
     public User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User)) {
@@ -37,28 +34,21 @@ public class AccessControlService {
     }
 
     public CompanyMember getCurrentMember() {
-        // Kiểm tra cache trước
-        CompanyMember cached = cachedMember.get();
-        if (cached != null) {
-            return cached;
-        }
-
         User user = getCurrentUser();
         Long companyId = getCurrentCompanyId();
         if (user == null || companyId == null) {
             return null;
         }
 
-        CompanyMember member = memberRepository
+        return memberRepository
                 .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
                 .orElse(null);
-        cachedMember.set(member); // Cache cho request hiện tại
-        return member;
     }
 
-    // Gọi method này ở cuối request (trong filter) để clear cache
+    // Called in filter to maintain compatibility but no-op internally now
     public static void clearCache() {
-        cachedMember.remove();
+        // No caching used anymore to prevent LazyInitializationException Detached
+        // Entity leaks.
     }
     // GRANULAR PERMISSION CHECKS
 
@@ -171,6 +161,9 @@ public class AccessControlService {
             throw new ForbiddenException("Chỉ Quản trị viên mới có quyền thực hiện thao tác này");
         }
     }
+    public void checkAdminPermission() {
+        checkAdminPermission(null);
+    }
 
     public boolean isOwnerOrAdmin() {
         CompanyMember member = getCurrentMember();
@@ -198,14 +191,19 @@ public class AccessControlService {
         return member.hasAnyRole(CompanyRole.OWNER, CompanyRole.ADMIN, CompanyRole.MANAGER_PROJECT,
                 CompanyRole.EMPLOYEE);
     }
-
     public void checkPermission(Long companyId, CompanyRole requiredRole) {
-        CompanyMember member = getCurrentMember();
-        if (member == null) {
-            throw new ForbiddenException("Bạn không phải là thành viên của công ty này");
+        User user = getCurrentUser();
+        if (user == null) {
+            throw new ForbiddenException("Vui lòng đăng nhập");
+        }
+        if (user.isSystemAdminAccount()) {
+            return;
         }
 
-        // Owner/Admin always have permission
+        CompanyMember member = memberRepository
+                .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+                .orElseThrow(() -> new ForbiddenException("Bạn không phải là thành viên của công ty này"));
+
         if (isCompanyAdminOrOwner(member)) {
             return;
         }
@@ -213,6 +211,28 @@ public class AccessControlService {
         if (!member.hasAnyRole(requiredRole)) {
             throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này");
         }
+    }
+    // Use this when you want to CHECK permission without throwing
+    public boolean hasPermission(String permissionKey) {
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.isSystemAdminAccount()) {
+            return true;
+        }
+
+        CompanyMember member = getCurrentMember();
+        if (member == null) {
+            return false;
+        }
+
+        if (isCompanyAdminOrOwner(member)) {
+            return true;
+        }
+
+        String[] parts = permissionKey.split("\\.");
+        if (parts.length != 2) {
+            return permissionService.hasPermission(member, permissionKey, permissionKey);
+        }
+        return permissionService.hasPermission(member, parts[0], parts[1]);
     }
 
 }

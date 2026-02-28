@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -17,10 +18,11 @@ public class IssueScheduledService {
 
     private final IssueRepository issueRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @Scheduled(cron = "0 0 9 * * *")
     @Transactional
     public void checkOverdueIssues() {
-        log.info("🔍 Bắt đầu kiểm tra overdue issues...");
+        log.info("Bắt đầu kiểm tra overdue issues...");
 
         int page = 0;
         int size = 100;
@@ -38,7 +40,7 @@ public class IssueScheduledService {
                             this, issue, DoAn.BE.project.event.IssueEvent.EventType.OVERDUE, null));
 
                     overdueCount++;
-                    log.debug("⚠️ Sent overdue notification for issue: {}", issue.getIssueKey());
+                    log.debug("Sent overdue notification for issue: {}", issue.getIssueKey());
                 } catch (Exception e) {
                     log.error("Error sending overdue notification for issue {}: {}",
                             issue.getIssueKey(), e.getMessage());
@@ -47,12 +49,13 @@ public class IssueScheduledService {
             page++;
         } while (issuePage.hasNext());
 
-        log.info("✅ Hoàn tất kiểm tra overdue issues. Đã gửi {} notifications", overdueCount);
+        log.info("Hoàn tất kiểm tra overdue issues. Đã gửi {} notifications", overdueCount);
     }
+
     @Scheduled(cron = "0 0 10 * * *")
     @Transactional
     public void remindUpcomingDeadlines() {
-        log.info("🔔 Bắt đầu nhắc deadline sắp tới...");
+        log.info("Bắt đầu nhắc deadline sắp tới...");
 
         LocalDate threeDaysLater = LocalDate.now().plusDays(3);
         int page = 0;
@@ -71,7 +74,7 @@ public class IssueScheduledService {
                             this, issue, DoAn.BE.project.event.IssueEvent.EventType.DEADLINE_APPROACHING, null));
 
                     reminderCount++;
-                    log.debug("🔔 Sent deadline reminder for issue: {}", issue.getIssueKey());
+                    log.debug("Sent deadline reminder for issue: {}", issue.getIssueKey());
                 } catch (Exception e) {
                     log.error("Error sending deadline reminder for issue {}: {}",
                             issue.getIssueKey(), e.getMessage());
@@ -80,6 +83,6 @@ public class IssueScheduledService {
             page++;
         } while (issuePage.hasNext());
 
-        log.info("✅ Hoàn tất nhắc deadline. Đã gửi {} reminders", reminderCount);
+        log.info("Hoàn tất nhắc deadline. Đã gửi {} reminders", reminderCount);
     }
 }

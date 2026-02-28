@@ -83,23 +83,37 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return RateLimitType.API;
     }
 
+    private boolean isPrivateIp(String ip) {
+        if (ip == null)
+            return false;
+        return ip.startsWith("10.") ||
+                ip.startsWith("192.168.") ||
+                ip.matches("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*") ||
+                ip.equals("127.0.0.1") ||
+                ip.equals("0:0:0:0:0:0:0:1");
+    }
+
     // Extract client IP from request
     // Handles reverse proxy scenarios with X-Forwarded-For header
     // /
     private String extractClientIp(HttpServletRequest request) {
-        // Check for proxy headers first
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // X-Forwarded-For can contain multiple IPs, take the first one
-            return xForwardedFor.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        // từ IP nội bộ (Load Balancer, Gateway)
+        if (isPrivateIp(remoteAddr)) {
+            // Check for proxy headers first
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                // X-Forwarded-For can contain multiple IPs, take the first one
+                return xForwardedFor.split(",")[0].trim();
+            }
+
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (xRealIp != null && !xRealIp.isEmpty()) {
+                return xRealIp;
+            }
         }
 
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
-        return request.getRemoteAddr();
+        return remoteAddr;
     }
 
     @Override

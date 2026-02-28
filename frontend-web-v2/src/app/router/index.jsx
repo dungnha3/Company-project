@@ -173,12 +173,6 @@ const router = createBrowserRouter([
         ),
     },
 
-    // Landing Page (Public)
-    {
-        path: '/',
-        element: <LandingPage />,
-    },
-
     // Protected routes - require auth + company
     {
         path: '/app',

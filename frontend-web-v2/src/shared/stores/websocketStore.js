@@ -18,7 +18,7 @@ export const useWebSocketStore = create((set, get) => ({
     subscriptions: {}, // Map topic -> subscription object
 
     connect: () => {
-        const { token } = useAuthStore.getState();
+        const { accessToken: token } = useAuthStore.getState();
         const { connected, client: existingClient } = get();
 
         if (connected || (existingClient && existingClient.active)) return;

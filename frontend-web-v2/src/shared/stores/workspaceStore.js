@@ -166,7 +166,7 @@ export const useWorkspaceStore = create(
                     return;
                 }
                 // Skip rehydration if user is not authenticated (e.g., after logout)
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('accessToken');
                 if (!token) return;
 
                 if (state?.currentWorkspace?.type === 'COMPANY' && state?.currentWorkspace?.id) {

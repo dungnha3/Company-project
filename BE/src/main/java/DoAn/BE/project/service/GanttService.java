@@ -110,20 +110,31 @@ public class GanttService {
     // Move successor issues by specified days
     // /
     private void moveSuccessors(Long issueId, int daysDiff) {
+        moveSuccessorsRecursive(issueId, daysDiff, new HashSet<>());
+    }
+
+    private void moveSuccessorsRecursive(Long issueId, int daysDiff, Set<Long> visited) {
+        if (!visited.add(issueId))
+            return;
+
         List<IssueDependency> dependencies = dependencyRepository.findByPredecessor_IssueId(issueId);
 
         for (IssueDependency dep : dependencies) {
             Issue successor = dep.getSuccessor();
-            if (successor.getStartDate() != null) {
-                successor.setStartDate(successor.getStartDate().plusDays(daysDiff));
-            }
-            if (successor.getDueDate() != null) {
-                successor.setDueDate(successor.getDueDate().plusDays(daysDiff));
-            }
-            issueRepository.save(successor);
 
-            // Recursively move successors of successors
-            moveSuccessors(successor.getIssueId(), daysDiff);
+            // Only update and recurse if we haven't visited this successor yet
+            if (!visited.contains(successor.getIssueId())) {
+                if (successor.getStartDate() != null) {
+                    successor.setStartDate(successor.getStartDate().plusDays(daysDiff));
+                }
+                if (successor.getDueDate() != null) {
+                    successor.setDueDate(successor.getDueDate().plusDays(daysDiff));
+                }
+                issueRepository.save(successor);
+
+                // Recursively move successors of successors
+                moveSuccessorsRecursive(successor.getIssueId(), daysDiff, visited);
+            }
         }
     }
 
@@ -349,4 +360,3 @@ public class GanttService {
                 .orElseThrow(() -> new ProjectAccessDeniedException("You don't have access to this project"));
     }
 }
-

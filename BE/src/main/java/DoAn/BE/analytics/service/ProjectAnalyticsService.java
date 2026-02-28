@@ -40,6 +40,9 @@ public class ProjectAnalyticsService {
                                         .dataPoints(new ArrayList<>())
                                         .build();
                 }
+                if (sprint.getProject() == null || !sprint.getProject().getProjectId().equals(projectId)) {
+                        throw new DoAn.BE.common.exception.BadRequestException("Sprint không thuộc dự án này");
+                }
 
                 List<Issue> sprintIssues = issueRepository.findBySprint_SprintId(sprintId);
                 int totalIssues = sprintIssues.size();

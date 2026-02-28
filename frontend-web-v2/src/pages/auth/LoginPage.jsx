@@ -13,6 +13,7 @@ export default function LoginPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return; // Guard against double submit
         setError('');
         setLoading(true);
 
@@ -20,7 +21,7 @@ export default function LoginPage() {
             const result = await login(form);
 
             if (result.success) {
-                if (result.user.isSystemAdmin) {
+                if (result.user?.isSystemAdmin) {
                     navigate('/admin/companies', { replace: true });
                 } else {
                     navigate('/app', { replace: true });

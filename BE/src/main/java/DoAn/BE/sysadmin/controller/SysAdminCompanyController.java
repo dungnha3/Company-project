@@ -9,8 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/api/sysadmin/companies")
@@ -19,11 +21,12 @@ public class SysAdminCompanyController {
 
     private final CompanyAdminService companyAdminService;
 
-    // [LIST] List all companies
     @GetMapping
-    public ResponseEntity<List<CompanyDto.CompanyResponse>> getAllCompanies(Authentication authentication) {
+    public ResponseEntity<Page<CompanyDto.CompanyResponse>> getAllCompanies(
+            Authentication authentication,
+            Pageable pageable) {
         checkSysAdmin(authentication);
-        return ResponseEntity.ok(companyAdminService.getAllCompanies());
+        return ResponseEntity.ok(companyAdminService.getAllCompaniesPaged(pageable));
     }
 
     // [GET] Get single company details

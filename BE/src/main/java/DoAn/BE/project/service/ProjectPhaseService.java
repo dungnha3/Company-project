@@ -24,9 +24,27 @@ public class ProjectPhaseService {
     private final ProjectPhaseRepository projectPhaseRepository;
     private final ProjectRepository projectRepository;
     private final IssueRepository issueRepository;
+    private final DoAn.BE.project.repository.ProjectMemberRepository projectMemberRepository;
+
+    private void validateProjectAccess(Long projectId, Long userId) {
+        projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
+                .orElseThrow(() -> new DoAn.BE.common.exception.ProjectAccessDeniedException(
+                        "Bạn không có quyền truy cập dự án này"));
+    }
+
+    private void validateProjectManagement(Long projectId, Long userId) {
+        DoAn.BE.project.entity.ProjectMember member = projectMemberRepository
+                .findByProject_ProjectIdAndUser_UserId(projectId, userId)
+                .orElseThrow(() -> new DoAn.BE.common.exception.ProjectAccessDeniedException(
+                        "Bạn không có quyền truy cập dự án này"));
+        if (!member.canManageProject()) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Bạn không có quyền quản lý dự án này");
+        }
+    }
 
     @Transactional(readOnly = true)
-    public List<ProjectPhaseDTO.Response> getPhasesByProject(Long projectId) {
+    public List<ProjectPhaseDTO.Response> getPhasesByProject(Long projectId, Long userId) {
+        validateProjectAccess(projectId, userId);
         return projectPhaseRepository.findByProject_ProjectIdOrderByOrderIndexAsc(projectId).stream()
                 .map(ProjectPhaseDTO.Response::fromEntity)
                 .collect(Collectors.toList());
@@ -34,6 +52,8 @@ public class ProjectPhaseService {
 
     @Transactional
     public ProjectPhaseDTO.Response createPhase(Long projectId, ProjectPhaseDTO.CreateRequest request, Long userId) {
+        validateProjectManagement(projectId, userId);
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
 
@@ -58,9 +78,11 @@ public class ProjectPhaseService {
     }
 
     @Transactional
-    public ProjectPhaseDTO.Response updatePhase(Long phaseId, ProjectPhaseDTO.UpdateRequest request) {
+    public ProjectPhaseDTO.Response updatePhase(Long phaseId, ProjectPhaseDTO.UpdateRequest request, Long userId) {
         ProjectPhase phase = projectPhaseRepository.findById(phaseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project Phase not found"));
+
+        validateProjectManagement(phase.getProject().getProjectId(), userId);
 
         if (request.getName() != null)
             phase.setName(request.getName());
@@ -86,10 +108,12 @@ public class ProjectPhaseService {
     }
 
     @Transactional
-    public void deletePhase(Long phaseId) {
-        if (!projectPhaseRepository.existsById(phaseId)) {
-            throw new ResourceNotFoundException("Project Phase not found");
-        }
+    public void deletePhase(Long phaseId, Long userId) {
+        ProjectPhase phase = projectPhaseRepository.findById(phaseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project Phase not found"));
+
+        validateProjectManagement(phase.getProject().getProjectId(), userId);
+
         projectPhaseRepository.deleteById(phaseId);
     }
 

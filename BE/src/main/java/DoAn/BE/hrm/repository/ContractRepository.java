@@ -15,32 +15,37 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
-    @EntityGraph(attributePaths = { "employee", "employee.user" })
-    List<Contract> findByEmployee_EmployeeId(Long employeeId);
+        @EntityGraph(attributePaths = { "employee", "employee.user" })
+        List<Contract> findByEmployee_EmployeeId(Long employeeId);
 
-    List<Contract> findByContractType(ContractType contractType);
+        List<Contract> findByContractType(ContractType contractType);
 
-    @EntityGraph(attributePaths = { "employee" })
-    List<Contract> findByStatus(ContractStatus status);
+        @EntityGraph(attributePaths = { "employee" })
+        List<Contract> findByStatus(ContractStatus status);
 
-    List<Contract> findByEmployee_EmployeeIdAndStatus(Long employeeId, ContractStatus status);
+        List<Contract> findByEmployee_EmployeeIdAndStatus(Long employeeId, ContractStatus status);
 
-    Optional<Contract> findFirstByEmployee_EmployeeIdAndStatusOrderByStartDateDesc(
-            Long employeeId, ContractStatus status);
+        Optional<Contract> findFirstByEmployee_EmployeeIdAndStatusOrderByStartDateDesc(
+                        Long employeeId, ContractStatus status);
 
-    @EntityGraph(attributePaths = { "employee", "employee.user" })
-    @Query("SELECT c FROM Contract c WHERE c.status = 'ACTIVE' " +
-            "AND c.endDate IS NOT NULL " +
-            "AND c.endDate BETWEEN :startDate AND :endDate")
-    List<Contract> findExpiringContracts(@Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
+        @EntityGraph(attributePaths = { "employee", "employee.user" })
+        @Query("SELECT c FROM Contract c WHERE c.status = 'ACTIVE' " +
+                        "AND c.endDate IS NOT NULL " +
+                        "AND c.endDate BETWEEN :startDate AND :endDate")
+        List<Contract> findExpiringContracts(@Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT c FROM Contract c WHERE c.status = 'ACTIVE' " +
-            "AND c.endDate < :currentDate")
-    List<Contract> findExpiredContracts(@Param("currentDate") LocalDate currentDate);
+        @Query("SELECT c FROM Contract c WHERE c.status = 'ACTIVE' " +
+                        "AND c.endDate < :currentDate")
+        List<Contract> findExpiredContracts(@Param("currentDate") LocalDate currentDate);
 
-    long countByStatus(ContractStatus status);
+        long countByStatus(ContractStatus status);
 
-    @Query("SELECT c.contractType, COUNT(c) FROM Contract c GROUP BY c.contractType")
-    List<Object[]> getStatsByContractType();
+        @Query("SELECT c.contractType, COUNT(c) FROM Contract c GROUP BY c.contractType")
+        List<Object[]> getStatsByContractType();
+        @Query("SELECT c FROM Contract c WHERE c.employee.company.companyId = :companyId")
+        List<Contract> findByCompanyId(@Param("companyId") Long companyId);
+        @Query("SELECT c FROM Contract c WHERE c.status = :status AND c.employee.company.companyId = :companyId")
+        List<Contract> findByStatusAndCompanyId(@Param("status") ContractStatus status,
+                        @Param("companyId") Long companyId);
 }

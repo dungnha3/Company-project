@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "chat_room_members", indexes = {
         // Index cho query: findByUser_UserId (User's chat rooms - CRITICAL)
@@ -12,12 +13,15 @@ import java.time.LocalDateTime;
         // Index cho query: findByChatRoom_RoomId (Room's members)
         @jakarta.persistence.Index(name = "idx_crm_room", columnList = "room_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class ChatRoomMember {
 
     @EmbeddedId
+    @EqualsAndHashCode.Include
     private ChatRoomMemberId id;
 
     @ManyToOne

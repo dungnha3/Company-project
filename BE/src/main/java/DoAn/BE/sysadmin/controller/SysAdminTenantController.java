@@ -52,13 +52,12 @@ public class SysAdminTenantController {
             @PathVariable Long companyId,
             Authentication authentication) {
         checkSysAdmin(authentication);
-
-        var projects = projectRepository.findByCompany_CompanyId(companyId).stream()
+        var projects = projectRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId).stream()
                 .map(p -> Map.of(
                         "projectId", p.getProjectId(),
                         "name", p.getName(),
                         "status", p.getStatus(),
-                        "pmName", p.getCreatedBy() != null ? p.getCreatedBy().getFullName() : "N/A"))
+                        "pmName", p.getCreatedBy() != null ? p.getCreatedBy().getUsername() : "N/A"))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(projects);

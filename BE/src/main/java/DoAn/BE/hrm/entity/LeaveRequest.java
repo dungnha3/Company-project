@@ -15,16 +15,18 @@ import org.hibernate.annotations.Filter;
 // Tracks employee leave/time-off requests
 @Entity
 @Table(name = "leave_requests")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class LeaveRequest extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "leave_request_id")
+    @EqualsAndHashCode.Include
     private Long leaveRequestId;
 
     @ManyToOne

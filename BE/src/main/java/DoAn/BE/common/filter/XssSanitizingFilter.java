@@ -1,7 +1,9 @@
 package DoAn.BE.common.filter;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,17 +12,23 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.regex.Pattern;
-
-// Filter chống XSS (Cross-Site Scripting)
-
-// Sanitize tất cả input parameters để loại bỏ các script độc hại
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class XssSanitizingFilter extends OncePerRequestFilter {
 
-    // Patterns để detect XSS
+    // Headers that must NOT be sanitized (would break auth/content negotiation)
+    private static final Set<String> SKIP_HEADERS = Set.of(
+            "authorization", "content-type", "content-length", "accept",
+            "x-company-id", "x-session-id", "x-forwarded-for", "x-real-ip",
+            "cookie", "host", "user-agent");
+
     private static final Pattern[] XSS_PATTERNS = {
             Pattern.compile("<script>(.*?)</script>", Pattern.CASE_INSENSITIVE),
             Pattern.compile("src[\r\n]*=[\r\n]*\\'(.*?)\\'",
@@ -45,8 +53,10 @@ public class XssSanitizingFilter extends OncePerRequestFilter {
         filterChain.doFilter(new XssRequestWrapper(request), response);
     }
 
-// Wrapper class để sanitize request parameters
+    // Wrapper class to sanitize request parameters, headers, AND body
     private static class XssRequestWrapper extends HttpServletRequestWrapper {
+
+        private byte[] sanitizedBody;
 
         public XssRequestWrapper(HttpServletRequest request) {
             super(request);
@@ -71,26 +81,58 @@ public class XssSanitizingFilter extends OncePerRequestFilter {
             String value = super.getParameter(parameter);
             return stripXSS(value);
         }
-
         @Override
         public String getHeader(String name) {
             String value = super.getHeader(name);
+            if (name != null && SKIP_HEADERS.contains(name.toLowerCase())) {
+                return value; // Don't sanitize critical headers
+            }
             return stripXSS(value);
         }
+        @Override
+        public ServletInputStream getInputStream() throws IOException {
+            if (sanitizedBody == null) {
+                String body = new String(super.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                if (!body.isEmpty()) {
+                    body = stripXSS(body);
+                }
+                sanitizedBody = body.getBytes(StandardCharsets.UTF_8);
+            }
+            ByteArrayInputStream bais = new ByteArrayInputStream(sanitizedBody);
+            return new ServletInputStream() {
+                @Override
+                public int read() {
+                    return bais.read();
+                }
 
-        private String stripXSS(String value) {
+                @Override
+                public boolean isFinished() {
+                    return bais.available() == 0;
+                }
+
+                @Override
+                public boolean isReady() {
+                    return true;
+                }
+
+                @Override
+                public void setReadListener(ReadListener listener) {
+                    /* no-op */ }
+            };
+        }
+
+        @Override
+        public BufferedReader getReader() throws IOException {
+            return new BufferedReader(new InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
+        }
+
+        private static String stripXSS(String value) {
             if (value == null) {
                 return null;
             }
-            // Remove XSS patterns
             for (Pattern pattern : XSS_PATTERNS) {
                 value = pattern.matcher(value).replaceAll("");
             }
-            // Encode HTML special characters
-            value = value.replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                    .replace("\"", "&quot;")
-                    .replace("'", "&#x27;");
             return value;
         }
     }

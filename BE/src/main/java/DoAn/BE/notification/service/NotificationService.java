@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 // Domain-specific notifications đã được tách ra:
 // - AuthNotificationService: Auth & Security
 // - ChatNotificationService: Chat
@@ -29,6 +28,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+
     public Notification send(Long userId, DoAn.BE.notification.entity.NotificationType type, String link,
             Object... args) {
         if (userId == null) {
@@ -56,59 +56,54 @@ public class NotificationService {
         log.debug("Đã gửi thông báo {} cho user {}", type, userId);
         return saved;
     }
+
     public Page<Notification> getUserNotifications(Long userId, Pageable pageable) {
         if (userId == null) {
             throw new IllegalArgumentException("User ID không được null");
         }
         return notificationRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
     }
+
     public long getUnreadCount(Long userId) {
         if (userId == null) {
             return 0L;
         }
         return notificationRepository.countByUser_UserIdAndIsReadFalse(userId);
     }
+
     public void markAsRead(Long notificationId, Long userId) {
         if (notificationId == null || userId == null) {
             return;
         }
-
-        notificationRepository.findById(notificationId).ifPresent(notification -> {
-            if (notification.getUser() != null && notification.getUser().getUserId().equals(userId)) {
-                notification.markAsRead();
-                notificationRepository.save(notification);
-                eventPublisher.publishEvent(
-                        new DoAn.BE.common.event.NotificationReadEvent(this, userId, notificationId));
-            }
-        });
+        var notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Notification not found"));
+        if (notification.getUser() == null || !notification.getUser().getUserId().equals(userId)) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Not your notification");
+        }
+        notification.markAsRead();
+        notificationRepository.save(notification);
+        eventPublisher.publishEvent(
+                new DoAn.BE.common.event.NotificationReadEvent(this, userId, notificationId));
     }
+
     public void markAllAsRead(Long userId) {
         if (userId == null) {
             return;
         }
+        int updatedCount = notificationRepository.markAllAsReadByUserId(userId);
 
-        List<Notification> unreadNotifications = notificationRepository
-                .findByUser_UserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .filter(Notification::isUnread)
-                .toList();
-
-        for (Notification notification : unreadNotifications) {
-            notification.markAsRead();
-        }
-        notificationRepository.saveAll(unreadNotifications);
-
-        log.info("Đã đánh dấu {} thông báo đã đọc cho user {}", unreadNotifications.size(), userId);
+        log.info("Đã đánh dấu {} thông báo đã đọc cho user {}", updatedCount, userId);
     }
+
     public void deleteNotification(Long notificationId, Long userId) {
         if (notificationId == null || userId == null) {
             return;
         }
-
-        notificationRepository.findById(notificationId).ifPresent(notification -> {
-            if (notification.getUser() != null && notification.getUser().getUserId().equals(userId)) {
-                notificationRepository.delete(notification);
-            }
-        });
+        var notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Notification not found"));
+        if (notification.getUser() == null || !notification.getUser().getUserId().equals(userId)) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Not your notification");
+        }
+        notificationRepository.delete(notification);
     }
 }

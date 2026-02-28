@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
@@ -30,6 +31,8 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
     private final EmployeeMapper employeeMapper;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
+
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDTO> getEmployeeById(
             @PathVariable Long id,
@@ -37,12 +40,14 @@ public class EmployeeController {
         Employee employee = employeeService.getEmployeeById(id, currentUser);
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
+
     @GetMapping
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees(
             @AuthenticationPrincipal User currentUser) {
         List<Employee> employees = employeeService.getAllEmployees(currentUser);
         return ResponseEntity.ok(employeeMapper.toDTOList(employees, currentUser));
     }
+
     @GetMapping("/page")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesPage(
             @RequestParam(defaultValue = "0") int page,
@@ -73,6 +78,7 @@ public class EmployeeController {
 
         return ResponseEntity.ok(dtoPage);
     }
+
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeDTO> updateEmployee(
             @PathVariable Long id,
@@ -81,13 +87,16 @@ public class EmployeeController {
         Employee employee = employeeService.updateEmployee(id, request, currentUser);
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteEmployee(@PathVariable Long id) {
+        accessControlService.checkHrEditPermission();
         employeeService.deleteEmployee(id);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted employee successfully");
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesByStatus(
             @PathVariable EmployeeStatus status,
@@ -96,6 +105,7 @@ public class EmployeeController {
         Page<Employee> employeePage = employeeService.getEmployeesByStatus(status, pageable);
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
+
     @GetMapping("/department/{departmentId}")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesByDepartment(
             @PathVariable Long departmentId,
@@ -104,6 +114,7 @@ public class EmployeeController {
         Page<Employee> employeePage = employeeService.getEmployeesByDepartment(departmentId, pageable);
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
+
     @GetMapping("/position/{positionId}")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesByPosition(
             @PathVariable Long positionId,
@@ -112,6 +123,7 @@ public class EmployeeController {
         Page<Employee> employeePage = employeeService.getEmployeesByPosition(positionId, pageable);
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
+
     @GetMapping("/search")
     public ResponseEntity<Page<EmployeeDTO>> searchEmployees(
             @RequestParam String keyword,
@@ -120,6 +132,7 @@ public class EmployeeController {
         Page<Employee> employeePage = employeeService.searchEmployees(keyword, pageable);
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<EmployeeDTO> updateStatus(
             @PathVariable Long id,
@@ -128,6 +141,7 @@ public class EmployeeController {
         Employee employee = employeeService.updateStatus(id, status);
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<EmployeeDTO> getEmployeeByUserId(
             @PathVariable Long userId,
@@ -135,6 +149,7 @@ public class EmployeeController {
         Employee employee = employeeService.getEmployeeByUserId(userId);
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
+
     @GetMapping("/user/{userId}/exists")
     public ResponseEntity<Map<String, Boolean>> hasEmployeeProfile(@PathVariable Long userId) {
         boolean exists = employeeService.hasEmployeeProfile(userId);

@@ -42,6 +42,10 @@ public class ProfileService {
         User user = getCurrentUserProfile(userId);
 
         if (request.getEmail() != null) {
+            if (!request.getEmail().equals(user.getEmail())
+                    && userRepository.findByEmail(request.getEmail()).isPresent()) {
+                throw new BadRequestException("Email đã được sử dụng bởi tài khoản khác");
+            }
             user.setEmail(request.getEmail());
         }
         if (request.getPhoneNumber() != null) {
@@ -66,7 +70,8 @@ public class ProfileService {
         if (companyId != null) {
             employee = employeeRepository.findByUser_UserIdAndCompany_CompanyId(userId, companyId).orElse(null);
         } else {
-            employee = employeeRepository.findByUser_UserId(userId).orElse(null);
+            log.warn("No company context. Skipping employee update for user {}", userId);
+            return;
         }
         if (employee == null) {
             return; // User has no Employee record
@@ -88,12 +93,17 @@ public class ProfileService {
 
     public void changePassword(Long userId, UpdatePasswordRequest request) {
         User user = getCurrentUserProfile(userId);
-
+        if (request.getOldPassword() == null) {
+            throw new BadRequestException("Đầu vào mật khẩu cũ không hợp lệ");
+        }
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
             throw new BadRequestException("Old password is incorrect");
         }
 
         // Set new password
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu cũ");
+        }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 

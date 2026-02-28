@@ -1,6 +1,5 @@
 package DoAn.BE.user.service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,7 +18,6 @@ import DoAn.BE.common.event.UserUpdatedEvent;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.company.repository.CompanyMemberRepository;
-import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.company.service.RoleTemplateService;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.BadRequestException;
@@ -32,6 +30,7 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
+
 @Service
 @Transactional
 @Slf4j
@@ -41,7 +40,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CompanyMemberRepository companyMemberRepository;
-    private final CompanyRepository companyRepository;
     private final RoleTemplateService roleTemplateService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -58,12 +56,15 @@ public class UserService {
         if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
             throw new BadRequestException("Username cannot be empty");
         }
-        if (request.getPassword() == null || request.getPassword().length() < 6) {
-            throw new BadRequestException("Password must be at least 6 characters");
+        if (request.getPassword() == null || request.getPassword().length() < 8) {
+            throw new BadRequestException("Password must be at least 8 characters");
         }
 
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateException("Username already exists");
+        }
+        if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateException("Email already exists");
         }
 
         User user = new User();
@@ -77,10 +78,8 @@ public class UserService {
         user.setAvatarUrl(request.getAvatarUrl());
         user = userRepository.save(user);
 
-        // EVENT DRIVEN
         if (eventPublisher != null) {
             eventPublisher.publishEvent(new UserCreatedEvent(this, user));
-            log.info("📢 Published UserCreatedEvent for user: {}", user.getUsername());
         }
 
         log.info("Created new user: {}", user.getUsername());
@@ -95,6 +94,10 @@ public class UserService {
     }
 
     public List<User> getAllUsers() {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId != null) {
+            return userSaasService.getUsersByCurrentCompanyWithoutPaging();
+        }
         return userRepository.findAll();
     }
 
@@ -183,16 +186,6 @@ public class UserService {
     }
 
     public User updateUser(Long id, UserDTO userDTO, User currentUser) {
-        // ... implementation (same as before but simplified/optimized if needed)
-        // the method above is the main one.
-        // Wait, there are TWO updateUser methods in original file. The one with DTO is
-        // used by Controller likely.
-        // I will just delegate or copy.
-        // To save space and time, and since I already refactored the *other*
-        // updateUser,
-        // I'll skip re-implementing this one fully if it's redundant.
-        // But Controller calls this one.
-        // I'll copy implementation.
         log.info("User {} updating user ID: {}", currentUser.getUsername(), id);
 
         User user = getUserById(id);
@@ -210,8 +203,7 @@ public class UserService {
             }
             user.setEmail(userDTO.getEmail());
         }
-
-        if (userDTO.getRole() != null) {
+        if (userDTO.getRole() != null && !currentUser.getUserId().equals(id)) {
             Long companyIdC = TenantContext.getCompanyId();
             if (companyIdC != null) {
                 CompanyMember member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyId(id, companyIdC)
@@ -229,21 +221,7 @@ public class UserService {
                         }
                     }
                 } else {
-                    Optional<DoAn.BE.company.entity.Company> companyOpt = companyRepository
-                            .findById(companyIdC);
-                    if (companyOpt.isPresent()) {
-                        CompanyRole companyRole = userDTO.getRole();
-                        if (companyRole != null) {
-                            CompanyMember newMember = new CompanyMember();
-                            newMember.setUser(user);
-                            newMember.setCompany(companyOpt.get());
-                            newMember.getRoles().add(companyRole);
-                            newMember.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(companyRole)));
-                            newMember.setJoinedAt(LocalDateTime.now());
-                            newMember.setIsActive(true);
-                            companyMemberRepository.save(newMember);
-                        }
-                    }
+                    log.warn("User {} is not a member of company {}. Skipping role update.", id, companyIdC);
                 }
             }
         }
@@ -270,6 +248,9 @@ public class UserService {
         if (request == null || request.getNewPassword() == null) {
             throw new BadRequestException("Invalid password data");
         }
+        if (request.getOldPassword() == null) {
+            throw new BadRequestException("Old password is required");
+        }
 
         User user = getUserById(userId);
 
@@ -281,8 +262,8 @@ public class UserService {
             throw new BadRequestException("Password confirmation does not match");
         }
 
-        if (request.getNewPassword().length() < 6) {
-            throw new BadRequestException("Password must be at least 6 characters");
+        if (request.getNewPassword().length() < 8) {
+            throw new BadRequestException("Password must be at least 8 characters");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
@@ -290,6 +271,9 @@ public class UserService {
     }
 
     public User toggleUserStatus(Long userId, User currentUser) {
+        if (currentUser.getUserId().equals(userId)) {
+            throw new BadRequestException("Cannot toggle your own account status");
+        }
         log.info("User {} toggling status of user ID: {}", currentUser.getUsername(), userId);
         User user = getUserById(userId);
         user.setIsActive(!user.getIsActive());
@@ -298,15 +282,22 @@ public class UserService {
 
     public void deleteUser(Long userId, User currentUser) {
         log.info("Admin {} requesting delete user ID: {}", currentUser.getUsername(), userId);
+        if (currentUser.getUserId().equals(userId)) {
+            throw new BadRequestException("Cannot delete your own account");
+        }
+
         User user = getUserById(userId);
+
+        if (user.isSystemAdminAccount()) {
+            throw new BadRequestException("Cannot delete a system admin account");
+        }
+        user.setIsDeleted(true);
+        user.setIsActive(false);
+        userRepository.save(user);
 
         if (eventPublisher != null) {
             eventPublisher.publishEvent(new UserDeletedEvent(this, user, currentUser));
         }
-
-        user.setIsDeleted(true);
-        user.setIsActive(false);
-        userRepository.save(user);
     }
 
     public Optional<User> findByUsername(String username) {

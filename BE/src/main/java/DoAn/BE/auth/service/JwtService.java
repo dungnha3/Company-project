@@ -38,7 +38,10 @@ public class JwtService {
     @javax.annotation.PostConstruct
     public void init() {
         if (secretKey.length() < 32) {
-            log.warn("JWT Secret key is too short! It should be at least 32 characters (256 bits).");
+            throw new IllegalStateException(
+                    "JWT Secret key is too short (" + secretKey.length()
+                            + " chars). Must be at least 32 characters (256 bits). "
+                            + "Set jwt.secret in application.properties.");
         }
     }
 
@@ -116,9 +119,10 @@ public class JwtService {
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
-    // Validate token (chỉ check expiration)
     public Boolean validateToken(String token) {
         try {
+            // extractAllClaims verifies the signature via verifyWith(getSigningKey())
+            extractAllClaims(token);
             return !isTokenExpired(token);
         } catch (Exception e) {
             return false;

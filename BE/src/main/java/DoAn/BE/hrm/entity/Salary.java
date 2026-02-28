@@ -18,16 +18,18 @@ import org.hibernate.annotations.Filter;
         @Index(name = "idx_sal_period", columnList = "month, year"),
         @Index(name = "idx_sal_status", columnList = "payment_status")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Salary extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "salary_id")
+    @EqualsAndHashCode.Include
     private Long salaryId;
 
     @ManyToOne

@@ -95,7 +95,17 @@ public class CompanyService {
                 .toLowerCase()
                 .replaceAll("[^a-z0-9\\s]", "")
                 .replaceAll("\\s+", "-");
-        String slug = normalized + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String slug;
+        int attempts = 0;
+        do {
+            String suffix = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            slug = normalized + "-" + suffix;
+            attempts++;
+        } while (companyRepository.existsBySlug(slug) && attempts < 5);
+
+        if (companyRepository.existsBySlug(slug)) {
+            throw new DoAn.BE.common.exception.BadRequestException("Không thể tạo slug cho công ty. Vui lòng thử lại.");
+        }
         company.setSlug(slug);
 
         company = companyRepository.save(company);
@@ -212,6 +222,9 @@ public class CompanyService {
         Plan plan = settings.getCompany().getPlan();
 
         if (req.getHrModuleEnabled() != null) {
+            if (req.getHrModuleEnabled() && !plan.isHrModuleEnabled()) {
+                throw new ForbiddenException("Gói " + plan.name() + " không hỗ trợ tính năng HRM");
+            }
             settings.setHrModuleEnabled(req.getHrModuleEnabled());
         }
         if (req.getProjectModuleEnabled() != null) {

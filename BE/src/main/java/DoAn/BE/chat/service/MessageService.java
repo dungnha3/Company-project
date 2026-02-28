@@ -21,6 +21,8 @@ import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.chat.websocket.service.WebSocketNotificationService;
 import DoAn.BE.notification.service.ChatNotificationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,9 +33,9 @@ import java.util.HashMap;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-import org.springframework.data.domain.Pageable;
 
 import lombok.extern.slf4j.Slf4j;
+
 @Service
 @Transactional
 @Slf4j
@@ -164,7 +166,7 @@ public class MessageService {
                     request.getContent(),
                     request.getRoomId());
 
-            // 📱 Push FCM notification
+            // Push FCM notification
             try {
                 if (member.getUser().getFcmToken() != null) {
                     String truncatedContent = request.getContent();
@@ -178,12 +180,12 @@ public class MessageService {
                     data.put("link", "/chat/rooms/" + request.getRoomId());
                     fcmService.sendToDevice(
                             member.getUser().getFcmToken(),
-                            "💬 " + sender.getUsername(),
+                            sender.getUsername(),
                             truncatedContent != null ? truncatedContent : "[Ảnh/Tệp]",
                             data);
                 }
             } catch (Exception e) {
-                // Log but don't fail
+                log.warn("Failed to send FCM push to user {}: {}", member.getUser().getUserId(), e.getMessage());
             }
         }
 
@@ -194,6 +196,7 @@ public class MessageService {
 
         return messageDTO;
     }
+
     private void processMentions(Message message, User sender, ChatRoom chatRoom) {
         String content = message.getContent();
         if (content == null || content.isEmpty()) {
@@ -202,6 +205,7 @@ public class MessageService {
         processUserMentions(content, message, sender, chatRoom);
         processTaskIssueMentions(content, message, sender, chatRoom);
     }
+
     private void processUserMentions(String content, Message message, User sender, ChatRoom chatRoom) {
         Pattern userPattern = Pattern.compile("@(\\w+)");
         Matcher userMatcher = userPattern.matcher(content);
@@ -217,14 +221,23 @@ public class MessageService {
             }
         }
     }
+
     private void notifyMentionedUser(User mentionedUser, User sender, Message message, ChatRoom chatRoom) {
         boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(
                 chatRoom.getRoomId(), mentionedUser.getUserId());
-
         if (isMember && !mentionedUser.getUserId().equals(sender.getUserId())) {
-
+            try {
+                chatNotificationService.createMentionNotification(
+                        mentionedUser.getUserId(),
+                        sender.getUsername(),
+                        chatRoom.getName() != null ? chatRoom.getName() : "Direct Message",
+                        chatRoom.getRoomId());
+            } catch (Exception e) {
+                log.warn("Failed to send mention notification to {}: {}", mentionedUser.getUsername(), e.getMessage());
+            }
         }
     }
+
     private void processTaskIssueMentions(String content, Message message, User sender, ChatRoom chatRoom) {
         Pattern taskPattern = Pattern.compile("@(TASK|ISSUE)-(\\w+)");
         Matcher taskMatcher = taskPattern.matcher(content);
@@ -232,7 +245,7 @@ public class MessageService {
             String type = taskMatcher.group(1);
             String key = taskMatcher.group(2);
             String fullKey = type + "-" + key;
-            log.debug("🔗 Phát hiện {} mention: {} trong tin nhắn {}", type, fullKey, message.getMessageId());
+            log.debug("Phát hiện {} mention: {} trong tin nhắn {}", type, fullKey, message.getMessageId());
             if (chatRoom.getProject() != null) {
                 chatNotificationService.createTaskMentionNotification(
                         sender.getUserId(),
@@ -254,14 +267,15 @@ public class MessageService {
         if (!isMember) {
             throw new BadRequestException("Bạn không có quyền xem tin nhắn trong phòng này");
         }
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        Page<Message> messagePage = messageRepository.findByRoomIdPaged(roomId, pageable);
 
-        // Lấy tin nhắn với phân trang
-        List<Message> messages = messageRepository.findByChatRoom_RoomIdOrderByCreatedAtAsc(roomId);
-
-        // Convert sang DTO
-        return messages.stream()
+        // Convert sang DTO — reverse to ascending order for display
+        List<MessDTO> result = messagePage.getContent().stream()
                 .map(this::convertToMessageDTO)
                 .collect(Collectors.toList());
+        java.util.Collections.reverse(result);
+        return result;
     }
 
     public void markMessageAsSeen(@NonNull Long messageId, @NonNull Long userId) {
@@ -294,7 +308,7 @@ public class MessageService {
     private Message.MessageType detectMessageType(SendMessageRequest request) {
         if (request.getFileId() != null) {
             String fileName = request.getFileName();
-            if (fileName != null) {
+            if (fileName != null && fileName.contains(".")) {
                 String extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
                 if (List.of("jpg", "jpeg", "png", "gif", "webp").contains(extension)) {
                     return Message.MessageType.IMAGE;
@@ -378,16 +392,9 @@ public class MessageService {
         if (!isMember) {
             throw new BadRequestException("Bạn không có quyền tìm kiếm trong phòng này");
         }
+        Page<Message> messagePage = messageRepository.searchMessagesByContentPaged(roomId, keyword, pageable);
 
-        // Tìm kiếm tin nhắn
-        List<Message> messages = messageRepository.searchMessagesByContent(roomId, keyword);
-
-        // Apply pagination manually
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), messages.size());
-        List<Message> pagedMessages = messages.subList(start, end);
-
-        return pagedMessages.stream()
+        return messagePage.getContent().stream()
                 .map(this::convertToMessageDTO)
                 .collect(Collectors.toList());
     }
@@ -405,6 +412,9 @@ public class MessageService {
         // Kiểm tra tin nhắn đã bị xóa chưa
         if (message.getIsDeleted()) {
             throw new BadRequestException("Không thể sửa tin nhắn đã bị xóa");
+        }
+        if (newContent == null || newContent.trim().isEmpty()) {
+            throw new BadRequestException("Nội dung tin nhắn không được để trống");
         }
 
         // Cập nhật nội dung
@@ -440,9 +450,9 @@ public class MessageService {
         // Gửi WebSocket notification
         webSocketNotificationService.notifyMessageDeleted(message.getChatRoom().getRoomId(), messageId, userId);
 
-        // Gửi notification cho các thành viên khác
-        User deleter = userRepository.findById(userId).orElse(null);
-        if (deleter != null) {
-        }
+    }
+
+    public long countMessagesByRoomId(Long roomId) {
+        return messageRepository.countByRoomId(roomId);
     }
 }

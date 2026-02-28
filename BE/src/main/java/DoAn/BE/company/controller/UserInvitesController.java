@@ -90,7 +90,7 @@ public class UserInvitesController {
         invite.setJoinedAt(LocalDateTime.now());
         memberRepository.save(invite);
 
-        log.info("✅ User {} đã chấp nhận lời mời vào công ty {}", userId, invite.getCompany().getName());
+        log.info("User {} đã chấp nhận lời mời vào công ty {}", userId, invite.getCompany().getName());
 
         return ResponseEntity.ok(Map.of(
                 "message", "Đã chấp nhận lời mời thành công",
@@ -121,7 +121,7 @@ public class UserInvitesController {
         // Xóa invite
         memberRepository.delete(invite);
 
-        log.info("❌ User {} đã từ chối lời mời vào công ty {}", userId, invite.getCompany().getName());
+        log.info("User {} đã từ chối lời mời vào công ty {}", userId, invite.getCompany().getName());
 
         return ResponseEntity.ok(Map.of("message", "Đã từ chối lời mời"));
     }

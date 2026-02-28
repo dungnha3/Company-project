@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-
 // - Truy vấn users theo company
 
 // - Quản lý role trong company
@@ -44,6 +42,7 @@ public class UserSaasService {
     private final CompanyRepository companyRepository;
     private final RoleTemplateService roleTemplateService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     public Page<User> getUsersByCurrentCompany(Pageable pageable) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -68,19 +67,10 @@ public class UserSaasService {
         if (companyId == null) {
             return Page.empty();
         }
-        List<User> users = userRepository.findUsersByCompanyIdWithMemberships(companyId);
-
-        // Manual pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), users.size());
-
-        if (start >= users.size()) {
-            return new PageImpl<>(Collections.emptyList(), pageable, users.size());
-        }
-
-        List<User> pageContent = users.subList(start, end);
-        return new PageImpl<>(pageContent, pageable, users.size());
+        return companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId, pageable)
+                .map(CompanyMember::getUser);
     }
+
     public void updateUserRoleInCompany(Long userId, Long companyId, String roleName, User currentUser) {
         log.info("System Admin {} cập nhật role cho user {} trong công ty {}",
                 currentUser.getUsername(), userId, companyId);
@@ -115,7 +105,7 @@ public class UserSaasService {
             member.getRoles().add(newRole);
             member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
             companyMemberRepository.save(member);
-            log.info("✅ Đã cập nhật role từ {} sang {} cho user {} trong công ty {}",
+            log.info("Đã cập nhật role từ {} sang {} cho user {} trong công ty {}",
                     oldRoles, newRole, userId, companyId);
         } else {
             // Create new membership
@@ -130,7 +120,7 @@ public class UserSaasService {
             newMember.setJoinedAt(LocalDateTime.now());
             newMember.setIsActive(true);
             companyMemberRepository.save(newMember);
-            log.info("✅ Đã tạo CompanyMember mới cho user {} trong công ty {} với role {}",
+            log.info("Đã tạo CompanyMember mới cho user {} trong công ty {} với role {}",
                     userId, companyId, newRole);
         }
 

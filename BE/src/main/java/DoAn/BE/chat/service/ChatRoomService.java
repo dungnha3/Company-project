@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
 @Service
 @Transactional
 @Slf4j
@@ -41,6 +42,7 @@ public class ChatRoomService {
     private final ProjectRepository projectRepository;
     private final MessageRepository messageRepository;
     private final AccessControlService accessControlService;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository,
             ChatRoomMemberRepository chatRoomMemberRepository,
@@ -49,7 +51,8 @@ public class ChatRoomService {
             ChatNotificationService chatNotificationService,
             ProjectRepository projectRepository,
             MessageRepository messageRepository,
-            AccessControlService accessControlService) {
+            AccessControlService accessControlService,
+            jakarta.persistence.EntityManager entityManager) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatRoomMemberRepository = chatRoomMemberRepository;
         this.userRepository = userRepository;
@@ -58,6 +61,22 @@ public class ChatRoomService {
         this.projectRepository = projectRepository;
         this.messageRepository = messageRepository;
         this.accessControlService = accessControlService;
+        this.entityManager = entityManager;
+    }
+
+    private void validateUserInCompany(Long userId) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            Long count = entityManager.createQuery(
+                    "SELECT COUNT(cm) FROM CompanyMember cm WHERE cm.company.companyId = :companyId AND cm.user.userId = :userId",
+                    Long.class)
+                    .setParameter("companyId", companyId)
+                    .setParameter("userId", userId)
+                    .getSingleResult();
+            if (count == 0) {
+                throw new ForbiddenException("User does not belong to the current workspace");
+            }
+        }
     }
 
     public ChatRoomDTO createChatRoom(CreateChatRoomRequest request, User currentUser) {
@@ -100,6 +119,7 @@ public class ChatRoomService {
 
             // Thêm các thành viên khác từ memberIds
             if (request.getMemberIds() != null && !request.getMemberIds().isEmpty()) {
+                Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
                 for (Long memberId : request.getMemberIds()) {
                     // Bỏ qua người tạo (đã thêm ở trên)
                     if (memberId.equals(currentUser.getUserId())) {
@@ -107,16 +127,27 @@ public class ChatRoomService {
                     }
 
                     User memberUser = userRepository.findById(memberId).orElse(null);
-                    if (memberUser != null) {
-                        ChatRoomMember member = new ChatRoomMember();
-                        member.setId(new ChatRoomMemberId(chatRoom.getRoomId(), memberUser.getUserId()));
-                        member.setChatRoom(chatRoom);
-                        member.setUser(memberUser);
-                        member.setRole(ChatRoomMember.MemberRole.MEMBER);
-                        member.setJoinedAt(LocalDateTime.now());
-                        chatRoomMemberRepository.save(member);
-                        log.info("Thêm thành viên {} vào phòng chat {}", memberUser.getUsername(), chatRoom.getName());
+                    if (memberUser == null)
+                        continue;
+                    if (companyId != null) {
+                        boolean sameCompany = memberUser.getMemberships() != null
+                                && memberUser.getMemberships().stream()
+                                        .anyMatch(m -> m.getCompany() != null
+                                                && companyId.equals(m.getCompany().getCompanyId()) && m.getIsActive());
+                        if (!sameCompany) {
+                            log.warn("Skipping member {} — not in company {}", memberId, companyId);
+                            continue;
+                        }
                     }
+
+                    ChatRoomMember member = new ChatRoomMember();
+                    member.setId(new ChatRoomMemberId(chatRoom.getRoomId(), memberUser.getUserId()));
+                    member.setChatRoom(chatRoom);
+                    member.setUser(memberUser);
+                    member.setRole(ChatRoomMember.MemberRole.MEMBER);
+                    member.setJoinedAt(LocalDateTime.now());
+                    chatRoomMemberRepository.save(member);
+                    log.info("Thêm thành viên {} vào phòng chat {}", memberUser.getUsername(), chatRoom.getName());
                 }
             }
 
@@ -178,6 +209,13 @@ public class ChatRoomService {
         if (userId1 == null || userId2 == null) {
             throw new BadRequestException("User ID không được để trống");
         }
+        if (userId1.equals(userId2)) {
+            throw new BadRequestException("Không thể tạo cuộc trò chuyện với chính mình");
+        }
+
+        validateUserInCompany(userId1);
+        validateUserInCompany(userId2);
+
         User user1 = userRepository.findById(userId1)
                 .orElseThrow(() -> new ResourceNotFoundException("User 1 không tồn tại"));
         User user2 = userRepository.findById(userId2)
@@ -235,6 +273,8 @@ public class ChatRoomService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
 
+        validateUserInCompany(userId);
+
         // Kiểm tra user đã trong phòng chưa
         boolean alreadyMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
         if (alreadyMember) {
@@ -278,6 +318,9 @@ public class ChatRoomService {
         if (!isAdmin) {
             throw new BadRequestException("Bạn không có quyền xóa thành viên khỏi phòng chat này");
         }
+        if (userId.equals(adminId)) {
+            throw new BadRequestException("Admin không thể tự xóa mình khỏi phòng chat. Hãy chuyển quyền admin trước.");
+        }
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
@@ -294,11 +337,23 @@ public class ChatRoomService {
         if (roomId == null || userId == null) {
             throw new BadRequestException("Room ID và User ID không được để trống");
         }
-        chatRoomRepository.findById(roomId)
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+        if (chatRoom.getType() == ChatRoom.RoomType.DIRECT) {
+            throw new BadRequestException("Không thể rời phòng chat trực tiếp. Hãy xóa cuộc hội thoại thay vào đó.");
+        }
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
+        if (member.getRole() == ChatRoomMember.MemberRole.ADMIN) {
+            long adminCount = chatRoomMemberRepository.findByChatRoom_RoomId(roomId).stream()
+                    .filter(m -> m.getRole() == ChatRoomMember.MemberRole.ADMIN)
+                    .count();
+            if (adminCount <= 1) {
+                throw new BadRequestException(
+                        "Bạn là admin duy nhất. Hãy chuyển quyền admin cho thành viên khác trước khi rời phòng.");
+            }
+        }
 
         User leavingUser = member.getUser();
         chatRoomMemberRepository.delete(member);
@@ -421,25 +476,49 @@ public class ChatRoomService {
         dto.setAvatarUrl(chatRoom.getAvatarUrl());
         dto.setCreatedAt(chatRoom.getCreatedAt());
 
+        // Set creator as lightweight DTO
+        if (chatRoom.getCreatedBy() != null) {
+            User creator = chatRoom.getCreatedBy();
+            dto.setCreatedBy(new ChatRoomDTO.MemberDTO(
+                    creator.getUserId(), creator.getUsername(),
+                    creator.getEmail(), creator.getAvatarUrl(),
+                    creator.getFullName()));
+        }
+
         // Set project info if this is a project chat
         if (chatRoom.getProject() != null) {
             dto.setProjectID(chatRoom.getProject().getProjectId());
             dto.setProjectName(chatRoom.getProject().getName());
         }
 
-        // Fetch members và set vào DTO (quan trọng cho DIRECT chat để hiển thị tên)
+        // Fetch members and map to lightweight DTOs (no password, no fcmToken)
         List<ChatRoomMember> memberList = chatRoomMemberRepository.findByChatRoom_RoomId(chatRoom.getRoomId());
-        List<User> members = memberList.stream()
+        List<ChatRoomDTO.MemberDTO> memberDTOs = memberList.stream()
                 .map(ChatRoomMember::getUser)
                 .filter(user -> user != null)
+                .map(user -> new ChatRoomDTO.MemberDTO(
+                        user.getUserId(), user.getUsername(),
+                        user.getEmail(), user.getAvatarUrl(),
+                        user.getFullName()))
                 .collect(Collectors.toList());
-        dto.setMembers(members);
-        dto.setMemberCount(members.size());
+        dto.setMembers(memberDTOs);
+        dto.setMemberCount(memberDTOs.size());
 
-        // Fetch and set last message
+        // Fetch and set last message as lightweight DTO
         Message lastMessage = messageRepository.findTopByChatRoom_RoomIdOrderByCreatedAtDesc(chatRoom.getRoomId());
         if (lastMessage != null) {
-            dto.setLastMessage(lastMessage);
+            ChatRoomDTO.LastMessageDTO lastMsgDTO = new ChatRoomDTO.LastMessageDTO();
+            lastMsgDTO.setMessageId(lastMessage.getMessageId());
+            lastMsgDTO.setContent(lastMessage.getContent());
+            lastMsgDTO.setCreatedAt(lastMessage.getCreatedAt());
+            lastMsgDTO.setMessageType(lastMessage.getMessageType() != null
+                    ? lastMessage.getMessageType().name()
+                    : null);
+            if (lastMessage.getSender() != null) {
+                lastMsgDTO.setSenderUsername(lastMessage.getSender().getUsername());
+                lastMsgDTO.setSenderId(lastMessage.getSender().getUserId());
+            }
+            dto.setLastMessage(lastMsgDTO);
             dto.setLastMessageAt(lastMessage.getCreatedAt());
         }
 

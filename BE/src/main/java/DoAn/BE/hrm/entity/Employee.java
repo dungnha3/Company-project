@@ -23,10 +23,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
         @Index(name = "idx_emp_department", columnList = "department_id"),
         @Index(name = "idx_emp_position", columnList = "position_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @ToString(exclude = { "user", "leaveRequests", "department", "position" })
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Employee extends TenantScopedEntity {
@@ -34,6 +35,7 @@ public class Employee extends TenantScopedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "employee_id")
+    @EqualsAndHashCode.Include
     private Long employeeId;
 
     @ManyToOne(fetch = FetchType.LAZY)

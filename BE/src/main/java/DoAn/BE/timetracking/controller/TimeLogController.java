@@ -30,7 +30,9 @@ public class TimeLogController {
     // POST /api/timelogs
     // /
     @PostMapping
-    public ResponseEntity<TimeLogDTO> logTime(@Valid @RequestBody CreateTimeLogRequest request) {
+    public ResponseEntity<TimeLogDTO> logTime(
+            @Valid @RequestBody CreateTimeLogRequest request,
+            @AuthenticationPrincipal User currentUser) {
         TimeLogDTO result = timeTrackingService.logTime(request);
         return ResponseEntity.ok(result);
     }
@@ -39,8 +41,10 @@ public class TimeLogController {
     // GET /api/timelogs/issue/{issueId}
     // /
     @GetMapping("/issue/{issueId}")
-    public ResponseEntity<List<TimeLogDTO>> getIssueTimeLogs(@PathVariable Long issueId) {
-        return ResponseEntity.ok(timeTrackingService.getIssueTimeLogs(issueId));
+    public ResponseEntity<List<TimeLogDTO>> getIssueTimeLogs(
+            @PathVariable Long issueId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(timeTrackingService.getIssueTimeLogs(issueId, currentUser));
     }
 
     // Get my time logs (paginated)
@@ -59,7 +63,8 @@ public class TimeLogController {
     @PutMapping("/{logId}")
     public ResponseEntity<TimeLogDTO> updateTimeLog(
             @PathVariable Long logId,
-            @Valid @RequestBody CreateTimeLogRequest request) {
+            @Valid @RequestBody CreateTimeLogRequest request,
+            @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(timeTrackingService.updateTimeLog(logId, request));
     }
 
@@ -67,7 +72,9 @@ public class TimeLogController {
     // DELETE /api/timelogs/{logId}
     // /
     @DeleteMapping("/{logId}")
-    public ResponseEntity<Void> deleteTimeLog(@PathVariable Long logId) {
+    public ResponseEntity<Void> deleteTimeLog(
+            @PathVariable Long logId,
+            @AuthenticationPrincipal User currentUser) {
         timeTrackingService.deleteTimeLog(logId);
         return ResponseEntity.noContent().build();
     }
@@ -76,7 +83,9 @@ public class TimeLogController {
     // GET /api/timelogs/issue/{issueId}/total
     // /
     @GetMapping("/issue/{issueId}/total")
-    public ResponseEntity<BigDecimal> getTotalHoursByIssue(@PathVariable Long issueId) {
-        return ResponseEntity.ok(timeTrackingService.getTotalHoursByIssue(issueId));
+    public ResponseEntity<BigDecimal> getTotalHoursByIssue(
+            @PathVariable Long issueId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(timeTrackingService.getTotalHoursByIssue(issueId, currentUser));
     }
 }

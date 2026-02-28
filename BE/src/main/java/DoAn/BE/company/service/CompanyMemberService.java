@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
+
 // Chịu trách nhiệm: Thêm/Xóa/Sửa thành viên và Phân quyền chi tiết
 @Service
 @RequiredArgsConstructor
@@ -66,6 +67,12 @@ public class CompanyMemberService {
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException("Không thể thay đổi vai trò của Chủ sở hữu");
         }
+        if (targetMember.hasAnyRole(CompanyRole.ADMIN)) {
+            CompanyMember currentMember = accessControlService.getCurrentMember();
+            if (currentMember == null || !currentMember.hasAnyRole(CompanyRole.OWNER)) {
+                throw new ForbiddenException("Chỉ Chủ sở hữu mới có quyền thay đổi vai trò của Quản trị viên");
+            }
+        }
 
         // [Business Rule: Không thể gán role Owner trực tiếp - Phải dùng chức năng
         // Chuyển giao]
@@ -101,6 +108,13 @@ public class CompanyMemberService {
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException("Không thể xóa Chủ sở hữu khỏi công ty");
+        }
+        if (targetMember.hasAnyRole(CompanyRole.ADMIN)) {
+            // Check if current user is OWNER
+            DoAn.BE.company.entity.CompanyMember currentMember = accessControlService.getCurrentMember();
+            if (currentMember == null || !currentMember.hasAnyRole(CompanyRole.OWNER)) {
+                throw new ForbiddenException("Chỉ chủ sở hữu mới có thể xóa Admin");
+            }
         }
 
         memberRepository.delete(targetMember);
@@ -199,8 +213,6 @@ public class CompanyMemberService {
             case PermissionKeys.PROJECT_CREATE -> p.setProjectCreate(value);
             case PermissionKeys.PROJECT_MANAGE_ALL -> p.setProjectManageAll(value);
             case PermissionKeys.PROJECT_DELETE -> p.setProjectDelete(value);
-
-            // [CHAT GROUP]
             case PermissionKeys.CHAT_CREATE_GROUP -> p.setChatCreateGroup(value);
 
             // [STORAGE GROUP]

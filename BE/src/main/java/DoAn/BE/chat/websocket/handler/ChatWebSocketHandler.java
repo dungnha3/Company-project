@@ -1,7 +1,7 @@
 package DoAn.BE.chat.websocket.handler;
 
-import DoAn.BE.chat.dto.MessDTO;
 import DoAn.BE.chat.repository.ChatRoomMemberRepository;
+import DoAn.BE.chat.service.MessageService;
 import DoAn.BE.chat.websocket.dto.WebSocketMessage;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 @Controller
 @Slf4j
 public class ChatWebSocketHandler {
@@ -24,15 +25,18 @@ public class ChatWebSocketHandler {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final UserRepository userRepository;
     private final UserPresenceService userPresenceService;
+    private final MessageService messageService;
 
     public ChatWebSocketHandler(SimpMessagingTemplate messagingTemplate,
             ChatRoomMemberRepository chatRoomMemberRepository,
             UserRepository userRepository,
-            UserPresenceService userPresenceService) {
+            UserPresenceService userPresenceService,
+            MessageService messageService) {
         this.messagingTemplate = messagingTemplate;
         this.chatRoomMemberRepository = chatRoomMemberRepository;
         this.userRepository = userRepository;
         this.userPresenceService = userPresenceService;
+        this.messageService = messageService;
     }
 
     // Store typing users for each room
@@ -43,11 +47,24 @@ public class ChatWebSocketHandler {
     public void sendMessage(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Object principal = headerAccessor.getUser();
-            if (principal == null || !(principal instanceof User)) {
+            if (principal == null) {
                 return; // User not authenticated
             }
 
-            User user = (User) principal;
+            // Extract User from Authentication wrapper
+            User user;
+            if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
+                if (authToken.getPrincipal() instanceof User u) {
+                    user = u;
+                } else {
+                    return;
+                }
+            } else if (principal instanceof User u) {
+                user = u;
+            } else {
+                return;
+            }
+
             Long roomId = message.getRoomId();
             if (roomId == null || user.getUserId() == null) {
                 return; // Invalid data
@@ -59,41 +76,32 @@ public class ChatWebSocketHandler {
                 return; // User not authorized
             }
 
-            // Create message DTO
-            MessDTO messageDTO = new MessDTO();
-            messageDTO.setRoomId(roomId);
-            messageDTO.setContent(message.getContent());
-            // Convert User to UserDTO
-            DoAn.BE.user.dto.UserDTO userDTO = new DoAn.BE.user.dto.UserDTO();
-            userDTO.setUserId(user.getUserId());
-            userDTO.setUsername(user.getUsername());
-            userDTO.setEmail(user.getEmail());
-            userDTO.setAvatarUrl(user.getAvatarUrl());
-            messageDTO.setSender(userDTO);
-
-            // Send message to all room members
-            WebSocketMessage wsMessage = new WebSocketMessage(
-                    WebSocketMessage.MessageType.CHAT_MESSAGE,
-                    roomId,
-                    user.getUserId(),
-                    user.getUsername(),
-                    message.getContent());
-            wsMessage.setMessageId(System.currentTimeMillis()); // Temporary ID
-
-            messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
+            // Delegate to MessageService for persistence + WebSocket broadcast
+            // This ensures the message is saved to DB before being sent via WS
+            DoAn.BE.chat.dto.SendMessageRequest sendReq = new DoAn.BE.chat.dto.SendMessageRequest();
+            sendReq.setContent(message.getContent());
+            sendReq.setRoomId(roomId);
+            messageService.sendMessage(sendReq, user.getUserId());
 
         } catch (Exception e) {
             log.error("Lỗi khi gửi tin nhắn qua WebSocket: {}", e.getMessage(), e);
         }
     }
+
     @MessageMapping("/chat.typing.start")
     public void handleTypingStart(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Object principal = headerAccessor.getUser();
-            if (principal == null || !(principal instanceof User))
+            User user = null;
+            if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
+                if (authToken.getPrincipal() instanceof User u) {
+                    user = u;
+                }
+            } else if (principal instanceof User u) {
+                user = u;
+            }
+            if (user == null)
                 return;
-
-            User user = (User) principal;
             Long roomId = message.getRoomId();
             if (roomId == null || user.getUserId() == null) {
                 return; // Invalid data
@@ -121,14 +129,21 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
         }
     }
+
     @MessageMapping("/chat.typing.stop")
     public void handleTypingStop(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Object principal = headerAccessor.getUser();
-            if (principal == null || !(principal instanceof User))
+            User user = null;
+            if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
+                if (authToken.getPrincipal() instanceof User u) {
+                    user = u;
+                }
+            } else if (principal instanceof User u) {
+                user = u;
+            }
+            if (user == null)
                 return;
-
-            User user = (User) principal;
             Long roomId = message.getRoomId();
             if (roomId == null || user.getUserId() == null) {
                 return; // Invalid data
@@ -156,14 +171,23 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
         }
     }
+
     @MessageMapping("/chat.join")
     public void handleUserJoin(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Object principal = headerAccessor.getUser();
-            if (principal == null || !(principal instanceof User))
+            if (principal == null)
                 return;
-
-            User user = (User) principal;
+            User user = null;
+            if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
+                if (authToken.getPrincipal() instanceof User u) {
+                    user = u;
+                }
+            } else if (principal instanceof User u) {
+                user = u;
+            }
+            if (user == null)
+                return;
             Long roomId = message.getRoomId();
             if (roomId == null || user.getUserId() == null) {
                 return; // Invalid data
@@ -187,17 +211,26 @@ public class ChatWebSocketHandler {
             messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
 
         } catch (Exception e) {
-            log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
+            log.error("Lỗi khi xử lý user join: {}", e.getMessage(), e);
         }
     }
+
     @MessageMapping("/chat.leave")
     public void handleUserLeave(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Object principal = headerAccessor.getUser();
-            if (principal == null || !(principal instanceof User))
+            if (principal == null)
                 return;
-
-            User user = (User) principal;
+            User user = null;
+            if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
+                if (authToken.getPrincipal() instanceof User u) {
+                    user = u;
+                }
+            } else if (principal instanceof User u) {
+                user = u;
+            }
+            if (user == null)
+                return;
             Long roomId = message.getRoomId();
             if (roomId == null || user.getUserId() == null) {
                 return; // Invalid data
@@ -225,20 +258,34 @@ public class ChatWebSocketHandler {
             messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
 
         } catch (Exception e) {
-            log.error("Lỗi khi xử lý typing indicator: {}", e.getMessage(), e);
+            log.error("Lỗi khi xử lý user leave: {}", e.getMessage(), e);
         }
     }
+
     @MessageMapping("/chat.signal")
     public void handleSignal(@Payload WebSocketMessage message, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Object principal = headerAccessor.getUser();
-            if (principal == null || !(principal instanceof User))
+            if (principal == null)
                 return;
-
-            User user = (User) principal;
+            User user = null;
+            if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
+                if (authToken.getPrincipal() instanceof User u) {
+                    user = u;
+                }
+            } else if (principal instanceof User u) {
+                user = u;
+            }
+            if (user == null)
+                return;
             Long roomId = message.getRoomId();
             if (roomId == null)
                 return;
+            boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, user.getUserId());
+            if (!isMember) {
+                log.warn("User {} tried to signal in room {} without membership", user.getUserId(), roomId);
+                return;
+            }
 
             // Re-broadcast signal to room
             WebSocketMessage signalMsg = new WebSocketMessage(
@@ -254,6 +301,7 @@ public class ChatWebSocketHandler {
             log.error("Lỗi khi xử lý video call signal: {}", e.getMessage(), e);
         }
     }
+
     public List<String> getTypingUsers(Long roomId) {
         if (roomId == null) {
             return List.of();
@@ -272,5 +320,17 @@ public class ChatWebSocketHandler {
                         .map(User::getUsername)
                         .orElse("Unknown"))
                 .toList();
+    }
+
+    // disconnected users
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 10000)
+    public void cleanupStaleTypingEntries() {
+        long currentTime = System.currentTimeMillis();
+        typingUsers.forEach((roomId, roomMap) -> {
+            roomMap.entrySet().removeIf(entry -> currentTime - entry.getValue() > 10000);
+            if (roomMap.isEmpty()) {
+                typingUsers.remove(roomId);
+            }
+        });
     }
 }

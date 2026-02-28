@@ -102,8 +102,6 @@ public class CalendarService {
 
         log.info("Created calendar event: {} by user {}", event.getTitle(), currentUser.getUserId());
 
-        log.info("Created calendar event: {} by user {}", event.getTitle(), currentUser.getUserId());
-
         CalendarEventDTO dto = toDTO(event);
 
         // Publish Event

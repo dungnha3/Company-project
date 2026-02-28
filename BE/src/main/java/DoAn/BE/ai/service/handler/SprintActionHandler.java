@@ -12,6 +12,7 @@ import DoAn.BE.common.util.MapUtils;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.entity.Sprint;
 import DoAn.BE.project.repository.ProjectRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
@@ -28,6 +29,7 @@ public class SprintActionHandler {
 
     private final SprintRepository sprintRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
 
     public AIActionDTO createSprint(AIActionDTO action, Long userId) {
@@ -45,9 +47,9 @@ public class SprintActionHandler {
         }
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Project not found"));
         User creator = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User not found"));
 
         Sprint sprint = new Sprint();
         sprint.setProject(project);
@@ -81,7 +83,13 @@ public class SprintActionHandler {
         }
 
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Sprint not found"));
+        if (sprint.getProject() != null) {
+            projectMemberRepository.findByProject_ProjectIdAndUser_UserId(
+                    sprint.getProject().getProjectId(), userId)
+                    .orElseThrow(() -> new DoAn.BE.common.exception.ForbiddenException(
+                            "Bạn không có quyền quản lý sprint này"));
+        }
 
         sprint.setStatus(Sprint.SprintStatus.ACTIVE);
         sprint.setStartDate(LocalDate.now());
@@ -104,7 +112,13 @@ public class SprintActionHandler {
         }
 
         Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Sprint not found"));
+        if (sprint.getProject() != null) {
+            projectMemberRepository.findByProject_ProjectIdAndUser_UserId(
+                    sprint.getProject().getProjectId(), userId)
+                    .orElseThrow(() -> new DoAn.BE.common.exception.ForbiddenException(
+                            "Bạn không có quyền quản lý sprint này"));
+        }
 
         sprint.setStatus(Sprint.SprintStatus.COMPLETED);
         sprint.setEndDate(LocalDate.now());

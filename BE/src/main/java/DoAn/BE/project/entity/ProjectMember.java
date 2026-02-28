@@ -3,6 +3,7 @@ package DoAn.BE.project.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import DoAn.BE.user.entity.User;
+
 @Entity
 @Table(name = "project_members", uniqueConstraints = @UniqueConstraint(columnNames = { "project_id",
         "user_id" }), indexes = {
@@ -11,14 +12,16 @@ import DoAn.BE.user.entity.User;
                 // Index cho query: findByUser_UserId (User's projects)
                 @jakarta.persistence.Index(name = "idx_pm_user", columnList = "user_id")
         })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ProjectMember extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @ManyToOne

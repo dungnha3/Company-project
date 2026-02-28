@@ -42,12 +42,8 @@ public class EmployeeService {
 
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
-
-        try {
-            accessControlService.checkHrViewPermission();
+        if (accessControlService.hasPermission("hr.viewList")) {
             return employee;
-        } catch (ForbiddenException ignored) {
-            // Fall through to self-view check
         }
 
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
@@ -86,7 +82,12 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public Page<Employee> getAllEmployeesPage(Pageable pageable) {
         accessControlService.checkHrViewPermission();
-        return employeeRepository.findAll(pageable);
+        // ALL companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return Page.empty(pageable);
+        }
+        return employeeRepository.findByCompanyId(companyId, pageable);
     }
 
     public Employee updateEmployee(Long id, EmployeeRequest request, User currentUser) {
@@ -135,21 +136,26 @@ public class EmployeeService {
 
         return employeeRepository.save(employee);
     }
-
+    // integrity
     public void deleteEmployee(Long id) {
         accessControlService.checkHrEditPermission();
         Employee employee = getEmployeeById(id);
-        employeeRepository.delete(employee);
+        employee.setStatus(EmployeeStatus.RESIGNED);
+        employeeRepository.save(employee);
     }
-
     @Transactional(readOnly = true)
     public List<Employee> getEmployeesByStatus(EmployeeStatus status) {
-        return employeeRepository.findByStatus(status);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return java.util.Collections.emptyList();
+        return employeeRepository.findByStatusAndCompany_CompanyId(status, companyId);
     }
-
     @Transactional(readOnly = true)
     public Page<Employee> getEmployeesByStatus(EmployeeStatus status, Pageable pageable) {
-        return employeeRepository.findByStatus(status, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return Page.empty(pageable);
+        return employeeRepository.findByStatusAndCompany_CompanyId(status, companyId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -174,7 +180,14 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public List<Employee> searchEmployees(String keyword) {
-        return employeeRepository.searchByKeyword(keyword);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        List<Employee> results = employeeRepository.searchByKeyword(keyword);
+        if (companyId != null) {
+            results = results.stream()
+                    .filter(e -> e.getCompany() != null && companyId.equals(e.getCompany().getCompanyId()))
+                    .toList();
+        }
+        return results;
     }
 
     @Transactional(readOnly = true)

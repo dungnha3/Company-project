@@ -7,7 +7,7 @@ package DoAn.BE.common.context;
 // - PERSONAL mode: personalMode=true, userId set, query by user_id
 // /
 public class TenantContext {
-
+    // explicitly)
     private static final ThreadLocal<Long> currentCompanyId = new ThreadLocal<>();
     private static final ThreadLocal<Boolean> personalMode = new ThreadLocal<>();
     private static final ThreadLocal<Long> currentUserId = new ThreadLocal<>();

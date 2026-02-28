@@ -29,7 +29,6 @@ import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-
 // Tương tự như Notion AI - hỗ trợ quản lý dự án thông minh
 @Service
 @RequiredArgsConstructor
@@ -249,8 +248,12 @@ public class AIProjectAssistantService {
 
     private AIConversation getOrCreateConversation(AIChatRequest request, User user) {
         if (request.getConversationId() != null && !request.getConversationId().isEmpty()) {
-            return conversationRepository.findByConversationUuid(request.getConversationId())
-                    .orElseGet(() -> createNewConversation(user, request.getProjectId()));
+            AIConversation existing = conversationRepository.findByConversationUuid(request.getConversationId())
+                    .orElse(null);
+            if (existing != null && existing.getUser().getUserId().equals(user.getUserId())) {
+                return existing;
+            }
+            // If not found or not owned by user, create new
         }
         return createNewConversation(user, request.getProjectId());
     }
