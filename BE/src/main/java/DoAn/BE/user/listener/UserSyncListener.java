@@ -33,6 +33,6 @@ public class UserSyncListener {
         // We should double check AsyncSchedulingConfig for TenantAwareTaskDecorator.
 
         firebaseAuthSyncService.syncUserToFirebase(user, companyId);
-        log.info("🔄 Synced user {} to Firebase", user.getUsername());
+        log.info("Synced user {} to Firebase", user.getUsername());
     }
 }

@@ -18,23 +18,38 @@ export const ENDPOINTS = {
         FORGOT_PASSWORD: '/api/auth/forgot-password',
         RESET_PASSWORD: '/api/auth/reset-password',
         CHANGE_PASSWORD: '/api/auth/change-password',
+        VERIFY_2FA: '/api/auth/verify-2fa',
     },
 
-    // Profile
-    PROFILE: {
-        UPDATE: '/api/profile',
-        UPLOAD_AVATAR: '/api/profile/avatar',
-        CHANGE_PASSWORD: '/api/profile/change-password',
-        NOTIFICATION_SETTINGS: '/api/profile/notification-settings',
-        SESSIONS: '/api/profile/sessions',
-        REVOKE_SESSION: (id) => `/api/profile/sessions/${id}`,
+
+    // Accounts (Admin user management — merged into UsersController)
+    ACCOUNTS: {
+        LIST: '/api/users',
+        BY_ID: (id) => `/api/users/${id}`,
+        SEARCH: '/api/users/search',
+        UPDATE: (id) => `/api/users/${id}`,
+        DELETE: (id) => `/api/users/${id}`,
+        CHANGE_PASSWORD: (id) => `/api/users/${id}/password`,
+        TOGGLE_STATUS: (id) => `/api/users/${id}/status`,
+        UPDATE_ROLE: (id) => `/api/users/${id}/role`,
+        UPDATE_SYSTEM_ADMIN: (id) => `/api/users/${id}/system-admin`,
+        BY_ROLE: (role) => `/api/users/role/${role}`,
+        ACTIVE: '/api/users/active',
+        ONLINE: '/api/users/online',
+        COUNT_BY_ROLE: (role) => `/api/users/count/role/${role}`,
+        COUNT_ONLINE: '/api/users/count/online',
     },
 
-    // Admin (SaaS)
-    ADMIN: {
-        COMPANIES: '/api/sysadmin/companies', // Old: /api/companies/admin/all
+    // Company Admin (quản trị viên công ty — role ADMIN trong CompanyRole)
+    COMPANY_ADMIN: {
+        COMPANIES: '/api/sysadmin/companies',
         COMPANY_DETAILS: (id) => `/api/sysadmin/companies/${id}`,
         USERS: '/api/users',
+    },
+
+    // Public Files (no auth required — PublicStorageController)
+    PUBLIC_FILES: {
+        DOWNLOAD: (fileId) => `/api/public/files/${fileId}/download`,
     },
 
     // System Admin (God Mode)
@@ -125,6 +140,10 @@ export const ENDPOINTS = {
         SESSIONS: '/api/profile/sessions',
         REVOKE_SESSION: (sessionId) => `/api/profile/sessions/${sessionId}`,
         NOTIFICATION_SETTINGS: '/api/profile/notification-settings',
+        DELETE_ACCOUNT: '/api/profile',
+        TWO_FACTOR_SETUP: '/api/profile/2fa/setup',
+        TWO_FACTOR_VERIFY: '/api/profile/2fa/verify',
+        TWO_FACTOR_DISABLE: '/api/profile/2fa',
     },
 
     // Employees
@@ -198,8 +217,7 @@ export const ENDPOINTS = {
         BY_EMPLOYEE: (empId) => `/api/salaries/employee/${empId}`,
         BY_PERIOD: '/api/salaries/period',
         BY_STATUS: (status) => `/api/salaries/status/${status}`,
-        GENERATE: '/api/salaries/generate',
-        PAY: (id) => `/api/salaries/${id}/pay`,
+        PAY: (id) => `/api/salaries/${id}/mark-paid`,
     },
 
     // Contracts
@@ -237,15 +255,6 @@ export const ENDPOINTS = {
         DELETE: (id) => `/api/okrs/${id}`,
         MY: '/api/okrs/my',
         DEPARTMENT: (deptId) => `/api/okrs/department/${deptId}`,
-    },
-
-    // Skills Matrix
-    SKILLS: {
-        MATRIX: '/api/skills/matrix',
-        LIST: '/api/skills',
-        CREATE: '/api/skills',
-        UPDATE_EMPLOYEE: (empId) => `/api/skills/employee/${empId}`,
-        BY_EMPLOYEE: (empId) => `/api/skills/employee/${empId}`,
     },
 
     // Onboarding
@@ -324,6 +333,7 @@ export const ENDPOINTS = {
 
     // Issues
     ISSUES: {
+        CREATE: '/api/issues',
         BY_ID: (id) => `/api/issues/${id}`,
         BY_PROJECT: (projectId) => `/api/issues/project/${projectId}`,
         BACKLOG: (projectId) => `/api/issues/project/${projectId}/backlog`,
@@ -436,16 +446,6 @@ export const ENDPOINTS = {
         ACTIONS: '/api/ai/actions',
         BATCH_ACTIONS: '/api/ai/actions/batch',
     },
-
-    // Integration - Webhooks (replaces removed Automation module)
-    INTEGRATION: {
-        WEBHOOKS: '/api/integration/webhooks',
-        WEBHOOK_BY_ID: (id) => `/api/integration/webhooks/${id}`,
-        TEST_WEBHOOK: (id) => `/api/integration/webhooks/${id}/test`,
-    },
-
-    // Global Search (NEW)
-    SEARCH: '/api/search',
 
     // Custom Fields
     CUSTOM_FIELDS: {

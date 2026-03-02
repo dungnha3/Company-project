@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.Map;
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
 @FeatureFlag("CHAT")
+@Transactional(readOnly = true)
 public class MessageController {
 
     private final MessageService messageService;
@@ -56,7 +58,8 @@ public class MessageController {
         }
         Pageable pageable = PageRequest.of(page, size);
         List<MessDTO> messages = messageService.getMessagesByRoomId(roomId, currentUser.getUserId(), page, size);
-        Page<MessDTO> pageMessages = new PageImpl<>(messages, pageable, messages.size());
+        long totalMessages = messageService.countMessagesByRoomId(roomId);
+        Page<MessDTO> pageMessages = new PageImpl<>(messages, pageable, totalMessages);
         return ResponseEntity.ok(pageMessages);
     }
 
@@ -108,6 +111,9 @@ public class MessageController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal User currentUser) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
         Pageable pageable = PageRequest.of(page, size);
         List<MessDTO> messages = messageService.searchMessages(roomId, keyword, currentUser.getUserId(), pageable);
         return ResponseEntity.ok(messages);
@@ -141,7 +147,8 @@ public class MessageController {
 
     @GetMapping("/messages/{messageId}/reactions")
     public ResponseEntity<Map<String, List<String>>> getReactions(
-            @PathVariable Long messageId) {
+            @PathVariable Long messageId,
+            @AuthenticationPrincipal User currentUser) {
         Map<String, List<String>> reactions = reactionService.getReactionsByMessageId(messageId);
         return ResponseEntity.ok(reactions);
     }

@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +27,7 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/reviews")
 @FeatureFlag("REVIEW")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ReviewController {
 
     private final ReviewService reviewService;

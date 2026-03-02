@@ -100,7 +100,7 @@ export default function EmployeeDetailPage() {
                             <div>
                                 <p className="font-semibold">Lưu ý về Phân quyền</p>
                                 <p className="text-sm">
-                                    Các quyền dưới đây sẽ được áp dụng bổ sung hoặc ghi đè (nếu bị tắt) lên quyền mặc định của Vai trò hiện tại ({employee.role}).
+                                    Các quyền dưới đây được quản lý chi tiết cho từng thành viên. Bật/tắt để tùy chỉnh quyền truy cập.
                                 </p>
                             </div>
                         </div>
@@ -111,8 +111,14 @@ export default function EmployeeDetailPage() {
                     </div>
                 )}
 
-                {(activeTab === 'contracts' || activeTab === 'attendance' || activeTab === 'salary') && (
-                    <Placeholder title={tabs.find(t => t.id === activeTab)?.label} />
+                {activeTab === 'contracts' && (
+                    <EmployeeContracts employeeId={id} />
+                )}
+                {activeTab === 'attendance' && (
+                    <EmployeeAttendance employeeId={id} />
+                )}
+                {activeTab === 'salary' && (
+                    <EmployeeSalary employeeId={id} />
                 )}
             </div>
         </div>
@@ -121,53 +127,18 @@ export default function EmployeeDetailPage() {
 
 function EmployeeInfo({ employee }) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Left Column - Avatar & Contact */}
-            <div className="space-y-6">
-                <div className="text-center">
-                    <Avatar src={employee.avatarUrl} name={employee.fullName} size="xl" className="w-32 h-32 mx-auto" />
-                    <div className="mt-4 font-mono text-sm text-gray-500">{employee.employeeCode}</div>
-                </div>
-
-                <div className="space-y-4">
-                    <InfoItem icon="fa-envelope" label="Email" value={employee.email} />
-                    <InfoItem icon="fa-phone" label="Điện thoại" value={employee.phone} />
-                    <InfoItem icon="fa-location-dot" label="Địa chỉ" value={employee.address} />
-                </div>
-            </div>
-
-            {/* Right Column - Detailed Info */}
-            <div className="md:col-span-2 space-y-6">
-                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2">Thông tin cá nhân</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InfoField label="Họ và tên" value={employee.fullName} />
-                    <InfoField label="Giới tính" value={employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nữ' : 'Khác'} />
-                    <InfoField label="Ngày sinh" value={formatDate(employee.dateOfBirth)} />
-                    <InfoField label="CCCD/CMND" value={employee.identityNumber} />
-                </div>
-
-                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2 pt-4">Thông tin công việc</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InfoField label="Phòng ban" value={employee.department?.name} />
-                    <InfoField label="Chức vụ" value={employee.position?.name} />
-                    <InfoField label="Ngày vào làm" value={formatDate(employee.joinDate)} />
-                    <InfoField label="Loại nhân viên" value={employee.type} />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function InfoItem({ icon, label, value }) {
-    if (!value) return null;
-    return (
-        <div className="flex items-start gap-3 text-sm">
-            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 shrink-0">
-                <i className={`fa-solid ${icon}`}></i>
-            </div>
-            <div>
-                <div className="text-gray-500 text-xs">{label}</div>
-                <div className="text-gray-900 font-medium break-all">{value}</div>
+        <div className="space-y-6">
+            <h3 className="text-lg font-bold text-gray-800">Thông tin cá nhân</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InfoField label="Họ và tên" value={employee.fullName} />
+                <InfoField label="Email" value={employee.email} />
+                <InfoField label="Số điện thoại" value={employee.phone} />
+                <InfoField label="Địa chỉ" value={employee.address} />
+                <InfoField label="Giới tính" value={employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nữ' : 'Khác'} />
+                <InfoField label="Ngày sinh" value={formatDate(employee.dateOfBirth)} />
+                <InfoField label="Chức danh" value={employee.jobTitle} />
+                <InfoField label="Phòng ban" value={employee.department?.name} />
+                <InfoField label="Vị trí" value={employee.position?.name} />
             </div>
         </div>
     );
@@ -176,24 +147,102 @@ function InfoItem({ icon, label, value }) {
 function InfoField({ label, value }) {
     return (
         <div>
-            <div className="text-gray-500 text-xs mb-1 uppercase tracking-wider">{label}</div>
-            <div className="text-gray-900 font-medium border border-gray-200 rounded-lg px-3 py-2 bg-gray-50/50">
-                {value || '---'}
-            </div>
+            <p className="text-sm text-gray-500">{label}</p>
+            <p className="font-medium text-gray-900">{value || '—'}</p>
         </div>
     );
 }
 
-function Placeholder({ title }) {
+function EmployeeContracts({ employeeId }) {
+    const { data: contracts = [], isLoading } = useQuery({
+        queryKey: ['employee-contracts', employeeId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.CONTRACTS.BY_EMPLOYEE(employeeId))).data,
+    });
+
+    if (isLoading) return <div className="text-center py-8 text-gray-500"><i className="fa-solid fa-spinner fa-spin mr-2" />Đang tải...</div>;
+    if (contracts.length === 0) return <div className="text-center py-8 text-gray-400"><i className="fa-solid fa-file-contract text-3xl mb-3" /><p>Chưa có hợp đồng nào</p></div>;
+
     return (
-        <div className="card py-12 text-center">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                <i className="fa-solid fa-person-digging text-2xl"></i>
-            </div>
-            <h3 className="text-gray-900 font-medium text-lg mb-2">Tính năng đang phát triển</h3>
-            <p className="text-gray-500 max-w-sm mx-auto">
-                Phần quản lý {title.toLowerCase()} sẽ được cập nhật trong bản phát hành tiếp theo.
-            </p>
+        <div className="space-y-3">
+            {(Array.isArray(contracts) ? contracts : [contracts]).map((c, i) => (
+                <div key={c.contractId || i} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                    <div>
+                        <p className="font-medium text-gray-900">{c.contractType || 'Hợp đồng'}</p>
+                        <p className="text-sm text-gray-500">{formatDate(c.startDate)} — {formatDate(c.endDate) || 'Không xác định'}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {c.status === 'ACTIVE' ? 'Đang hiệu lực' : c.status || 'N/A'}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function EmployeeAttendance({ employeeId }) {
+    const { data: records = [], isLoading } = useQuery({
+        queryKey: ['employee-attendance', employeeId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.BY_EMPLOYEE(employeeId))).data,
+    });
+
+    if (isLoading) return <div className="text-center py-8 text-gray-500"><i className="fa-solid fa-spinner fa-spin mr-2" />Đang tải...</div>;
+
+    const recentRecords = Array.isArray(records) ? records.slice(0, 10) : [];
+    if (recentRecords.length === 0) return <div className="text-center py-8 text-gray-400"><i className="fa-solid fa-clock text-3xl mb-3" /><p>Chưa có dữ liệu chấm công</p></div>;
+
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-4 py-3 text-left font-medium text-gray-500">Ngày</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-500">Check-in</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-500">Check-out</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-500">Giờ làm</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                    {recentRecords.map((r, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">{formatDate(r.date)}</td>
+                            <td className="px-4 py-3 text-green-600">{r.checkInTime || '—'}</td>
+                            <td className="px-4 py-3 text-red-600">{r.checkOutTime || '—'}</td>
+                            <td className="px-4 py-3 font-medium">{r.workHours ? `${r.workHours}h` : '—'}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function EmployeeSalary({ employeeId }) {
+    const { data: salaries = [], isLoading } = useQuery({
+        queryKey: ['employee-salaries', employeeId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.SALARIES.BY_EMPLOYEE(employeeId))).data,
+    });
+
+    if (isLoading) return <div className="text-center py-8 text-gray-500"><i className="fa-solid fa-spinner fa-spin mr-2" />Đang tải...</div>;
+
+    const salaryList = Array.isArray(salaries) ? salaries : (salaries?.content || []);
+    if (salaryList.length === 0) return <div className="text-center py-8 text-gray-400"><i className="fa-solid fa-money-bill-wave text-3xl mb-3" /><p>Chưa có dữ liệu lương</p></div>;
+
+    return (
+        <div className="space-y-3">
+            {salaryList.slice(0, 10).map((s, i) => (
+                <div key={s.salaryId || i} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                    <div>
+                        <p className="font-medium text-gray-900">Tháng {s.month}/{s.year}</p>
+                        <p className="text-sm text-gray-500">Lương cơ bản: {(s.baseSalary || 0).toLocaleString('vi-VN')}₫</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-gray-900">{(s.netSalary || s.totalSalary || 0).toLocaleString('vi-VN')}₫</p>
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${s.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {s.status === 'PAID' ? 'Đã trả' : s.status === 'PENDING' ? 'Chờ duyệt' : s.status || 'N/A'}
+                        </span>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }

@@ -18,6 +18,7 @@ import DoAn.BE.common.util.SecurityUtil;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.timetracking.dto.CreateTimeLogRequest;
 import DoAn.BE.timetracking.dto.TimeLogDTO;
 import DoAn.BE.timetracking.entity.TimeLog;
@@ -36,6 +37,7 @@ public class TimeTrackingService {
     private final IssueRepository issueRepository;
     private final CompanyRepository companyRepository;
     private final AccessControlService accessControlService;
+    private final ProjectMemberRepository projectMemberRepository;
 
     // Log time for an issue
     // /
@@ -50,9 +52,13 @@ public class TimeTrackingService {
 
         Issue issue = issueRepository.findById(request.getIssueId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
-
-        // Verify user is project member
-        // (can be enhanced with project membership check)
+        if (issue.getProject() != null) {
+            checkProjectMembership(issue.getProject().getProjectId(), currentUser.getUserId());
+        }
+        if (request.getLoggedHours() == null || request.getLoggedHours().compareTo(java.math.BigDecimal.ZERO) <= 0
+                || request.getLoggedHours().compareTo(java.math.BigDecimal.valueOf(24)) > 0) {
+            throw new DoAn.BE.common.exception.BadRequestException("Logged hours phải từ 0.01 đến 24");
+        }
 
         TimeLog timeLog = TimeLog.builder()
                 .issue(issue)
@@ -76,7 +82,20 @@ public class TimeTrackingService {
 
     // Get time logs for an issue
     // /
-    public List<TimeLogDTO> getIssueTimeLogs(Long issueId) {
+    public List<TimeLogDTO> getIssueTimeLogs(Long issueId, User currentUser) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            throw new ForbiddenException("Yêu cầu context công ty");
+        }
+
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
+
+        // Verify project belongs to current company and user has access
+        if (issue.getProject() != null) {
+            checkProjectMembership(issue.getProject().getProjectId(), currentUser.getUserId());
+        }
+
         return timeLogRepository.findByIssue_IssueIdOrderByWorkDateDesc(issueId)
                 .stream()
                 .map(this::toDTO)
@@ -149,14 +168,38 @@ public class TimeTrackingService {
 
     // Get total hours logged for an issue
     // /
-    public BigDecimal getTotalHoursByIssue(Long issueId) {
+    public BigDecimal getTotalHoursByIssue(Long issueId, User currentUser) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            throw new ForbiddenException("Yêu cầu context công ty");
+        }
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
+        if (issue.getProject() != null) {
+            checkProjectMembership(issue.getProject().getProjectId(), currentUser.getUserId());
+        }
         return timeLogRepository.sumHoursByIssue(issueId);
     }
 
     // Get total hours by user in date range
     // /
     public BigDecimal getTotalHoursByUserInRange(Long userId, LocalDate start, LocalDate end) {
+        User currentUser = SecurityUtil.getCurrentUser();
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            throw new ForbiddenException("Yêu cầu context công ty");
+        }
+        // Only allow viewing own data or admin
+        if (!currentUser.getUserId().equals(userId) && !accessControlService.isOwnerOrAdmin()) {
+            throw new ForbiddenException("Bạn không có quyền xem dữ liệu này");
+        }
         return timeLogRepository.sumHoursByUserAndDateRange(userId, start, end);
+    }
+    private void checkProjectMembership(Long projectId, Long userId) {
+        boolean isMember = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId).isPresent();
+        if (!isMember) {
+            throw new ForbiddenException("Bạn không phải thành viên dự án này");
+        }
     }
 
     // Update issue's actualHours based on sum of time logs

@@ -68,4 +68,15 @@ public interface SalaryRepository extends JpaRepository<Salary, Long> {
 
         org.springframework.data.domain.Page<Salary> findByPaymentStatus(PaymentStatus paymentStatus,
                         org.springframework.data.domain.Pageable pageable);
+        @Query("SELECT s FROM Salary s WHERE s.month = :month AND s.year = :year AND s.employee.company.companyId = :companyId")
+        List<Salary> findByMonthAndYearAndCompanyId(@Param("month") Integer month, @Param("year") Integer year,
+                        @Param("companyId") Long companyId);
+        @Query("SELECT s FROM Salary s WHERE s.month = :month AND s.year = :year AND s.employee.company.companyId = :companyId ORDER BY s.createdAt DESC")
+        org.springframework.data.domain.Page<Salary> findByMonthAndYearAndCompanyId(@Param("month") Integer month,
+                        @Param("year") Integer year, @Param("companyId") Long companyId,
+                        org.springframework.data.domain.Pageable pageable);
+        @Query("SELECT s FROM Salary s WHERE s.paymentStatus = :status AND s.employee.company.companyId = :companyId ORDER BY s.year DESC, s.month DESC")
+        org.springframework.data.domain.Page<Salary> findByPaymentStatusAndCompanyId(
+                        @Param("status") PaymentStatus status,
+                        @Param("companyId") Long companyId, org.springframework.data.domain.Pageable pageable);
 }

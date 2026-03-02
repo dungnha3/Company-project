@@ -4,20 +4,22 @@ import DoAn.BE.sysadmin.dto.SysAdminUserDto;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/sysadmin/users")
 @RequiredArgsConstructor
+@Slf4j
+@Transactional(readOnly = true)
 public class SysAdminUserController {
 
     private final UserRepository userRepository;
@@ -29,32 +31,20 @@ public class SysAdminUserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
+            @AuthenticationPrincipal User currentUser) {
+        checkSysAdmin(currentUser);
 
         Pageable pageable = PageRequest.of(page, size);
 
-        // Get all non-deleted users with optional filtering
-        List<User> allUsers = userRepository.findAll().stream()
-                .filter(u -> !Boolean.TRUE.equals(u.getIsDeleted()))
-                .filter(u -> {
-                    if (keyword == null || keyword.isBlank())
-                        return true;
-                    String lowerKeyword = keyword.toLowerCase();
-                    return (u.getUsername() != null && u.getUsername().toLowerCase().contains(lowerKeyword)) ||
-                            (u.getEmail() != null && u.getEmail().toLowerCase().contains(lowerKeyword));
-                })
-                .toList();
+        // DB-level filtering and pagination to avoid loading all users into memory
+        Page<User> userPage;
+        if (keyword != null && !keyword.isBlank()) {
+            userPage = userRepository.searchByKeywordPaged(keyword, pageable);
+        } else {
+            userPage = userRepository.findByIsDeletedFalse(pageable);
+        }
 
-        // Manual pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), allUsers.size());
-
-        List<SysAdminUserDto.UserResponse> pagedContent = allUsers.subList(
-                Math.min(start, allUsers.size()),
-                end).stream().map(this::toUserResponse).toList();
-
-        Page<SysAdminUserDto.UserResponse> result = new PageImpl<>(pagedContent, pageable, allUsers.size());
+        Page<SysAdminUserDto.UserResponse> result = userPage.map(this::toUserResponse);
         return ResponseEntity.ok(result);
     }
 
@@ -63,8 +53,8 @@ public class SysAdminUserController {
     @PutMapping("/{userId}/toggle-status")
     public ResponseEntity<?> toggleUserStatus(
             @PathVariable Long userId,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
+            @AuthenticationPrincipal User currentUser) {
+        checkSysAdmin(currentUser);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User not found"));
@@ -92,25 +82,31 @@ public class SysAdminUserController {
     @PostMapping("/{userId}/reset-password")
     public ResponseEntity<?> resetUserPassword(
             @PathVariable Long userId,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
+            @AuthenticationPrincipal User currentUser) {
+        checkSysAdmin(currentUser);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User not found"));
-
-        // Generate random password (8 chars)
-        String newPassword = java.util.UUID.randomUUID().toString().substring(0, 8);
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        String newPassword = sb.toString();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
         // Send email
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            // TODO: Replace with password reset link flow
+            log.warn("[SECURITY] Plain password sent via email for user {}. Implement reset-link flow.",
+                    user.getUsername());
             emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), newPassword);
         } else {
+            // Log the event but NEVER return password in response
             return ResponseEntity.ok(Map.of(
-                    "message", "Password reset to: " + newPassword + " (User has no email)",
-                    "newPassword", newPassword // Return in response if email missing (fallback)
-            ));
+                    "message", "Password reset thành công. User không có email nên không thể gửi mail thông báo."));
         }
 
         return ResponseEntity.ok(Map.of("message", "Password reset email sent to " + user.getEmail()));
@@ -128,9 +124,8 @@ public class SysAdminUserController {
                 .build();
     }
 
-    private void checkSysAdmin(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        if (!user.isSystemAdminAccount()) {
+    private void checkSysAdmin(User user) {
+        if (user == null || !user.isSystemAdminAccount()) {
             throw new DoAn.BE.common.exception.ForbiddenException("Access Denied: System Admin only");
         }
     }

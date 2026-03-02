@@ -1,5 +1,7 @@
 package DoAn.BE.sysadmin.controller;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
@@ -21,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sysadmin/analytics")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SysAdminAnalyticsController {
 
     private final CompanyRepository companyRepository;

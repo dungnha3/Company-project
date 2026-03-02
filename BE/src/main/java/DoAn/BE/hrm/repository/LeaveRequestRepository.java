@@ -46,6 +46,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         long countByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
 
         List<LeaveRequest> findByStartDateBetween(LocalDate startDate, LocalDate endDate);
+
         @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
         org.springframework.data.domain.Page<LeaveRequest> findByEmployee_EmployeeId(Long employeeId,
                         org.springframework.data.domain.Pageable pageable);
@@ -60,5 +61,19 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
         @Query("SELECT lr FROM LeaveRequest lr")
         org.springframework.data.domain.Page<LeaveRequest> findAllRequests(
+                        org.springframework.data.domain.Pageable pageable);
+
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.company.companyId = :companyId ORDER BY lr.createdAt DESC")
+        org.springframework.data.domain.Page<LeaveRequest> findByCompanyId(@Param("companyId") Long companyId,
+                        org.springframework.data.domain.Pageable pageable);
+
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.startDate BETWEEN :startDate AND :endDate AND lr.employee.company.companyId = :companyId ORDER BY lr.startDate DESC")
+        org.springframework.data.domain.Page<LeaveRequest> findByStartDateBetweenAndEmployee_CompanyId(
+                        @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
+                        @Param("companyId") Long companyId, org.springframework.data.domain.Pageable pageable);
+
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = :status AND lr.employee.company.companyId = :companyId ORDER BY lr.createdAt DESC")
+        org.springframework.data.domain.Page<LeaveRequest> findByStatusAndCompanyId(
+                        @Param("status") LeaveStatus status, @Param("companyId") Long companyId,
                         org.springframework.data.domain.Pageable pageable);
 }

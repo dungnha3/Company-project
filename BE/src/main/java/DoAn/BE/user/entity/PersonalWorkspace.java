@@ -1,11 +1,7 @@
 package DoAn.BE.user.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.ToString;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,16 +11,19 @@ import java.time.LocalDateTime;
 // /
 @Entity
 @Table(name = "personal_workspaces")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = { "user" })
 public class PersonalWorkspace {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "workspace_id")
+    @EqualsAndHashCode.Include
     private Long workspaceId;
 
     @OneToOne(fetch = FetchType.LAZY)

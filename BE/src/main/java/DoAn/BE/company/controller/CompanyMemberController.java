@@ -6,6 +6,7 @@ import DoAn.BE.company.service.CompanyMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/companies/{companyId}/members")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CompanyMemberController {
 
     private final CompanyMemberService memberService;

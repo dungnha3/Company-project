@@ -3,10 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate } from '@shared/utils/formatters';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function OnboardingPage() {
     const [activeTab, setActiveTab] = useState('active'); // active, templates
     const [showModal, setShowModal] = useState(false);
+    const { hasPermission } = useWorkspaceStore();
+    const canManage = hasPermission('onboardingManage');
 
     // Fetch instances (real data)
     const { data: instances = [], isLoading: loadingInstances } = useQuery({
@@ -40,10 +43,12 @@ export default function OnboardingPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Onboarding</h1>
                     <p className="text-gray-500 text-sm">Quản lý quy trình nhập việc</p>
                 </div>
-                <button onClick={() => setShowModal(true)} className="btn-primary">
-                    <i className="fa-solid fa-plus mr-2" />
-                    {activeTab === 'templates' ? 'Tạo template' : 'Bắt đầu onboarding'}
-                </button>
+                {canManage && (
+                    <button onClick={() => setShowModal(true)} className="btn-primary">
+                        <i className="fa-solid fa-plus mr-2" />
+                        {activeTab === 'templates' ? 'Tạo template' : 'Bắt đầu onboarding'}
+                    </button>
+                )}
             </div>
 
             {/* Stats */}

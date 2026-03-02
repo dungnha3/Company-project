@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { calendarApi } from '../../shared/api/featureApi';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 const EVENT_TYPES = {
     MEETING: { label: 'Cuộc họp', icon: '📅', color: 'bg-indigo-600' },
@@ -13,6 +14,8 @@ const EVENT_TYPES = {
 export default function CalendarPage() {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { hasPermission } = useWorkspaceStore();
+    const canManage = hasPermission('calendarManage');
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [currentWeek, setCurrentWeek] = useState(new Date());
     const [viewMode, setViewMode] = useState('month'); // 'month' | 'week' | 'day'
@@ -60,7 +63,7 @@ export default function CalendarPage() {
             loadEvents();
         } catch (error) {
             console.error('Failed to create event:', error);
-            alert('Không thể tạo sự kiện');
+            setError?.('Không thể tạo sự kiện. Vui lòng thử lại.');
         }
     };
 
@@ -157,12 +160,14 @@ export default function CalendarPage() {
                             </button>
                         ))}
                     </div>
-                    <button
-                        onClick={() => setShowForm(true)}
-                        className="btn-primary"
-                    >
-                        <i className="fa-solid fa-plus mr-1" /> Tạo sự kiện
-                    </button>
+                    {canManage && (
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="btn-primary"
+                        >
+                            <i className="fa-solid fa-plus mr-1" /> Tạo sự kiện
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -286,7 +291,9 @@ export default function CalendarPage() {
                         {selectedEvent.meetingLink && <a href={selectedEvent.meetingLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline block mb-2">🔗 Tham gia họp</a>}
                         {selectedEvent.description && <p className="text-slate-400 mt-4 leading-relaxed">{selectedEvent.description}</p>}
                         <div className="flex gap-3 justify-end mt-6">
-                            <button onClick={() => handleDelete(selectedEvent.eventId)} className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors">Xóa</button>
+                            {canManage && (
+                                <button onClick={() => handleDelete(selectedEvent.eventId)} className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors">Xóa</button>
+                            )}
                             <button onClick={() => setSelectedEvent(null)} className="px-5 py-2.5 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors">Đóng</button>
                         </div>
                     </div>

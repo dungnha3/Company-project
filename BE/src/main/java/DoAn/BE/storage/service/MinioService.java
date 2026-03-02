@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -21,6 +22,7 @@ public class MinioService {
     @Value("${minio.bucket-name:dacn-files}")
     private String bucketName;
     private static final int PRESIGNED_URL_EXPIRY_DAYS = 7;
+
     public String uploadFile(MultipartFile file, String objectName) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File không được để trống");
@@ -48,14 +50,15 @@ public class MinioService {
                             .expiry(PRESIGNED_URL_EXPIRY_DAYS, TimeUnit.DAYS)
                             .build());
 
-            log.info("✅ Đã upload file lên MinIO: {}", objectName);
+            log.info("Đã upload file lên MinIO: {}", objectName);
             return presignedUrl;
 
         } catch (Exception e) {
-            log.error("❌ Lỗi upload lên MinIO: {}", e.getMessage());
+            log.error("Lỗi upload lên MinIO: {}", e.getMessage());
             throw new RuntimeException("Không thể upload file lên MinIO", e);
         }
     }
+
     public InputStream getFile(String objectName) {
         if (objectName == null || objectName.isBlank()) {
             throw new BadRequestException("Tên object không được để trống");
@@ -68,10 +71,11 @@ public class MinioService {
                             .object(objectName)
                             .build());
         } catch (Exception e) {
-            log.error("❌ Lỗi lấy file từ MinIO: {}", e.getMessage());
+            log.error("Lỗi lấy file từ MinIO: {}", e.getMessage());
             throw new RuntimeException("Không thể download file từ MinIO", e);
         }
     }
+
     public void deleteFile(String objectName) {
         if (objectName == null || objectName.isBlank()) {
             log.warn("Tên object trống, bỏ qua xóa");
@@ -84,16 +88,17 @@ public class MinioService {
                             .bucket(bucketName)
                             .object(objectName)
                             .build());
-            log.info("🗑️ Đã xóa file từ MinIO: {}", objectName);
+            log.info("Đã xóa file từ MinIO: {}", objectName);
         } catch (Exception e) {
-            log.error("❌ Lỗi xóa file từ MinIO: {}", e.getMessage());
+            log.error("Lỗi xóa file từ MinIO: {}", e.getMessage());
         }
     }
+
     private void ensureBucketExists() throws Exception {
         boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
         if (!found) {
             minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-            log.info("📁 Đã tạo bucket MinIO: {}", bucketName);
+            log.info("Đã tạo bucket MinIO: {}", bucketName);
         }
     }
 }

@@ -11,7 +11,7 @@ import DoAn.BE.hrm.entity.Review.ReviewStatus;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.repository.ReviewRepository;
 import DoAn.BE.user.entity.User;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,7 +34,7 @@ public class ReviewService {
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public Review createReview(ReviewRequest request, User currentUser) {
-        accessControlService.checkHrReviewsPermission();
+        accessControlService.checkReviewCreatePermission();
 
         log.info("User {} creating review for employee ID: {}", currentUser.getUsername(), request.getEmployeeId());
         Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -94,7 +94,7 @@ public class ReviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
         try {
-            accessControlService.checkHrReviewsPermission();
+            accessControlService.checkReviewViewAllPermission();
             return review;
         } catch (ForbiddenException ignored) {
             // Fall through to self-view check
@@ -108,14 +108,21 @@ public class ReviewService {
     }
 
     public List<Review> getAllReviews(User currentUser) {
-        accessControlService.checkHrReviewsPermission();
-        return reviewRepository.findAll();
+        accessControlService.checkReviewViewAllPermission();
+        // companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
+        }
+        return reviewRepository.findByCompanyId(companyId);
     }
 
     public Page<Review> getAllReviewsPage(Pageable pageable, User currentUser) {
-        accessControlService.checkHrReviewsPermission();
-
-        return reviewRepository.findAllByOrderByCreatedAtDesc(pageable);
+        accessControlService.checkReviewViewAllPermission();
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return Page.empty(pageable);
+        return reviewRepository.findByCompanyId(companyId, pageable);
     }
 
     public Review updateReview(Long id, ReviewRequest request, User currentUser) {
@@ -123,7 +130,7 @@ public class ReviewService {
 
         boolean hasReviewPermission;
         try {
-            accessControlService.checkHrReviewsPermission();
+            accessControlService.checkReviewCreatePermission();
             hasReviewPermission = true;
         } catch (ForbiddenException e) {
             hasReviewPermission = false;
@@ -153,7 +160,7 @@ public class ReviewService {
     }
 
     public Review approveReview(Long id, String note, User currentUser) {
-        accessControlService.checkHrReviewsPermission();
+        accessControlService.checkReviewApprovePermission();
 
         Review review = getReviewById(id, currentUser);
 
@@ -167,7 +174,8 @@ public class ReviewService {
         review.setCompletedDate(LocalDate.now());
 
         if (note != null && !note.trim().isEmpty()) {
-            review.setComments(review.getComments() + "\n\nHR Note: " + note);
+            String existing = review.getComments() != null ? review.getComments() : "";
+            review.setComments(existing + "\n\nHR Note: " + note);
         }
 
         review = reviewRepository.save(review);
@@ -181,7 +189,7 @@ public class ReviewService {
     }
 
     public Review rejectReview(Long id, String reason, User currentUser) {
-        accessControlService.checkHrReviewsPermission();
+        accessControlService.checkReviewApprovePermission();
 
         Review review = getReviewById(id, currentUser);
 
@@ -194,7 +202,8 @@ public class ReviewService {
         review.setStatus(ReviewStatus.REJECTED);
 
         if (reason != null && !reason.trim().isEmpty()) {
-            review.setComments(review.getComments() + "\n\nRejection Reason: " + reason);
+            String existing = review.getComments() != null ? review.getComments() : "";
+            review.setComments(existing + "\n\nRejection Reason: " + reason);
         }
 
         return reviewRepository.save(review);
@@ -219,7 +228,7 @@ public class ReviewService {
 
     public List<Review> getReviewsByEmployee(Long employeeId, User currentUser) {
         try {
-            accessControlService.checkHrReviewsPermission();
+            accessControlService.checkReviewViewAllPermission();
             return reviewRepository.findByEmployee_EmployeeIdOrderByCreatedAtDesc(employeeId);
         } catch (ForbiddenException ignored) {
             // Fall through to self-view check
@@ -236,12 +245,19 @@ public class ReviewService {
     }
 
     public List<Review> getPendingReviews(User currentUser) {
-        accessControlService.checkHrReviewsPermission();
-        return reviewRepository.findPendingApproval();
+        accessControlService.checkReviewApprovePermission();
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
+        }
+        return reviewRepository.findPendingApproval().stream()
+                .filter(r -> r.getEmployee() != null && r.getEmployee().getCompany() != null
+                        && companyId.equals(r.getEmployee().getCompany().getCompanyId()))
+                .toList();
     }
 
     public void deleteReview(Long id, User currentUser) {
-        accessControlService.checkHrReviewsPermission();
+        accessControlService.checkReviewApprovePermission();
 
         Review review = getReviewById(id, currentUser);
 

@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,15 +23,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class ProjectController {
 
     private final ProjectService projectService;
     private final ProjectMemberService projectMemberService;
     private final StorageProjectIntegrationService storageProjectIntegrationService;
+
     @PostMapping
     public ResponseEntity<ProjectDTO> createProject(
             @Valid @RequestBody CreateProjectRequest request,
@@ -38,6 +42,7 @@ public class ProjectController {
         ProjectDTO project = projectService.createProject(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(project);
     }
+
     @GetMapping("/{projectId}")
     public ResponseEntity<ProjectDTO> getProject(
             @PathVariable Long projectId,
@@ -45,6 +50,7 @@ public class ProjectController {
         ProjectDTO project = projectService.getProjectById(projectId, currentUser);
         return ResponseEntity.ok(project);
     }
+
     @GetMapping
     public ResponseEntity<Page<ProjectDTO>> getAllProjects(
             @AuthenticationPrincipal User currentUser,
@@ -52,6 +58,7 @@ public class ProjectController {
         Page<ProjectDTO> projects = projectService.getAllProjectsPaged(currentUser, pageable);
         return ResponseEntity.ok(projects);
     }
+
     @GetMapping("/my-projects")
     public ResponseEntity<Page<ProjectDTO>> getMyProjects(
             @AuthenticationPrincipal User currentUser,
@@ -59,6 +66,7 @@ public class ProjectController {
         Page<ProjectDTO> projects = projectService.getMyProjectsPaged(currentUser, pageable);
         return ResponseEntity.ok(projects);
     }
+
     @PutMapping("/{projectId}")
     public ResponseEntity<ProjectDTO> updateProject(
             @PathVariable Long projectId,
@@ -67,6 +75,7 @@ public class ProjectController {
         ProjectDTO project = projectService.updateProject(projectId, request, currentUser.getUserId());
         return ResponseEntity.ok(project);
     }
+
     @DeleteMapping("/{projectId}")
     public ResponseEntity<Void> deleteProject(
             @PathVariable Long projectId,
@@ -74,6 +83,7 @@ public class ProjectController {
         projectService.deleteProject(projectId, currentUser.getUserId());
         return ResponseEntity.noContent().build();
     }
+
     @PostMapping("/{projectId}/members")
     public ResponseEntity<ProjectMemberDTO> addMember(
             @PathVariable Long projectId,
@@ -82,6 +92,7 @@ public class ProjectController {
         ProjectMemberDTO member = projectMemberService.addMember(projectId, request, currentUser.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(member);
     }
+
     @GetMapping("/{projectId}/members")
     public ResponseEntity<List<ProjectMemberDTO>> getProjectMembers(
             @PathVariable Long projectId,
@@ -89,6 +100,7 @@ public class ProjectController {
         List<ProjectMemberDTO> members = projectMemberService.getProjectMembers(projectId, currentUser.getUserId());
         return ResponseEntity.ok(members);
     }
+
     @DeleteMapping("/{projectId}/members/{memberId}")
     public ResponseEntity<Void> removeMember(
             @PathVariable Long projectId,
@@ -97,6 +109,7 @@ public class ProjectController {
         projectMemberService.removeMember(projectId, memberId, currentUser.getUserId());
         return ResponseEntity.noContent().build();
     }
+
     @PatchMapping("/{projectId}/members/{memberId}/role")
     public ResponseEntity<ProjectMemberDTO> updateMemberRole(
             @PathVariable Long projectId,
@@ -107,23 +120,31 @@ public class ProjectController {
                 currentUser.getUserId());
         return ResponseEntity.ok(member);
     }
+
     @GetMapping("/{projectId}/files")
-    public ResponseEntity<List<FileDTO>> getProjectFiles(@PathVariable Long projectId) {
+    public ResponseEntity<List<FileDTO>> getProjectFiles(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
+        projectMemberService.validateProjectAccess(projectId, currentUser.getUserId());
         List<File> files = storageProjectIntegrationService.getProjectFiles(projectId);
         return ResponseEntity.ok(files.stream()
                 .map(this::convertToFileDTO)
                 .collect(Collectors.toList()));
     }
+
     @GetMapping("/{projectId}/files/stats")
-    public ResponseEntity<ProjectFileStats> getProjectFileStats(@PathVariable Long projectId) {
+    public ResponseEntity<ProjectFileStats> getProjectFileStats(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
+        projectMemberService.validateProjectAccess(projectId, currentUser.getUserId());
         return ResponseEntity.ok(storageProjectIntegrationService.getProjectFileStats(projectId));
     }
+
     private FileDTO convertToFileDTO(File file) {
         FileDTO dto = new FileDTO();
         dto.setFileId(file.getFileId());
         dto.setFilename(file.getFilename());
         dto.setOriginalFilename(file.getOriginalFilename());
-        dto.setFilePath(file.getFilePath());
         dto.setFileSize(file.getFileSize());
         dto.setMimeType(file.getMimeType());
         if (file.getOwner() != null) {

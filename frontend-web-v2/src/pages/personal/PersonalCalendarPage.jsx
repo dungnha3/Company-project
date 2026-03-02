@@ -8,7 +8,6 @@ const EVENT_TYPES = {
     DEADLINE: { label: 'Deadline', icon: 'fa-clock', color: 'bg-red-500' },
     REMINDER: { label: 'Nhắc nhở', icon: 'fa-bell', color: 'bg-amber-500' },
     HOLIDAY: { label: 'Ngày nghỉ', icon: 'fa-mug-hot', color: 'bg-emerald-500' },
-    PERSONAL: { label: 'Cá nhân', icon: 'fa-user', color: 'bg-violet-600' },
     OTHER: { label: 'Khác', icon: 'fa-thumbtack', color: 'bg-gray-500' }
 };
 

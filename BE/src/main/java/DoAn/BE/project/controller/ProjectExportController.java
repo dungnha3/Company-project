@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import DoAn.BE.project.service.ProjectExportService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/project-export")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class ProjectExportController {
 
     private final ProjectExportService projectExportService;

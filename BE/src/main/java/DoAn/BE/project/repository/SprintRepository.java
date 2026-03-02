@@ -16,6 +16,8 @@ public interface SprintRepository extends JpaRepository<Sprint, Long> {
     List<Sprint> findByProject_ProjectIdAndStatus(Long projectId, SprintStatus status);
 
     List<Sprint> findByStatus(SprintStatus status);
+    org.springframework.data.domain.Page<Sprint> findByStatus(SprintStatus status,
+            org.springframework.data.domain.Pageable pageable);
 
     // [Count queries for dashboard optimization]
     long countByProject_ProjectId(Long projectId);

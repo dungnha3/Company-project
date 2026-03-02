@@ -2,21 +2,20 @@ package DoAn.BE.sysadmin.entity;
 
 import DoAn.BE.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name = "global_settings")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class GlobalSettings extends BaseEntity {
 
     @Id
     @Column(name = "setting_key", nullable = false, unique = true)
+    @EqualsAndHashCode.Include
     private String settingKey;
 
     @Column(name = "setting_value")

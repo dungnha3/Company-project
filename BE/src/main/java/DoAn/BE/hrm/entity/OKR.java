@@ -16,10 +16,11 @@ import java.util.List;
         @Index(name = "idx_okr_period", columnList = "period"),
         @Index(name = "idx_okr_status", columnList = "status")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @ToString(exclude = { "owner", "keyResults" })
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class OKR extends TenantScopedEntity {
@@ -27,6 +28,7 @@ public class OKR extends TenantScopedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "okr_id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(name = "title", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")

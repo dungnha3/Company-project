@@ -28,8 +28,12 @@ public class EncryptionService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public EncryptionService(
-            @Value("${app.encryption.key:defaultDevKeyMustBe32Bytes!!}") String encryptionKey) {
-        // Ensure key is exactly 32 bytes for AES-256
+            @Value("${app.encryption.key:}") String encryptionKey) {
+        if (encryptionKey == null || encryptionKey.isBlank()) {
+            throw new IllegalStateException(
+                    "app.encryption.key is NOT configured! Set it in application.properties or environment variables. "
+                            + "Generate a key with: EncryptionService.generateKey()");
+        }
         byte[] keyBytes = ensureKeyLength(encryptionKey);
         this.secretKey = new SecretKeySpec(keyBytes, "AES");
         log.info("EncryptionService initialized with AES-256-GCM");
@@ -105,13 +109,16 @@ public class EncryptionService {
 
     // Check if a string appears to be encrypted (Base64 encoded with proper length)
     // /
+    // data = 29
+    // This dramatically reduces false positives on random Base64 strings
     public boolean isEncrypted(String value) {
-        if (value == null || value.length() < 20) {
+        if (value == null || value.length() < 40) { // Base64 of 29 bytes = ~40 chars
             return false;
         }
         try {
             byte[] decoded = Base64.getDecoder().decode(value);
-            return decoded.length > GCM_IV_LENGTH;
+            // Minimum: 12 (IV) + 16 (GCM auth tag) + 1 (data) = 29 bytes
+            return decoded.length >= GCM_IV_LENGTH + (GCM_TAG_LENGTH / 8) + 1;
         } catch (IllegalArgumentException e) {
             return false;
         }
@@ -126,15 +133,15 @@ public class EncryptionService {
         if (keyBytes.length >= 32) {
             System.arraycopy(keyBytes, 0, result, 0, 32);
         } else {
+            log.warn("Encryption key is only {} bytes (expected 32). Key will be zero-padded, reducing security. "
+                    + "Please use a full 32-byte key.", keyBytes.length);
             System.arraycopy(keyBytes, 0, result, 0, keyBytes.length);
-            // Pad with zeros (less secure, but ensures functionality)
         }
 
         return result;
     }
 
     // Generate a new random encryption key (Base64 encoded)
-    // /
     public static String generateKey() {
         byte[] key = new byte[32];
         new SecureRandom().nextBytes(key);

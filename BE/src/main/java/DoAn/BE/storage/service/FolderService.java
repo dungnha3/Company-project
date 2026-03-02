@@ -77,6 +77,7 @@ public class FolderService {
 
         return convertToDTO(folder);
     }
+
     private boolean canAccessFolder(Folder folder, Long userId) {
         // Owner can always access
         if (folder.getOwner().getUserId().equals(userId)) {
@@ -94,7 +95,7 @@ public class FolderService {
                     folder.getProject().getProjectId(), userId).isPresent();
         }
 
-        // ✅ NEW: Check parent folder recursively
+        // NEW: Check parent folder recursively
         // If this is a subfolder inside a project folder, check parent permission
         if (folder.getParentFolder() != null) {
             return canAccessFolder(folder.getParentFolder(), userId);
@@ -268,4 +269,3 @@ public class FolderService {
         return dto;
     }
 }
-

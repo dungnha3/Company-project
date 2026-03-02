@@ -8,7 +8,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatDate } from '@shared/utils/formatters';
 
 export default function ContractsPage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
 
@@ -39,7 +39,10 @@ export default function ContractsPage() {
         {
             header: 'Loại HĐ',
             accessorKey: 'contractType',
-            cell: (row) => <span className="badge badge-blue">{row.contractType}</span>
+            cell: (row) => {
+                const typeLabels = { PROBATION: 'Thử việc', FIXED_TERM: 'Có thời hạn', INDEFINITE: 'Vô thời hạn' };
+                return <span className="badge badge-blue">{typeLabels[row.contractType] || row.contractType}</span>;
+            }
         },
         {
             header: 'Thời hạn',
@@ -54,12 +57,20 @@ export default function ContractsPage() {
         {
             header: 'Trạng thái',
             accessorKey: 'status',
-            cell: (row) => <span className={`badge ${row.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{row.status}</span>
+            cell: (row) => {
+                const statusConfig = {
+                    ACTIVE: { cls: 'bg-green-100 text-green-700', label: 'Hiệu lực' },
+                    EXPIRED: { cls: 'bg-yellow-100 text-yellow-700', label: 'Hết hạn' },
+                    CANCELLED: { cls: 'bg-red-100 text-red-700', label: 'Đã hủy' },
+                };
+                const s = statusConfig[row.status] || statusConfig.ACTIVE;
+                return <span className={`badge ${s.cls}`}>{s.label}</span>;
+            }
         },
         {
             header: '',
             accessorKey: 'actions',
-            cell: (row) => hasRole('MANAGER_HR') && (
+            cell: (row) => hasPermission('hrManageContracts') && (
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedContract(row); setShowModal(true); }}
@@ -100,7 +111,7 @@ export default function ContractsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Hợp đồng lao động</h1>
                     <p className="text-gray-500 text-sm">Quản lý hồ sơ hợp đồng nhân viên</p>
                 </div>
-                {hasRole('MANAGER_HR') && (
+                {hasPermission('hrManageContracts') && (
                     <button onClick={() => { setSelectedContract(null); setShowModal(true); }} className="btn-primary">
                         <i className="fa-solid fa-plus mr-2" /> Tạo hợp đồng
                     </button>
@@ -193,10 +204,9 @@ function ContractModal({ isOpen, onClose, contract }) {
                             <div>
                                 <label className="label-required">Loại HĐ</label>
                                 <select name="contractType" className="input w-full" defaultValue={contract?.contractType} required>
-                                    <option value="DEFINITE">Có thời hạn</option>
+                                    <option value="FIXED_TERM">Có thời hạn</option>
                                     <option value="INDEFINITE">Vô thời hạn</option>
                                     <option value="PROBATION">Thử việc</option>
-                                    <option value="INTERNSHIP">Thực tập</option>
                                 </select>
                             </div>
                         </div>
@@ -220,7 +230,7 @@ function ContractModal({ isOpen, onClose, contract }) {
                                 <select name="status" className="input w-full" defaultValue={contract?.status || 'ACTIVE'} required>
                                     <option value="ACTIVE">Hiệu lực</option>
                                     <option value="EXPIRED">Hết hạn</option>
-                                    <option value="TERMINATED">Chấm dứt</option>
+                                    <option value="CANCELLED">Đã hủy</option>
                                 </select>
                             </div>
                         </div>

@@ -3,6 +3,7 @@ package DoAn.BE.common.service;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,9 +23,23 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class RateLimitingService {
 
+    private static final int MAX_CACHE_SIZE = 10_000;
+
     private final Map<String, Bucket> authCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> apiCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> uploadCache = new ConcurrentHashMap<>();
+
+    // Buckets auto-refill on next access, so clearing is safe
+    @Scheduled(fixedRate = 300_000) // 5 minutes
+    public void evictStaleBuckets() {
+        int totalBefore = authCache.size() + apiCache.size() + uploadCache.size();
+        if (totalBefore > MAX_CACHE_SIZE) {
+            authCache.clear();
+            apiCache.clear();
+            uploadCache.clear();
+            log.info("Evicted {} rate limit buckets (exceeded max {})", totalBefore, MAX_CACHE_SIZE);
+        }
+    }
 
     // Rate limit types
     public enum RateLimitType {
@@ -66,7 +81,7 @@ public class RateLimitingService {
         return resolveBucket(ipAddress, type).getAvailableTokens();
     }
 
-    // Auth endpoints: 10 requests per minute (strict for brute force protection)
+    // Auth endpoints: 10 requests per minute
     private Bucket createAuthBucket() {
         Bandwidth limit = Bandwidth.classic(10, Refill.greedy(10, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();

@@ -8,6 +8,58 @@
 USE DACN;
 GO
 
+-- FIX: Sửa role 'ADMIN' → 'COMPANY_ADMIN' nếu data cũ còn dùng sai tên
+-- (Java enum là COMPANY_ADMIN, không phải ADMIN)
+-- Phải drop CHECK constraint trước vì constraint cũ chỉ cho phép 'ADMIN'
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'company_member_roles')
+BEGIN
+    -- Drop CHECK constraint trên cột role (tên constraint có thể khác nhau mỗi DB)
+    DECLARE @constraintName NVARCHAR(200);
+    SELECT @constraintName = cc.CONSTRAINT_NAME
+    FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cc
+    JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS ck ON cc.CONSTRAINT_NAME = ck.CONSTRAINT_NAME
+    WHERE cc.TABLE_NAME = 'company_member_roles' AND cc.COLUMN_NAME = 'role';
+
+    IF @constraintName IS NOT NULL
+    BEGIN
+        EXEC('ALTER TABLE company_member_roles DROP CONSTRAINT ' + @constraintName);
+        PRINT N'⚠️ Dropped old CHECK constraint: ' + @constraintName;
+    END
+
+    -- Update role values
+    UPDATE company_member_roles SET [role] = 'COMPANY_ADMIN' WHERE [role] = 'ADMIN';
+    IF @@ROWCOUNT > 0 PRINT N'✅ Fixed ADMIN → COMPANY_ADMIN in company_member_roles';
+
+    -- Tạo lại CHECK constraint với đúng enum values
+    ALTER TABLE company_member_roles ADD CONSTRAINT CK_company_member_roles_role
+        CHECK ([role] IN ('OWNER','COMPANY_ADMIN','EMPLOYEE'));
+    PRINT N'✅ Recreated CHECK constraint with correct enum values';
+END
+GO
+
+-- FIX: Cập nhật permissions cho hr_a (HR + Project) và pm_a (PM + HR view)
+-- Roles giờ chỉ có OWNER, COMPANY_ADMIN, EMPLOYEE. Permissions tùy chỉnh qua JSON.
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'company_members')
+BEGIN
+    -- hr_a: EMPLOYEE + custom HR & Project permissions
+    UPDATE cm SET cm.permissions = '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true}'
+    FROM company_members cm JOIN users u ON cm.user_id = u.user_id
+    WHERE u.username = 'hr_a' AND cm.company_id = 1;
+
+    -- pm_a: EMPLOYEE + custom Project & HR view permissions
+    UPDATE cm SET cm.permissions = '{"projectCreate":true,"projectManageAll":true,"projectDelete":true,"projectManageIssues":true,"projectManageSprints":true,"projectViewDashboard":true,"projectExport":true,"projectManagePhases":true,"projectResourcePlanning":true,"hrViewList":true,"hrViewDepartments":true,"hrViewPositions":true,"hrViewDashboard":true}'
+    FROM company_members cm JOIN users u ON cm.user_id = u.user_id
+    WHERE u.username = 'pm_a' AND cm.company_id = 1;
+
+    -- Migrate any old MANAGER_* roles to EMPLOYEE
+    UPDATE company_member_roles SET [role] = 'EMPLOYEE'
+    WHERE [role] IN ('MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT');
+    IF @@ROWCOUNT > 0 PRINT N'✅ Migrated MANAGER_* roles → EMPLOYEE';
+
+    PRINT N'✅ Updated custom permissions for hr_a and pm_a';
+END
+GO
+
 -- =====================================================
 -- 0. PASSWORD HASH cho "Admin@123" (BCrypt cost=10)
 -- =====================================================
@@ -99,22 +151,22 @@ BEGIN
     -- admin_a → ADMIN
     SELECT @uid = user_id FROM users WHERE username = 'admin_a';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 1;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'COMPANY_ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 1;
 
-    -- hr_a → MANAGER_HR
+    -- hr_a → EMPLOYEE + custom HR & Project permissions
     SELECT @uid = user_id FROM users WHERE username = 'hr_a';
-    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'MANAGER_HR' FROM company_members WHERE user_id = @uid AND company_id = 1;
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
 
-    -- acc_a → MANAGER_ACCOUNTING
+    -- acc_a → EMPLOYEE (default permissions)
     SELECT @uid = user_id FROM users WHERE username = 'acc_a';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'MANAGER_ACCOUNTING' FROM company_members WHERE user_id = @uid AND company_id = 1;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
 
-    -- pm_a → MANAGER_PROJECT
+    -- pm_a → EMPLOYEE + custom Project & HR view permissions
     SELECT @uid = user_id FROM users WHERE username = 'pm_a';
-    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'MANAGER_PROJECT' FROM company_members WHERE user_id = @uid AND company_id = 1;
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{"projectCreate":true,"projectManageAll":true,"projectDelete":true,"projectManageIssues":true,"projectManageSprints":true,"projectViewDashboard":true,"projectExport":true,"projectManagePhases":true,"projectResourcePlanning":true,"hrViewList":true,"hrViewDepartments":true,"hrViewPositions":true,"hrViewDashboard":true}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
 
     -- dev_a1, dev_a2, dev_a3, emp_a1, emp_a2 → EMPLOYEE
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
@@ -134,25 +186,25 @@ BEGIN
 
     SELECT @uid = user_id FROM users WHERE username = 'admin_b';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 2;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'COMPANY_ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 2;
 
     SELECT @uid = user_id FROM users WHERE username = 'hr_b';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'MANAGER_HR' FROM company_members WHERE user_id = @uid AND company_id = 2;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 2;
 
     SELECT @uid = user_id FROM users WHERE username = 'pm_b';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'MANAGER_PROJECT' FROM company_members WHERE user_id = @uid AND company_id = 2;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 2;
 
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
     SELECT user_id, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM users WHERE username IN ('dev_b1','emp_b1');
     INSERT INTO company_member_roles (member_id, [role])
     SELECT m.id, 'EMPLOYEE' FROM company_members m JOIN users u ON m.user_id = u.user_id WHERE u.username IN ('dev_b1','emp_b1') AND m.company_id = 2;
 
-    -- multi_user → MANAGER_PROJECT in Company B
+    -- multi_user → EMPLOYEE in Company B
     SELECT @uid = user_id FROM users WHERE username = 'multi_user';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'MANAGER_PROJECT' FROM company_members WHERE user_id = @uid AND company_id = 2;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 2;
 
     -- Company C (STARTER) - 4 members
     SELECT @uid = user_id FROM users WHERE username = 'owner_c';
@@ -161,7 +213,7 @@ BEGIN
 
     SELECT @uid = user_id FROM users WHERE username = 'admin_c';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 3, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 3;
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'COMPANY_ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 3;
 
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
     SELECT user_id, 3, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM users WHERE username IN ('pm_c','emp_c1');
@@ -241,9 +293,9 @@ PRINT N'';
 PRINT N'📌 Tài khoản test (Password: Admin@123):';
 PRINT N'  sysadmin    → System Admin';
 PRINT N'  owner_a     → OWNER @ Tech Corp';
-PRINT N'  hr_a        → MANAGER_HR @ Tech Corp';
-PRINT N'  pm_a        → MANAGER_PROJECT @ Tech Corp';
-PRINT N'  multi_user  → EMPLOYEE @ Tech Corp + PM @ Startup Hub';
+PRINT N'  hr_a        → EMPLOYEE + HR permissions @ Tech Corp';
+PRINT N'  pm_a        → EMPLOYEE + PM permissions @ Tech Corp';
+PRINT N'  multi_user  → EMPLOYEE @ Tech Corp + EMPLOYEE @ Startup Hub';
 PRINT N'';
 PRINT N'▶️ Tiếp theo: Chạy 02_seed_data.sql';
 GO

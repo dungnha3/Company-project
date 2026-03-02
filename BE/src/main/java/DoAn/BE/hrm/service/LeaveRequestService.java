@@ -52,9 +52,29 @@ public class LeaveRequestService {
                 request.getEmployeeId());
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+        if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
+            // Check if user has HR leave approval permission (managers can create for
+            // others)
+            try {
+                accessControlService.checkLeaveApprovePermission();
+            } catch (ForbiddenException e) {
+                throw new ForbiddenException("You can only create leave requests for yourself");
+            }
+        }
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException("End date must be after start date");
+        }
+
+        if (request.getLeaveType() == LeaveRequest.LeaveType.ANNUAL) {
+            int currentYear = LocalDate.now().getYear();
+            int usedDays = getTotalLeaveDays(employee.getEmployeeId(), currentYear);
+            long requestedDays = java.time.temporal.ChronoUnit.DAYS.between(request.getStartDate(),
+                    request.getEndDate()) + 1;
+            if (usedDays + requestedDays > 12) {
+                throw new BadRequestException(
+                        "Requested leave days exceed annual leave quota (12 days/year). Used: " + usedDays);
+            }
         }
 
         LeaveRequest leaveRequest = new LeaveRequest();
@@ -67,7 +87,6 @@ public class LeaveRequestService {
 
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
-        // 🔗 Dispatch webhook event
         eventPublisher
                 .publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_REQUESTED,
                         saved, currentUser.getUserId(), "Leave Requested: " + saved.getLeaveType()));
@@ -102,7 +121,10 @@ public class LeaveRequestService {
     public org.springframework.data.domain.Page<LeaveRequest> getAllLeaveRequestsPaged(User currentUser,
             org.springframework.data.domain.Pageable pageable) {
         accessControlService.checkLeaveViewAllPermission();
-        return leaveRequestRepository.findAllRequests(pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return org.springframework.data.domain.Page.empty(pageable);
+        return leaveRequestRepository.findByCompanyId(companyId, pageable);
     }
 
     public LeaveRequest updateLeaveRequest(Long id, LeaveRequestRequest request, User currentUser) {
@@ -167,13 +189,25 @@ public class LeaveRequestService {
     }
 
     public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsByEmployeePaged(Long employeeId,
-            org.springframework.data.domain.Pageable pageable) {
+            User currentUser, org.springframework.data.domain.Pageable pageable) {
+        if (!accessControlService.hasPermission("LEAVE.VIEW_ALL")) {
+            Employee employee = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+            if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
+                throw new ForbiddenException("You can only view your own leave requests");
+            }
+        }
         return leaveRequestRepository.findByEmployee_EmployeeId(employeeId, pageable);
     }
 
     public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsInDateRangePaged(LocalDate startDate,
             LocalDate endDate, org.springframework.data.domain.Pageable pageable) {
-        return leaveRequestRepository.findByStartDateBetween(startDate, endDate, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            throw new ForbiddenException("Không xác định được công ty");
+        }
+        return leaveRequestRepository.findByStartDateBetweenAndEmployee_CompanyId(startDate, endDate, companyId,
+                pageable);
     }
 
     public LeaveRequest approveLeaveRequest(Long id, String note, User currentUser) {
@@ -181,14 +215,27 @@ public class LeaveRequestService {
 
         log.info("User {} approving leave request ID: {}", currentUser.getUsername(), id);
         LeaveRequest leaveRequest = getLeaveRequestById(id);
+        if (leaveRequest.getEmployee() != null && leaveRequest.getEmployee().getUser() != null
+                && leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new ForbiddenException("Không thể tự phê duyệt đơn nghỉ phép của chính mình");
+        }
 
         if (leaveRequest.getStatus() != LeaveStatus.PENDING) {
             throw new BadRequestException("Request is not pending or already processed");
         }
 
+        if (leaveRequest.getLeaveType() == LeaveRequest.LeaveType.ANNUAL) {
+            int currentYear = LocalDate.now().getYear();
+            int usedDays = getTotalLeaveDays(leaveRequest.getEmployee().getEmployeeId(), currentYear);
+            if (usedDays + leaveRequest.getTotalDays() > 12) {
+                throw new BadRequestException(
+                        "Cannot approve: exceeds annual leave quota of 12 days. Used: " + usedDays);
+            }
+        }
+
         leaveRequest.approve(currentUser, note);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
-        log.info("✅ Leave request approved by {}", currentUser.getUsername());
+        log.info("Leave request approved by {}", currentUser.getUsername());
 
         // Publish Event
         eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_APPROVED,
@@ -221,12 +268,17 @@ public class LeaveRequestService {
 
     public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsByStatus(
             LeaveStatus status, org.springframework.data.domain.Pageable pageable) {
-        return leaveRequestRepository.findByStatus(status, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return org.springframework.data.domain.Page.empty(pageable);
+        }
+        return leaveRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
     }
 
     public int getTotalLeaveDays(Long employeeId, int year) {
         List<LeaveRequest> leaveRequests = leaveRequestRepository.findApprovedByEmployeeAndYear(employeeId, year);
         return leaveRequests.stream()
+                .filter(lr -> lr.getLeaveType() == LeaveRequest.LeaveType.ANNUAL)
                 .mapToInt(LeaveRequest::getTotalDays)
                 .sum();
     }

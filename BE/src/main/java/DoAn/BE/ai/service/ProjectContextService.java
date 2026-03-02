@@ -34,7 +34,8 @@ public class ProjectContextService {
 
         public ProjectContextDTO getProjectContext(Long projectId) {
                 Project project = projectRepository.findById(projectId)
-                                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+                                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException(
+                                                "Project not found: " + projectId));
 
                 List<Issue> issues = issueRepository.findByProject_ProjectId(projectId);
                 List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);

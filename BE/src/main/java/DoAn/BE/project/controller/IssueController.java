@@ -14,18 +14,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 @RestController
 @RequestMapping("/api/issues")
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class IssueController {
 
     private final IssueService issueService;
+
     @PostMapping
     public ResponseEntity<IssueDTO> createIssue(
             @Valid @RequestBody CreateIssueRequest request,
@@ -36,6 +39,7 @@ public class IssueController {
         log.info("Đã tạo issue: {}", issue.getIssueId());
         return ResponseEntity.status(HttpStatus.CREATED).body(issue);
     }
+
     @GetMapping("/{issueId}")
     public ResponseEntity<IssueDTO> getIssue(
             @PathVariable Long issueId,
@@ -44,6 +48,7 @@ public class IssueController {
         IssueDTO issue = issueService.getIssueById(issueId, user.getUserId());
         return ResponseEntity.ok(issue);
     }
+
     @PutMapping("/{issueId}")
     public ResponseEntity<IssueDTO> updateIssue(
             @PathVariable Long issueId,
@@ -53,6 +58,7 @@ public class IssueController {
         IssueDTO issue = issueService.updateIssue(issueId, request, user.getUserId());
         return ResponseEntity.ok(issue);
     }
+
     @DeleteMapping("/{issueId}")
     public ResponseEntity<Void> deleteIssue(
             @PathVariable Long issueId,
@@ -61,6 +67,7 @@ public class IssueController {
         issueService.deleteIssue(issueId, user.getUserId());
         return ResponseEntity.noContent().build();
     }
+
     @GetMapping("/project/{projectId}")
     public ResponseEntity<Page<IssueDTO>> getProjectIssues(
             @PathVariable Long projectId,
@@ -70,6 +77,7 @@ public class IssueController {
         Page<IssueDTO> issues = issueService.getProjectIssuesPaginated(projectId, user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
+
     @GetMapping("/project/{projectId}/backlog")
     public ResponseEntity<Page<IssueDTO>> getProjectBacklog(
             @PathVariable Long projectId,
@@ -79,6 +87,7 @@ public class IssueController {
         Page<IssueDTO> issues = issueService.getProjectBacklogPaginated(projectId, user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
+
     @GetMapping("/sprint/{sprintId}")
     public ResponseEntity<Page<IssueDTO>> getSprintIssues(
             @PathVariable Long sprintId,
@@ -88,6 +97,7 @@ public class IssueController {
         Page<IssueDTO> issues = issueService.getSprintIssuesPaginated(sprintId, user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
+
     @GetMapping("/my-issues")
     public ResponseEntity<Page<IssueDTO>> getMyIssues(
             Authentication authentication,
@@ -97,11 +107,14 @@ public class IssueController {
         return ResponseEntity.ok(issues);
     }
     @GetMapping("/my-reported")
-    public ResponseEntity<List<IssueDTO>> getMyReportedIssues(Authentication authentication) {
+    public ResponseEntity<Page<IssueDTO>> getMyReportedIssues(
+            Authentication authentication,
+            @org.springframework.data.web.PageableDefault(size = 20) org.springframework.data.domain.Pageable pageable) {
         User user = (User) authentication.getPrincipal();
-        List<IssueDTO> issues = issueService.getMyReportedIssues(user.getUserId());
+        Page<IssueDTO> issues = issueService.getMyReportedIssuesPaginated(user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
+
     @PatchMapping("/{issueId}/assign/{assigneeId}")
     public ResponseEntity<IssueDTO> assignIssue(
             @PathVariable Long issueId,
@@ -111,6 +124,7 @@ public class IssueController {
         IssueDTO issue = issueService.assignIssue(issueId, assigneeId, user.getUserId());
         return ResponseEntity.ok(issue);
     }
+
     @PatchMapping("/{issueId}/status/{statusId}")
     public ResponseEntity<IssueDTO> changeIssueStatus(
             @PathVariable Long issueId,

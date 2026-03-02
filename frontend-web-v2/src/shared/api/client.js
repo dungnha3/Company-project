@@ -34,20 +34,6 @@ apiClient.interceptors.request.use(
             } catch (e) {
                 console.warn('Failed to parse workspace storage', e);
             }
-        } else {
-            // Fallback: Legacy company-storage support
-            const companyStorage = localStorage.getItem('company-storage');
-            if (companyStorage) {
-                try {
-                    const { state } = JSON.parse(companyStorage);
-                    if (state?.currentCompany?.companyId) {
-                        config.headers['X-Company-Id'] = state.currentCompany.companyId;
-                        config.headers['X-Workspace-Type'] = 'COMPANY';
-                    }
-                } catch (e) {
-                    console.warn('Failed to parse company storage', e);
-                }
-            }
         }
 
         return config;

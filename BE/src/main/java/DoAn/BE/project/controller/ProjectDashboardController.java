@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ import java.util.List;
 @RequestMapping("/api/project-dashboard")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class ProjectDashboardController {
 
     private final ProjectDashboardService dashboardService;

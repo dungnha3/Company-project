@@ -9,15 +9,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// Security Headers Filter
-//
-// Adds security headers to all HTTP responses to protect against:
-// - Clickjacking (X-Frame-Options)
-// - MIME type sniffing (X-Content-Type-Options)
-// - XSS attacks (Content-Security-Policy)
-// - Information leakage (X-Powered-By removal, Referrer-Policy)
-// - HTTPS enforcement (Strict-Transport-Security)
-// /
 @Component
 public class SecurityHeadersFilter extends OncePerRequestFilter {
 

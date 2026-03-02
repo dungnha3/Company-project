@@ -11,16 +11,18 @@ import java.time.LocalDate;
         @Index(name = "idx_onb_employee", columnList = "employee_id"),
         @Index(name = "idx_onb_status", columnList = "status")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class OnboardingInstance extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "instance_id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

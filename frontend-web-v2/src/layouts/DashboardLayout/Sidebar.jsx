@@ -4,24 +4,28 @@ import { useUIStore } from '@shared/stores/uiStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useAuthStore } from '@shared/stores/authStore';
 import CompanySwitcher from './CompanySwitcher';
-import { isSectionEnabled, isMenuItemEnabled } from '@shared/utils/featureHelper';
+import { isMenuItemEnabled } from '@shared/utils/featureHelper';
 import { getRequiredPlanForFeature } from '@shared/utils/planHelper';
 
-const NAV_CONFIG = [
+/**
+ * Hybrid NAV_CONFIG
+ * - HR: single link → body tabs (SectionTabLayout handles sub-items)
+ * - All other sections: inline items in sidebar
+ */
+export const NAV_CONFIG = [
     {
         key: 'overview',
         title: 'Tổng quan',
         roles: ['*'],
         items: [
             { path: '/app', icon: 'fa-house', label: 'Dashboard', exact: true },
-            { path: '/app/settings/workspace', icon: 'fa-sliders', label: 'Cài đặt Workspace', roles: ['OWNER', 'ADMIN'], companyOnly: true },
         ],
     },
     {
         key: 'personal-workspace',
         title: 'Không gian cá nhân',
         roles: ['*'],
-        personalOnly: true,  // Only show in Personal Workspace
+        personalOnly: true,
         items: [
             { path: '/app/me/tasks', icon: 'fa-list-check', label: 'Tasks cá nhân' },
             { path: '/app/me/storage', icon: 'fa-folder-open', label: 'Tài liệu cá nhân' },
@@ -40,59 +44,44 @@ const NAV_CONFIG = [
     },
     {
         key: 'hr',
-        title: 'Quản trị Nhân sự',
-        roles: ['OWNER', 'ADMIN', 'MANAGER_HR'],
+        title: 'Nhân sự (HR)',
+        permission: 'hrViewList',
         feature: 'hr',
         companyOnly: true,
         items: [
-            { path: '/app/hr/dashboard', icon: 'fa-gauge-high', label: 'Tổng quan HR', feature: 'hr' },
-            { path: '/app/hr/employees', icon: 'fa-users', label: 'Danh sách nhân viên', feature: 'hr' },
-            { path: '/app/hr/org-chart', icon: 'fa-sitemap', label: 'Sơ đồ tổ chức', feature: 'orgChart' },
-            { path: '/app/hr/departments', icon: 'fa-building', label: 'Phòng ban', feature: 'hr' },
-            { path: '/app/hr/positions', icon: 'fa-briefcase', label: 'Chức vụ', feature: 'hr' },
-            { path: '/app/hr/contracts', icon: 'fa-file-contract', label: 'Hợp đồng', feature: 'contract' },
-            { path: '/app/hr/reviews', icon: 'fa-star', label: 'Đánh giá', feature: 'review' },
-            { path: '/app/hr/okr', icon: 'fa-bullseye', label: 'OKR/KPI', feature: 'okr' },
-            { path: '/app/hr/skills-matrix', icon: 'fa-chart-bar', label: 'Ma trận kỹ năng', feature: 'skillsMatrix' },
-            { path: '/app/hr/onboarding', icon: 'fa-user-plus', label: 'Onboarding', feature: 'onboarding' },
-            { path: '/app/hr/resource-planning', icon: 'fa-calendar-check', label: 'Nguồn lực', feature: 'resourcePlanning' },
+            // Single entry point → body tabs handle 13 sub-items
+            { path: '/app/hr/dashboard', icon: 'fa-users-gear', label: 'Nhân sự (HR)', feature: 'hr', matchPrefix: '/app/hr' },
         ],
     },
     {
         key: 'payroll',
-        title: 'Lương & Chấm công',
-        roles: ['*'],
+        title: 'Chấm công & Lương',
         feature: 'hr',
         companyOnly: true,
+        // Only show for users WITHOUT full HR access (those with hrViewList see everything in HR body tabs)
+        hideIfPermission: 'hrViewList',
         items: [
             { path: '/app/hr/attendance', icon: 'fa-clock', label: 'Chấm công', feature: 'attendance' },
             { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
-            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', roles: ['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR'] },
+            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', permission: 'salaryView' },
         ],
     },
     {
-        key: 'project',
-        title: 'Quản lý Dự án',
+        key: 'workspace-tools',
+        title: 'Dự án & Công cụ',
         roles: ['*'],
         companyOnly: true,
         items: [
-            { path: '/app/projects', icon: 'fa-folder-open', label: 'Danh sách dự án', feature: 'project' },
-        ],
-    },
-    {
-        key: 'other',
-        title: 'Tiện ích',
-        roles: ['*'],
-        items: [
-            { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu chung', feature: 'storage', companyOnly: true },
-            { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện', feature: 'chat', companyOnly: true },
+            { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án', feature: 'project' },
+            { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu chung', feature: 'storage' },
+            { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện', feature: 'chat' },
             { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },
         ],
     },
     {
         key: 'company',
         title: 'Quản trị Workspace',
-        roles: ['OWNER', 'ADMIN'],
+        roles: ['OWNER', 'COMPANY_ADMIN'],
         companyOnly: true,
         items: [
             { path: '/app/company/dashboard', icon: 'fa-building', label: 'Tổng quan' },
@@ -122,110 +111,69 @@ const FEATURE_NAMES = {
     'timeTracking': 'Time Tracking',
     'calendar': 'Lịch',
     'ai': 'AI Assistant',
-    'webhook': 'Webhook',
 };
+
+const PLAN_LEVELS = { 'FREE': 0, 'STARTER': 1, 'PROFESSIONAL': 2, 'ENTERPRISE': 3 };
 
 export default function Sidebar() {
     const { sidebarCollapsed, toggleSidebar } = useUIStore();
-    const { currentWorkspace } = useWorkspaceStore();
+    const { currentWorkspace, hasPermission } = useWorkspaceStore();
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+    const location = useLocation();
     const [upgradeModal, setUpgradeModal] = useState(null);
 
-    // [SYSADMIN FIX] If somehow here, return nothing
     if (user?.isSystemAdmin) return null;
 
-    // Get current role, plan, and settings from workspace context
-    // Change: Roles is now array, but fallback to single role check if needed
-    const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['OWNER']); // Default OWNER for personal
-    const currentRole = currentRoles[0]; // Primary role for legacy checks
-
+    const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['OWNER']);
     const currentPlan = currentWorkspace?.plan || 'FREE';
     const settings = currentWorkspace?.settings || null;
-    const permissions = currentWorkspace?.permissions || null; // [NEW] Granular permissions
+    const permissions = currentWorkspace?.permissions || null;
     const isPersonalWorkspace = currentWorkspace?.type === 'PERSONAL';
 
-    // Filter sections by role and workspace type
+    // Filter sections and items
     const visibleSections = NAV_CONFIG.filter(section => {
-        // Hide companyOnly sections in Personal Workspace
         if (section.companyOnly && isPersonalWorkspace) return false;
-
-        // Hide personalOnly sections in Company Workspace
         if (section.personalOnly && !isPersonalWorkspace) return false;
 
-        // Role check (Section level is broad, usually '*' or Admin)
-        if (section.roles.includes('*')) return true;
-        // Check if user has ANY of the required roles
-        return section.roles.some(r => currentRoles.includes(r));
+        // hideIfPermission: hide section if user HAS this permission (e.g., payroll hidden if user has full HR access)
+        if (section.hideIfPermission && hasPermission(section.hideIfPermission)) return false;
+
+        // Permission-based visibility (preferred)
+        if (section.permission) return hasPermission(section.permission);
+
+        // Role-based visibility (kept for admin-only sections)
+        if (section.roles) {
+            if (section.roles.includes('*')) return true;
+            return section.roles.some(r => currentRoles.includes(r));
+        }
+
+        return true;
     }).map(section => ({
         ...section,
-        // Process items: Determine Visibility (Hide vs Gray)
         items: section.items
             .map(item => {
-                // 1. Hide companyOnly items in Personal Workspace
                 if (item.companyOnly && isPersonalWorkspace) return null;
-
-                // 2. Role check (Item level)
+                // Permission-based item visibility
+                if (item.permission && !hasPermission(item.permission)) return null;
+                // Legacy role-based item visibility
                 if (item.roles && !item.roles.includes('*') && !item.roles.some(r => currentRoles.includes(r))) return null;
 
-                // 3. Feature Check Logic
                 if (item.feature) {
-                    // A. Plan Check (Highest)
                     let planFeature = item.feature;
-                    if (['attendance', 'leave', 'salary', 'contract', 'review', 'okr', 'skillsMatrix', 'onboarding', 'resourcePlanning'].includes(item.feature)) planFeature = 'hr';
-                    // Check if Plan allows it
-                    // Note: We need planHelper's hasFeature directly to distinguish Plan Block vs other blocks
-                    // But isMenuItemEnabled uses isFeatureEnabled which mixes them.
-                    // We need to know IF PLAN BLOCKS IT specifically.
-
-                    const planAllowed = getRequiredPlanForFeature(planFeature) === 'FREE' || currentPlan !== 'FREE';
-                    // Wait, getRequiredPlanForFeature is for PROMPT. 
-                    // Real check is: isFeatureEnabled('FREE', null, planFeature) ?? No.
-                    // We imported { getRequiredPlanForFeature } but not hasFeature from planHelper.
-                    // We need hasFeature logic.
-                    // Simplified: just call isFeatureEnabled with ALL TRUE settings/perms?
-                    // No, let's use isMenuItemEnabled logic but decompose it?
-                    // OR rely on isMenuItemEnabled(..., permissions) -> if returning FALSE, we need to know WHY.
-
-                    // Let's implement independent checks here for UI control:
-
-                    // Check 1: Plan
-                    // We don't have direct access to 'hasFeature' unless we import it or duplicate logic.
-                    // Let's assume strict plan enforcement:
-                    // If isMenuItemEnabled returns false:
-                    //   Check if Plan causes it.
-                    //   If Plan causes it -> GRAY.
-                    //   If Settings/Perms causes it -> HIDE.
+                    if (['attendance', 'leave', 'salary', 'contract', 'review', 'okr', 'onboarding', 'resourcePlanning'].includes(item.feature)) planFeature = 'hr';
 
                     const isFullyEnabled = isMenuItemEnabled(item.path, currentPlan, settings, permissions);
+                    if (isFullyEnabled) return { ...item, enabled: true };
 
-                    if (isFullyEnabled) {
-                        return { ...item, enabled: true };
-                    } else {
-                        // It is disabled. Check if it's because of PLAN.
-                        // Test with "ENTERPRISE" plan and "ALL" settings/perms. If it works, then current failure is due to Plan/Settings/Perms context.
-                        // Actually, simpler: Check if Plan allows it.
-                        // If Plan is "FREE" and feature requires "STARTER", then Plan Blocked.
-                        // We can use getRequiredPlanForFeature.
-                        const requiredPlan = getRequiredPlanForFeature(planFeature);
-
-                        const PLAN_LEVELS = { 'FREE': 0, 'STARTER': 1, 'PROFESSIONAL': 2, 'ENTERPRISE': 3 };
-                        const isPlanBlocked = PLAN_LEVELS[currentPlan] < PLAN_LEVELS[requiredPlan];
-
-                        if (isPlanBlocked) {
-                            // Blocked by Plan -> ENABLED=FALSE (Gray)
-                            return { ...item, enabled: false };
-                        } else {
-                            // Blocked by Settings or Permissions -> NULL (Hidden)
-                            return null;
-                        }
-                    }
+                    const requiredPlan = getRequiredPlanForFeature(planFeature);
+                    const isPlanBlocked = PLAN_LEVELS[currentPlan] < PLAN_LEVELS[requiredPlan];
+                    return isPlanBlocked ? { ...item, enabled: false } : null;
                 }
 
-                // No feature key -> Always enabled
                 return { ...item, enabled: true };
             })
-            .filter(Boolean) // Remove nulls (Hidden items)
+            .filter(Boolean),
     })).filter(section => section.items.length > 0);
 
     const handleDisabledClick = (item, e) => {
@@ -237,6 +185,12 @@ export default function Sidebar() {
     };
 
     const closeUpgradeModal = () => setUpgradeModal(null);
+
+    const isItemActive = (item) => {
+        if (item.exact) return location.pathname === item.path;
+        if (item.matchPrefix) return location.pathname.startsWith(item.matchPrefix);
+        return location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+    };
 
     return (
         <aside className={`sidebar fixed top-0 left-0 h-screen z-40 ${sidebarCollapsed ? 'collapsed' : ''}`}>
@@ -266,7 +220,7 @@ export default function Sidebar() {
                                     key={item.path}
                                     to={item.path}
                                     end={item.exact}
-                                    className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+                                    className={() => `menu-item ${isItemActive(item) ? 'active' : ''}`}
                                     title={item.label}
                                 >
                                     <i className={`fa-solid ${item.icon}`} />
@@ -295,7 +249,6 @@ export default function Sidebar() {
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100 space-y-2">
-                {/* Subtle Upgrade Prompt - Only for FREE Personal Workspace */}
                 {isPersonalWorkspace && currentPlan === 'FREE' && !sidebarCollapsed && (
                     <NavLink
                         to="/app/billing"

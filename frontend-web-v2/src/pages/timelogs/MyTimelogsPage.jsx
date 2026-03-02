@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { timelogApi } from '../../shared/api/featureApi';
 import { formatDate, formatNumber } from '@shared/utils/formatters';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function MyTimelogsPage() {
     const [timelogs, setTimelogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { hasPermission } = useWorkspaceStore();
+    const canLog = hasPermission('timetrackingLog');
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
 
@@ -52,10 +55,10 @@ export default function MyTimelogsPage() {
     return (
         <div className="p-6 max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-white">⏱️ My Time Logs</h1>
+                <h1 className="text-2xl font-bold text-white">⏱️ Nhật ký thời gian</h1>
                 <div className="bg-indigo-600 px-4 py-2 rounded-lg">
                     <span className="text-white font-semibold">{formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h</span>
-                    <span className="text-indigo-200 text-sm ml-1">total</span>
+                    <span className="text-indigo-200 text-sm ml-1">tổng cộng</span>
                 </div>
             </div>
 
@@ -92,12 +95,14 @@ export default function MyTimelogsPage() {
                                                         <p className="text-slate-400 text-sm">{log.description}</p>
                                                     )}
                                                 </div>
-                                                <button
-                                                    onClick={() => handleDelete(log.logId)}
-                                                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity ml-4"
-                                                >
-                                                    🗑️
-                                                </button>
+                                                {canLog && (
+                                                    <button
+                                                        onClick={() => handleDelete(log.logId)}
+                                                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity ml-4"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

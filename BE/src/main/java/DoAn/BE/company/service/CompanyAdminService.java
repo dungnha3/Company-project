@@ -22,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 // SysAdmin-only operations on companies: plan changes, status toggle,
 // settings override, quota/feature God Mode, hard delete.
 // /
@@ -42,6 +45,11 @@ public class CompanyAdminService {
                 .stream()
                 .map(this::mapCompanyToResponse)
                 .collect(Collectors.toList());
+    }
+    @Transactional(readOnly = true)
+    public Page<CompanyDto.CompanyResponse> getAllCompaniesPaged(Pageable pageable) {
+        return companyRepository.findAll(pageable)
+                .map(this::mapCompanyToResponse);
     }
 
     @Transactional(readOnly = true)

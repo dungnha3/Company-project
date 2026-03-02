@@ -9,6 +9,7 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 import DoAn.BE.hrm.entity.Department;
+
 @Entity
 @Table(name = "projects", indexes = {
         // Index cho query: findByStatus (Active project list)
@@ -20,16 +21,18 @@ import DoAn.BE.hrm.entity.Department;
         // Index cho query: findByIsActive (Active filter)
         @jakarta.persistence.Index(name = "idx_proj_active", columnList = "is_active")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Project extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "project_id")
+    @EqualsAndHashCode.Include
     private Long projectId;
 
     @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")

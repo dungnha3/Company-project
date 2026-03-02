@@ -18,7 +18,6 @@ public class CacheConfig {
     public static final String CACHE_DEPARTMENT = "department";
     public static final String CACHE_POSITIONS = "positions";
     public static final String CACHE_PROJECTS = "projects";
-    public static final String CACHE_INTEGRATIONS = "integrations";
 
     private CacheConfig() {
         // Utility class - prevent instantiation

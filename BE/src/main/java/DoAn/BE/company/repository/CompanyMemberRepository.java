@@ -70,19 +70,9 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Lo
         List<CompanyMember> findByCompany_CompanyIdAndRolesInAndIsActiveTrue(Long companyId, Set<CompanyRole> roles);
         // DEFAULT METHODS
 
-        // Lấy tất cả HR Managers trong công ty
-        default List<CompanyMember> findHRManagersByCompany(Long companyId) {
-                return findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(companyId, CompanyRole.MANAGER_HR);
-        }
-
-        // Lấy tất cả Project Managers trong công ty
-        default List<CompanyMember> findProjectManagersByCompany(Long companyId) {
-                return findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(companyId, CompanyRole.MANAGER_PROJECT);
-        }
-
         // Lấy tất cả Admins/Owners trong công ty
         default List<CompanyMember> findAdminsByCompany(Long companyId) {
                 return findByCompany_CompanyIdAndRolesInAndIsActiveTrue(companyId,
-                                Set.of(CompanyRole.OWNER, CompanyRole.ADMIN));
+                                Set.of(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN));
         }
 }

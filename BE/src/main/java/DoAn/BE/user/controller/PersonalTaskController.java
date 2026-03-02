@@ -12,6 +12,7 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.service.PersonalTaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 // PersonalTaskController - API cho Personal Tasks
 //
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/me/tasks")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PersonalTaskController {
 
     private final PersonalTaskService taskService;

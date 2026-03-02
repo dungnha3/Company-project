@@ -29,11 +29,11 @@ const RECURRING_OPTIONS = [
 ];
 
 const LABEL_PRESETS = [
-    { name: 'Work', color: 'bg-indigo-500' },
-    { name: 'Personal', color: 'bg-purple-500' },
-    { name: 'Health', color: 'bg-green-500' },
-    { name: 'Finance', color: 'bg-yellow-500' },
-    { name: 'Learning', color: 'bg-pink-500' },
+    { name: 'Công việc', color: 'bg-indigo-500' },
+    { name: 'Cá nhân', color: 'bg-purple-500' },
+    { name: 'Sức khỏe', color: 'bg-green-500' },
+    { name: 'Tài chính', color: 'bg-yellow-500' },
+    { name: 'Học tập', color: 'bg-pink-500' },
 ];
 
 export default function PersonalTasksPage() {
@@ -201,7 +201,7 @@ export default function PersonalTasksPage() {
                                 }`}
                         >
                             <i className="fa-solid fa-list mr-1.5" />
-                            List
+                            Danh sách
                         </button>
                         <button
                             onClick={() => setViewMode('kanban')}

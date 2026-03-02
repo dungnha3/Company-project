@@ -17,15 +17,18 @@ import lombok.*;
 }, uniqueConstraints = {
         @UniqueConstraint(name = "uk_issue_field", columnNames = { "issue_id", "field_id" })
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class IssueCustomFieldValue {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "value_id")
+    @EqualsAndHashCode.Include
     private Long valueId;
 
     @ManyToOne(fetch = FetchType.LAZY)

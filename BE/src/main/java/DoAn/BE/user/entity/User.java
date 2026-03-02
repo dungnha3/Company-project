@@ -17,23 +17,20 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.SQLRestriction;
 
-// Entity User - Tài khoản đăng nhập hệ thống (multi-tenant qua CompanyMember)
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true)
-@ToString(exclude = { "memberships", "personalWorkspace", "employees" }) // [FIX] Exclude lazy collection to prevent
-                                                                         // circular
-// ToString
+@ToString(exclude = { "memberships", "personalWorkspace", "employees" })
 @Table(name = "users", indexes = {
         // Index cho query: findByIsOnlineTrue (Presence check)
         @jakarta.persistence.Index(name = "idx_user_online", columnList = "is_online"),
@@ -78,8 +75,6 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "is_system_admin", nullable = false, columnDefinition = "bit default 0")
     private Boolean isSystemAdmin = false;
 
-    // createdAt and updatedAt are now inherited from BaseEntity
-
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
@@ -94,26 +89,37 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @JsonIgnore
     private String fcmToken;
 
-    // Multi-tenant: User có thể join nhiều công ty
+    @Column(name = "two_factor_secret")
+    @JsonIgnore
+    private String twoFactorSecret;
+
+    @Column(name = "two_factor_enabled")
+    @Builder.Default
+    private Boolean twoFactorEnabled = false;
+
+    @Column(name = "two_factor_backup_codes", length = 500)
+    @JsonIgnore
+    private String twoFactorBackupCodes;
+
+    @jakarta.persistence.Embedded
+    @Builder.Default
+    private NotificationSettings notificationSettings = new NotificationSettings();
+
     @OneToMany(mappedBy = "user")
-    @BatchSize(size = 20) // N+1 Fix: Fetch memberships in batches
+    @BatchSize(size = 20)
     @Builder.Default
     @JsonIgnore
     private List<CompanyMember> memberships = new ArrayList<>();
 
-    // Personal Workspace (1:1) - Không gian làm việc cá nhân
     @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY, cascade = jakarta.persistence.CascadeType.ALL)
     @JsonIgnore
     private PersonalWorkspace personalWorkspace;
 
-    // Personal Plan - Gói cước cá nhân (independent of company plans)
     @Column(name = "personal_plan", length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private DoAn.BE.company.entity.Plan personalPlan = DoAn.BE.company.entity.Plan.FREE;
 
-    // Relation with Employee (Multi-tenant: User can have Employee profiles in
-    // multiple companies)
     @OneToMany(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY)
     @JsonIgnore
     @Builder.Default
@@ -188,5 +194,19 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @JsonIgnore
     public List<CompanyMember> getCompanyMemberships() {
         return this.memberships;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof User other))
+            return false;
+        return userId != null && userId.equals(other.getUserId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode(); // Consistent before and after persist
     }
 }

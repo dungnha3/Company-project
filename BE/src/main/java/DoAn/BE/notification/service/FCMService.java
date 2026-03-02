@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+
 // [ASYNC: All methods run in background thread pool to avoid blocking]
 @Service
 @Slf4j
@@ -32,11 +33,18 @@ public class FCMService {
                 messageBuilder.putAllData(data);
             }
             String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
-            log.info("✅ Gửi FCM thành công: {}", response);
+            log.info("Gửi FCM thành công: {}", response);
+        } catch (com.google.firebase.messaging.FirebaseMessagingException e) {
+            if (e.getMessagingErrorCode() == com.google.firebase.messaging.MessagingErrorCode.UNREGISTERED) {
+                log.warn("FCM token is unregistered (stale). fcmToken={}", fcmToken);
+            } else {
+                log.error("Lỗi gửi FCM message: {}", e.getMessage());
+            }
         } catch (Exception e) {
-            log.error("❌ Lỗi gửi FCM message: {}", e.getMessage());
+            log.error("Lỗi gửi FCM message: {}", e.getMessage());
         }
     }
+
     @Async("notificationExecutor")
     public void sendToTopic(String topic, String title, String body, Map<String, String> data) {
         if (topic == null || topic.isBlank()) {
@@ -57,9 +65,9 @@ public class FCMService {
                 messageBuilder.putAllData(data);
             }
             String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
-            log.info("✅ Gửi FCM đến topic {} thành công: {}", topic, response);
+            log.info("Gửi FCM đến topic {} thành công: {}", topic, response);
         } catch (Exception e) {
-            log.error("❌ Lỗi gửi FCM message đến topic: {}", e.getMessage());
+            log.error("Lỗi gửi FCM message đến topic: {}", e.getMessage());
         }
     }
 }

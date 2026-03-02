@@ -15,7 +15,6 @@ import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.project.repository.IssueActivityRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
-import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
@@ -27,6 +26,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -34,20 +34,28 @@ import java.util.stream.Collectors;
 public class IssueService {
 
     private final IssueRepository issueRepository;
-    private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueStatusRepository issueStatusRepository;
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final IssueActivityRepository issueActivityRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final DoAn.BE.project.repository.ProjectPhaseRepository projectPhaseRepository;
+    private final jakarta.persistence.EntityManager entityManager;
 
     @Transactional
     public IssueDTO createIssue(CreateIssueRequest request, Long userId) {
         User reporter = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
-        Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+
+        // Fix race condition in issue key generation by applying a PESSIMISTIC_WRITE
+        // lock on Project
+        Project project = entityManager.find(Project.class, request.getProjectId(),
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (project == null) {
+            throw new ResourceNotFoundException("Không tìm thấy dự án");
+        }
+
         validateProjectAccess(request.getProjectId(), userId);
 
         // Nếu không có statusId, mặc định là To Do (id: 1)
@@ -90,7 +98,6 @@ public class IssueService {
 
         issue = issueRepository.save(issue);
 
-        // 🔗 Dispatch webhook event
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
 
         return convertToDTO(issue);
@@ -201,6 +208,12 @@ public class IssueService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public Page<IssueDTO> getMyReportedIssuesPaginated(Long userId, Pageable pageable) {
+        Page<Issue> reportedIssues = issueRepository.findByReporter_UserId(userId, pageable);
+        return reportedIssues.map(this::convertToDTO);
+    }
+
     @Transactional
     public IssueDTO updateIssue(Long issueId, UpdateIssueRequest request, Long userId) {
         Issue issue = issueRepository.findById(issueId)
@@ -211,12 +224,6 @@ public class IssueService {
         }
 
         validateProjectAccess(issue.getProject().getProjectId(), userId);
-
-        // User updater = userRepository.findById(userId)
-        // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người
-        // dùng"));
-
-        StringBuilder changes = new StringBuilder();
 
         // Update fields if provided
         if (request.getTitle() != null) {
@@ -231,11 +238,7 @@ public class IssueService {
             issue.setIssueStatus(status);
         }
         if (request.getPriority() != null) {
-            Issue.Priority oldPriority = issue.getPriority();
             issue.setPriority(request.getPriority());
-            if (oldPriority != request.getPriority()) {
-                changes.append("Độ ưu tiên: ").append(oldPriority).append(" → ").append(request.getPriority());
-            }
         }
         if (request.getAssigneeId() != null) {
             User assignee = userRepository.findById(request.getAssigneeId())
@@ -250,17 +253,11 @@ public class IssueService {
             issue.setActualHours(request.getActualHours());
         }
         if (request.getDueDate() != null) {
-            if (changes.length() > 0)
-                changes.append(", ");
-            changes.append("Deadline: ").append(request.getDueDate());
             issue.setDueDate(request.getDueDate());
         }
 
         issue = issueRepository.save(issue);
-
-        if (changes.length() > 0) {
-            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
-        }
+        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
 
         return convertToDTO(issue);
     }
@@ -280,7 +277,6 @@ public class IssueService {
             throw new ForbiddenException("Bạn không có quyền xóa issue này");
         }
 
-        // 🔗 Dispatch webhook event
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.DELETED, issue, userId);
 
         issueRepository.delete(issue);
@@ -304,7 +300,6 @@ public class IssueService {
         issue.assignTo(assignee);
         issue = issueRepository.save(issue);
 
-        // 🔗 Dispatch webhook event
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
 
         return convertToDTO(issue);
@@ -350,14 +345,13 @@ public class IssueService {
             issueActivityRepository.save(activity);
         }
 
-        // 🤖 Auto Phase Status Update
         updatePhaseStatusIfNeeded(issue);
 
-        // 🔗 Dispatch webhook event
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
 
         return convertToDTO(issue);
     }
+
     private void updatePhaseStatusIfNeeded(Issue issue) {
         if (issue.getPhase() == null) {
             return;
@@ -375,11 +369,10 @@ public class IssueService {
 
         for (Issue i : phaseIssues) {
             if (i.getIssueStatus() != null) {
-                String statusName = i.getIssueStatus().getName().toLowerCase();
-                if (!statusName.contains("done") && !statusName.contains("hoàn thành")
-                        && !statusName.contains("closed")) {
+                if (!i.isDone()) {
                     allDone = false;
                 }
+                String statusName = i.getIssueStatus().getName().toLowerCase();
                 if (statusName.contains("progress") || statusName.contains("đang thực hiện")) {
                     anyInProgress = true;
                 }
@@ -387,14 +380,12 @@ public class IssueService {
                 allDone = false;
             }
         }
-
-        // Update phase status if needed
         if (allDone && phase.getStatus() != DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED) {
             phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED);
-            // directly.
-            // In production, inject ProjectPhaseRepository and save.
+            projectPhaseRepository.save(phase);
         } else if (anyInProgress && phase.getStatus() == DoAn.BE.project.entity.ProjectPhase.PhaseStatus.PLANNING) {
             phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.IN_PROGRESS);
+            projectPhaseRepository.save(phase);
         }
     }
 
@@ -413,12 +404,16 @@ public class IssueService {
     }
 
     private String generateIssueKey(Project project) {
-        // [Optimized] Count existing issues directly from DB
-        long count = issueRepository.countByProject_ProjectId(project.getProjectId());
-        long nextNumber = count + 1;
+        Long maxNumber = issueRepository.findMaxIssueNumberByProjectId(project.getProjectId());
+        long nextNumber = (maxNumber != null ? maxNumber : 0) + 1;
+        String key = String.format("%s-%d", project.getKeyProject(), nextNumber);
 
-        // Generate key: PROJECT_KEY-NUMBER (e.g., PROJ-1, PROJ-2)
-        return String.format("%s-%d", project.getKeyProject(), nextNumber);
+        // Safety check: If key already exists (edge case), increment
+        while (issueRepository.findByIssueKey(key).isPresent()) {
+            nextNumber++;
+            key = String.format("%s-%d", project.getKeyProject(), nextNumber);
+        }
+        return key;
     }
 
     private IssueDTO convertToDTO(Issue issue) {

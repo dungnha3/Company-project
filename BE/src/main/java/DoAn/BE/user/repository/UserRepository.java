@@ -57,4 +57,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH m.company " +
             "WHERE EXISTS (SELECT 1 FROM CompanyMember cm WHERE cm.user = u AND cm.company.companyId = :companyId AND cm.isActive = true)")
     List<User> findUsersByCompanyIdWithMemberships(@Param("companyId") Long companyId);
+
+    // [SYSADMIN] Paginated query for listing users (avoids loading all into memory)
+    org.springframework.data.domain.Page<User> findByIsDeletedFalse(org.springframework.data.domain.Pageable pageable);
+
+    // [SYSADMIN] Paginated search by username or email
+    @Query("SELECT u FROM User u WHERE u.isDeleted = false AND " +
+            "(LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    org.springframework.data.domain.Page<User> searchByKeywordPaged(@Param("keyword") String keyword,
+            org.springframework.data.domain.Pageable pageable);
 }

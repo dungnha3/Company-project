@@ -60,7 +60,7 @@ export default function TimeLogSection({ issueId, estimatedHours }) {
             loadTimelogs();
         } catch (error) {
             console.error('Failed to log time:', error);
-            alert('Không thể log time. Vui lòng thử lại.');
+            setFormData(prev => ({ ...prev, error: 'Không thể log time. Vui lòng thử lại.' }));
         } finally {
             setSubmitting(false);
         }

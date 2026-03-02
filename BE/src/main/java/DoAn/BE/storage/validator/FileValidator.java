@@ -6,12 +6,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class FileValidator {
 
     private final FileSecurityConfig fileSecurityConfig;
+
     public void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File không được để trống");
@@ -24,16 +26,16 @@ public class FileValidator {
 
         // 1. Check filename không chứa path traversal
         if (originalFilename.contains("..")) {
-            log.warn("⚠️ Path traversal attempt detected: {}", originalFilename);
-            throw new BadRequestException("❌ Tên file không hợp lệ: chứa ký tự nguy hiểm");
+            log.warn("Path traversal attempt detected: {}", originalFilename);
+            throw new BadRequestException("Tên file không hợp lệ: chứa ký tự nguy hiểm");
         }
 
         // 2. Check file extension
         String extension = getFileExtension(originalFilename);
         if (!fileSecurityConfig.isExtensionAllowed(extension)) {
-            log.warn("⚠️ Blocked file extension: {} ({})", extension, originalFilename);
+            log.warn("Blocked file extension: {} ({})", extension, originalFilename);
             throw new BadRequestException(
-                    String.format("❌ Loại file .%s không được phép upload. " +
+                    String.format("Loại file .%s không được phép upload. " +
                             "Chỉ chấp nhận: %s",
                             extension,
                             String.join(", ", fileSecurityConfig.getAllowedExtensions())));
@@ -42,17 +44,17 @@ public class FileValidator {
         // 3. Check MIME type
         String mimeType = file.getContentType();
         if (mimeType != null && !fileSecurityConfig.isMimeTypeAllowed(mimeType)) {
-            log.warn("⚠️ Blocked MIME type: {} for file {}", mimeType, originalFilename);
+            log.warn("Blocked MIME type: {} for file {}", mimeType, originalFilename);
             throw new BadRequestException(
-                    String.format("❌ Loại file (MIME: %s) không được phép upload", mimeType));
+                    String.format("Loại file (MIME: %s) không được phép upload", mimeType));
         }
 
         // 4. Check file size
         long fileSize = file.getSize();
         if (!fileSecurityConfig.isFileSizeAllowed(fileSize)) {
-            log.warn("⚠️ File too large: {} bytes for file {}", fileSize, originalFilename);
+            log.warn("File too large: {} bytes for file {}", fileSize, originalFilename);
             throw new BadRequestException(
-                    String.format("❌ File quá lớn: %.2f MB. Giới hạn: %.2f MB",
+                    String.format("File quá lớn: %.2f MB. Giới hạn: %.2f MB",
                             fileSize / (1024.0 * 1024.0),
                             fileSecurityConfig.getMaxFileSize() / (1024.0 * 1024.0)));
         }
@@ -63,7 +65,7 @@ public class FileValidator {
             for (int i = 0; i < Math.min(bytes.length, 1000); i++) {
                 if (bytes[i] == 0 && i < 100) {
                     // Null byte found early in file (suspicious)
-                    log.warn("⚠️ Suspicious null byte detected in file: {}", originalFilename);
+                    log.warn("Suspicious null byte detected in file: {}", originalFilename);
                     // Don't throw, just log (some binary files có null bytes hợp lệ)
                     break;
                 }
@@ -72,9 +74,10 @@ public class FileValidator {
             log.error("Error reading file bytes: {}", e.getMessage());
         }
 
-        log.info("✅ File validation passed: {} ({}, {} bytes)",
+        log.info("File validation passed: {} ({}, {} bytes)",
                 originalFilename, extension, fileSize);
     }
+
     public void validateFilename(String filename) {
         if (filename == null || filename.isEmpty()) {
             throw new BadRequestException("Tên file không hợp lệ");
@@ -90,6 +93,7 @@ public class FileValidator {
                     String.format("Loại file .%s không được phép", extension));
         }
     }
+
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return "";

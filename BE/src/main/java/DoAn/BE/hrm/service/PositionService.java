@@ -53,9 +53,14 @@ public class PositionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
     }
 
-    @Cacheable(value = "position", key = "'all'")
+    @Cacheable(value = "position", key = "'all-' + T(DoAn.BE.common.context.TenantContext).getCompanyId()")
     public List<Position> getAllPositions() {
-        return positionRepository.findAll();
+        // ALL companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
+        }
+        return positionRepository.findByCompany_CompanyId(companyId);
     }
 
     @CacheEvict(value = "position", allEntries = true)

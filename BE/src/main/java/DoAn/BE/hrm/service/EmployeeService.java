@@ -42,12 +42,8 @@ public class EmployeeService {
 
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee profile not found"));
-
-        try {
-            accessControlService.checkHrViewPermission();
+        if (accessControlService.hasPermission("hr.viewList")) {
             return employee;
-        } catch (ForbiddenException ignored) {
-            // Fall through to self-view check
         }
 
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
@@ -86,7 +82,66 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public Page<Employee> getAllEmployeesPage(Pageable pageable) {
         accessControlService.checkHrViewPermission();
-        return employeeRepository.findAll(pageable);
+        // ALL companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return Page.empty(pageable);
+        }
+        return employeeRepository.findByCompanyId(companyId, pageable);
+    }
+
+    public Employee createEmployee(EmployeeRequest request, User currentUser) {
+        if (request == null || request.getUserId() == null) {
+            throw new BadRequestException("Invalid data: userId is required");
+        }
+
+        accessControlService.checkHrCreateEmployeePermission();
+
+        // Check if user already has an employee profile (tenant-scoped)
+        if (employeeRepository.findByUser_UserId(request.getUserId()).isPresent()) {
+            throw new DuplicateException("User already has an employee profile");
+        }
+
+        // Validate idCard uniqueness
+        if (request.getIdCard() != null && !request.getIdCard().isBlank()
+                && employeeRepository.existsByIdCard(request.getIdCard())) {
+            throw new DuplicateException("ID Card already exists");
+        }
+
+        log.info("HR Manager {} creating employee profile for userId: {}",
+                currentUser.getUsername(), request.getUserId());
+
+        Employee employee = new Employee();
+
+        // Link to user — use a proxy reference to avoid extra query
+        User userRef = new User();
+        userRef.setUserId(request.getUserId());
+        employee.setUser(userRef);
+
+        employee.setFullName(request.getFullName());
+        employee.setDateOfBirth(request.getDateOfBirth());
+        employee.setGender(request.getGender());
+        employee.setAddress(request.getAddress());
+        employee.setHireDate(request.getHireDate());
+        employee.setIdCard(request.getIdCard());
+        employee.setBaseSalary(request.getBaseSalary() != null ? request.getBaseSalary() : java.math.BigDecimal.ZERO);
+        employee.setAllowance(request.getAllowance() != null ? request.getAllowance() : java.math.BigDecimal.ZERO);
+
+        if (request.getDepartmentId() != null) {
+            Department department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+            employee.setDepartment(department);
+        }
+
+        if (request.getPositionId() != null) {
+            Position position = positionRepository.findById(request.getPositionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
+            employee.setPosition(position);
+        }
+
+        // TenantScopedEntity.prePersistTenant() will auto-set company from
+        // TenantContext
+        return employeeRepository.save(employee);
     }
 
     public Employee updateEmployee(Long id, EmployeeRequest request, User currentUser) {
@@ -136,20 +191,28 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    // integrity
     public void deleteEmployee(Long id) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkHrDeleteEmployeePermission();
         Employee employee = getEmployeeById(id);
-        employeeRepository.delete(employee);
+        employee.setStatus(EmployeeStatus.RESIGNED);
+        employeeRepository.save(employee);
     }
 
     @Transactional(readOnly = true)
     public List<Employee> getEmployeesByStatus(EmployeeStatus status) {
-        return employeeRepository.findByStatus(status);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return java.util.Collections.emptyList();
+        return employeeRepository.findByStatusAndCompany_CompanyId(status, companyId);
     }
 
     @Transactional(readOnly = true)
     public Page<Employee> getEmployeesByStatus(EmployeeStatus status, Pageable pageable) {
-        return employeeRepository.findByStatus(status, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return Page.empty(pageable);
+        return employeeRepository.findByStatusAndCompany_CompanyId(status, companyId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -174,7 +237,14 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public List<Employee> searchEmployees(String keyword) {
-        return employeeRepository.searchByKeyword(keyword);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        List<Employee> results = employeeRepository.searchByKeyword(keyword);
+        if (companyId != null) {
+            results = results.stream()
+                    .filter(e -> e.getCompany() != null && companyId.equals(e.getCompany().getCompanyId()))
+                    .toList();
+        }
+        return results;
     }
 
     @Transactional(readOnly = true)

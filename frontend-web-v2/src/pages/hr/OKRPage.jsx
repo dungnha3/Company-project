@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 const STATUS_CONFIG = {
     ON_TRACK: { label: 'Đúng tiến độ', color: 'bg-green-100 text-green-700', icon: 'fa-check-circle' },
@@ -14,10 +15,13 @@ const STATUS_CONFIG = {
 
 export default function OKRPage() {
     const [showModal, setShowModal] = useState(false);
-    const [selectedPeriod, setSelectedPeriod] = useState('Q1-2024');
+    const currentYear = new Date().getFullYear();
+    const [selectedPeriod, setSelectedPeriod] = useState(`Q1-${currentYear}`);
     const [viewMode, setViewMode] = useState('list'); // list, grid
     const { showToast } = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useWorkspaceStore();
+    const canManage = hasPermission('okrManage');
 
     // Fetch OKRs
     const { data: objectives = [], isLoading } = useQuery({
@@ -69,9 +73,11 @@ export default function OKRPage() {
                         onChange={(e) => setSelectedPeriod(e.target.value)}
                         className="input py-2 text-sm"
                     >
-                        <option value="Q1-2024">Q1-2024</option>
-                        <option value="Q2-2024">Q2-2024</option>
-                        <option value="2024">Năm 2024</option>
+                        <option value={`Q1-${currentYear}`}>Q1-{currentYear}</option>
+                        <option value={`Q2-${currentYear}`}>Q2-{currentYear}</option>
+                        <option value={`Q3-${currentYear}`}>Q3-{currentYear}</option>
+                        <option value={`Q4-${currentYear}`}>Q4-{currentYear}</option>
+                        <option value={`${currentYear}`}>Năm {currentYear}</option>
                     </select>
 
                     {/* View Toggle */}
@@ -92,13 +98,15 @@ export default function OKRPage() {
                         </button>
                     </div>
 
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="btn-primary"
-                    >
-                        <i className="fa-solid fa-plus mr-2" />
-                        Tạo OKR
-                    </button>
+                    {canManage && (
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="btn-primary"
+                        >
+                            <i className="fa-solid fa-plus mr-2" />
+                            Tạo OKR
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -160,9 +168,11 @@ export default function OKRPage() {
                         </div>
                         <h3 className="text-lg font-semibold text-gray-700 mb-2">Chưa có OKR nào</h3>
                         <p className="text-gray-500 mb-4">Bắt đầu bằng cách tạo mục tiêu đầu tiên</p>
-                        <button onClick={() => setShowModal(true)} className="btn-primary">
-                            <i className="fa-solid fa-plus mr-2" /> Tạo OKR
-                        </button>
+                        {canManage && (
+                            <button onClick={() => setShowModal(true)} className="btn-primary">
+                                <i className="fa-solid fa-plus mr-2" /> Tạo OKR
+                            </button>
+                        )}
                     </div>
                 ) : objectives.map(objective => (
                     <ObjectiveCard key={objective.id} objective={objective} viewMode={viewMode} />
@@ -281,7 +291,7 @@ function OKRFormModal({ onClose, objective, onSubmit, isLoading }) {
     const [formData, setFormData] = useState({
         title: objective?.title || '',
         description: objective?.description || '',
-        period: objective?.period || 'Q1-2024',
+        period: objective?.period || `Q1-${new Date().getFullYear()}`,
         keyResults: objective?.keyResults || [{ title: '', target: '', unit: '' }],
     });
 
@@ -347,11 +357,16 @@ function OKRFormModal({ onClose, objective, onSubmit, isLoading }) {
                                 onChange={(e) => setFormData({ ...formData, period: e.target.value })}
                                 className="input w-full"
                             >
-                                <option value="Q1-2024">Q1-2024</option>
-                                <option value="Q2-2024">Q2-2024</option>
-                                <option value="Q3-2024">Q3-2024</option>
-                                <option value="Q4-2024">Q4-2024</option>
-                                <option value="2024">Năm 2024</option>
+                                {(() => {
+                                    const y = new Date().getFullYear();
+                                    return [
+                                        <option key="q1" value={`Q1-${y}`}>Q1-{y}</option>,
+                                        <option key="q2" value={`Q2-${y}`}>Q2-{y}</option>,
+                                        <option key="q3" value={`Q3-${y}`}>Q3-{y}</option>,
+                                        <option key="q4" value={`Q4-${y}`}>Q4-{y}</option>,
+                                        <option key="full" value={`${y}`}>Năm {y}</option>,
+                                    ];
+                                })()}
                             </select>
                         </div>
 

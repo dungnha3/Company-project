@@ -48,8 +48,27 @@ public class ProjectActionHandler {
     private final UserRepository userRepository;
     private final ChatRoomService chatRoomService;
     private final FolderService folderService;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
+
+    private void validateProjectManager(Long projectId, Long userId) {
+        if (accessControlService.isOwnerOrAdmin())
+            return;
+
+        DoAn.BE.project.entity.ProjectMember member = memberRepository.findByProject_ProjectId(projectId).stream()
+                .filter(m -> m.getUser().getUserId().equals(userId))
+                .findFirst()
+                .orElseThrow(
+                        () -> new DoAn.BE.common.exception.ForbiddenException("Bạn không có quyền truy cập dự án này"));
+
+        if (member.getRole() != ProjectMember.ProjectRole.OWNER
+                && member.getRole() != ProjectMember.ProjectRole.MANAGER) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Yêu cầu quyền Quản trị dự án");
+        }
+    }
 
     public AIActionDTO createProject(AIActionDTO action, Long userId) {
+        accessControlService.checkProjectCreatePermission();
+
         Map<String, Object> data = action.getData();
 
         String name = MapUtils.getString(data, "name", "Dự án mới");
@@ -57,7 +76,7 @@ public class ProjectActionHandler {
         String key = MapUtils.getString(data, "key", generateProjectKey(name));
 
         User creator = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User not found"));
 
         if (projectRepository.findByKeyProject(key).isPresent()) {
             key = key + "_" + System.currentTimeMillis() % 1000;
@@ -93,6 +112,8 @@ public class ProjectActionHandler {
 
     @SuppressWarnings("unchecked")
     public AIActionDTO setupProjectComplete(AIActionDTO action, Long userId) {
+        accessControlService.checkProjectCreatePermission();
+
         Map<String, Object> data = action.getData();
 
         String projectName = MapUtils.getString(data, "name", "Dự án mới");
@@ -102,7 +123,7 @@ public class ProjectActionHandler {
         Integer memberCount = MapUtils.getInt(data, "memberCount", 3);
 
         User creator = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("User not found"));
 
         StringBuilder resultMessage = new StringBuilder();
 
@@ -160,9 +181,11 @@ public class ProjectActionHandler {
             action.setMessage("Vui lòng chỉ định dự án");
             return action;
         }
+        // adding members
+        validateProjectManager(projectId, userId);
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Project not found"));
 
         List<Long> existingMemberIds = memberRepository.findByProject_ProjectId(projectId).stream()
                 .map(m -> m.getUser().getUserId()).toList();
@@ -172,16 +195,26 @@ public class ProjectActionHandler {
         if (memberUsernames != null && !memberUsernames.isEmpty()) {
             for (String username : memberUsernames) {
                 userRepository.findByUsername(username).ifPresent(user -> {
-                    if (!existingMemberIds.contains(user.getUserId())) {
+                    // Validate user belongs to same company as project (prevent cross-tenant)
+                    boolean sameCompany = user.getMemberships() != null && user.getMemberships().stream()
+                            .anyMatch(m -> project.getCompany() != null &&
+                                    m.getCompany().getCompanyId().equals(project.getCompany().getCompanyId()));
+                    if (sameCompany && !existingMemberIds.contains(user.getUserId())) {
                         saveMember(project, user, ProjectMember.ProjectRole.MEMBER);
                         addedMembers.add(user.getUsername());
                     }
                 });
             }
         } else {
-            List<User> availableUsers = userRepository.findByIsActiveTrue().stream()
-                    .filter(u -> !existingMemberIds.contains(u.getUserId()))
-                    .limit(memberCount).toList();
+            // Scope to project's company members only (prevent cross-tenant addition)
+            List<User> availableUsers = memberRepository.findByProject_ProjectId(projectId).isEmpty()
+                    ? List.of()
+                    : userRepository.findAll().stream()
+                            .filter(u -> u.getIsActive() && u.getMemberships() != null && u.getMemberships().stream()
+                                    .anyMatch(m -> project.getCompany() != null &&
+                                            m.getCompany().getCompanyId().equals(project.getCompany().getCompanyId())))
+                            .filter(u -> !existingMemberIds.contains(u.getUserId()))
+                            .limit(memberCount).toList();
 
             for (User user : availableUsers) {
                 saveMember(project, user, ProjectMember.ProjectRole.MEMBER);
@@ -205,9 +238,11 @@ public class ProjectActionHandler {
             action.setMessage("Vui lòng chỉ định dự án");
             return action;
         }
+        // auto-assigning tasks
+        validateProjectManager(projectId, userId);
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException("Project not found"));
 
         List<User> members = memberRepository.findByProject_ProjectId(projectId).stream()
                 .map(ProjectMember::getUser).toList();
@@ -311,9 +346,21 @@ public class ProjectActionHandler {
                 });
             }
         } else {
-            List<User> availableUsers = userRepository.findByIsActiveTrue().stream()
-                    .filter(u -> !u.getUserId().equals(creator.getUserId()))
-                    .limit(memberCount - 1).toList();
+            Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+            List<User> availableUsers;
+            if (companyId != null) {
+                // Use company members from the same company
+                availableUsers = memberRepository.findAll().stream()
+                        .filter(m -> m.getProject() != null && m.getProject().getCompany() != null
+                                && companyId.equals(m.getProject().getCompany().getCompanyId()))
+                        .map(ProjectMember::getUser)
+                        .filter(u -> u != null && !u.getUserId().equals(creator.getUserId()) && u.getIsActive())
+                        .distinct()
+                        .limit(memberCount - 1)
+                        .toList();
+            } else {
+                availableUsers = java.util.Collections.emptyList();
+            }
 
             for (User user : availableUsers) {
                 saveMember(project, user, ProjectMember.ProjectRole.MEMBER);
@@ -427,7 +474,7 @@ public class ProjectActionHandler {
         issue.setSprint(sprint);
         issue.setTitle(MapUtils.getString(taskData, "title", "Task " + (taskIndex + 1)));
         issue.setDescription(MapUtils.getString(taskData, "description", ""));
-        issue.setIssueKey(project.getKeyProject() + "-" + (taskIndex + 1));
+        issue.setIssueKey(generateIssueKey(project));
         issue.setPriority(Issue.Priority.valueOf(
                 MapUtils.getString(taskData, "priority", "MEDIUM").toUpperCase()));
         issue.setReporter(creator);

@@ -9,11 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/activities")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class IssueActivityController {
 
     private final IssueActivityService issueActivityService;

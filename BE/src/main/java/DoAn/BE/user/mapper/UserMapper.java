@@ -9,10 +9,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 public class UserMapper {
 
     public UserMapper() {
     }
+
     public UserDTO toDTO(User user) {
         if (user == null) {
             return null;
@@ -31,37 +33,29 @@ public class UserMapper {
         // Lấy role từ CompanyMember trong context hiện tại
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
 
-        try {
-            if (companyId != null && user.getMemberships() != null) {
-                user.getMemberships().stream()
-                        .filter(m -> m.getCompany().getCompanyId().equals(companyId)
-                                && Boolean.TRUE.equals(m.getIsActive()))
-                        .findFirst()
-                        .ifPresentOrElse(member -> {
-                            // Dùng CompanyRole trực tiếp
-                            CompanyRole primaryRole = member.getRoles().stream().findFirst()
-                                    .orElse(CompanyRole.EMPLOYEE);
-                            dto.setRole(primaryRole);
-                        }, () -> dto.setRole(CompanyRole.EMPLOYEE));
-            } else {
-                dto.setRole(CompanyRole.EMPLOYEE);
-            }
-
-            // [SAAS] Map all company memberships for System Admin UI
-            if (user.getMemberships() != null && !user.getMemberships().isEmpty()) {
-                List<UserDTO.CompanyMembershipInfo> memberships = user.getMemberships().stream()
-                        .map(m -> new UserDTO.CompanyMembershipInfo(
-                                m.getCompany().getCompanyId(),
-                                m.getCompany().getName(),
-                                m.getRoles().stream().findFirst().map(Enum::name).orElse(null),
-                                m.getIsActive()))
-                        .collect(Collectors.toList());
-                dto.setCompanyMemberships(memberships);
-            }
-        } catch (org.hibernate.LazyInitializationException e) {
-            // Memberships not loaded - set defaults
+        if (companyId != null && user.getMemberships() != null) {
+            user.getMemberships().stream()
+                    .filter(m -> m.getCompany().getCompanyId().equals(companyId)
+                            && Boolean.TRUE.equals(m.getIsActive()))
+                    .findFirst()
+                    .ifPresentOrElse(member -> {
+                        CompanyRole primaryRole = member.getRoles().stream().findFirst()
+                                .orElse(CompanyRole.EMPLOYEE);
+                        dto.setRole(primaryRole);
+                    }, () -> dto.setRole(CompanyRole.EMPLOYEE));
+        } else {
             dto.setRole(CompanyRole.EMPLOYEE);
-            dto.setCompanyMemberships(null);
+        }
+
+        if (user.getMemberships() != null && !user.getMemberships().isEmpty()) {
+            List<UserDTO.CompanyMembershipInfo> memberships = user.getMemberships().stream()
+                    .map(m -> new UserDTO.CompanyMembershipInfo(
+                            m.getCompany().getCompanyId(),
+                            m.getCompany().getName(),
+                            m.getRoles().stream().findFirst().map(Enum::name).orElse(null),
+                            m.getIsActive()))
+                    .collect(Collectors.toList());
+            dto.setCompanyMemberships(memberships);
         }
 
         dto.setIsActive(user.getIsActive());
@@ -72,6 +66,7 @@ public class UserMapper {
 
         return dto;
     }
+
     public List<UserDTO> toDTOList(List<User> users) {
         if (users == null) {
             return null;

@@ -6,17 +6,20 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
+
 @Entity
 @Table(name = "project_phases")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ProjectPhase extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "phase_id")
+    @EqualsAndHashCode.Include
     private Long phaseId;
 
     @ManyToOne(fetch = FetchType.LAZY)

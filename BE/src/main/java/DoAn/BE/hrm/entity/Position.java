@@ -10,15 +10,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 // Position entity - renamed from ChucVu
 @Entity
 @Table(name = "positions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Position extends DoAn.BE.common.entity.TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "position_id")
+    @EqualsAndHashCode.Include
     private Long positionId;
 
     @Column(name = "name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")

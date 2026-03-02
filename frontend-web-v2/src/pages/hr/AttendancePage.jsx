@@ -4,11 +4,12 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
+import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatDate, formatTime, formatNumber } from '@shared/utils/formatters';
 
 export default function AttendancePage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('my-history');
 
     return (
@@ -35,7 +36,7 @@ export default function AttendancePage() {
                         <i className="fa-solid fa-calendar-days mr-2" />
                         Lịch
                     </button>
-                    {hasRole('MANAGER_HR', 'OWNER', 'ADMIN') && (
+                    {hasPermission('attendanceEdit') && (
                         <button
                             onClick={() => setActiveTab('manager-report')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'manager-report' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
@@ -237,13 +238,21 @@ function ManagerAttendanceReport() {
 
     return (
         <div className="space-y-4 pt-4">
-            <div className="flex gap-4 items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                <label className="text-sm font-medium text-gray-700">Chọn ngày xem báo cáo:</label>
-                <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="input max-w-xs"
+            <div className="flex gap-4 items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div className="flex gap-4 items-center">
+                    <label className="text-sm font-medium text-gray-700">Chọn ngày xem báo cáo:</label>
+                    <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="input max-w-xs"
+                    />
+                </div>
+                <ExportButton
+                    endpoint={ENDPOINTS.EXPORT.ATTENDANCE}
+                    params={{ month: new Date(date).getMonth() + 1, year: new Date(date).getFullYear() }}
+                    filename={`chamcong_${date}.xlsx`}
+                    label="Xuất Excel"
                 />
             </div>
 

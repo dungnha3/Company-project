@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
+
 @Entity
 @Table(name = "issues", indexes = {
         // Index cho query: findByProject (Project's issues)
@@ -23,26 +24,28 @@ import DoAn.BE.user.entity.User;
         // Index cho query: findByPriority (Priority filter)
         @jakarta.persistence.Index(name = "idx_issue_priority", columnList = "priority")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Issue extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "issue_id")
+    @EqualsAndHashCode.Include
     private Long issueId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sprint_id")
     private Sprint sprint;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "phase_id")
     private ProjectPhase phase; // Giai đoạn (Waterfall)
 
@@ -55,7 +58,7 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_id", nullable = false)
     private IssueStatus issueStatus;
 
@@ -63,11 +66,11 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(length = 20, nullable = false)
     private Priority priority = Priority.MEDIUM;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter; // Người tạo issue
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")
     private User assignee; // Người được giao việc
 

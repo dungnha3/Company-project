@@ -186,7 +186,7 @@ public class FileStorageService {
 
             if (resource.exists() || "minio".equalsIgnoreCase(storageType)) {
                 auditLogService.logAction(
-                        user,
+                        user.getUserId(),
                         "DOWNLOAD_FILE",
                         "FILE",
                         fileId,
@@ -300,8 +300,7 @@ public class FileStorageService {
         file.setIsDeleted(false);
         fileRepository.save(file);
     }
-
-    private void initializeStorage() throws IOException {
+    private synchronized void initializeStorage() throws IOException {
         if (fileStorageLocation == null) {
             fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
             Files.createDirectories(fileStorageLocation);
@@ -320,7 +319,7 @@ public class FileStorageService {
         dto.setFileId(file.getFileId());
         dto.setFilename(file.getFilename());
         dto.setOriginalFilename(file.getOriginalFilename());
-        dto.setFilePath(file.getFilePath());
+        // dto.setFilePath(file.getFilePath());
         dto.setFileSize(file.getFileSize());
         dto.setFileSizeFormatted(file.getFileSizeFormatted());
         dto.setMimeType(file.getMimeType());

@@ -23,16 +23,20 @@ import java.util.List;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import org.springframework.transaction.annotation.Transactional;
+
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("ATTENDANCE")
+@Transactional(readOnly = true)
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final AttendanceMapper attendanceMapper;
     private final DoAn.BE.hrm.repository.AttendanceRepository attendanceRepository;
+
     @GetMapping("/report")
     public ResponseEntity<Map<String, Object>> getAttendanceReport() {
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
@@ -69,6 +73,8 @@ public class AttendanceController {
         // range)
         return ResponseEntity.ok(List.of());
     }
+
+    @Transactional
     @PostMapping
     public ResponseEntity<AttendanceDTO> createAttendance(
             @Valid @RequestBody AttendanceRequest request,
@@ -76,6 +82,7 @@ public class AttendanceController {
         Attendance attendance = attendanceService.createAttendance(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(attendanceMapper.toDTO(attendance));
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<AttendanceDTO> getAttendanceById(
             @PathVariable Long id,
@@ -83,6 +90,7 @@ public class AttendanceController {
         Attendance attendance = attendanceService.getAttendanceById(id, currentUser);
         return ResponseEntity.ok(attendanceMapper.toDTO(attendance));
     }
+
     @GetMapping
     public ResponseEntity<org.springframework.data.domain.Page<AttendanceDTO>> getAllAttendance(
             @AuthenticationPrincipal User currentUser,
@@ -91,6 +99,8 @@ public class AttendanceController {
                 .getAllAttendancePaged(currentUser, pageable);
         return ResponseEntity.ok(attendances.map(attendanceMapper::toDTO));
     }
+
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<AttendanceDTO> updateAttendance(
             @PathVariable Long id,
@@ -99,6 +109,8 @@ public class AttendanceController {
         Attendance attendance = attendanceService.updateAttendance(id, request, currentUser);
         return ResponseEntity.ok(attendanceMapper.toDTO(attendance));
     }
+
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteAttendance(
             @PathVariable Long id,
@@ -108,6 +120,7 @@ public class AttendanceController {
         response.put("message", "Deleted attendance successfully");
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<org.springframework.data.domain.Page<AttendanceDTO>> getAttendanceByEmployee(
             @PathVariable Long employeeId,
@@ -117,6 +130,7 @@ public class AttendanceController {
                 .getAttendanceByEmployeePaged(employeeId, currentUser, pageable);
         return ResponseEntity.ok(attendances.map(attendanceMapper::toDTO));
     }
+
     @GetMapping("/date-range")
     public ResponseEntity<org.springframework.data.domain.Page<AttendanceDTO>> getAttendanceByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -126,6 +140,7 @@ public class AttendanceController {
                 .getAttendanceByDateRangePaged(startDate, endDate, pageable);
         return ResponseEntity.ok(attendances.map(attendanceMapper::toDTO));
     }
+
     @GetMapping("/employee/{employeeId}/month")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployeeAndMonth(
             @PathVariable Long employeeId,
@@ -134,6 +149,7 @@ public class AttendanceController {
         List<Attendance> attendances = attendanceService.getAttendanceByEmployeeAndMonth(employeeId, month, year);
         return ResponseEntity.ok(attendanceMapper.toDTOList(attendances));
     }
+
     @GetMapping("/employee/{employeeId}/working-days")
     public ResponseEntity<Map<String, Object>> countWorkingDays(
             @PathVariable Long employeeId,
@@ -147,6 +163,7 @@ public class AttendanceController {
         response.put("workingDays", workingDays);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics(
             @PathVariable Long employeeId,
@@ -174,6 +191,7 @@ public class AttendanceController {
 
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}/total-hours")
     public ResponseEntity<BigDecimal> getTotalHours(
             @PathVariable Long employeeId,
@@ -182,6 +200,8 @@ public class AttendanceController {
         BigDecimal totalHours = attendanceService.getTotalWorkingHours(employeeId, year, month);
         return ResponseEntity.ok(totalHours != null ? totalHours : BigDecimal.ZERO);
     }
+
+    @Transactional
     @PostMapping("/check-in")
     public ResponseEntity<AttendanceDTO> checkIn(
             @RequestParam Long employeeId,
@@ -189,11 +209,15 @@ public class AttendanceController {
         Attendance attendance = attendanceService.checkIn(employeeId, attendanceDate);
         return ResponseEntity.status(HttpStatus.CREATED).body(attendanceMapper.toDTO(attendance));
     }
+
+    @Transactional
     @PatchMapping("/{id}/check-out")
-    public ResponseEntity<AttendanceDTO> checkOut(@PathVariable Long id) {
-        Attendance attendance = attendanceService.checkOut(id);
+    public ResponseEntity<AttendanceDTO> checkOut(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        Attendance attendance = attendanceService.checkOut(id, currentUser);
         return ResponseEntity.ok(attendanceMapper.toDTO(attendance));
     }
+
+    @Transactional
     @PostMapping("/gps")
     public ResponseEntity<DoAn.BE.hrm.dto.CheckInGPSResponse> checkInGPS(
             @Valid @RequestBody AttendanceGPSRequest request,
@@ -201,10 +225,49 @@ public class AttendanceController {
         DoAn.BE.hrm.dto.CheckInGPSResponse response = attendanceService.checkInGPS(request, currentUser);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/status/{employeeId}")
     public ResponseEntity<Map<String, Object>> getAttendanceStatusToday(@PathVariable Long employeeId) {
         log.debug("Getting attendance status for employee: {}", employeeId);
         Map<String, Object> response = attendanceService.getAttendanceStatusToday(employeeId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/attendance/today — auto-resolve employee from auth context.
+     * Returns today's attendance record or empty map if no employee profile or no
+     * record.
+     */
+    @GetMapping("/today")
+    public ResponseEntity<Map<String, Object>> getTodayAttendance(
+            @AuthenticationPrincipal User currentUser) {
+        DoAn.BE.hrm.entity.Employee employee = attendanceService.getEmployeeForUser(currentUser);
+        if (employee == null) {
+            return ResponseEntity.ok(Map.of());
+        }
+        Map<String, Object> response = attendanceService.getAttendanceStatusToday(employee.getEmployeeId());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/attendance/check-out — auto-resolve employee and today's record
+     * from auth context.
+     * FE calls this without params; BE finds the active record and checks out.
+     */
+    @Transactional
+    @PostMapping("/check-out")
+    public ResponseEntity<AttendanceDTO> checkOutSelf(@AuthenticationPrincipal User currentUser) {
+        DoAn.BE.hrm.entity.Employee employee = attendanceService.getEmployeeForUser(currentUser);
+        if (employee == null) {
+            throw new DoAn.BE.common.exception.BadRequestException("Không tìm thấy hồ sơ nhân viên");
+        }
+        // Find today's attendance record for this employee
+        LocalDate today = LocalDate.now();
+        Attendance todayRecord = attendanceRepository
+                .findByEmployee_EmployeeIdAndAttendanceDate(employee.getEmployeeId(), today)
+                .stream().findFirst()
+                .orElseThrow(() -> new DoAn.BE.common.exception.BadRequestException("Chưa check-in hôm nay"));
+        Attendance attendance = attendanceService.checkOut(todayRecord.getAttendanceId(), currentUser);
+        return ResponseEntity.ok(attendanceMapper.toDTO(attendance));
     }
 }

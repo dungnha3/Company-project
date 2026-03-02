@@ -12,16 +12,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// Performance Monitoring Filter
-//
-// Logs request execution time for performance monitoring.
-// Only logs slow requests (> 500ms) to reduce log noise.
-//
-// Useful for:
-// - Identifying slow endpoints
-// - Performance regression detection
-// - Production troubleshooting
-// /
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @Slf4j
@@ -53,10 +43,10 @@ public class PerformanceMonitorFilter extends OncePerRequestFilter {
             long duration = System.currentTimeMillis() - startTime;
 
             if (duration >= VERY_SLOW_REQUEST_THRESHOLD_MS) {
-                log.warn("🐢 VERY SLOW REQUEST: {} {} took {}ms (status: {})",
+                log.warn("VERY SLOW REQUEST: {} {} took {}ms (status: {})",
                         request.getMethod(), path, duration, response.getStatus());
             } else if (duration >= SLOW_REQUEST_THRESHOLD_MS) {
-                log.info("⏱ Slow request: {} {} took {}ms",
+                log.info("Slow request: {} {} took {}ms",
                         request.getMethod(), path, duration);
             }
             // Fast requests are not logged to reduce noise

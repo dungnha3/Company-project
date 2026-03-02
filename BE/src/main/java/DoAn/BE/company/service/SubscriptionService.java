@@ -5,35 +5,45 @@ import org.springframework.stereotype.Service;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.Plan;
-import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.storage.repository.FileRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class SubscriptionService {
 
     private final CompanyRepository companyRepository;
-    private final CompanyMemberRepository companyMemberRepository;
     private final ProjectRepository projectRepository;
-    private final FileRepository fileRepository; // Injected
+    private final FileRepository fileRepository;
+    private final jakarta.persistence.EntityManager entityManager;
+
+    public SubscriptionService(CompanyRepository companyRepository, ProjectRepository projectRepository,
+            FileRepository fileRepository, jakarta.persistence.EntityManager entityManager) {
+        this.companyRepository = companyRepository;
+        this.projectRepository = projectRepository;
+        this.fileRepository = fileRepository;
+        this.entityManager = entityManager;
+    }
 
     // [Check] Kiểm tra giới hạn số lượng user
     public void checkUserLimit(Long companyId) {
         Company company = getCompany(companyId);
-        long currentUsers = companyMemberRepository.countByCompany_CompanyIdAndIsActiveTrue(companyId);
+
+        // Count ALL members (including pending invites) to prevent quota bypass
+        Long totalMembersAndInvites = entityManager.createQuery(
+                "SELECT COUNT(cm) FROM CompanyMember cm WHERE cm.company.companyId = :companyId", Long.class)
+                .setParameter("companyId", companyId)
+                .getSingleResult();
+
         Plan plan = company.getPlan();
 
-        // -1 means unlimited (e.g. ENTERPRISE plan)
         if (plan.isUnlimitedUsers()) {
             return;
         }
 
-        if (currentUsers >= plan.getMaxUsers()) {
+        if (totalMembersAndInvites >= plan.getMaxUsers()) {
             throw new BadRequestException(
                     String.format(
                             "[LIMIT_REACHED] Gói %s của bạn chỉ cho phép tối đa %d thành viên. Vui lòng nâng cấp gói cước.",
@@ -60,9 +70,15 @@ public class SubscriptionService {
         }
     }
 
-    // [Check] Kiểm tra giới hạn dung lượng lưu trữ (Real-time calculation)
+    // [Check] Kiểm tra giới hạn dung lượng lưu trữ (Real-time calculation & Lock)
+    @org.springframework.transaction.annotation.Transactional
     public void checkStorageLimit(Long companyId, long newFileSizeInBytes) {
-        Company company = getCompany(companyId);
+        Company company = entityManager.find(Company.class, companyId,
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (company == null) {
+            throw new DoAn.BE.common.exception.ResourceNotFoundException("Company not found");
+        }
+
         Plan plan = company.getPlan();
 
         // Handle unlimited storage
@@ -103,15 +119,8 @@ public class SubscriptionService {
         Company company = getCompany(companyId);
         Plan plan = company.getPlan();
 
-        // Logic kiểm tra feature theo plan (Hardcoded for now)
         if (featureName.equals("PAYROLL") && plan == Plan.FREE) {
             throw new BadRequestException("[UPGRADE_REQUIRED] Tính năng Tính lương chỉ dành cho gói PRO trở lên.");
-        }
-
-        if (featureName.equals("GANTT") && plan == Plan.FREE) {
-            // Example: Maybe allow basic Gantt, block advanced?
-            // throw new BadRequestException("[UPGRADE_REQUIRED] Biểu đồ Gantt chỉ dành cho
-            // gói PRO.");
         }
     }
 

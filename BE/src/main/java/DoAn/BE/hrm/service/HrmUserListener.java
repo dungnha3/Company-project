@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -35,7 +36,7 @@ public class HrmUserListener {
         }
 
         try {
-            log.info("👤 [HRM] Detecting new user: {}. Auto-creating Employee profile...", user.getUsername());
+            log.info("[HRM] Detecting new user: {}. Auto-creating Employee profile...", user.getUsername());
 
             Employee employee = new Employee();
             employee.setUser(user);
@@ -48,9 +49,9 @@ public class HrmUserListener {
             // Department & Position will be updated later by HR
 
             employeeRepository.save(employee);
-            log.info("✅ [HRM] Created Employee profile for user: {}", user.getUsername());
+            log.info("[HRM] Created Employee profile for user: {}", user.getUsername());
         } catch (Exception e) {
-            log.error("❌ [HRM] Failed to create Employee profile for user {}: {}", user.getUsername(), e.getMessage());
+            log.error("[HRM] Failed to create Employee profile for user {}: {}", user.getUsername(), e.getMessage());
         }
     }
 

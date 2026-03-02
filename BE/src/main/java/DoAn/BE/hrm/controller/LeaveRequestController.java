@@ -21,15 +21,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import org.springframework.transaction.annotation.Transactional;
+
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("LEAVE")
+@Transactional(readOnly = true)
 public class LeaveRequestController {
 
     private final LeaveRequestService leaveRequestService;
     private final LeaveRequestMapper leaveRequestMapper;
+
+    @Transactional
     @PostMapping
     public ResponseEntity<LeaveRequestDTO> createLeaveRequest(
             @Valid @RequestBody LeaveRequestRequest request,
@@ -37,6 +42,7 @@ public class LeaveRequestController {
         LeaveRequest leaveRequest = leaveRequestService.createLeaveRequest(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(leaveRequestMapper.toDTO(leaveRequest));
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<LeaveRequestDTO> getLeaveRequestById(
             @PathVariable Long id,
@@ -44,6 +50,7 @@ public class LeaveRequestController {
         LeaveRequest leaveRequest = leaveRequestService.getLeaveRequestById(id, currentUser);
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
+
     @GetMapping
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getAllLeaveRequests(
             @AuthenticationPrincipal User currentUser,
@@ -52,6 +59,8 @@ public class LeaveRequestController {
                 .getAllLeaveRequestsPaged(currentUser, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
+
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<LeaveRequestDTO> updateLeaveRequest(
             @PathVariable Long id,
@@ -60,6 +69,8 @@ public class LeaveRequestController {
         LeaveRequest leaveRequest = leaveRequestService.updateLeaveRequest(id, request, currentUser);
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
+
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteLeaveRequest(
             @PathVariable Long id,
@@ -69,14 +80,17 @@ public class LeaveRequestController {
         response.put("message", "Deleted leave request successfully");
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getLeaveRequestsByEmployee(
             @PathVariable Long employeeId,
+            @AuthenticationPrincipal User currentUser,
             org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
-                .getLeaveRequestsByEmployeePaged(employeeId, pageable);
+                .getLeaveRequestsByEmployeePaged(employeeId, currentUser, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
+
     @GetMapping("/date-range")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getLeaveRequestsInDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -86,6 +100,7 @@ public class LeaveRequestController {
                 .getLeaveRequestsInDateRangePaged(startDate, endDate, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
+
     @GetMapping("/pending")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getPendingLeaveRequests(
             org.springframework.data.domain.Pageable pageable) {
@@ -93,6 +108,7 @@ public class LeaveRequestController {
                 .getLeaveRequestsByStatus(LeaveRequest.LeaveStatus.PENDING, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
+
     @GetMapping("/approved")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getApprovedLeaveRequests(
             org.springframework.data.domain.Pageable pageable) {
@@ -100,6 +116,7 @@ public class LeaveRequestController {
                 .getLeaveRequestsByStatus(LeaveRequest.LeaveStatus.APPROVED, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
+
     @GetMapping("/rejected")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getRejectedLeaveRequests(
             org.springframework.data.domain.Pageable pageable) {
@@ -109,6 +126,7 @@ public class LeaveRequestController {
     }
 
     // [Approve leave request] (Permission: leaveApprove)
+    @Transactional
     @PatchMapping("/{id}/approve")
     public ResponseEntity<LeaveRequestDTO> approveLeaveRequest(
             @PathVariable Long id,
@@ -117,6 +135,8 @@ public class LeaveRequestController {
         LeaveRequest leaveRequest = leaveRequestService.approveLeaveRequest(id, request.getNote(), currentUser);
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
+
+    @Transactional
     @PatchMapping("/{id}/reject")
     public ResponseEntity<LeaveRequestDTO> rejectLeaveRequest(
             @PathVariable Long id,
@@ -125,6 +145,7 @@ public class LeaveRequestController {
         LeaveRequest leaveRequest = leaveRequestService.rejectLeaveRequest(id, request.getNote(), currentUser);
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
+
     @GetMapping("/employee/{employeeId}/total-days")
     public ResponseEntity<Map<String, Object>> getTotalLeaveDays(
             @PathVariable Long employeeId,
@@ -136,6 +157,7 @@ public class LeaveRequestController {
         response.put("totalLeaveDays", totalDays);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/employee/{employeeId}/is-on-leave")
     public ResponseEntity<Map<String, Object>> isOnLeave(
             @PathVariable Long employeeId,

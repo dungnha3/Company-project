@@ -86,15 +86,6 @@ export const PLAN_COLORS = {
     ENTERPRISE: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white',
 };
 
-// === SKILL LEVELS ===
-export const SKILL_LEVEL_COLORS = {
-    1: { label: 'Cơ bản', color: 'bg-gray-100 text-gray-700', icon: 'fa-star-half-alt' },
-    2: { label: 'Trung bình', color: 'bg-indigo-100 text-indigo-700', icon: 'fa-star' },
-    3: { label: 'Khá', color: 'bg-green-100 text-green-700', icon: 'fa-star' },
-    4: { label: 'Giỏi', color: 'bg-purple-100 text-purple-700', icon: 'fa-star' },
-    5: { label: 'Xuất sắc', color: 'bg-yellow-100 text-yellow-700', icon: 'fa-award' },
-};
-
 // === PROGRESS BAR COLOR HELPER ===
 export function getProgressColor(percentage) {
     if (percentage >= 100) return 'bg-green-500';

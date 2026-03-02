@@ -56,8 +56,28 @@ public class PdfExportService {
             document.setMargins(40, 40, 40, 40);
 
             try {
-                // Use built-in Helvetica font (supports basic characters)
-                this.font = PdfFontFactory.createFont();
+                // Try system fonts first; fall back to Helvetica
+                String[] unicodeFonts = {
+                        "C:/Windows/Fonts/arial.ttf", // Windows
+                        "C:/Windows/Fonts/segoeui.ttf", // Windows alt
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", // Linux
+                        "/System/Library/Fonts/Helvetica.ttc" // macOS
+                };
+                PdfFont unicodeFont = null;
+                for (String fontPath : unicodeFonts) {
+                    try {
+                        java.io.File f = new java.io.File(fontPath);
+                        if (f.exists()) {
+                            unicodeFont = PdfFontFactory.createFont(fontPath,
+                                    com.itextpdf.io.font.PdfEncodings.IDENTITY_H,
+                                    com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                            break;
+                        }
+                    } catch (Exception ignored) {
+                        // Try next font
+                    }
+                }
+                this.font = (unicodeFont != null) ? unicodeFont : PdfFontFactory.createFont();
             } catch (IOException e) {
                 log.error("Failed to create font", e);
             }

@@ -11,6 +11,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.Filter;
+
 @Entity
 @Table(name = "folders", indexes = {
         // Index cho query: findByOwner (User's folders)
@@ -22,16 +23,18 @@ import org.hibernate.annotations.Filter;
         // Index cho query: findByProject (Project folders)
         @jakarta.persistence.Index(name = "idx_folder_project", columnList = "project_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Folder extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "folder_id")
+    @EqualsAndHashCode.Include
     private Long folderId;
 
     @Column(name = "name", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")

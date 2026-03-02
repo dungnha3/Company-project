@@ -1,7 +1,7 @@
 package DoAn.BE.common.config;
 
 import DoAn.BE.auth.filter.JwtAuthenticationFilter;
-import DoAn.BE.common.filter.RateLimitFilter;
+import DoAn.BE.common.filter.RateLimitingFilter;
 import DoAn.BE.common.filter.SecurityHeadersFilter;
 import DoAn.BE.common.filter.TenantFilter;
 import DoAn.BE.common.util.AppConstants;
@@ -30,7 +30,7 @@ public class SecurityConfig {
         // Role group constants for cleaner code
         private static final String[] COMPANY_ADMINS = {
                         CompanyRole.OWNER.name(),
-                        CompanyRole.ADMIN.name()
+                        CompanyRole.COMPANY_ADMIN.name()
         };
 
         private static final String SYSTEM_ADMIN = "SYSTEM_ADMIN";
@@ -43,7 +43,7 @@ public class SecurityConfig {
         private TenantFilter tenantFilter;
 
         @Autowired
-        private RateLimitFilter rateLimitFilter;
+        private RateLimitingFilter rateLimitingFilter;
 
         @Autowired
         private SecurityHeadersFilter securityHeadersFilter;
@@ -78,15 +78,16 @@ public class SecurityConfig {
                                                 .anyRequest().authenticated())
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
-                                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                                .addFilterBefore(securityHeadersFilter, RateLimitFilter.class)
+                                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(securityHeadersFilter, RateLimitingFilter.class)
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(tenantFilter, jwtAuthenticationFilter.getClass());
 
                 return http.build();
         }
 
-        @Value("${cors.allowed-origins:*}")
+        // (conflicts with allowCredentials)
+        @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:4200,http://localhost:5173}")
         private List<String> allowedOrigins;
 
         @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")

@@ -5,7 +5,7 @@
  * Location: src/shared/utils/performance.js
  */
 
-import { memo, useCallback, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 
 /**
  * Higher-order component for memoization with proper display name
@@ -86,6 +86,3 @@ export function useThrottledCallback(callback, limit = 300) {
         }
     }, [callback, limit]);
 }
-
-// Import useState and useEffect for debounce hook
-import { useState, useEffect } from 'react';

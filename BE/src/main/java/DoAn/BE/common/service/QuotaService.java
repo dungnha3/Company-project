@@ -33,8 +33,11 @@ public class QuotaService {
     // /
     public void validateEmployeeQuota() {
         Long companyId = TenantContext.getCompanyId();
-        if (companyId == null)
+        if (companyId == null) {
+            log.warn(
+                    "QuotaService: companyId is null, skipping employee quota check. Caller may be missing tenant context.");
             return;
+        }
 
         CompanySettings settings = companyService.getSettingsCached(companyId);
         if (settings == null)
@@ -42,6 +45,10 @@ public class QuotaService {
 
         long currentCount = employeeRepository.countByCompanyId(companyId);
         int maxEmployees = settings.getMaxEmployees();
+
+        if (maxEmployees <= 0) {
+            return; // Unlimited
+        }
 
         if (currentCount >= maxEmployees) {
             log.warn("Company {} exceeded employee quota: {}/{}", companyId, currentCount, maxEmployees);
@@ -64,6 +71,10 @@ public class QuotaService {
 
         long currentCount = projectRepository.countByCompany_CompanyId(companyId);
         int maxProjects = settings.getMaxProjects();
+
+        if (maxProjects <= 0) {
+            return; // Unlimited
+        }
 
         if (currentCount >= maxProjects) {
             log.warn("Company {} exceeded project quota: {}/{}", companyId, currentCount, maxProjects);
@@ -90,6 +101,10 @@ public class QuotaService {
             currentUsage = 0L;
 
         long maxStorage = settings.getMaxStorageBytes();
+
+        if (maxStorage <= 0) {
+            return; // Unlimited
+        }
 
         if (currentUsage + fileSize > maxStorage) {
             log.warn("Company {} exceeded storage quota: {} + {} > {}",

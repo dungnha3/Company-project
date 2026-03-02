@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 @RequiredArgsConstructor
 @Tag(name = "Export", description = "Export reports to Excel and PDF")
 @FeatureFlag("HR")
+@Transactional(readOnly = true)
 public class ExportController {
 
         private final HrmExportService exportService;
@@ -37,7 +39,7 @@ public class ExportController {
         @Operation(summary = "Export employee list to Excel")
         public ResponseEntity<byte[]> exportEmployeesToExcel(@AuthenticationPrincipal User currentUser)
                         throws IOException {
-                accessControlService.checkHrViewPermission();
+                accessControlService.checkHrExportPermission();
 
                 byte[] excelData = exportService.exportEmployeesToExcel();
                 String filename = "EmployeeList_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"))
@@ -51,7 +53,7 @@ public class ExportController {
         public ResponseEntity<byte[]> exportAttendanceToExcel(
                         @RequestParam int month,
                         @RequestParam int year) throws IOException {
-                accessControlService.checkHrViewPermission();
+                accessControlService.checkAttendanceViewAllPermission();
 
                 byte[] excelData = exportService.exportAttendanceToExcel(month, year);
                 String filename = "Attendance_" + String.format("%02d%d", month, year) + ".xlsx";
@@ -78,7 +80,7 @@ public class ExportController {
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate)
                         throws IOException {
-                accessControlService.checkHrViewPermission();
+                accessControlService.checkLeaveViewAllPermission();
 
                 byte[] excelData = exportService.exportLeavesToExcel(startDate, endDate);
                 String filename = "LeaveRequests_" + startDate.format(DateTimeFormatter.ofPattern("ddMMyyyy")) +
@@ -90,7 +92,7 @@ public class ExportController {
         @GetMapping("/employees/pdf")
         @Operation(summary = "Export employee list to PDF")
         public ResponseEntity<byte[]> exportEmployeesToPdf(@AuthenticationPrincipal User currentUser) {
-                accessControlService.checkHrViewPermission();
+                accessControlService.checkHrExportPermission();
 
                 byte[] pdfData = exportService.exportEmployeesToPdf(pdfExportService);
                 String filename = "EmployeeList_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"))

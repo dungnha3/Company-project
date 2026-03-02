@@ -20,6 +20,7 @@ export const useWorkspaceStore = create(
             personalWorkspace: null,  // User's personal workspace info
             loading: false,
             error: null,
+            isHydrated: false,
 
             // Actions
             setWorkspaces: (workspaces) => set({ workspaces }),
@@ -133,19 +134,20 @@ export const useWorkspaceStore = create(
             // Permission check helper
             hasPermission: (permissionKey) => {
                 const { currentWorkspace } = get();
-                if (!currentWorkspace || get().workspaceType === 'PERSONAL') return true; // Safe default for Personal
+                if (!currentWorkspace) return false;
+
+                // Personal workspace: only personal-scoped operations allowed
+                // Company-specific permissions (HR, Salary, Project module perms) are denied
+                if (get().workspaceType === 'PERSONAL') return false;
 
                 // Owner/Admin bypass
                 const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : []);
-                if (userRoles.includes('OWNER') || userRoles.includes('ADMIN')) return true;
+                if (userRoles.includes('OWNER') || userRoles.includes('COMPANY_ADMIN')) return true;
 
                 // Check user permissions object
                 const perms = currentWorkspace.permissions;
                 if (!perms) return false; // No perms object = no access (unless owner/admin)
 
-                // Simple mapping for now, can be expanded or delegated to featureHelper
-                // But featureHelper needs access to perms.
-                // We will return the RAW logic here for direct usage, but featureHelper is preferred for "Chain of Logic"
                 return !!perms[permissionKey];
             },
 
@@ -174,11 +176,14 @@ export const useWorkspaceStore = create(
             },
             // [FIX] Re-fetch settings AND roles when store is rehydrated from localStorage
             onRehydrateStorage: () => (state, error) => {
+                // Always mark as hydrated, even on error
+                useWorkspaceStore.setState({ isHydrated: true });
+
                 if (error) {
                     console.error('Failed to rehydrate workspace store:', error);
                     return;
                 }
-                // Skip re-fetch if user is not authenticated
+                // Skip rehydration if user is not authenticated (e.g., after logout)
                 const token = localStorage.getItem('accessToken');
                 if (!token) return;
 
@@ -196,6 +201,7 @@ export const useWorkspaceStore = create(
                                         w => w.type === 'COMPANY' && w.id === companyId
                                     );
                                     const freshRoles = freshCompany?.roles || state.currentWorkspace.roles || ['EMPLOYEE'];
+                                    const freshPermissions = freshCompany?.permissions || state.currentWorkspace.permissions || null;
 
                                     useWorkspaceStore.setState((prev) => ({
                                         workspaces: workspacesRes.data,
@@ -203,6 +209,7 @@ export const useWorkspaceStore = create(
                                             ...prev.currentWorkspace,
                                             settings: settingsRes.data,
                                             roles: freshRoles,
+                                            permissions: freshPermissions,
                                         }
                                     }));
                                     console.log('✅ Re-fetched company settings and roles on rehydrate:', freshRoles);

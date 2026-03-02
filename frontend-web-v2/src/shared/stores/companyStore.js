@@ -139,20 +139,18 @@ export const useCompanyStore = create(
             hasMultipleCompanies: () => get().companies.length > 1,
             needsCompanySelection: () => get().companies.length > 1 && !get().currentCompany,
 
-            // Permissions helpers
+            // Permissions helpers — consistent with workspaceStore
             hasRole: (role) => {
-                const currentRole = get().currentRole;
-                if (!currentRole) return false;
-
-                const roleHierarchy = ['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT', 'MEMBER'];
-                const currentIndex = roleHierarchy.indexOf(currentRole);
-                const requiredIndex = roleHierarchy.indexOf(role);
-
-                return currentIndex !== -1 && currentIndex <= requiredIndex;
+                const { currentCompany, currentRole } = get();
+                // Support both roles array (from workspace) and single role (legacy)
+                const userRoles = currentCompany?.roles || (currentRole ? [currentRole] : []);
+                return userRoles.includes(role);
             },
 
             hasAnyRole: (roles) => {
-                return roles.some(role => get().currentRole === role);
+                const { currentCompany, currentRole } = get();
+                const userRoles = currentCompany?.roles || (currentRole ? [currentRole] : []);
+                return roles.some(role => userRoles.includes(role));
             },
         }),
         {

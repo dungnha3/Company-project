@@ -15,10 +15,7 @@ import DoAn.BE.ai.dto.AIActionDTO.ActionType;
 import DoAn.BE.common.util.MapUtils;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.IssueStatus;
-import DoAn.BE.project.entity.Project;
-import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.IssueStatusRepository;
-import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,10 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class IssueActionHandler {
 
-    private final IssueRepository issueRepository;
     private final IssueStatusRepository issueStatusRepository;
-    private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final DoAn.BE.project.service.IssueService issueService;
 
     public AIActionDTO createIssue(AIActionDTO action, Long userId) {
         Map<String, Object> data = action.getData();
@@ -54,43 +50,38 @@ public class IssueActionHandler {
             return action;
         }
 
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
-        User reporter = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        IssueStatus defaultStatus = issueStatusRepository.findAll().stream()
-                .filter(s -> s.getName().equalsIgnoreCase("To Do") || s.getOrderIndex() == 0)
-                .findFirst().orElse(null);
-
-        Issue issue = new Issue();
-        issue.setProject(project);
-        issue.setTitle(title);
-        issue.setDescription(description);
-        issue.setIssueKey(generateIssueKey(project));
-        issue.setPriority(Issue.Priority.valueOf(priority.toUpperCase()));
-        issue.setReporter(reporter);
-        issue.setIssueStatus(defaultStatus);
-        issue.setEstimatedHours(estimatedHours);
-
+        DoAn.BE.project.dto.CreateIssueRequest request = new DoAn.BE.project.dto.CreateIssueRequest();
+        request.setProjectId(projectId);
+        request.setTitle(title);
+        request.setDescription(description);
+        try {
+            request.setPriority(Issue.Priority.valueOf(priority.toUpperCase()));
+        } catch (Exception e) {
+            request.setPriority(Issue.Priority.MEDIUM);
+        }
+        request.setEstimatedHours(estimatedHours);
         if (deadlineDays != null && deadlineDays > 0) {
-            issue.setDueDate(java.time.LocalDate.now().plusDays(deadlineDays));
+            request.setDueDate(java.time.LocalDate.now().plusDays(deadlineDays));
         }
 
-        issue = issueRepository.save(issue);
-        log.info("Created issue: {} in project: {}", issue.getIssueKey(), project.getKeyProject());
+        try {
+            DoAn.BE.project.dto.IssueDTO issueDTO = issueService.createIssue(request, userId);
 
-        action.setStatus(ActionStatus.EXECUTED);
-        action.setEntityId(issue.getIssueId());
-        action.setEntityName(issue.getTitle());
-        action.setMessage(String.format("✅ Đã tạo task \"%s\" (%s) thành công!", title, issue.getIssueKey()));
+            action.setStatus(ActionStatus.EXECUTED);
+            action.setEntityId(issueDTO.getIssueId());
+            action.setEntityName(issueDTO.getTitle());
+            action.setMessage(String.format("✅ Đã tạo task \"%s\" (%s) thành công!", title, issueDTO.getIssueKey()));
 
-        Map<String, Object> resultData = new HashMap<>(data);
-        resultData.put("issueId", issue.getIssueId());
-        resultData.put("issueKey", issue.getIssueKey());
-        action.setData(resultData);
-
-        return action;
+            Map<String, Object> resultData = new HashMap<>(data);
+            resultData.put("issueId", issueDTO.getIssueId());
+            resultData.put("issueKey", issueDTO.getIssueKey());
+            action.setData(resultData);
+            return action;
+        } catch (Exception e) {
+            action.setStatus(ActionStatus.FAILED);
+            action.setMessage("Không thể tạo task: " + e.getMessage());
+            return action;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -138,22 +129,29 @@ public class IssueActionHandler {
             return action;
         }
 
-        Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new RuntimeException("Issue not found"));
+        try {
+            DoAn.BE.project.dto.IssueDTO issue = issueService.getIssueById(issueId, userId);
 
-        User assignee = null;
-        if (assigneeUsername != null) {
-            assignee = userRepository.findByUsername(assigneeUsername).orElse(null);
+            User assignee = null;
+            if (assigneeUsername != null) {
+                assignee = userRepository.findByUsername(assigneeUsername).orElse(null);
+            }
+
+            if (assignee != null) {
+                issueService.assignIssue(issueId, assignee.getUserId(), userId);
+            } else {
+                throw new DoAn.BE.common.exception.ResourceNotFoundException("Không tìm thấy người cần gán");
+            }
+
+            String assigneeName = assignee.getUsername();
+            action.setStatus(ActionStatus.EXECUTED);
+            action.setMessage(String.format("✅ Đã gán task \"%s\" cho %s", issue.getTitle(), assigneeName));
+            return action;
+        } catch (Exception e) {
+            action.setStatus(ActionStatus.FAILED);
+            action.setMessage("Không thể gán task: " + e.getMessage());
+            return action;
         }
-
-        issue.setAssignee(assignee);
-        issueRepository.save(issue);
-
-        String assigneeName = assignee != null ? assignee.getUsername() : "không ai";
-        action.setStatus(ActionStatus.EXECUTED);
-        action.setMessage(String.format("✅ Đã gán task \"%s\" cho %s", issue.getTitle(), assigneeName));
-
-        return action;
     }
 
     public AIActionDTO changeIssueStatus(AIActionDTO action, Long userId) {
@@ -167,26 +165,24 @@ public class IssueActionHandler {
             return action;
         }
 
-        Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new RuntimeException("Issue not found"));
+        try {
+            DoAn.BE.project.dto.IssueDTO issue = issueService.getIssueById(issueId, userId);
+            IssueStatus newStatus = issueStatusRepository.findByNameIgnoreCase(statusName)
+                    .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException(
+                            "Status not found: " + statusName));
 
-        IssueStatus newStatus = issueStatusRepository.findAll().stream()
-                .filter(s -> s.getName().equalsIgnoreCase(statusName))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Status not found: " + statusName));
+            issueService.changeIssueStatus(issueId, newStatus.getStatusId(), userId);
 
-        issue.setIssueStatus(newStatus);
-        issueRepository.save(issue);
-
-        action.setStatus(ActionStatus.EXECUTED);
-        action.setMessage(String.format("✅ Đã chuyển task \"%s\" sang trạng thái \"%s\"",
-                issue.getTitle(), newStatus.getName()));
-
-        return action;
+            action.setStatus(ActionStatus.EXECUTED);
+            action.setMessage(String.format("✅ Đã chuyển task \"%s\" sang trạng thái \"%s\"",
+                    issue.getTitle(), newStatus.getName()));
+            return action;
+        } catch (Exception e) {
+            action.setStatus(ActionStatus.FAILED);
+            action.setMessage("Không thể cập nhật trạng thái task: " + e.getMessage());
+            return action;
+        }
     }
 
-    private String generateIssueKey(Project project) {
-        long issueCount = issueRepository.findByProject_ProjectId(project.getProjectId()).size() + 1;
-        return project.getKeyProject() + "-" + issueCount;
-    }
+    // Unused generateIssueKey removed
 }

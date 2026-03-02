@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CompanyController {
 
     private final CompanyService companyService;
@@ -59,6 +61,11 @@ public class CompanyController {
     // [PLAN LIMITS] Lấy thông tin giới hạn plan
     @GetMapping("/{companyId}/limits")
     public ResponseEntity<PlanLimitDto> getPlanLimits(@PathVariable Long companyId) {
+        Long contextCompanyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (contextCompanyId == null || !contextCompanyId.equals(companyId)) {
+            throw new DoAn.BE.common.exception.ForbiddenException(
+                    "Bạn không có quyền xem thông tin plan của công ty này");
+        }
         return ResponseEntity.ok(companyService.getPlanLimits(companyId));
     }
 
@@ -89,6 +96,10 @@ public class CompanyController {
 
     @GetMapping("/{companyId}/settings")
     public ResponseEntity<?> getSettings(@PathVariable Long companyId) {
+        Long contextCompanyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (contextCompanyId == null || !contextCompanyId.equals(companyId)) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Bạn không có quyền xem cài đặt công ty này");
+        }
         return ResponseEntity.ok(companyService.getSettingsCached(companyId));
     }
 

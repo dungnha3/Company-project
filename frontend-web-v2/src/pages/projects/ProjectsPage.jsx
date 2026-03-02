@@ -5,15 +5,18 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import { formatDate } from '@shared/utils/formatters';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import CreateProjectModal from './components/CreateProjectModal';
 import CreateIssueModal from './components/CreateIssueModal';
 
 export default function ProjectsPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { hasPermission } = useWorkspaceStore();
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'card'
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [showIssueModal, setShowIssueModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const { data: projects, isLoading } = useQuery({
         queryKey: ['projects'],
@@ -57,32 +60,62 @@ export default function ProjectsPage() {
                             <i className="fa-solid fa-grid-2 mr-1" /> Card
                         </button>
                     </div>
-                    <button
-                        onClick={() => setShowIssueModal(true)}
-                        className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                        <i className="fa-solid fa-plus mr-1" /> Task
-                    </button>
-                    <button
-                        onClick={() => setShowProjectModal(true)}
-                        className="btn-primary shadow-lg shadow-primary/20"
-                    >
-                        <i className="fa-solid fa-folder-plus mr-1" /> Tạo dự án
-                    </button>
+                    {hasPermission('projectManageIssues') && (
+                        <button
+                            onClick={() => setShowIssueModal(true)}
+                            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            <i className="fa-solid fa-plus mr-1" /> Task
+                        </button>
+                    )}
+                    {hasPermission('projectCreate') && (
+                        <button
+                            onClick={() => setShowProjectModal(true)}
+                            className="btn-primary shadow-lg shadow-primary/20"
+                        >
+                            <i className="fa-solid fa-folder-plus mr-1" /> Tạo dự án
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* TODO: Add Filters here */}
+            {/* Search & Filter */}
+            <div className="flex items-center gap-3">
+                <div className="relative flex-1 max-w-md">
+                    <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                    <input
+                        type="text"
+                        placeholder="Tìm dự án theo tên hoặc mã..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                </div>
+                <span className="text-sm text-gray-500">
+                    {(projects || []).filter(p => {
+                        if (!searchTerm) return true;
+                        const s = searchTerm.toLowerCase();
+                        return (p.name || '').toLowerCase().includes(s) || (p.key || '').toLowerCase().includes(s);
+                    }).length} dự án
+                </span>
+            </div>
 
             {isLoading ? (
                 <div className="h-64 flex items-center justify-center">
                     <i className="fa-solid fa-spinner fa-spin text-3xl text-primary" />
                 </div>
-            ) : viewMode === 'list' ? (
-                <ProjectListView projects={projects} navigate={navigate} />
-            ) : (
-                <ProjectCardView projects={projects} navigate={navigate} />
-            )}
+            ) : (() => {
+                const filtered = (projects || []).filter(p => {
+                    if (!searchTerm) return true;
+                    const s = searchTerm.toLowerCase();
+                    return (p.name || '').toLowerCase().includes(s) || (p.key || '').toLowerCase().includes(s);
+                });
+                return viewMode === 'list' ? (
+                    <ProjectListView projects={filtered} navigate={navigate} />
+                ) : (
+                    <ProjectCardView projects={filtered} navigate={navigate} />
+                );
+            })()}
 
             {/* Modals */}
             <CreateProjectModal
@@ -243,14 +276,14 @@ function ProjectCardView({ projects, navigate }) {
 
 const StatusBadge = memo(function StatusBadge({ status }) {
     const configs = {
-        PLANNING: { color: 'text-indigo-700 bg-indigo-50 border-indigo-100', label: 'Planning' },
-        IN_PROGRESS: { color: 'text-orange-700 bg-orange-50 border-orange-100', label: 'In Progress' },
-        COMPLETED: { color: 'text-green-700 bg-green-50 border-green-100', label: 'Completed' },
-        ON_HOLD: { color: 'text-gray-700 bg-gray-50 border-gray-100', label: 'On Hold' },
-        CANCELLED: { color: 'text-red-700 bg-red-50 border-red-100', label: 'Cancelled' },
+        ACTIVE: { color: 'text-indigo-700 bg-indigo-50 border-indigo-100', label: 'Đang hoạt động' },
+        ON_HOLD: { color: 'text-gray-700 bg-gray-50 border-gray-100', label: 'Tạm dừng' },
+        OVERDUE: { color: 'text-orange-700 bg-orange-50 border-orange-100', label: 'Quá hạn' },
+        COMPLETED: { color: 'text-green-700 bg-green-50 border-green-100', label: 'Hoàn thành' },
+        CANCELLED: { color: 'text-red-700 bg-red-50 border-red-100', label: 'Đã hủy' },
     };
 
-    const config = configs[status] || configs.PLANNING;
+    const config = configs[status] || configs.ACTIVE;
 
     return (
         <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium border ${config.color}`}>

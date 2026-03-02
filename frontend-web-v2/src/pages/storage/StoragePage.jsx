@@ -4,10 +4,15 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate, formatBytes } from '@shared/utils/formatters';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function StoragePage() {
     const { showToast } = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useWorkspaceStore();
+    const canUpload = hasPermission('storageUpload');
+    const canManageFolders = hasPermission('storageManageFolders');
+    const canShare = hasPermission('storageShare');
     const [currentFolder, setCurrentFolder] = useState(null);
     const [folderPath, setFolderPath] = useState([{ id: null, name: 'Root' }]);
     const [viewMode, setViewMode] = useState('grid'); // grid or list
@@ -50,7 +55,7 @@ export default function StoragePage() {
 
     // Create folder mutation
     const createFolderMutation = useMutation({
-        mutationFn: (name) => apiClient.post(ENDPOINTS.STORAGE.CREATE_FOLDER || '/api/storage/folders', {
+        mutationFn: (name) => apiClient.post(ENDPOINTS.STORAGE.CREATE_FOLDER, {
             name,
             parentId: currentFolder
         }),
@@ -107,18 +112,22 @@ export default function StoragePage() {
                     <p className="text-gray-500 text-sm">Quản lý files và thư mục Workspace</p>
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowNewFolderModal(true)}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm flex items-center gap-2"
-                    >
-                        <i className="fa-solid fa-folder-plus" /> Thư mục mới
-                    </button>
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="btn-primary"
-                    >
-                        <i className="fa-solid fa-upload mr-2" /> Tải lên
-                    </button>
+                    {canManageFolders && (
+                        <button
+                            onClick={() => setShowNewFolderModal(true)}
+                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm flex items-center gap-2"
+                        >
+                            <i className="fa-solid fa-folder-plus" /> Thư mục mới
+                        </button>
+                    )}
+                    {canUpload && (
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="btn-primary"
+                        >
+                            <i className="fa-solid fa-upload mr-2" /> Tải lên
+                        </button>
+                    )}
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -161,19 +170,21 @@ export default function StoragePage() {
                 </div>
             </div>
 
-            {/* Drag & Drop Zone */}
-            <div
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={`
-                    border-2 border-dashed rounded-xl p-6 text-center transition-all
-                    ${isDragging ? 'border-indigo-500 bg-indigo-50 scale-[1.01]' : 'border-gray-200 bg-gray-50'}
-                `}
-            >
-                <i className={`fa-solid fa-cloud-arrow-up text-2xl mb-2 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
-                <p className="text-sm text-gray-500">Kéo thả file vào đây để tải lên</p>
-            </div>
+            {/* Drag & Drop Zone — only show if user can upload */}
+            {canUpload && (
+                <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    className={`
+                        border-2 border-dashed rounded-xl p-6 text-center transition-all
+                        ${isDragging ? 'border-indigo-500 bg-indigo-50 scale-[1.01]' : 'border-gray-200 bg-gray-50'}
+                    `}
+                >
+                    <i className={`fa-solid fa-cloud-arrow-up text-2xl mb-2 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
+                    <p className="text-sm text-gray-500">Kéo thả file vào đây để tải lên</p>
+                </div>
+            )}
 
             {/* Loading */}
             {isLoading && (
@@ -216,6 +227,7 @@ export default function StoragePage() {
                                     file={file}
                                     onPreview={() => setPreviewFile(file)}
                                     onShare={() => setShareFile(file)}
+                                    canShare={canShare}
                                 />
                             ))}
                         </div>
@@ -227,6 +239,7 @@ export default function StoragePage() {
                                     file={file}
                                     onPreview={() => setPreviewFile(file)}
                                     onShare={() => setShareFile(file)}
+                                    canShare={canShare}
                                 />
                             ))}
                         </div>
@@ -259,7 +272,7 @@ export default function StoragePage() {
     );
 }
 
-function FileCard({ file, onPreview, onShare }) {
+function FileCard({ file, onPreview, onShare, canShare = true }) {
     const isImage = file.contentType?.startsWith('image/');
 
     return (
@@ -292,13 +305,15 @@ function FileCard({ file, onPreview, onShare }) {
                 <div className="flex items-center justify-between mt-2">
                     <span className="text-xs text-gray-400">{formatBytes(file.size)}</span>
                     <div className="flex gap-1">
-                        <button
-                            onClick={onShare}
-                            className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded"
-                            title="Chia sẻ"
-                        >
-                            <i className="fa-solid fa-share-nodes text-sm" />
-                        </button>
+                        {canShare && (
+                            <button
+                                onClick={onShare}
+                                className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded"
+                                title="Chia sẻ"
+                            >
+                                <i className="fa-solid fa-share-nodes text-sm" />
+                            </button>
+                        )}
                         <a
                             href={ENDPOINTS.STORAGE.DOWNLOAD(file.id)}
                             className="p-1.5 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded"
@@ -313,7 +328,7 @@ function FileCard({ file, onPreview, onShare }) {
     );
 }
 
-function FileListItem({ file, onPreview, onShare }) {
+function FileListItem({ file, onPreview, onShare, canShare = true }) {
     return (
         <div className="flex items-center justify-between p-4 hover:bg-gray-50">
             <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -331,9 +346,11 @@ function FileListItem({ file, onPreview, onShare }) {
                 <button onClick={onPreview} className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg">
                     <i className="fa-solid fa-eye" />
                 </button>
-                <button onClick={onShare} className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg">
-                    <i className="fa-solid fa-share-nodes" />
-                </button>
+                {canShare && (
+                    <button onClick={onShare} className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg">
+                        <i className="fa-solid fa-share-nodes" />
+                    </button>
+                )}
                 <a href={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} className="p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg">
                     <i className="fa-solid fa-download" />
                 </a>
@@ -371,7 +388,7 @@ function FilePreviewModal({ file, onClose }) {
                 {/* Preview Content */}
                 <div className="p-4 bg-gray-50 flex items-center justify-center min-h-[400px] max-h-[calc(90vh-120px)] overflow-auto">
                     {isImage && (
-                        <img alt="" src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} alt={file.originalName} loading="lazy" className="max-w-full max-h-full rounded-lg shadow-lg" />
+                        <img src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} alt={file.originalName} loading="lazy" className="max-w-full max-h-full rounded-lg shadow-lg" />
                     )}
                     {isPdf && (
                         <iframe src={ENDPOINTS.STORAGE.DOWNLOAD(file.id)} className="w-full h-[600px] rounded-lg" />
@@ -403,8 +420,6 @@ function FilePreviewModal({ file, onClose }) {
 function ShareModal({ file, onClose }) {
     const { showToast } = useToast();
     const [shareLink, setShareLink] = useState('');
-    const [shareEmail, setShareEmail] = useState('');
-    const [permission, setPermission] = useState('view');
 
     // Generate link mutation
     const generateLinkMutation = useMutation({
@@ -429,13 +444,6 @@ function ShareModal({ file, onClose }) {
         showToast('Đã copy link!', 'success');
     };
 
-    const shareByEmail = () => {
-        if (!shareEmail) return;
-        // Ideally this would also be an API call
-        showToast(`Tính năng gửi email đang phát triển`, 'info');
-        setShareEmail('');
-    };
-
     return (
         <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -450,33 +458,7 @@ function ShareModal({ file, onClose }) {
                     <p className="text-sm text-gray-500 mt-1">{file.originalName}</p>
                 </div>
 
-                <div className="p-6 space-y-6">
-                    {/* Share via Email */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Mời qua email</h4>
-                        <div className="flex gap-2">
-                            <input
-                                type="email"
-                                value={shareEmail}
-                                onChange={(e) => setShareEmail(e.target.value)}
-                                placeholder="email@example.com"
-                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
-                            />
-                            <select
-                                value={permission}
-                                onChange={(e) => setPermission(e.target.value)}
-                                className="px-3 py-2 border border-gray-200 rounded-lg"
-                            >
-                                <option value="view">Xem</option>
-                                <option value="edit">Chỉnh sửa</option>
-                            </select>
-                            <button onClick={shareByEmail} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
-                                <i className="fa-solid fa-paper-plane" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Generate Link */}
+                <div className="p-6 space-y-6">{/* Generate Link */}
                     <div>
                         <h4 className="text-sm font-semibold text-gray-700 mb-2">Link chia sẻ</h4>
                         {shareLink ? (

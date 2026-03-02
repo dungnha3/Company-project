@@ -24,4 +24,6 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
     // Search by keyword
     @Query("SELECT d FROM Department d WHERE LOWER(d.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Department> searchByKeyword(@Param("keyword") String keyword);
+    @Query("SELECT d FROM Department d WHERE d.company.companyId = :companyId")
+    List<Department> findByCompanyId(@Param("companyId") Long companyId);
 }

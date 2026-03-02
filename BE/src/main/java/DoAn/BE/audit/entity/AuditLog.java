@@ -3,9 +3,7 @@ package DoAn.BE.audit.entity;
 import DoAn.BE.user.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -19,13 +17,16 @@ import java.time.LocalDateTime;
         @Index(name = "idx_audit_action", columnList = "action"),
         @Index(name = "idx_audit_created", columnList = "created_at")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class AuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     // Người thực hiện hành động (thường là Admin)

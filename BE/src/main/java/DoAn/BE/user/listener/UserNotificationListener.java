@@ -22,7 +22,7 @@ public class UserNotificationListener {
     public void handleUserCreated(UserCreatedEvent event) {
         User user = event.getUser();
         authNotificationService.createWelcomeNotification(user.getUserId(), user.getUsername());
-        log.info("🔔 Sent welcome notification to {}", user.getUsername());
+        log.info("Sent welcome notification to {}", user.getUsername());
     }
 
     @Async

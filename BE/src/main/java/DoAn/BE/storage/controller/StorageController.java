@@ -13,33 +13,38 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.ContentDisposition;
+import java.nio.charset.StandardCharsets;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import DoAn.BE.common.service.AccessControlService;
 
 @RestController
 @RequestMapping("/api/storage")
 @RequiredArgsConstructor
 @FeatureFlag("STORAGE")
+@Transactional(readOnly = true)
 public class StorageController {
 
     private final FileStorageService fileStorageService;
     private final StorageQueryService storageQueryService;
     private final FolderService folderService;
+    private final AccessControlService accessControlService;
 
     @PostMapping("/files/upload")
     public ResponseEntity<FileUploadResponse> uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "folderId", required = false) Long folderId,
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             HttpServletRequest request) {
-        User user = (User) authentication.getPrincipal();
         Long userId = user.getUserId();
         String ipAddress = getClientIpAddress(request);
         String userAgent = request.getHeader("User-Agent");
@@ -51,8 +56,7 @@ public class StorageController {
     @GetMapping("/files/{fileId}")
     public ResponseEntity<FileDTO> getFile(
             @PathVariable Long fileId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         FileDTO file = fileStorageService.getFileById(fileId, userId);
         return ResponseEntity.ok(file);
@@ -61,8 +65,7 @@ public class StorageController {
     @GetMapping("/files/{fileId}/download")
     public ResponseEntity<Resource> downloadFile(
             @PathVariable Long fileId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         Resource resource = fileStorageService.downloadFile(fileId, userId);
 
@@ -72,15 +75,16 @@ public class StorageController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(fileInfo.getMimeType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileInfo.getOriginalFilename() + "\"")
+                        ContentDisposition.attachment()
+                                .filename(fileInfo.getOriginalFilename(), StandardCharsets.UTF_8)
+                                .build().toString())
                 .body(resource);
     }
 
     @GetMapping("/files/my-files")
     public ResponseEntity<List<FileDTO>> getMyFiles(
             @RequestParam(value = "filter", defaultValue = "personal") String filter,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         List<FileDTO> files = storageQueryService.getFiles(userId, filter);
         return ResponseEntity.ok(files);
@@ -89,8 +93,7 @@ public class StorageController {
     @GetMapping("/folders/{folderId}/files")
     public ResponseEntity<List<FileDTO>> getFolderFiles(
             @PathVariable Long folderId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         List<FileDTO> files = fileStorageService.getFolderFiles(folderId, userId);
         return ResponseEntity.ok(files);
@@ -100,8 +103,8 @@ public class StorageController {
     public ResponseEntity<Map<String, String>> deleteFile(
             @PathVariable Long fileId,
             @RequestParam(value = "permanent", defaultValue = "false") boolean permanent,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageDeletePermission();
         Long userId = user.getUserId();
 
         if (permanent) {
@@ -119,8 +122,7 @@ public class StorageController {
     public ResponseEntity<FileDTO> renameFile(
             @PathVariable Long fileId,
             @RequestParam String name,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         FileDTO file = fileStorageService.renameFile(fileId, name, userId);
         return ResponseEntity.ok(file);
@@ -129,8 +131,7 @@ public class StorageController {
     @PutMapping("/files/{fileId}/restore")
     public ResponseEntity<Map<String, String>> restoreFile(
             @PathVariable Long fileId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         fileStorageService.restoreFile(fileId, userId);
 
@@ -140,8 +141,8 @@ public class StorageController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<StorageStatsDTO> getStorageStats(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+    public ResponseEntity<StorageStatsDTO> getStorageStats(
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         StorageStatsDTO stats = storageQueryService.getStorageStats(userId);
         return ResponseEntity.ok(stats);
@@ -150,8 +151,8 @@ public class StorageController {
     @PostMapping("/folders")
     public ResponseEntity<FolderDTO> createFolder(
             @Valid @RequestBody CreateFolderRequest request,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageUploadPermission();
         Long userId = user.getUserId();
         FolderDTO folder = folderService.createFolder(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(folder);
@@ -160,8 +161,7 @@ public class StorageController {
     @GetMapping("/folders/{folderId}")
     public ResponseEntity<FolderDTO> getFolder(
             @PathVariable Long folderId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         FolderDTO folder = folderService.getFolderById(folderId, userId);
         return ResponseEntity.ok(folder);
@@ -170,8 +170,7 @@ public class StorageController {
     @GetMapping("/folders/my-folders")
     public ResponseEntity<List<FolderDTO>> getMyFolders(
             @RequestParam(value = "filter", defaultValue = "personal") String filter,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         List<FolderDTO> folders = folderService.getFolders(userId, filter);
         return ResponseEntity.ok(folders);
@@ -180,8 +179,7 @@ public class StorageController {
     @GetMapping("/folders/{folderId}/subfolders")
     public ResponseEntity<List<FolderDTO>> getSubFolders(
             @PathVariable Long folderId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         List<FolderDTO> subFolders = folderService.getSubFolders(folderId, userId);
         return ResponseEntity.ok(subFolders);
@@ -190,8 +188,7 @@ public class StorageController {
     @GetMapping("/folders/project/{projectId}")
     public ResponseEntity<List<FolderDTO>> getProjectFolders(
             @PathVariable Long projectId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
         Long userId = user.getUserId();
         List<FolderDTO> folders = folderService.getProjectFolders(projectId, userId);
         return ResponseEntity.ok(folders);
@@ -201,8 +198,8 @@ public class StorageController {
     public ResponseEntity<FolderDTO> updateFolder(
             @PathVariable Long folderId,
             @RequestParam String name,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageUploadPermission();
         Long userId = user.getUserId();
         FolderDTO folder = folderService.updateFolder(folderId, name, userId);
         return ResponseEntity.ok(folder);
@@ -211,8 +208,8 @@ public class StorageController {
     @DeleteMapping("/folders/{folderId}")
     public ResponseEntity<Map<String, String>> deleteFolder(
             @PathVariable Long folderId,
-            Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+            @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageDeletePermission();
         Long userId = user.getUserId();
         folderService.deleteFolder(folderId, userId);
 

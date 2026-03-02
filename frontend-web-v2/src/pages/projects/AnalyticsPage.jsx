@@ -68,13 +68,13 @@ export default function AnalyticsPage() {
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold text-white mb-6">📊 Analytics Dashboard</h1>
+            <h1 className="text-2xl font-bold text-white mb-6">📊 Bảng thống kê</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Burndown Chart */}
                 <div className="lg:col-span-2 bg-slate-800 rounded-2xl p-5 border border-slate-700">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-white">🔥 Burndown Chart</h2>
+                        <h2 className="text-lg font-semibold text-white">🔥 Biểu đồ Burndown</h2>
                         {velocity?.sprints?.length > 0 && (
                             <select
                                 value={selectedSprintId || ''}
@@ -104,8 +104,8 @@ export default function AnalyticsPage() {
                                     labelFormatter={(val) => formatDate(val)}
                                 />
                                 <Legend />
-                                <Line type="monotone" dataKey="ideal" stroke="var(--color-accent)" strokeDasharray="5 5" name="Ideal" />
-                                <Line type="monotone" dataKey="actual" stroke="#22c55e" strokeWidth={2} name="Actual" />
+                                <Line type="monotone" dataKey="ideal" stroke="var(--color-accent)" strokeDasharray="5 5" name="Lý tưởng" />
+                                <Line type="monotone" dataKey="actual" stroke="#22c55e" strokeWidth={2} name="Thực tế" />
                             </LineChart>
                         </ResponsiveContainer>
                     ) : (
@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
                 {/* Velocity Chart */}
                 <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-white">🚀 Velocity</h2>
+                        <h2 className="text-lg font-semibold text-white">🚀 Tốc độ Sprint</h2>
                         {velocity && (
                             <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium">
                                 Avg: {formatNumber(velocity.averageVelocity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} issues/sprint
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
                                 <XAxis dataKey="sprintName" stroke="#888" />
                                 <YAxis stroke="#888" />
                                 <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid #3d3d4d', borderRadius: '8px' }} />
-                                <Bar dataKey="completedIssues" fill="var(--color-accent)" name="Completed Issues" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="completedIssues" fill="var(--color-accent)" name="Issues hoàn thành" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
                 {/* Status Distribution Pie */}
                 <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-white">📋 Status Distribution</h2>
+                        <h2 className="text-lg font-semibold text-white">📋 Phân bổ trạng thái</h2>
                         {statusDist && (
                             <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium">
                                 Total: {statusDist.totalIssues} issues

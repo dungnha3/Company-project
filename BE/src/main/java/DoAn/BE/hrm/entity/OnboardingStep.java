@@ -6,15 +6,18 @@ import lombok.*;
 
 @Entity
 @Table(name = "onboarding_steps")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class OnboardingStep {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "step_id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(name = "title", nullable = false, length = 200, columnDefinition = "NVARCHAR(200)")

@@ -7,7 +7,6 @@ public class AppConstants {
             "/api/auth/**",
             "/api/public/**",
             "/api/app/**",
-            "/api/app/**",
             "/ws/**",
             // Swagger/OpenAPI documentation
             "/swagger-ui/**",

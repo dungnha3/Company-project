@@ -42,6 +42,13 @@ export default defineConfig(async () => ({
   define: {
     global: 'window',
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./tests/setupTests.js'],
+    css: true,
+    testTimeout: 30000,
+  },
   build: {
     // Production optimizations
     minify: 'terser',

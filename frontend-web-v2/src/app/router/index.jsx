@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react';
 // Layouts
 import DashboardLayout from '@layouts/DashboardLayout';
 import AuthLayout from '@layouts/AuthLayout';
+import SectionTabLayout, { HR_TAB_CONFIG } from '@layouts/SectionTabLayout';
 
 // Guards
 import { AccessControlGuard } from './guards/AccessControlGuard';
@@ -39,7 +40,6 @@ const ReviewsPage = lazy(() => import('@pages/hr/ReviewsPage'));
 const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
 const OrgChartPage = lazy(() => import('@pages/hr/OrgChartPage'));
 const OKRPage = lazy(() => import('@pages/hr/OKRPage'));
-const SkillsMatrixPage = lazy(() => import('@pages/hr/SkillsMatrixPage'));
 const HROnboardingPage = lazy(() => import('@pages/hr/OnboardingPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
 
@@ -173,12 +173,6 @@ const router = createBrowserRouter([
         ),
     },
 
-    // Landing Page (Public)
-    {
-        path: '/',
-        element: <LandingPage />,
-    },
-
     // Protected routes - require auth + company
     {
         path: '/app',
@@ -275,14 +269,18 @@ const router = createBrowserRouter([
                         requireAuth={true}
                         requireCompany={true}
                     >
-                        <Outlet />
+                        <SectionTabLayout
+                            tabConfig={HR_TAB_CONFIG}
+                            title="Nhân sự (HR)"
+                            icon="fa-users-gear"
+                        />
                     </AccessControlGuard>
                 ),
                 children: [
                     {
                         path: 'dashboard',
                         element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}>
+                            <AccessControlGuard requiredPermission="hrViewList">
                                 <Suspense fallback={<PageLoader />}>
                                     <HRDashboardPage />
                                 </Suspense>
@@ -294,7 +292,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="hr"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrViewList"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <EmployeesPage />
@@ -315,7 +313,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="hr"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrViewDepartments"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <DepartmentsPage />
@@ -328,7 +326,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="hr"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrViewPositions"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <PositionsPage />
@@ -361,7 +359,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="salary"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_ACCOUNTING', 'MANAGER_HR']}
+                                requiredPermission="salaryView"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <SalariesPage />
@@ -374,7 +372,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="contract"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="contractView"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ContractsPage />
@@ -387,7 +385,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="review"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrManageReviews"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ReviewsPage />
@@ -400,7 +398,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="orgChart"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrViewList"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <OrgChartPage />
@@ -413,23 +411,10 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="okr"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrViewList"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <OKRPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'skills-matrix',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="skillsMatrix"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <SkillsMatrixPage />
                                 </Suspense>
                             </AccessControlGuard>
                         ),
@@ -439,7 +424,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="onboarding"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR']}
+                                requiredPermission="hrViewList"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <OnboardingPage />
@@ -452,7 +437,7 @@ const router = createBrowserRouter([
                         element: (
                             <AccessControlGuard
                                 requiredFeature="resourcePlanning"
-                                allowedRoles={['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT']}
+                                requiredPermission="projectManageAll"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ResourcePlanningPage />
@@ -510,7 +495,7 @@ const router = createBrowserRouter([
                     {
                         path: 'dashboard',
                         element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <CompanyDashboardPage />
                                 </Suspense>
@@ -523,7 +508,7 @@ const router = createBrowserRouter([
                             <AccessControlGuard
                                 requireAuth={true}
                                 requireCompany={true}
-                                allowedRoles={['OWNER', 'ADMIN']}
+                                allowedRoles={['OWNER', 'COMPANY_ADMIN']}
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ActivityLogPage />
@@ -534,7 +519,7 @@ const router = createBrowserRouter([
                     {
                         path: 'billing',
                         element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <BillingPage />
                                 </Suspense>
@@ -544,7 +529,7 @@ const router = createBrowserRouter([
                     {
                         path: 'settings',
                         element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'ADMIN']}>
+                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
                                 <Suspense fallback={<PageLoader />}>
                                     <CompanySettingsPage />
                                 </Suspense>

@@ -11,15 +11,17 @@ import lombok.*;
 // Department entity - renamed from PhongBan
 @Entity
 @Table(name = "departments")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Department extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "department_id")
+    @EqualsAndHashCode.Include
     private Long departmentId;
 
     @Column(name = "name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")

@@ -20,33 +20,40 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         // ====================
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         Optional<Issue> findWithRelationsByIssueId(Long issueId);
+
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Optional<Issue> findByIssueKey(String issueKey);
+
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectId(Long projectId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByProject_ProjectId(Long projectId, Pageable pageable);
+
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByAssignee_UserId(Long userId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByAssignee_UserId(Long userId, Pageable pageable);
+
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByReporter_UserId(Long userId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByReporter_UserId(Long userId, Pageable pageable);
+
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findBySprint_SprintId(Long sprintId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findBySprint_SprintId(Long sprintId, Pageable pageable);
+
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId);
 
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId, Pageable pageable);
+
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         List<Issue> findByPhase_PhaseId(Long phaseId);
 
@@ -61,6 +68,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         List<Issue> findByIssueStatus_StatusId(Integer statusId);
 
         long countByProject_ProjectId(Long projectId);
+
         @Query("SELECT DISTINCT i FROM Issue i " +
                         "LEFT JOIN FETCH i.project " +
                         "LEFT JOIN FETCH i.issueStatus " +
@@ -69,6 +77,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
                         "AND i.issueStatus.name <> 'Done' " +
                         "AND i.assignee IS NOT NULL")
         List<Issue> findOverdueIssuesWithRelations(@Param("date") LocalDate date);
+
         @Query("SELECT DISTINCT i FROM Issue i " +
                         "LEFT JOIN FETCH i.project " +
                         "LEFT JOIN FETCH i.issueStatus " +
@@ -98,4 +107,10 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         @org.springframework.data.jpa.repository.Modifying
         @Query("UPDATE Issue i SET i.assignee = NULL WHERE i.assignee.userId = :userId")
         void unassignByGlobalUser(@Param("userId") Long userId);
+        long countBySprint_SprintId(Long sprintId);
+
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.sprint.sprintId = :sprintId AND i.issueStatus.name = 'Done'")
+        long countCompletedBySprint(@Param("sprintId") Long sprintId);
+        @Query("SELECT MAX(CAST(SUBSTRING(i.issueKey, LENGTH(i.project.keyProject) + 2) AS long)) FROM Issue i WHERE i.project.projectId = :projectId")
+        Long findMaxIssueNumberByProjectId(@Param("projectId") Long projectId);
 }

@@ -18,10 +18,7 @@ public class CreateUserRequest {
     private String username;
 
     @NotBlank(message = "Password không được để trống")
-    @Size(min = 6, message = "Password phải ít nhất 6 ký tự")
     @jakarta.validation.constraints.Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$", message = "Password phải có ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt")
-    // Disabled strict password policy for dev convenience - Uncomment to enable
-    // strict mode
     private String password;
 
     @Email(message = "Email không hợp lệ")

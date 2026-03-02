@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import DoAn.BE.common.service.AccessControlService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -19,6 +20,7 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/okrs")
 @FeatureFlag("OKR")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OKRController {
 
     private final OKRService okrService;
@@ -46,20 +48,20 @@ public class OKRController {
 
     @PostMapping
     public ResponseEntity<OKR> create(@Valid @RequestBody CreateOKRRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkOkrManagePermission();
         OKR okr = okrService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(okr);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<OKR> update(@PathVariable Long id, @Valid @RequestBody UpdateOKRRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkOkrManagePermission();
         return ResponseEntity.ok(okrService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        accessControlService.checkAdminPermission(null);
+        accessControlService.checkCompanyAdminPermission();
         okrService.delete(id);
         return ResponseEntity.noContent().build();
     }

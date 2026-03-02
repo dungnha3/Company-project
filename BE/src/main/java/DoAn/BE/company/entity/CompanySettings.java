@@ -1,32 +1,24 @@
 package DoAn.BE.company.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 
 import org.hibernate.annotations.Filter;
-
-import lombok.EqualsAndHashCode;
 
 // Entity lưu cài đặt và cờ tính năng (Feature Flags) cho từng công ty
 @Entity
 @Table(name = "company_settings")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class CompanySettings extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @Column(name = "company_id")
+    @EqualsAndHashCode.Include
     private Long companyId;
 
     @OneToOne

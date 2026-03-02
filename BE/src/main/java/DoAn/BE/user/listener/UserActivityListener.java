@@ -24,7 +24,7 @@ public class UserActivityListener {
     public void handleUserCreated(UserCreatedEvent event) {
         User user = event.getUser();
         auditLogService.logAction(
-                user,
+                user.getUserId(),
                 "CREATE_USER",
                 "USER",
                 user.getUserId(),
@@ -33,7 +33,7 @@ public class UserActivityListener {
                 AuditLog.Severity.INFO,
                 null,
                 null);
-        log.info("📝 Audit Log: Created user {}", user.getUsername());
+        log.info("Audit Log: Created user {}", user.getUsername());
     }
 
     @Async
@@ -42,7 +42,7 @@ public class UserActivityListener {
         User user = event.getUser();
         User actor = event.getActor();
         auditLogService.logAction(
-                actor,
+                actor.getUserId(),
                 "UPDATE_USER",
                 "USER",
                 user.getUserId(),
@@ -59,7 +59,7 @@ public class UserActivityListener {
         User user = event.getUser();
         User actor = event.getActor();
         auditLogService.logAction(
-                actor,
+                actor.getUserId(),
                 "DELETE_USER",
                 "USER",
                 user.getUserId(),
@@ -68,6 +68,6 @@ public class UserActivityListener {
                 AuditLog.Severity.CRITICAL,
                 "Soft deleted user " + user.getUsername(),
                 null);
-        log.info("📝 Audit Log: Deleted user {}", user.getUsername());
+        log.info("Audit Log: Deleted user {}", user.getUsername());
     }
 }

@@ -5,11 +5,8 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
 const ROLE_OPTIONS = [
-    { value: 'MEMBER', label: 'Thành viên' },
-    { value: 'ADMIN', label: 'Quản trị viên' },
-    { value: 'MANAGER_HR', label: 'Quản lý HR' },
-    { value: 'MANAGER_PROJECT', label: 'Quản lý dự án' },
-    { value: 'MANAGER_ACCOUNTING', label: 'Quản lý kế toán' },
+    { value: 'EMPLOYEE', label: 'Thành viên' },
+    { value: 'COMPANY_ADMIN', label: 'Quản trị viên' },
 ];
 
 export default function InviteMemberModal({ isOpen, onClose, onSuccess }) {
@@ -17,7 +14,7 @@ export default function InviteMemberModal({ isOpen, onClose, onSuccess }) {
     const toast = useToast();
 
     const [email, setEmail] = useState('');
-    const [role, setRole] = useState('MEMBER');
+    const [role, setRole] = useState('EMPLOYEE');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {

@@ -28,7 +28,7 @@ import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.notification.service.FCMService;
 import DoAn.BE.notification.service.HRNotificationService;
 import DoAn.BE.user.entity.User;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -44,6 +44,10 @@ public class SalaryService {
     private final FCMService fcmService;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private SalaryService self;
 
     public SalaryService(SalaryRepository salaryRepository,
             EmployeeRepository employeeRepository,
@@ -77,6 +81,22 @@ public class SalaryService {
             throw new DuplicateException(
                     "Salary for " + request.getMonth() + "/" + request.getYear() + " already exists");
         }
+        if (request.getMonth() == null || request.getMonth() < 1 || request.getMonth() > 12) {
+            throw new BadRequestException("Month must be between 1 and 12");
+        }
+        if (request.getYear() == null || request.getYear() < 2000 || request.getYear() > 2100) {
+            throw new BadRequestException("Year must be between 2000 and 2100");
+        }
+
+        // Validate negative inputs
+        if (request.getBaseSalary() != null && request.getBaseSalary().compareTo(BigDecimal.ZERO) < 0)
+            throw new BadRequestException("Base salary cannot be negative");
+        if (request.getAllowance() != null && request.getAllowance().compareTo(BigDecimal.ZERO) < 0)
+            throw new BadRequestException("Allowance cannot be negative");
+        if (request.getBonus() != null && request.getBonus().compareTo(BigDecimal.ZERO) < 0)
+            throw new BadRequestException("Bonus cannot be negative");
+        if (request.getOtherDeductions() != null && request.getOtherDeductions().compareTo(BigDecimal.ZERO) < 0)
+            throw new BadRequestException("Deductions cannot be negative");
 
         Salary salary = new Salary();
         salary.setEmployee(employee);
@@ -138,7 +158,8 @@ public class SalaryService {
 
         if (month != null && year != null) {
             return salaryRepository.findByEmployee_EmployeeIdAndMonthAndYear(employeeId, month, year)
-                    .orElse(null);
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Salary not found for employee " + employeeId + " in " + month + "/" + year));
         }
 
         throw new BadRequestException("Please provide both month and year");
@@ -147,6 +168,24 @@ public class SalaryService {
     private Salary getSalaryById(Long id) {
         return salaryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary not found"));
+    }
+
+    /**
+     * Verify the salary belongs to the current tenant (company).
+     * Prevents cross-tenant modification attacks.
+     */
+    private void verifyCompanyOwnership(Salary salary) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            throw new ForbiddenException("Company context is required");
+        }
+        Long salaryCompanyId = salary.getEmployee() != null
+                && salary.getEmployee().getCompany() != null
+                        ? salary.getEmployee().getCompany().getCompanyId()
+                        : null;
+        if (salaryCompanyId == null || !salaryCompanyId.equals(companyId)) {
+            throw new ForbiddenException("Access denied: salary does not belong to your company");
+        }
     }
 
     public org.springframework.data.domain.Page<Salary> getAllSalariesPaged(User currentUser,
@@ -162,25 +201,38 @@ public class SalaryService {
         accessControlService.checkSalaryCalculatePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
 
         if (request.getMonth() != null)
             salary.setMonth(request.getMonth());
         if (request.getYear() != null)
             salary.setYear(request.getYear());
-        if (request.getBaseSalary() != null)
+        if (request.getBaseSalary() != null) {
+            if (request.getBaseSalary().compareTo(BigDecimal.ZERO) < 0)
+                throw new BadRequestException("Base salary cannot be negative");
             salary.setBaseSalary(request.getBaseSalary());
+        }
         if (request.getWorkingDays() != null)
             salary.setWorkingDays(request.getWorkingDays());
         if (request.getStandardWorkingDays() != null)
             salary.setStandardWorkingDays(request.getStandardWorkingDays());
-        if (request.getAllowance() != null)
+        if (request.getAllowance() != null) {
+            if (request.getAllowance().compareTo(BigDecimal.ZERO) < 0)
+                throw new BadRequestException("Allowance cannot be negative");
             salary.setAllowance(request.getAllowance());
-        if (request.getBonus() != null)
+        }
+        if (request.getBonus() != null) {
+            if (request.getBonus().compareTo(BigDecimal.ZERO) < 0)
+                throw new BadRequestException("Bonus cannot be negative");
             salary.setBonus(request.getBonus());
+        }
         if (request.getOvertimeHours() != null)
             salary.setOvertimeHours(request.getOvertimeHours());
-        if (request.getOtherDeductions() != null)
+        if (request.getOtherDeductions() != null) {
+            if (request.getOtherDeductions().compareTo(BigDecimal.ZERO) < 0)
+                throw new BadRequestException("Deductions cannot be negative");
             salary.setOtherDeductions(request.getOtherDeductions());
+        }
         if (request.getPaymentStatus() != null)
             salary.setPaymentStatus(request.getPaymentStatus());
         if (request.getNote() != null)
@@ -193,6 +245,7 @@ public class SalaryService {
         accessControlService.checkSalaryCalculatePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
         salaryRepository.delete(salary);
     }
 
@@ -218,19 +271,28 @@ public class SalaryService {
 
     private List<Salary> getSalariesByPeriod(Integer month, Integer year, User currentUser) {
         accessControlService.checkSalaryViewPermission();
+        // companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            return salaryRepository.findByMonthAndYearAndCompanyId(month, year, companyId);
+        }
         return salaryRepository.findByMonthAndYear(month, year);
     }
 
     public org.springframework.data.domain.Page<Salary> getSalariesByPeriodPaged(Integer month, Integer year,
             User currentUser, org.springframework.data.domain.Pageable pageable) {
         accessControlService.checkSalaryViewPermission();
-        return salaryRepository.findByMonthAndYear(month, year, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return org.springframework.data.domain.Page.empty(pageable);
+        return salaryRepository.findByMonthAndYearAndCompanyId(month, year, companyId, pageable);
     }
 
     public Salary markAsPaid(Long id, User currentUser) {
         accessControlService.checkSalaryApprovePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
         salary.setPaymentStatus(Salary.PaymentStatus.PAID);
         Salary saved = salaryRepository.save(salary);
 
@@ -263,7 +325,7 @@ public class SalaryService {
                     data.put("link", "/payroll");
                     fcmService.sendToDevice(
                             employeeUser.getFcmToken(),
-                            "💰 Salary Paid",
+                            "Salary Paid",
                             "Salary for " + salary.getMonth() + "/" + salary.getYear() + " (" + amount
                                     + " VNĐ) has been transferred.",
                             data);
@@ -278,6 +340,7 @@ public class SalaryService {
         accessControlService.checkSalaryApprovePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
         salary.setPaymentStatus(Salary.PaymentStatus.CANCELLED);
         return salaryRepository.save(salary);
     }
@@ -285,13 +348,18 @@ public class SalaryService {
     public org.springframework.data.domain.Page<Salary> getSalariesByStatusPaged(Salary.PaymentStatus status,
             User currentUser, org.springframework.data.domain.Pageable pageable) {
         accessControlService.checkSalaryViewPermission();
-        return salaryRepository.findByPaymentStatus(status, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return org.springframework.data.domain.Page.empty(pageable);
+        return salaryRepository.findByPaymentStatusAndCompanyId(status, companyId, pageable);
     }
 
     public BigDecimal getTotalSalaryByPeriod(Integer month, Integer year, User currentUser) {
         accessControlService.checkSalaryViewPermission();
         List<Salary> list = getSalariesByPeriod(month, year, currentUser);
-        return list.stream().map(Salary::getNetSalary).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return list.stream().map(Salary::getNetSalary)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public BigDecimal getTotalSalaryByEmployeeAndYear(Long employeeId, Integer year, User currentUser) {
@@ -309,14 +377,11 @@ public class SalaryService {
                 throw new ForbiddenException("Access Denied");
             }
         }
-
-        List<Salary> all = salaryRepository.findByEmployee_EmployeeId(employeeId);
-        return all.stream()
-                .filter(sl -> sl.getYear().equals(year))
-                .map(Salary::getNetSalary)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = salaryRepository.getTotalNetSalaryByEmployeeAndYear(employeeId, year);
+        return total != null ? total : BigDecimal.ZERO;
     }
 
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Salary calculateSalaryAuto(Long employeeId, Integer month, Integer year, User currentUser) {
         accessControlService.checkSalaryCalculatePermission();
 
@@ -350,9 +415,9 @@ public class SalaryService {
         salary.setStandardWorkingDays(26);
         salary.setAllowance(employee.getAllowance() != null ? employee.getAllowance() : BigDecimal.ZERO);
         salary.setPaymentStatus(Salary.PaymentStatus.UNPAID);
-
-        // Calculate OT (> 176h)
-        BigDecimal standardHours = new BigDecimal("176");
+        // standardWorkingDays × 8h
+        int stdWorkingDays = salary.getStandardWorkingDays();
+        BigDecimal standardHours = new BigDecimal(stdWorkingDays * 8);
         if (totalHours != null && totalHours.compareTo(standardHours) > 0) {
             salary.setOvertimeHours(totalHours.subtract(standardHours).intValue());
         } else {
@@ -380,14 +445,22 @@ public class SalaryService {
 
     public List<Salary> calculateSalaryAutoForAll(Integer month, Integer year, User currentUser) {
         accessControlService.checkSalaryCalculatePermission();
-
-        List<Employee> employees = employeeRepository.findByStatus(Employee.EmployeeStatus.ACTIVE);
+        // employees across ALL companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        List<Employee> employees;
+        if (companyId != null) {
+            employees = employeeRepository.findByCompanyId(companyId).stream()
+                    .filter(e -> e.getStatus() == Employee.EmployeeStatus.ACTIVE)
+                    .toList();
+        } else {
+            employees = employeeRepository.findByStatus(Employee.EmployeeStatus.ACTIVE);
+        }
         List<Salary> results = new ArrayList<>();
 
         for (Employee emp : employees) {
             try {
                 if (!salaryRepository.existsByEmployee_EmployeeIdAndMonthAndYear(emp.getEmployeeId(), month, year)) {
-                    results.add(calculateSalaryAuto(emp.getEmployeeId(), month, year, currentUser));
+                    results.add(self.calculateSalaryAuto(emp.getEmployeeId(), month, year, currentUser));
                 }
             } catch (Exception e) {
                 log.error("Could not calculate salary for employee {}: {}", emp.getFullName(), e.getMessage());

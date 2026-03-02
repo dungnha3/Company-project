@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/invites")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class UserInvitesController {
 
     private final CompanyMemberRepository memberRepository;
@@ -90,7 +92,7 @@ public class UserInvitesController {
         invite.setJoinedAt(LocalDateTime.now());
         memberRepository.save(invite);
 
-        log.info("✅ User {} đã chấp nhận lời mời vào công ty {}", userId, invite.getCompany().getName());
+        log.info("User {} đã chấp nhận lời mời vào công ty {}", userId, invite.getCompany().getName());
 
         return ResponseEntity.ok(Map.of(
                 "message", "Đã chấp nhận lời mời thành công",
@@ -121,7 +123,7 @@ public class UserInvitesController {
         // Xóa invite
         memberRepository.delete(invite);
 
-        log.info("❌ User {} đã từ chối lời mời vào công ty {}", userId, invite.getCompany().getName());
+        log.info("User {} đã từ chối lời mời vào công ty {}", userId, invite.getCompany().getName());
 
         return ResponseEntity.ok(Map.of("message", "Đã từ chối lời mời"));
     }

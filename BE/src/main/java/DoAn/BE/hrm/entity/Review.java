@@ -10,15 +10,17 @@ import java.time.LocalDate;
 // Employee performance reviews
 @Entity
 @Table(name = "reviews")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Review extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "review_id")
+    @EqualsAndHashCode.Include
     private Long reviewId;
 
     @ManyToOne

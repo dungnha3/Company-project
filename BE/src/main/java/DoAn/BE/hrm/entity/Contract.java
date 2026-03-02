@@ -15,16 +15,18 @@ import org.hibernate.annotations.Filter;
 // Force re-indexing
 @Entity
 @Table(name = "contracts")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Contract extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "contract_id")
+    @EqualsAndHashCode.Include
     private Long contractId;
 
     @ManyToOne

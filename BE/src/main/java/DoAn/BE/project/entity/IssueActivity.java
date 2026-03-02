@@ -6,16 +6,20 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
+
 @Entity
 @Table(name = "issue_activities")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class IssueActivity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "activity_id")
+    @EqualsAndHashCode.Include
     private Long activityId;
 
     @ManyToOne

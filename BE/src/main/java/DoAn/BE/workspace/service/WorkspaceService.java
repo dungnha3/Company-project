@@ -49,42 +49,45 @@ public class WorkspaceService {
                 .build());
 
         // 2. Company Workspaces
-        // [FIX] Disable tenant filter to see ALL memberships
+
+        // immediately to prevent cross-tenant leaks.
         Session session = entityManager.unwrap(Session.class);
         boolean filterEnabled = session.getEnabledFilter("tenantFilter") != null;
-        log.info("🔍 WorkspaceService: UserID={}, TenantFilterEnabled={}", user.getUserId(), filterEnabled);
+        Long currentCompanyId = DoAn.BE.common.context.TenantContext.getCompanyId();
 
-        if (filterEnabled) {
-            session.disableFilter("tenantFilter");
-            log.info("🔓 Disabled tenantFilter for workspace list");
+        try {
+            if (filterEnabled) {
+                session.disableFilter("tenantFilter");
+            }
+
+            List<CompanyMember> memberships = companyMemberRepository
+                    .findByUser_UserIdAndIsActiveTrue(user.getUserId());
+
+            for (CompanyMember m : memberships) {
+                // Collect ALL roles into a list
+                java.util.List<String> roleNames = m.getRoles().stream()
+                        .map(Enum::name)
+                        .collect(java.util.stream.Collectors.toList());
+                if (roleNames.isEmpty())
+                    roleNames = java.util.List.of("EMPLOYEE");
+
+                workspaces.add(WorkspaceDto.WorkspaceResponse.builder()
+                        .id(m.getCompany().getCompanyId())
+                        .name(m.getCompany().getName())
+                        .type(WorkspaceType.COMPANY)
+                        .plan(m.getCompany().getPlan())
+                        .roles(roleNames)
+                        .permissions(m.getPermissions())
+                        .isActive(m.getCompany().getIsActive())
+                        .build());
+            }
+
+            return workspaces;
+        } finally {
+            if (filterEnabled && currentCompanyId != null) {
+                session.enableFilter("tenantFilter").setParameter("companyId", currentCompanyId);
+            }
         }
-
-        List<CompanyMember> memberships = companyMemberRepository
-                .findByUser_UserIdAndIsActiveTrue(user.getUserId());
-
-        log.info("📊 Found {} memberships for user {}", memberships.size(), user.getUserId());
-        memberships.forEach(m -> log.info("   - Company: {}, Roles: {}, Active: {}",
-                m.getCompany().getName(), m.getRoles(), m.getCompany().getIsActive()));
-
-        for (CompanyMember m : memberships) {
-            // Collect ALL roles into a list
-            java.util.List<String> roleNames = m.getRoles().stream()
-                    .map(Enum::name)
-                    .collect(java.util.stream.Collectors.toList());
-            if (roleNames.isEmpty())
-                roleNames = java.util.List.of("EMPLOYEE");
-
-            workspaces.add(WorkspaceDto.WorkspaceResponse.builder()
-                    .id(m.getCompany().getCompanyId())
-                    .name(m.getCompany().getName())
-                    .type(WorkspaceType.COMPANY)
-                    .plan(m.getCompany().getPlan())
-                    .roles(roleNames)
-                    .isActive(m.getCompany().getIsActive())
-                    .build());
-        }
-
-        return workspaces;
     }
 
     // Lấy Personal Workspace của user
