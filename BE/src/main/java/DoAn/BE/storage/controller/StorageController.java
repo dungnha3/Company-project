@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
@@ -24,16 +25,19 @@ import org.springframework.http.ContentDisposition;
 import java.nio.charset.StandardCharsets;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import DoAn.BE.common.service.AccessControlService;
 
 @RestController
 @RequestMapping("/api/storage")
 @RequiredArgsConstructor
 @FeatureFlag("STORAGE")
+@Transactional(readOnly = true)
 public class StorageController {
 
     private final FileStorageService fileStorageService;
     private final StorageQueryService storageQueryService;
     private final FolderService folderService;
+    private final AccessControlService accessControlService;
 
     @PostMapping("/files/upload")
     public ResponseEntity<FileUploadResponse> uploadFile(
@@ -100,6 +104,7 @@ public class StorageController {
             @PathVariable Long fileId,
             @RequestParam(value = "permanent", defaultValue = "false") boolean permanent,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageDeletePermission();
         Long userId = user.getUserId();
 
         if (permanent) {
@@ -147,6 +152,7 @@ public class StorageController {
     public ResponseEntity<FolderDTO> createFolder(
             @Valid @RequestBody CreateFolderRequest request,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageUploadPermission();
         Long userId = user.getUserId();
         FolderDTO folder = folderService.createFolder(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(folder);
@@ -193,6 +199,7 @@ public class StorageController {
             @PathVariable Long folderId,
             @RequestParam String name,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageUploadPermission();
         Long userId = user.getUserId();
         FolderDTO folder = folderService.updateFolder(folderId, name, userId);
         return ResponseEntity.ok(folder);
@@ -202,6 +209,7 @@ public class StorageController {
     public ResponseEntity<Map<String, String>> deleteFolder(
             @PathVariable Long folderId,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkStorageDeletePermission();
         Long userId = user.getUserId();
         folderService.deleteFolder(folderId, userId);
 

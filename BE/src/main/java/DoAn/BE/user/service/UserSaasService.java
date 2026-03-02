@@ -16,9 +16,9 @@ import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.company.entity.UserPermissions;
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
-import DoAn.BE.company.service.RoleTemplateService;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 
@@ -40,7 +40,6 @@ public class UserSaasService {
     private final UserRepository userRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanyRepository companyRepository;
-    private final RoleTemplateService roleTemplateService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public Page<User> getUsersByCurrentCompany(Pageable pageable) {
@@ -48,8 +47,12 @@ public class UserSaasService {
         if (companyId == null) {
             return Page.empty();
         }
-        return companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId, pageable)
+        Page<User> users = companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId, pageable)
                 .map(CompanyMember::getUser);
+        // Eagerly initialize memberships to avoid LazyInitializationException in
+        // UserMapper
+        users.getContent().forEach(u -> org.hibernate.Hibernate.initialize(u.getMemberships()));
+        return users;
     }
 
     public List<User> getUsersByCurrentCompanyWithoutPaging() {
@@ -57,18 +60,22 @@ public class UserSaasService {
         if (companyId == null) {
             return Collections.emptyList();
         }
-        return companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId)
+        List<User> users = companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId)
                 .stream()
                 .map(CompanyMember::getUser)
                 .collect(Collectors.toList());
+        users.forEach(u -> org.hibernate.Hibernate.initialize(u.getMemberships()));
+        return users;
     }
 
     public Page<User> getUsersByCompanyId(Long companyId, Pageable pageable) {
         if (companyId == null) {
             return Page.empty();
         }
-        return companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId, pageable)
+        Page<User> users = companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId, pageable)
                 .map(CompanyMember::getUser);
+        users.getContent().forEach(u -> org.hibernate.Hibernate.initialize(u.getMemberships()));
+        return users;
     }
 
     public void updateUserRoleInCompany(Long userId, Long companyId, String roleName, User currentUser) {
@@ -103,7 +110,7 @@ public class UserSaasService {
             String oldRoles = member.getRoles().toString();
             member.getRoles().clear();
             member.getRoles().add(newRole);
-            member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
+            member.setPermissions(UserPermissions.defaultFor(newRole));
             companyMemberRepository.save(member);
             log.info("Đã cập nhật role từ {} sang {} cho user {} trong công ty {}",
                     oldRoles, newRole, userId, companyId);
@@ -116,7 +123,7 @@ public class UserSaasService {
             newMember.setUser(user);
             newMember.setCompany(company);
             newMember.getRoles().add(newRole);
-            newMember.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
+            newMember.setPermissions(UserPermissions.defaultFor(newRole));
             newMember.setJoinedAt(LocalDateTime.now());
             newMember.setIsActive(true);
             companyMemberRepository.save(newMember);

@@ -7,17 +7,24 @@ import { useToast } from '@app/providers/ToastProvider';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 const STATUSES = [
-    { value: 'TODO', label: 'To Do', color: 'bg-gray-100 text-gray-700' },
-    { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-indigo-100 text-indigo-700' },
-    { value: 'IN_REVIEW', label: 'In Review', color: 'bg-purple-100 text-purple-700' },
-    { value: 'DONE', label: 'Done', color: 'bg-green-100 text-green-700' },
+    { value: 'TODO', label: 'Chờ xử lý', color: 'bg-gray-100 text-gray-700' },
+    { value: 'IN_PROGRESS', label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700' },
+    { value: 'IN_REVIEW', label: 'Đang review', color: 'bg-purple-100 text-purple-700' },
+    { value: 'DONE', label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
 ];
 
 const PRIORITIES = [
-    { value: 'LOW', label: 'Low', icon: 'fa-arrow-down', color: 'text-gray-500' },
-    { value: 'MEDIUM', label: 'Medium', icon: 'fa-minus', color: 'text-indigo-500' },
-    { value: 'HIGH', label: 'High', icon: 'fa-arrow-up', color: 'text-orange-500' },
-    { value: 'CRITICAL', label: 'Critical', icon: 'fa-fire', color: 'text-red-500' },
+    { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
+    { value: 'MEDIUM', label: 'Trung bình', icon: 'fa-minus', color: 'text-indigo-500' },
+    { value: 'HIGH', label: 'Cao', icon: 'fa-arrow-up', color: 'text-orange-500' },
+    { value: 'CRITICAL', label: 'Khẩn cấp', icon: 'fa-fire', color: 'text-red-500' },
+];
+
+const ISSUE_TYPES = [
+    { value: 'TASK', label: 'Task', icon: 'fa-check', color: 'bg-indigo-500' },
+    { value: 'BUG', label: 'Bug', icon: 'fa-bug', color: 'bg-red-500' },
+    { value: 'STORY', label: 'Story', icon: 'fa-bookmark', color: 'bg-green-500' },
+    { value: 'EPIC', label: 'Epic', icon: 'fa-bolt', color: 'bg-purple-500' },
 ];
 
 export default function IssueDetailModal({ issue, onClose, onUpdate }) {
@@ -101,6 +108,15 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             {currentIssue.issueKey || `#${currentIssue.issueId}`}
                         </span>
                         <span className="text-white/80 text-sm">|</span>
+                        {(() => {
+                            const type = ISSUE_TYPES.find(t => t.value === currentIssue.issueType);
+                            return type ? (
+                                <span className={`${type.color} text-white px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}>
+                                    <i className={`fa-solid ${type.icon} text-[10px]`} />
+                                    {type.label}
+                                </span>
+                            ) : null;
+                        })()}
                         <span className="text-white font-medium truncate max-w-md">{currentIssue.projectName}</span>
                     </div>
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center justify-center">

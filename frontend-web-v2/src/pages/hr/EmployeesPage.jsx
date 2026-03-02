@@ -14,7 +14,7 @@ import EmployeeFormModal from './components/EmployeeFormModal';
 
 export default function EmployeesPage() {
     const navigate = useNavigate();
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
 
@@ -85,10 +85,19 @@ export default function EmployeesPage() {
         setSelectedIds(newSet);
     };
 
-    const handleBulkDelete = () => {
+    const handleBulkDelete = async () => {
         if (window.confirm(`Bạn có chắc muốn xóa ${selectedIds.size} nhân viên đã chọn?`)) {
-            // Delete one by one (or create bulk delete API)
-            selectedIds.forEach(id => deleteMutation.mutate(id));
+            const ids = [...selectedIds];
+            const results = await Promise.allSettled(
+                ids.map(id => apiClient.delete(ENDPOINTS.EMPLOYEES.BY_ID(id)))
+            );
+            const failed = results.filter(r => r.status === 'rejected').length;
+            if (failed > 0) {
+                showToast(`${failed}/${ids.length} nhân viên xóa thất bại`, 'error');
+            } else {
+                showToast(`Đã xóa ${ids.length} nhân viên`, 'success');
+            }
+            queryClient.invalidateQueries(['employees']);
             setSelectedIds(new Set());
         }
     };
@@ -158,8 +167,8 @@ export default function EmployeesPage() {
                 </div>
             )
         },
-        // Salary column - Only for OWNER, ADMIN, MANAGER_ACCOUNTING
-        ...(hasRole('OWNER') || hasRole('ADMIN') || hasRole('MANAGER_ACCOUNTING') ? [{
+        // Salary column - Only for users with salaryView permission
+        ...(hasPermission('salaryView') ? [{
             header: 'Mức lương',
             accessorKey: 'baseSalary',
             cell: (row) => (
@@ -190,7 +199,7 @@ export default function EmployeesPage() {
                     >
                         <i className="fa-solid fa-eye" />
                     </button>
-                    {(hasRole('OWNER') || hasRole('ADMIN') || hasRole('MANAGER_HR')) && (
+                    {hasPermission('hrEditProfile') && (
                         <>
                             <button
                                 onClick={(e) => {
@@ -222,7 +231,7 @@ export default function EmployeesPage() {
     // Stats Calculation (Client-side approximation for now since API might paginate)
     // Ideally, backend should return stats in a separate endpoint or meta
     const stats = {
-        active: employeesData?.content?.filter(e => e.status === 'DANG_LAM_VIEC').length || 0, // This is only for current page if paginated logic isn't adapted for stats. BE probably needs a stats endpoint.
+        active: employeesData?.content?.filter(e => e.status === 'ACTIVE').length || 0,
         // For now let's use placeholders or if we want real stats we call another API. 
         // Let's use hardcoded 0 for safety or remove stats cards until we have API.
         // Actually the old code did client side filtering on ALL employees. 
@@ -240,26 +249,26 @@ export default function EmployeesPage() {
                     <p className="text-gray-500 text-sm">Quản lý hồ sơ và thông tin nhân sự</p>
                 </div>
                 <div className="flex gap-3">
-                    {hasRole('MANAGER_HR') && (
+                    {hasPermission('hrEditProfile') && (
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
                             filename={`NhanVien_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
                             label="Xuất Excel"
                         />
                     )}
-                    {hasRole('MANAGER_HR') && (
+                    {hasPermission('hrCreateEmployee') && (
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="btn-primary shadow-lg shadow-primary/20"
                         >
-                            <i className="fa-solid fa-plus" /> Thêm nhân viên
+                            <i className="fa-solid fa-plus" /> Tạo hồ sơ
                         </button>
                     )}
                 </div>
             </div>
 
             {/* Create/Edit Modal */}
-            {hasRole('MANAGER_HR') && (
+            {hasPermission('hrCreateEmployee') && (
                 <EmployeeFormModal
                     isOpen={showCreateModal || !!selectedEmployeeId}
                     onClose={() => {
@@ -307,13 +316,13 @@ export default function EmployeesPage() {
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     {/* Status Tabs */}
                     <div className="flex bg-gray-100 p-1 rounded-lg">
-                        {['ALL', 'DANG_LAM_VIEC', 'TAM_NGHI', 'NGHI_VIEC'].map(s => (
+                        {['ALL', 'ACTIVE', 'ON_LEAVE', 'RESIGNED'].map(s => (
                             <button
                                 key={s}
                                 onClick={() => setStatus(s)}
                                 className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${status === s ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             >
-                                {s === 'ALL' ? 'Tất cả' : s === 'DANG_LAM_VIEC' ? 'Đang làm' : s === 'TAM_NGHI' ? 'Tạm nghỉ' : 'Nghỉ việc'}
+                                {s === 'ALL' ? 'Tất cả' : s === 'ACTIVE' ? 'Đang làm' : s === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Nghỉ việc'}
                             </button>
                         ))}
                     </div>
@@ -326,7 +335,7 @@ export default function EmployeesPage() {
                         >
                             <option value="ALL">Tất cả phòng ban</option>
                             {departments.map(d => (
-                                <option key={d.phongbanId} value={d.phongbanId}>{d.tenPhongBan}</option>
+                                <option key={d.departmentId} value={d.departmentId}>{d.name}</option>
                             ))}
                         </select>
 
@@ -359,12 +368,12 @@ export default function EmployeesPage() {
 
 function StatusBadge({ status }) {
     const configs = {
-        DANG_LAM_VIEC: { color: 'text-green-700 bg-green-50 border-green-100', icon: 'fa-check', label: 'Đang làm' },
-        TAM_NGHI: { color: 'text-orange-700 bg-orange-50 border-orange-100', icon: 'fa-clock', label: 'Tạm nghỉ' },
-        NGHI_VIEC: { color: 'text-red-700 bg-red-50 border-red-100', icon: 'fa-xmark', label: 'Nghỉ việc' },
+        ACTIVE: { color: 'text-green-700 bg-green-50 border-green-100', icon: 'fa-check', label: 'Đang làm' },
+        ON_LEAVE: { color: 'text-orange-700 bg-orange-50 border-orange-100', icon: 'fa-clock', label: 'Tạm nghỉ' },
+        RESIGNED: { color: 'text-red-700 bg-red-50 border-red-100', icon: 'fa-xmark', label: 'Nghỉ việc' },
     };
 
-    const config = configs[status] || configs.DANG_LAM_VIEC;
+    const config = configs[status] || configs.ACTIVE;
 
     return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${config.color}`}>

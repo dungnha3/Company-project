@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.MalformedURLException;
 import java.nio.file.Path;
@@ -24,6 +25,7 @@ import java.nio.file.Paths;
 @RequestMapping("/api/public/files")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class PublicStorageController {
 
     private final FileRepository fileRepository;

@@ -28,6 +28,7 @@ public class RateLimitingService {
     private final Map<String, Bucket> authCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> apiCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> uploadCache = new ConcurrentHashMap<>();
+
     // Buckets auto-refill on next access, so clearing is safe
     @Scheduled(fixedRate = 300_000) // 5 minutes
     public void evictStaleBuckets() {
@@ -80,7 +81,7 @@ public class RateLimitingService {
         return resolveBucket(ipAddress, type).getAvailableTokens();
     }
 
-    // Auth endpoints: 10 requests per minute (strict for brute force protection)
+    // Auth endpoints: 10 requests per minute
     private Bucket createAuthBucket() {
         Bandwidth limit = Bandwidth.classic(10, Refill.greedy(10, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();

@@ -132,7 +132,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
             <div className="h-16 px-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                        {room?.type === 'DIRECT' ? (
+                        {room?.roomType === 'DIRECT' ? (
                             room?.otherUser?.name?.charAt(0) || 'U'
                         ) : (
                             <i className="fa-solid fa-users text-sm" />

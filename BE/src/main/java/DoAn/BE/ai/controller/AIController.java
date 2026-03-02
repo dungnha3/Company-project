@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import DoAn.BE.ai.dto.AIActionDTO;
 import DoAn.BE.ai.dto.AIChatRequest;
@@ -19,6 +20,8 @@ import DoAn.BE.ai.dto.AIConversationDTO;
 import DoAn.BE.ai.service.AIActionExecutor;
 import DoAn.BE.ai.service.AIProjectAssistantService;
 import DoAn.BE.ai.service.GeminiService;
+import DoAn.BE.common.annotation.FeatureFlag;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -26,18 +29,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 // REST Controller cho AI ChatBot Assistant
-
 // Cung cấp các endpoint cho chức năng AI giống Notion AI
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
 @Slf4j
+@FeatureFlag("AI")
+@Transactional(readOnly = true)
 public class AIController {
 
     private final AIProjectAssistantService aiService;
     private final GeminiService geminiService;
     private final AIActionExecutor actionExecutor;
     private final UserRepository userRepository;
+    private final AccessControlService accessControlService;
 
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
@@ -55,6 +60,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody AIChatRequest request) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         log.info("User {} sending chat message, projectId: {}, action: {}",
                 userId, request.getProjectId(), request.getActionType());
@@ -69,6 +75,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long projectId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.SUMMARIZE_PROJECT);
         return ResponseEntity.ok(response);
@@ -80,6 +87,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long projectId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.SUMMARIZE_SPRINT);
         return ResponseEntity.ok(response);
@@ -91,6 +99,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long projectId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.SUGGEST_TASKS);
         return ResponseEntity.ok(response);
@@ -102,6 +111,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long projectId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.ANALYZE_PROGRESS);
         return ResponseEntity.ok(response);
@@ -113,6 +123,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long projectId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIChatResponse response = aiService.quickAction(userId, projectId, AIActionType.GENERATE_REPORT);
         return ResponseEntity.ok(response);
@@ -124,6 +135,7 @@ public class AIController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         Page<AIConversationDTO> conversations = aiService.getConversations(userId, page, size);
         return ResponseEntity.ok(conversations);
@@ -134,6 +146,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String conversationId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIConversationDTO conversation = aiService.getConversation(conversationId, userId);
         return ResponseEntity.ok(conversation);
@@ -144,6 +157,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String conversationId) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         aiService.deleteConversation(conversationId, userId);
         return ResponseEntity.ok(Map.of("message", "Conversation deleted successfully"));
@@ -154,6 +168,7 @@ public class AIController {
     public ResponseEntity<AIChatResponse> getHelp(
             @AuthenticationPrincipal UserDetails userDetails) {
 
+        accessControlService.checkAiChatPermission();
         Long userId = getCurrentUserId(userDetails);
         AIChatResponse response = aiService.quickAction(userId, null, AIActionType.HELP);
         return ResponseEntity.ok(response);
@@ -165,6 +180,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody AIActionDTO action) {
 
+        accessControlService.checkAiCreateIssuesPermission();
         Long userId = getCurrentUserId(userDetails);
         log.info("User {} executing AI action: {}", userId, action.getActionType());
 
@@ -178,6 +194,7 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody List<AIActionDTO> actions) {
 
+        accessControlService.checkAiCreateIssuesPermission();
         Long userId = getCurrentUserId(userDetails);
         log.info("User {} executing {} AI actions", userId, actions.size());
 
@@ -204,7 +221,4 @@ public class AIController {
 
         throw new DoAn.BE.common.exception.ForbiddenException("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
     }
-    // RuntimeExceptions
-    // and returned 500. GlobalExceptionHandler now handles all exceptions properly
-    // with correct status codes.
 }

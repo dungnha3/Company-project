@@ -31,31 +31,23 @@ export function AccessControlGuard({
     requireAuth = true,
     requireCompany = false,
     allowedRoles = [],
+    requiredPermission = null,
     requiredFeature = null,
     fallbackPath = '/app'
 }) {
-    const { isAuthenticated, user, isHydrated: authHydrated } = useAuthStore();
-    const { currentWorkspace, workspaceType, isHydrated: workspaceHydrated } = useWorkspaceStore();
+    const { isAuthenticated, user } = useAuthStore();
+    const { currentWorkspace, workspaceType, hasPermission } = useWorkspaceStore();
     const location = useLocation();
     const toast = useToast();
     const hasShownToast = useRef(false);
 
-    // 1. Wait for stores to rehydrate
-    if (!authHydrated || !workspaceHydrated) {
-        return (
-            <div className="flex items-center justify-center h-full min-h-[400px]">
-                <div className="loading-spinner" />
-            </div>
-        );
-    }
-
-    // 2. Authentication Check
+    // 1. Authentication Check
     if (requireAuth && (!isAuthenticated || !user)) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // If we only need auth, return early
-    if (!requireCompany && allowedRoles.length === 0 && !requiredFeature) {
+    if (!requireCompany && allowedRoles.length === 0 && !requiredPermission && !requiredFeature) {
         return children;
     }
 
@@ -75,7 +67,14 @@ export function AccessControlGuard({
         return <Navigate to="/app/me/tasks" replace />;
     }
 
-    // 5. Role Check
+    // 5. Permission Check (preferred over role check)
+    if (requiredPermission) {
+        if (!hasPermission(requiredPermission)) {
+            return <Navigate to={fallbackPath} replace />;
+        }
+    }
+
+    // 6. Role Check (kept for admin-only routes like Settings, Billing, Audit)
     if (allowedRoles.length > 0) {
         if (workspaceType === 'PERSONAL') {
             if (!allowedRoles.includes('OWNER')) {
@@ -106,16 +105,20 @@ export function AccessControlGuard({
         const plan = currentWorkspace?.plan || 'FREE';
         const settings = currentWorkspace?.settings || null;
 
-        // Wait for settings to load if it is a company workspace
-        if (isCompanyWorkspace && !settings) {
-            return (
-                <div className="flex items-center justify-center h-full min-h-[400px]">
-                    <div className="loading-spinner" />
-                </div>
-            );
+        // Personal workspace: company features are not available
+        if (!isCompanyWorkspace) {
+            if (!hasShownToast.current) {
+                hasShownToast.current = true;
+                const featureName = FEATURE_NAMES[requiredFeature] || requiredFeature;
+                setTimeout(() => {
+                    toast.warning(`Tính năng "${featureName}" chỉ khả dụng trong workspace công ty`);
+                }, 0);
+            }
+            return <Navigate to="/app/me/tasks" replace />;
         }
 
-        const enabled = isCompanyWorkspace && settings ? isFeatureEnabled(plan, settings, requiredFeature) : true;
+        // If settings not loaded yet, default to allowing access (don't block user)
+        const enabled = settings ? isFeatureEnabled(plan, settings, requiredFeature) : true;
 
         if (!enabled) {
             if (!hasShownToast.current) {

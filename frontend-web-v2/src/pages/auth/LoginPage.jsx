@@ -9,16 +9,29 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuthStore();
+    const { login, verify2fa } = useAuthStore();
+
+    // 2FA state
+    const [show2fa, setShow2fa] = useState(false);
+    const [tempToken, setTempToken] = useState('');
+    const [twoFaCode, setTwoFaCode] = useState('');
+    const [verifying2fa, setVerifying2fa] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (loading) return; // Guard against double submit
+        if (loading) return;
         setError('');
         setLoading(true);
 
         try {
             const result = await login(form);
+
+            if (result.requiresTwoFactor) {
+                setTempToken(result.tempToken);
+                setShow2fa(true);
+                setLoading(false);
+                return;
+            }
 
             if (result.success) {
                 if (result.user?.isSystemAdmin) {
@@ -33,6 +46,27 @@ export default function LoginPage() {
             setError('Đã có lỗi xảy ra');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleVerify2fa = async () => {
+        setVerifying2fa(true);
+        setError('');
+        try {
+            const result = await verify2fa(tempToken, twoFaCode);
+            if (result.success) {
+                if (result.user?.isSystemAdmin) {
+                    navigate('/admin/companies', { replace: true });
+                } else {
+                    navigate('/app', { replace: true });
+                }
+            } else {
+                setError(result.error || 'Mã xác thực không đúng');
+            }
+        } catch (err) {
+            setError('Đã có lỗi xảy ra');
+        } finally {
+            setVerifying2fa(false);
         }
     };
 
@@ -207,13 +241,77 @@ export default function LoginPage() {
 
                     {/* Footer */}
                     <p className="text-center text-xs text-gray-400 mt-6">
-                        Bằng việc đăng nhập, bạn đồng ý với{' '}
-                        <a href="#" className="text-indigo-600 hover:underline">Điều khoản</a>
-                        {' '}và{' '}
-                        <a href="#" className="text-indigo-600 hover:underline">Chính sách bảo mật</a>
+                        Bằng việc đăng nhập, bạn đồng ý với Điều khoản và Chính sách bảo mật của SaaS Enterprise.
                     </p>
                 </div>
             </div>
+
+            {/* 2FA Verification Modal */}
+            {show2fa && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
+                                <i className="fa-solid fa-shield-halved text-2xl text-indigo-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Xác thực hai yếu tố</h3>
+                            <p className="text-gray-500 mt-1">Nhập mã 6 số từ ứng dụng Authenticator</p>
+                        </div>
+
+                        {error && (
+                            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                                <i className="fa-solid fa-circle-exclamation" />
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="mb-6">
+                            <input
+                                type="text"
+                                maxLength={6}
+                                autoFocus
+                                className="w-full text-center text-2xl tracking-[0.5em] font-mono py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="000000"
+                                value={twoFaCode}
+                                onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                onKeyDown={(e) => e.key === 'Enter' && twoFaCode.length === 6 && handleVerify2fa()}
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShow2fa(false);
+                                    setTwoFaCode('');
+                                    setTempToken('');
+                                    setError('');
+                                }}
+                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium text-gray-700"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleVerify2fa}
+                                disabled={twoFaCode.length !== 6 || verifying2fa}
+                                className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {verifying2fa ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Đang xác thực...
+                                    </>
+                                ) : (
+                                    'Xác nhận'
+                                )}
+                            </button>
+                        </div>
+
+                        <p className="text-center text-xs text-gray-400 mt-4">
+                            Bạn cũng có thể dùng mã dự phòng (backup code)
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

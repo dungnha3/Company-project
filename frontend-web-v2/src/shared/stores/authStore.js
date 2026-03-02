@@ -11,6 +11,7 @@ export const useAuthStore = create(
             accessToken: null,
             refreshToken: null,
             isAuthenticated: false,
+            isHydrated: false,
 
             // Actions
             initAuth: async () => {
@@ -44,7 +45,18 @@ export const useAuthStore = create(
             login: async (credentials) => {
                 try {
                     const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
-                    const { accessToken, refreshToken, user, expiresIn } = response.data;
+                    const data = response.data;
+
+                    // 2FA required — return partial result
+                    if (data.requiresTwoFactor) {
+                        return {
+                            success: false,
+                            requiresTwoFactor: true,
+                            tempToken: data.tempToken,
+                        };
+                    }
+
+                    const { accessToken, refreshToken, user, expiresIn } = data;
 
                     // [FIX] Normalize User ID (BE sends 'userId', FE sometimes expects 'id')
                     if (user && user.userId) {
@@ -70,6 +82,36 @@ export const useAuthStore = create(
                     return {
                         success: false,
                         error: error.response?.data?.message || 'Đăng nhập thất bại'
+                    };
+                }
+            },
+
+            verify2fa: async (tempToken, code) => {
+                try {
+                    const response = await apiClient.post(ENDPOINTS.AUTH.VERIFY_2FA, { tempToken, code });
+                    const { accessToken, refreshToken, user, expiresIn } = response.data;
+
+                    if (user && user.userId) {
+                        user.id = user.userId;
+                    }
+
+                    const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('expiresAt', String(expiresAt));
+
+                    set({
+                        user,
+                        accessToken,
+                        refreshToken,
+                        isAuthenticated: true,
+                    });
+
+                    return { success: true, user };
+                } catch (error) {
+                    console.error('2FA verify error:', error);
+                    return {
+                        success: false,
+                        error: error.response?.data?.message || 'Mã xác thực không đúng'
                     };
                 }
             },
@@ -111,19 +153,15 @@ export const useAuthStore = create(
                 set({ isLoading: true, error: null });
                 try {
                     const response = await apiClient.post(ENDPOINTS.AUTH.REGISTER, userData);
-                    // Register usually returns AuthResponse same as login, or just success message
-                    // Let's assume it returns AuthResponse for auto-login
                     const { accessToken, refreshToken, user, expiresIn } = response.data;
 
                     if (accessToken) {
-                        // [FIX] Normalize User ID
                         if (user && user.userId) {
                             user.id = user.userId;
                         }
                         const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
 
                         localStorage.setItem('accessToken', accessToken);
-                        // refreshToken now stored in httpOnly cookie by backend
                         localStorage.setItem('expiresAt', String(expiresAt));
 
                         set({
@@ -131,13 +169,16 @@ export const useAuthStore = create(
                             accessToken,
                             refreshToken,
                             isAuthenticated: true,
+                            isLoading: false,
                         });
                         return { success: true, user };
                     }
 
+                    set({ isLoading: false });
                     return { success: true };
                 } catch (error) {
                     console.error('Register error:', error);
+                    set({ isLoading: false, error: error.response?.data?.message || 'Đăng ký thất bại' });
                     return {
                         success: false,
                         error: error.response?.data?.message || 'Đăng ký thất bại'
@@ -147,24 +188,12 @@ export const useAuthStore = create(
 
             logout: async () => {
                 try {
-                    const refreshToken = localStorage.getItem('refreshToken');
-                    await apiClient.post(ENDPOINTS.AUTH.LOGOUT, { refreshToken });
+                    // [FIX] refreshToken is in httpOnly cookie — sent automatically via withCredentials
+                    await apiClient.post(ENDPOINTS.AUTH.LOGOUT);
                 } catch (error) {
                     console.error('Logout error:', error);
                 } finally {
                     get().clearAuth();
-                    // Force reload to clear all memory states and let App Router handle redirect
-                    window.location.href = '/login';
-                    // Wait, window.location.href = '/login' KEEPS the port if it's a relative path.
-                    // Why did user get localhost refused? Maybe their browser or some environment quirk?
-                    // Let's try explicit reload.
-                    // window.location.reload(); 
-                    // Actually, if I just clearAuth, existing components might react.
-                    // But to be safe vs the "port loss" issue, let's just use window.location.href but make sure it works.
-                    // If the user visited http://localhost/login (port 80) manually, then obviously it fails if server is on 5173.
-                    // But if they are on 5173, '/login' stays on 5173.
-
-                    // Let's try:
                     window.location.assign('/login');
                 }
             },
@@ -195,6 +224,9 @@ export const useAuthStore = create(
                 user: state.user,
                 isAuthenticated: state.isAuthenticated,
             }),
+            onRehydrateStorage: () => () => {
+                useAuthStore.setState({ isHydrated: true });
+            },
         }
     )
 );

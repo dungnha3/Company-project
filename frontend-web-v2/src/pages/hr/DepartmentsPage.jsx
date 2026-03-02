@@ -7,7 +7,7 @@ import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function DepartmentsPage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
 
@@ -53,7 +53,7 @@ export default function DepartmentsPage() {
         {
             header: '',
             accessorKey: 'actions',
-            cell: (row) => hasRole('MANAGER_HR') && (
+            cell: (row) => hasPermission('hrManageDepartments') && (
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedDept(row); setShowModal(true); }}
@@ -94,7 +94,7 @@ export default function DepartmentsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Phòng ban</h1>
                     <p className="text-gray-500 text-sm">Quản lý cơ cấu tổ chức</p>
                 </div>
-                {hasRole('MANAGER_HR') && (
+                {hasPermission('hrManageDepartments') && (
                     <button onClick={() => { setSelectedDept(null); setShowModal(true); }} className="btn-primary">
                         <i className="fa-solid fa-plus mr-2" /> Thêm phòng ban
                     </button>

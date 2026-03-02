@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import DoAn.BE.common.service.AccessControlService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/onboarding")
 @FeatureFlag("ONBOARDING")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OnboardingController {
 
     private final OnboardingService onboardingService;
@@ -34,7 +36,7 @@ public class OnboardingController {
     @PostMapping("/templates")
     public ResponseEntity<OnboardingTemplate> createTemplate(
             @Valid @RequestBody CreateOnboardingTemplateRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkOnboardingManagePermission();
         return ResponseEntity.status(HttpStatus.CREATED).body(onboardingService.createTemplate(request));
     }
 
@@ -46,7 +48,7 @@ public class OnboardingController {
     @PostMapping("/instances")
     public ResponseEntity<OnboardingInstance> startOnboarding(
             @Valid @RequestBody StartOnboardingRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkOnboardingManagePermission();
         return ResponseEntity.status(HttpStatus.CREATED).body(onboardingService.startOnboarding(request));
     }
 
@@ -54,7 +56,7 @@ public class OnboardingController {
     public ResponseEntity<OnboardingInstance> updateProgress(
             @PathVariable Long id,
             @Valid @RequestBody UpdateOnboardingProgressRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkOnboardingManagePermission();
         return ResponseEntity.ok(onboardingService.updateProgress(id, request));
     }
 }

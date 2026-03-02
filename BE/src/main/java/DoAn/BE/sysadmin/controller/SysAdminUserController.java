@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
@@ -18,6 +19,7 @@ import java.util.Map;
 @RequestMapping("/api/sysadmin/users")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class SysAdminUserController {
 
     private final UserRepository userRepository;

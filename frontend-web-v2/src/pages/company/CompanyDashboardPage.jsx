@@ -32,10 +32,7 @@ export default function CompanyDashboardPage() {
         storageLimit: settings?.storageLimit || 10, // GB
         planName: settings?.planName || currentWorkspace?.plan || 'Free',
         planExpiry: settings?.planExpiry || null,
-        recentActivity: [
-            { id: 1, type: 'member_join', user: members[0]?.fullName || 'User', action: 'đã tham gia Workspace', time: 'Gần đây', icon: 'fa-user-plus', color: 'green' },
-            { id: 2, type: 'project_create', user: 'System', action: `Có ${projects.length} dự án`, time: '', icon: 'fa-folder-plus', color: 'blue' },
-        ],
+        recentActivity: [],
         quickStats: {
             tasksCompleted: projects.reduce((sum, p) => sum + (p.completedTasks || 0), 0),
             messagesThisWeek: 0,
@@ -96,8 +93,6 @@ export default function CompanyDashboardPage() {
                     title="Thành viên"
                     value={dashboardData?.totalMembers}
                     subtitle={`${dashboardData?.activeMembers} đang hoạt động`}
-                    trend="+3 tuần này"
-                    trendUp={true}
                 />
                 <StatCard
                     icon="fa-folder"
@@ -105,9 +100,7 @@ export default function CompanyDashboardPage() {
                     iconColor="text-purple-600"
                     title="Dự án"
                     value={dashboardData?.totalProjects}
-                    subtitle="4 đang triển khai"
-                    trend="+2 tuần này"
-                    trendUp={true}
+                    subtitle={`${projects.filter(p => p.status === 'IN_PROGRESS').length} đang triển khai`}
                 />
                 <StatCard
                     icon="fa-hard-drive"
@@ -186,7 +179,7 @@ export default function CompanyDashboardPage() {
                         />
                         <QuickStatRow
                             icon="fa-video"
-                            label="Meetings"
+                            label="Cuộc họp"
                             value={dashboardData?.quickStats?.meetingsHeld}
                             color="orange"
                         />

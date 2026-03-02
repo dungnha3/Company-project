@@ -41,7 +41,7 @@ public class ContractService {
             throw new BadRequestException("Request cannot be empty");
         }
 
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractCreatePermission();
 
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
@@ -85,7 +85,7 @@ public class ContractService {
     }
 
     public List<Contract> getAllContracts() {
-        accessControlService.checkHrViewPermission();
+        accessControlService.checkContractViewPermission();
         // ALL companies
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (companyId == null) {
@@ -99,7 +99,7 @@ public class ContractService {
             throw new BadRequestException("Invalid update request");
         }
 
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractEditPermission();
 
         Contract contract = getContractById(id);
 
@@ -128,7 +128,7 @@ public class ContractService {
     }
 
     public void deleteContract(Long id) {
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractDeletePermission();
         Contract contract = getContractById(id);
         contractRepository.delete(contract);
     }
@@ -149,6 +149,7 @@ public class ContractService {
                 employeeId, ContractStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("No active contract found for this employee"));
     }
+
     public List<Contract> getContractsByStatus(ContractStatus status) {
         if (status == null) {
             return List.of();
@@ -160,7 +161,7 @@ public class ContractService {
     }
 
     public Contract cancelContract(Long id) {
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractEditPermission();
         Contract contract = getContractById(id);
         contract.setStatus(ContractStatus.CANCELLED);
         return contractRepository.save(contract);
@@ -171,7 +172,7 @@ public class ContractService {
             throw new BadRequestException("New end date cannot be empty");
         }
 
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractRenewPermission();
 
         Contract contract = getContractById(id);
 

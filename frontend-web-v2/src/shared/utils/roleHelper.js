@@ -2,23 +2,20 @@
  * Role Display Helper
  * Maps backend role codes to user-friendly display names
  * 
- * Based on transition_plan.md:
- * - DIRECTOR → Owner
+ * Based on CompanyRole enum:
+ * - OWNER → Owner
+ * - COMPANY_ADMIN → Admin
  * - EMPLOYEE → Member
- * - MANAGER_* → Admin/Lead
  */
 
 export const ROLES = {
     // Workspace roles
     OWNER: { label: 'Owner', color: 'gold', icon: 'fa-crown' },
-    ADMIN: { label: 'Admin', color: 'purple', icon: 'fa-user-shield' },
+    COMPANY_ADMIN: { label: 'Admin', color: 'purple', icon: 'fa-user-shield' },
 
-    // Legacy company roles (mapped to SaaS terminology)
+    // Legacy compatibility
     DIRECTOR: { label: 'Owner', color: 'gold', icon: 'fa-crown' },
     SYSTEM_ADMIN: { label: 'System Admin', color: 'red', icon: 'fa-user-cog' },
-    MANAGER_HR: { label: 'HR Admin', color: 'purple', icon: 'fa-users' },
-    MANAGER_PROJECT: { label: 'Project Lead', color: 'green', icon: 'fa-project-diagram' },
-    MANAGER_ACCOUNTING: { label: 'Accounting Lead', color: 'indigo', icon: 'fa-calculator' },
     EMPLOYEE: { label: 'Member', color: 'gray', icon: 'fa-user' },
     MEMBER: { label: 'Member', color: 'gray', icon: 'fa-user' },
 };
@@ -47,7 +44,7 @@ export const getRoleLabel = (backendRole) => {
  * @returns {boolean}
  */
 export const isManager = (role) => {
-    const managerRoles = ['OWNER', 'ADMIN', 'DIRECTOR', 'MANAGER_HR', 'MANAGER_PROJECT', 'MANAGER_ACCOUNTING'];
+    const managerRoles = ['OWNER', 'COMPANY_ADMIN', 'DIRECTOR'];
     return managerRoles.includes(role);
 };
 

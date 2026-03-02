@@ -9,6 +9,7 @@ import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.user.dto.UpdatePasswordRequest;
 import DoAn.BE.user.dto.UpdateUserRequest;
+import DoAn.BE.user.entity.NotificationSettings;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -131,5 +132,45 @@ public class ProfileService {
         User user = getCurrentUserProfile(userId);
         user.setFcmToken(fcmToken);
         userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationSettings getNotificationSettings(Long userId) {
+        User user = getCurrentUserProfile(userId);
+        NotificationSettings settings = user.getNotificationSettings();
+        return settings != null ? settings : new NotificationSettings();
+    }
+
+    public NotificationSettings updateNotificationSettings(
+            Long userId, NotificationSettings settings) {
+        User user = getCurrentUserProfile(userId);
+        user.setNotificationSettings(settings);
+        userRepository.save(user);
+        log.info("User {} updated notification settings", user.getUsername());
+        return settings;
+    }
+
+    public void verifyPasswordAndDeactivate(Long userId, String password) {
+        User user = getCurrentUserProfile(userId);
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BadRequestException("Mật khẩu không đúng");
+        }
+        user.setIsActive(false);
+        user.setIsDeleted(true);
+        user.setOffline();
+        userRepository.save(user);
+        log.info("User {} deactivated their account", user.getUsername());
+    }
+
+    public void verifyPasswordAndDisable2fa(Long userId, String password) {
+        User user = getCurrentUserProfile(userId);
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BadRequestException("Mật khẩu không đúng");
+        }
+        user.setTwoFactorEnabled(false);
+        user.setTwoFactorSecret(null);
+        user.setTwoFactorBackupCodes(null);
+        userRepository.save(user);
+        log.info("User {} disabled 2FA", user.getUsername());
     }
 }

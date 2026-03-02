@@ -30,7 +30,7 @@ public class SecurityConfig {
         // Role group constants for cleaner code
         private static final String[] COMPANY_ADMINS = {
                         CompanyRole.OWNER.name(),
-                        CompanyRole.ADMIN.name()
+                        CompanyRole.COMPANY_ADMIN.name()
         };
 
         private static final String SYSTEM_ADMIN = "SYSTEM_ADMIN";
@@ -85,6 +85,7 @@ public class SecurityConfig {
 
                 return http.build();
         }
+
         // (conflicts with allowCredentials)
         @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:4200,http://localhost:5173}")
         private List<String> allowedOrigins;

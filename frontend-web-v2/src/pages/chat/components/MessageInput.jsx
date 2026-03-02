@@ -72,7 +72,8 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
         if (file) {
             // Max 10MB
             if (file.size > 10 * 1024 * 1024) {
-                alert('File quá lớn (tối đa 10MB)');
+                setError?.('File quá lớn (tối đa 10MB)');
+                e.target.value = '';
                 return;
             }
             setAttachedFile(file);

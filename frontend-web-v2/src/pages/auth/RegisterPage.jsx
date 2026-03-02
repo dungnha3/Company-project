@@ -266,10 +266,7 @@ export default function RegisterPage() {
                                     className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mt-0.5"
                                 />
                                 <label htmlFor="terms" className="text-sm text-gray-600">
-                                    Tôi đồng ý với{' '}
-                                    <a href="#" className="text-emerald-600 hover:underline">Điều khoản sử dụng</a>
-                                    {' '}và{' '}
-                                    <a href="#" className="text-emerald-600 hover:underline">Chính sách bảo mật</a>
+                                    Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của SaaS Enterprise
                                 </label>
                             </div>
 

@@ -4,7 +4,6 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import InviteMemberModal from '@features/company/components/InviteMemberModal';
-import IntegrationsSettings from '@features/company/components/IntegrationsSettings';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function CompanySettingsPage() {
@@ -51,13 +50,6 @@ export default function CompanySettingsPage() {
                             >
                                 Modules
                             </TabButton>
-                            <TabButton
-                                active={activeTab === 'integrations'}
-                                onClick={() => setActiveTab('integrations')}
-                                icon="fa-link"
-                            >
-                                Integrations
-                            </TabButton>
                         </>
                     )}
                 </div>
@@ -68,7 +60,7 @@ export default function CompanySettingsPage() {
                 {activeTab === 'general' && <GeneralSettings workspace={currentWorkspace} />}
                 {activeTab === 'members' && !isPersonal && <MembersSettings />}
                 {activeTab === 'modules' && !isPersonal && <ModulesSettings workspace={currentWorkspace} />}
-                {activeTab === 'integrations' && !isPersonal && <IntegrationsSettings workspace={currentWorkspace} />}
+
             </div>
         </div>
     );
@@ -97,6 +89,8 @@ function GeneralSettings({ workspace }) {
     });
     const toast = useToast();
     const [loading, setLoading] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [logoPreview, setLogoPreview] = useState(workspace.logoUrl || null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -111,18 +105,61 @@ function GeneralSettings({ workspace }) {
         }
     };
 
+    const handleLogoChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            toast.error('Vui lòng chọn file ảnh (JPG, PNG)');
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('File quá lớn. Tối đa 2MB');
+            return;
+        }
+
+        setUploadingLogo(true);
+        try {
+            // Upload file to storage
+            const uploadForm = new FormData();
+            uploadForm.append('file', file);
+            const uploadRes = await apiClient.post('/api/storage/files/upload', uploadForm, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            const logoUrl = uploadRes.data.downloadUrl;
+
+            // Update company with new logoUrl
+            await apiClient.put(ENDPOINTS.COMPANIES.UPDATE(workspace.id), { logoUrl });
+            setLogoPreview(logoUrl);
+            toast.success('Cập nhật logo thành công');
+        } catch (error) {
+            toast.error('Lỗi tải logo: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Logo */}
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl font-bold">
-                        {workspace.name?.charAt(0)}
+                    <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl font-bold overflow-hidden">
+                        {logoPreview ? (
+                            <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            workspace.name?.charAt(0)
+                        )}
                     </div>
                     <div>
-                        <button type="button" className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-                            Thay đổi logo
-                        </button>
+                        <label className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer inline-flex items-center gap-2">
+                            {uploadingLogo ? (
+                                <><i className="fa-solid fa-spinner fa-spin" /> Đang tải...</>
+                            ) : (
+                                <><i className="fa-solid fa-camera" /> Thay đổi logo</>
+                            )}
+                            <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleLogoChange} disabled={uploadingLogo} />
+                        </label>
                         <p className="text-xs text-gray-500 mt-1">JPG, PNG tối đa 2MB</p>
                     </div>
                 </div>
@@ -158,29 +195,50 @@ function GeneralSettings({ workspace }) {
 function MembersSettings() {
     const { currentWorkspace } = useWorkspaceStore();
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [expandedMemberId, setExpandedMemberId] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const toast = useToast();
     const queryClient = useQueryClient();
+    const companyId = currentWorkspace?.id;
 
-    // Fetch members from API
+    // Fetch members with permissions from CompanyMemberController
     const { data: members = [], isLoading: loading } = useQuery({
-        queryKey: ['company-members', currentWorkspace?.id],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data?.content || [],
-        enabled: !!currentWorkspace?.id
+        queryKey: ['company-members', companyId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.COMPANIES.MEMBERS(companyId))).data || [],
+        enabled: !!companyId
     });
+
+    const filteredMembers = members.filter(m =>
+        !searchQuery || (m.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     // Delete member mutation
     const deleteMutation = useMutation({
         mutationFn: async (userId) => {
-            // Assuming endpoint to remove member from company exists, using employee delete for now
-            // Adjust endpoint if strictly removing from company vs deleting employee record
-            return apiClient.delete(ENDPOINTS.EMPLOYEES.DELETE(userId));
+            return apiClient.delete(`${ENDPOINTS.COMPANIES.MEMBERS(companyId)}/${userId}`);
         },
         onSuccess: () => {
             toast.success('Đã xóa thành viên!');
-            queryClient.invalidateQueries(['company-members', currentWorkspace?.id]);
+            queryClient.invalidateQueries(['company-members', companyId]);
         },
         onError: (err) => {
             toast.error('Lỗi xóa thành viên: ' + (err.response?.data?.message || err.message));
+        }
+    });
+
+    // Permission update mutation
+    const permissionMutation = useMutation({
+        mutationFn: async ({ userId, permissionKey, enabled }) => {
+            return apiClient.put(ENDPOINTS.COMPANIES.MEMBER_PERMISSIONS(companyId, userId), {
+                permissionKey,
+                enabled,
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(['company-members', companyId]);
+        },
+        onError: (err) => {
+            toast.error('Lỗi cập nhật quyền: ' + (err.response?.data?.message || err.message));
         }
     });
 
@@ -189,12 +247,16 @@ function MembersSettings() {
         deleteMutation.mutate(userId);
     };
 
+    const handleTogglePermission = (userId, permissionKey, currentValue) => {
+        permissionMutation.mutate({ userId, permissionKey, enabled: !currentValue });
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <div className="w-full max-w-sm relative">
                     <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type="text" placeholder="Tìm kiếm thành viên..." className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl" />
+                    <input type="text" placeholder="Tìm kiếm thành viên..." className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 </div>
                 <button onClick={() => setShowInviteModal(true)} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2">
                     <i className="fa-solid fa-user-plus" />
@@ -208,42 +270,25 @@ function MembersSettings() {
                         <tr>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Thành viên</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Vai trò</th>
                             <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {loading ? (
-                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500"><i className="fa-solid fa-spinner fa-spin mr-2" />Đang tải...</td></tr>
-                        ) : members.length === 0 ? (
-                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Chưa có thành viên nào. Hãy mời thêm!</td></tr>
+                            <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500"><i className="fa-solid fa-spinner fa-spin mr-2" />Đang tải...</td></tr>
+                        ) : filteredMembers.length === 0 ? (
+                            <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">Không tìm thấy thành viên nào</td></tr>
                         ) : (
-                            members.map(member => (
-                                <tr key={member.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
-                                                {member.fullName?.charAt(0) || 'U'}
-                                            </div>
-                                            <span className="font-medium text-gray-900">{member.fullName}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600 font-mono text-xs">{member.email}</td>
-                                    <td className="px-6 py-4">
-                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full border border-gray-200">
-                                            {member.position?.title || 'Thành viên'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleRemove(member.id)}
-                                            className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
-                                            title="Xóa thành viên"
-                                        >
-                                            <i className="fa-regular fa-trash-can" />
-                                        </button>
-                                    </td>
-                                </tr>
+                            filteredMembers.map(member => (
+                                <MemberRow
+                                    key={member.userId}
+                                    member={member}
+                                    isExpanded={expandedMemberId === member.userId}
+                                    onToggleExpand={() => setExpandedMemberId(expandedMemberId === member.userId ? null : member.userId)}
+                                    onRemove={() => handleRemove(member.userId)}
+                                    onTogglePermission={(key, val) => handleTogglePermission(member.userId, key, val)}
+                                    isUpdating={permissionMutation.isPending}
+                                />
                             ))
                         )}
                     </tbody>
@@ -254,9 +299,242 @@ function MembersSettings() {
                 isOpen={showInviteModal}
                 onClose={() => setShowInviteModal(false)}
                 onSuccess={() => {
-                    queryClient.invalidateQueries(['company-members', currentWorkspace?.id]);
+                    queryClient.invalidateQueries(['company-members', companyId]);
                 }}
             />
+        </div>
+    );
+}
+
+function MemberRow({ member, isExpanded, onToggleExpand, onRemove, onTogglePermission, isUpdating }) {
+    return (
+        <>
+            <tr className={`hover:bg-gray-50 transition-colors ${isExpanded ? 'bg-indigo-50/50' : ''}`}>
+                <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                            {member.fullName?.charAt(0) || 'U'}
+                        </div>
+                        <span className="font-medium text-gray-900">{member.fullName}</span>
+                    </div>
+                </td>
+                <td className="px-6 py-4 text-gray-600 font-mono text-xs">{member.email}</td>
+                <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            onClick={onToggleExpand}
+                            className={`text-sm px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${isExpanded ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                            title="Phân quyền"
+                        >
+                            <i className="fa-solid fa-shield-halved text-xs" />
+                            <span className="hidden sm:inline">Phân quyền</span>
+                            <i className={`fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-[10px]`} />
+                        </button>
+                        {member.role !== 'OWNER' && (
+                            <button
+                                onClick={onRemove}
+                                className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
+                                title="Xóa thành viên"
+                            >
+                                <i className="fa-regular fa-trash-can" />
+                            </button>
+                        )}
+                    </div>
+                </td>
+            </tr>
+            {isExpanded && (
+                <tr>
+                    <td colSpan="3" className="px-6 py-4 bg-gray-50/80">
+                        <MemberPermissionEditor
+                            permissions={member.permissions || {}}
+                            onToggle={onTogglePermission}
+                            isUpdating={isUpdating}
+                        />
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+
+const PERMISSION_GROUPS = [
+    {
+        key: 'hr', label: 'Nhân sự (HR)', icon: 'fa-users', color: 'text-indigo-500',
+        permissions: [
+            { key: 'HR.VIEW_LIST', field: 'hrViewList', label: 'Xem danh sách' },
+            { key: 'HR.EDIT_PROFILE', field: 'hrEditProfile', label: 'Sửa hồ sơ' },
+            { key: 'HR.CREATE_EMPLOYEE', field: 'hrCreateEmployee', label: 'Tạo nhân viên' },
+            { key: 'HR.DELETE_EMPLOYEE', field: 'hrDeleteEmployee', label: 'Xóa nhân viên' },
+            { key: 'HR.MANAGE_CONTRACTS', field: 'hrManageContracts', label: 'Quản lý hợp đồng' },
+            { key: 'HR.MANAGE_REVIEWS', field: 'hrManageReviews', label: 'Quản lý đánh giá' },
+            { key: 'HR.VIEW_DEPARTMENTS', field: 'hrViewDepartments', label: 'Xem phòng ban' },
+            { key: 'HR.MANAGE_DEPARTMENTS', field: 'hrManageDepartments', label: 'Quản lý phòng ban' },
+            { key: 'HR.VIEW_POSITIONS', field: 'hrViewPositions', label: 'Xem chức vụ' },
+            { key: 'HR.MANAGE_POSITIONS', field: 'hrManagePositions', label: 'Quản lý chức vụ' },
+            { key: 'HR.VIEW_DASHBOARD', field: 'hrViewDashboard', label: 'Xem dashboard' },
+            { key: 'HR.EXPORT', field: 'hrExport', label: 'Xuất báo cáo' },
+        ]
+    },
+    {
+        key: 'project', label: 'Dự án', icon: 'fa-folder-open', color: 'text-blue-500',
+        permissions: [
+            { key: 'PROJECT.CREATE', field: 'projectCreate', label: 'Tạo dự án' },
+            { key: 'PROJECT.DELETE', field: 'projectDelete', label: 'Xóa dự án' },
+            { key: 'PROJECT.MANAGE_ALL', field: 'projectManageAll', label: 'Quản lý tất cả' },
+            { key: 'PROJECT.MANAGE_ISSUES', field: 'projectManageIssues', label: 'Quản lý issues' },
+            { key: 'PROJECT.MANAGE_SPRINTS', field: 'projectManageSprints', label: 'Quản lý sprints' },
+            { key: 'PROJECT.VIEW_DASHBOARD', field: 'projectViewDashboard', label: 'Xem dashboard' },
+            { key: 'PROJECT.EXPORT', field: 'projectExport', label: 'Xuất báo cáo' },
+            { key: 'PROJECT.MANAGE_PHASES', field: 'projectManagePhases', label: 'Quản lý phases' },
+            { key: 'PROJECT.RESOURCE_PLANNING', field: 'projectResourcePlanning', label: 'Phân bổ nguồn lực' },
+        ]
+    },
+    {
+        key: 'salary', label: 'Lương', icon: 'fa-money-bill-wave', color: 'text-emerald-500',
+        permissions: [
+            { key: 'SALARY.VIEW', field: 'salaryView', label: 'Xem lương' },
+            { key: 'SALARY.CALCULATE', field: 'salaryCalculate', label: 'Tính lương' },
+            { key: 'SALARY.APPROVE', field: 'salaryApprove', label: 'Duyệt lương' },
+            { key: 'SALARY.EXPORT', field: 'salaryExport', label: 'Xuất báo cáo' },
+        ]
+    },
+    {
+        key: 'contract', label: 'Hợp đồng', icon: 'fa-file-contract', color: 'text-orange-500',
+        permissions: [
+            { key: 'CONTRACT.VIEW', field: 'contractView', label: 'Xem hợp đồng' },
+            { key: 'CONTRACT.CREATE', field: 'contractCreate', label: 'Tạo hợp đồng' },
+            { key: 'CONTRACT.EDIT', field: 'contractEdit', label: 'Sửa hợp đồng' },
+            { key: 'CONTRACT.DELETE', field: 'contractDelete', label: 'Xóa hợp đồng' },
+            { key: 'CONTRACT.RENEW', field: 'contractRenew', label: 'Gia hạn' },
+        ]
+    },
+    {
+        key: 'leave', label: 'Nghỉ phép', icon: 'fa-calendar-check', color: 'text-teal-500',
+        permissions: [
+            { key: 'LEAVE.APPROVE', field: 'leaveApprove', label: 'Duyệt nghỉ phép' },
+            { key: 'LEAVE.VIEW_ALL', field: 'leaveViewAll', label: 'Xem tất cả' },
+        ]
+    },
+    {
+        key: 'attendance', label: 'Chấm công', icon: 'fa-clock', color: 'text-cyan-500',
+        permissions: [
+            { key: 'ATTENDANCE.VIEW_ALL', field: 'attendanceViewAll', label: 'Xem tất cả' },
+            { key: 'ATTENDANCE.EDIT', field: 'attendanceEdit', label: 'Chỉnh sửa' },
+        ]
+    },
+    {
+        key: 'review', label: 'Đánh giá', icon: 'fa-star', color: 'text-yellow-500',
+        permissions: [
+            { key: 'REVIEW.VIEW_ALL', field: 'reviewViewAll', label: 'Xem tất cả' },
+            { key: 'REVIEW.CREATE', field: 'reviewCreate', label: 'Tạo đánh giá' },
+            { key: 'REVIEW.APPROVE', field: 'reviewApprove', label: 'Duyệt đánh giá' },
+        ]
+    },
+    {
+        key: 'calendar', label: 'Lịch', icon: 'fa-calendar-days', color: 'text-purple-500',
+        permissions: [
+            { key: 'CALENDAR.VIEW', field: 'calendarView', label: 'Xem lịch' },
+            { key: 'CALENDAR.MANAGE', field: 'calendarManage', label: 'Quản lý sự kiện' },
+        ]
+    },
+    {
+        key: 'chat', label: 'Chat', icon: 'fa-comments', color: 'text-green-500',
+        permissions: [
+            { key: 'CHAT.CREATE_GROUP', field: 'chatCreateGroup', label: 'Tạo nhóm' },
+            { key: 'CHAT.SEND_MESSAGE', field: 'chatSendMessage', label: 'Gửi tin nhắn' },
+            { key: 'CHAT.SHARE_FILE', field: 'chatShareFile', label: 'Chia sẻ file' },
+        ]
+    },
+    {
+        key: 'storage', label: 'Lưu trữ', icon: 'fa-folder', color: 'text-amber-500',
+        permissions: [
+            { key: 'STORAGE.UPLOAD', field: 'storageUpload', label: 'Upload file' },
+            { key: 'STORAGE.DELETE', field: 'storageDelete', label: 'Xóa file' },
+            { key: 'STORAGE.SHARE', field: 'storageShare', label: 'Chia sẻ' },
+            { key: 'STORAGE.MANAGE_FOLDERS', field: 'storageManageFolders', label: 'Quản lý thư mục' },
+        ]
+    },
+    {
+        key: 'timetracking', label: 'Time Tracking', icon: 'fa-stopwatch', color: 'text-cyan-600',
+        permissions: [
+            { key: 'TIMETRACKING.LOG', field: 'timetrackingLog', label: 'Log time' },
+            { key: 'TIMETRACKING.VIEW_ALL', field: 'timetrackingViewAll', label: 'Xem tất cả' },
+        ]
+    },
+    {
+        key: 'other', label: 'Khác', icon: 'fa-puzzle-piece', color: 'text-gray-500',
+        permissions: [
+            { key: 'OKR.MANAGE', field: 'okrManage', label: 'Quản lý OKR' },
+            { key: 'ONBOARDING.MANAGE', field: 'onboardingManage', label: 'Quản lý Onboarding' },
+            { key: 'ANALYTICS.VIEW', field: 'analyticsView', label: 'Xem Analytics' },
+            { key: 'AI.CHAT', field: 'aiChat', label: 'Chat với AI' },
+            { key: 'AI.CREATE_ISSUES', field: 'aiCreateIssues', label: 'AI tạo Issues' },
+        ]
+    },
+];
+
+function MemberPermissionEditor({ permissions, onToggle, isUpdating }) {
+    const [openGroup, setOpenGroup] = useState(null);
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-3">
+                <i className="fa-solid fa-shield-halved text-indigo-500" />
+                <h4 className="font-semibold text-gray-800 text-sm">Phân quyền chi tiết</h4>
+                <span className="text-xs text-gray-400">— Click vào module để mở/đóng</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {PERMISSION_GROUPS.map(group => {
+                    const isOpen = openGroup === group.key;
+                    const enabledCount = group.permissions.filter(p => permissions[p.field]).length;
+                    const totalCount = group.permissions.length;
+
+                    return (
+                        <div key={group.key} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            {/* Group Header */}
+                            <button
+                                onClick={() => setOpenGroup(isOpen ? null : group.key)}
+                                className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <i className={`fa-solid ${group.icon} ${group.color} text-sm`} />
+                                    <span className="font-medium text-gray-800 text-sm">{group.label}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${enabledCount === totalCount ? 'bg-green-100 text-green-700' :
+                                        enabledCount === 0 ? 'bg-gray-100 text-gray-500' :
+                                            'bg-amber-100 text-amber-700'
+                                        }`}>
+                                        {enabledCount}/{totalCount}
+                                    </span>
+                                    <i className={`fa-solid fa-chevron-${isOpen ? 'up' : 'down'} text-[10px] text-gray-400`} />
+                                </div>
+                            </button>
+
+                            {/* Permissions List */}
+                            {isOpen && (
+                                <div className="border-t border-gray-100 divide-y divide-gray-50">
+                                    {group.permissions.map(perm => (
+                                        <div key={perm.key} className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-xs text-gray-700">{perm.label}</span>
+                                            <button
+                                                onClick={() => onToggle(perm.key, permissions[perm.field])}
+                                                disabled={isUpdating}
+                                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${permissions[perm.field] ? 'bg-indigo-600' : 'bg-gray-200'
+                                                    }`}
+                                            >
+                                                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm ${permissions[perm.field] ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                                                    }`} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -407,15 +685,6 @@ function ModulesSettings({ workspace }) {
                             disabled={updateMutation.isPending}
                         />
                         <ToggleRow
-                            icon="fa-layer-group"
-                            iconColor="text-purple-500"
-                            title="Ma trận kỹ năng"
-                            description="Quản lý skills và levels của nhân viên"
-                            enabled={settings.skillsMatrixEnabled !== false}
-                            onToggle={() => handleToggle('skillsMatrixEnabled')}
-                            disabled={updateMutation.isPending}
-                        />
-                        <ToggleRow
                             icon="fa-user-graduate"
                             iconColor="text-pink-500"
                             title="Onboarding"
@@ -479,15 +748,6 @@ function ModulesSettings({ workspace }) {
                             description="Quản lý sự kiện, cuộc họp"
                             enabled={settings.calendarEnabled !== false}
                             onToggle={() => handleToggle('calendarEnabled')}
-                            disabled={updateMutation.isPending}
-                        />
-                        <ToggleRow
-                            icon="fa-link"
-                            iconColor="text-indigo-500"
-                            title="Webhook Integration"
-                            description="Kết nối với hệ thống bên ngoài (Slack, Discord, etc.)"
-                            enabled={settings.webhookEnabled === true}
-                            onToggle={() => handleToggle('webhookEnabled')}
                             disabled={updateMutation.isPending}
                         />
                     </div>

@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
 @FeatureFlag("CHAT")
+@Transactional(readOnly = true)
 public class ChatRoomController {
 
     private final ChatRoomService chatRoomService;

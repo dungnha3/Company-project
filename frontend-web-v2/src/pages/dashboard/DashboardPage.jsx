@@ -281,7 +281,7 @@ function CompanyDashboard({ user, greeting, currentWorkspace }) {
                 <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     <div>
                         <h1 className="text-3xl font-bold mb-2">
-                            {greeting}, {user?.fullName?.split(' ').pop() || 'Admin'}! 👋
+                            {greeting}, {user?.fullName?.split(' ').pop() || user?.username}! 👋
                         </h1>
                         <p className="text-indigo-100 text-lg">
                             {formatDate(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -649,7 +649,7 @@ function InviteItem({ invite }) {
             </div>
             <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-800 truncate">{invite.companyName}</p>
-                <p className="text-xs text-gray-500">{invite.role || 'Member'}</p>
+                <p className="text-xs text-gray-500">{invite.role === 'OWNER' ? 'Chủ sở hữu' : invite.role === 'COMPANY_ADMIN' ? 'Quản trị viên' : 'Thành viên'}</p>
             </div>
             <div className="flex gap-1">
                 <button
@@ -779,9 +779,9 @@ function FirstStepsWidget({ stats }) {
         },
         {
             id: 'member',
-            label: 'Thêm thành viên',
+            label: 'Mời thành viên',
             done: (stats?.totalEmployees ?? 0) > 1,
-            link: '/app/hr/employees',
+            link: '/app/company/settings',
             icon: 'fa-user-plus'
         },
         {

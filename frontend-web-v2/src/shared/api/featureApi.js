@@ -135,16 +135,9 @@ export const aiApi = {
 };
 
 /**
- * Webhook API Service
+ * Webhook API Service (deprecated - module removed from BE)
  */
-export const webhookApi = {
-    list: async () => (await apiClient.get(ENDPOINTS.INTEGRATION.WEBHOOKS)).data,
-    getById: async (id) => (await apiClient.get(ENDPOINTS.INTEGRATION.WEBHOOK_BY_ID(id))).data,
-    create: async (data) => (await apiClient.post(ENDPOINTS.INTEGRATION.WEBHOOKS, data)).data,
-    update: async (id, data) => (await apiClient.put(ENDPOINTS.INTEGRATION.WEBHOOK_BY_ID(id), data)).data,
-    delete: async (id) => apiClient.delete(ENDPOINTS.INTEGRATION.WEBHOOK_BY_ID(id)),
-    test: async (id) => (await apiClient.post(ENDPOINTS.INTEGRATION.TEST_WEBHOOK(id))).data,
-};
+export const webhookApi = {};
 
 /**
  * Automation API Service (deprecated)

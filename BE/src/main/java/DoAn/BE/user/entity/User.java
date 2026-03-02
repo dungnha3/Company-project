@@ -89,6 +89,22 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @JsonIgnore
     private String fcmToken;
 
+    @Column(name = "two_factor_secret")
+    @JsonIgnore
+    private String twoFactorSecret;
+
+    @Column(name = "two_factor_enabled")
+    @Builder.Default
+    private Boolean twoFactorEnabled = false;
+
+    @Column(name = "two_factor_backup_codes", length = 500)
+    @JsonIgnore
+    private String twoFactorBackupCodes;
+
+    @jakarta.persistence.Embedded
+    @Builder.Default
+    private NotificationSettings notificationSettings = new NotificationSettings();
+
     @OneToMany(mappedBy = "user")
     @BatchSize(size = 20)
     @Builder.Default

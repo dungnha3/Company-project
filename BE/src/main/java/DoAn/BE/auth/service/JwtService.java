@@ -161,6 +161,14 @@ public class JwtService {
         }
     }
 
+    // Generate short-lived temp token for 2FA verification (5 minutes)
+    public String generateTempToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getUserId());
+        claims.put("type", "2fa_temp");
+        return createToken(claims, user.getUsername(), 5 * 60 * 1000L); // 5 minutes
+    }
+
     public long getJwtExpiration() {
         return jwtExpiration;
     }

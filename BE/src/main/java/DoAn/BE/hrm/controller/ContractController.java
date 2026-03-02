@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -30,6 +31,7 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/contracts")
 @FeatureFlag("CONTRACT")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ContractController {
 
     private final ContractService contractService;
@@ -39,7 +41,7 @@ public class ContractController {
 
     private void validateContractAccess(Long employeeId, User currentUser) {
         try {
-            accessControlService.checkHrViewPermission();
+            accessControlService.checkContractViewPermission();
             return;
         } catch (ForbiddenException ignored) {
             // Fall through to self-view check
@@ -83,7 +85,7 @@ public class ContractController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteContract(@PathVariable Long id) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkContractDeletePermission();
         contractService.deleteContract(id);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted contract successfully");
@@ -143,7 +145,7 @@ public class ContractController {
 
     @PostMapping("/update-expired")
     public ResponseEntity<Map<String, Object>> updateExpiredContracts() {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkContractEditPermission();
         int count = contractService.updateExpiredContracts();
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Updated expired contracts successfully");

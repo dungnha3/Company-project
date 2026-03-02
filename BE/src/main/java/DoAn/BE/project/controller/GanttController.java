@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Gantt Chart", description = "Gantt chart visualization and management")
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class GanttController {
 
     private final GanttService ganttService;

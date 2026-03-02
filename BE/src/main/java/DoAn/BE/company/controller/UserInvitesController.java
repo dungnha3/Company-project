@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/invites")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class UserInvitesController {
 
     private final CompanyMemberRepository memberRepository;

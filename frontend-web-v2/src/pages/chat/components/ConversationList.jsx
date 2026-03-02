@@ -97,7 +97,7 @@ export default function ConversationList({ selectedRoomId, onSelectRoom, onCreat
 
 function RoomItem({ room, isSelected, onClick }) {
     const getRoomIcon = () => {
-        if (room.type === 'DIRECT') {
+        if (room.roomType === 'DIRECT') {
             return room.otherUser?.avatar ? (
                 <Avatar src={room.otherUser.avatar} name={room.otherUser?.name} className="w-full h-full" />
             ) : (

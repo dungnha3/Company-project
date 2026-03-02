@@ -75,7 +75,7 @@ export default function OrgChartPage() {
                         onClick={() => setZoomLevel(1)}
                         className="btn-ghost text-sm"
                     >
-                        <i className="fa-solid fa-arrows-rotate mr-1" /> Reset
+                        <i className="fa-solid fa-arrows-rotate mr-1" /> Đặt lại
                     </button>
                 </div>
             </div>

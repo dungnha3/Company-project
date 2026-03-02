@@ -190,7 +190,7 @@ public class LeaveRequestService {
 
     public org.springframework.data.domain.Page<LeaveRequest> getLeaveRequestsByEmployeePaged(Long employeeId,
             User currentUser, org.springframework.data.domain.Pageable pageable) {
-        if (!accessControlService.hasPermission("leave.viewAll")) {
+        if (!accessControlService.hasPermission("LEAVE.VIEW_ALL")) {
             Employee employee = employeeRepository.findById(employeeId)
                     .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
             if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {

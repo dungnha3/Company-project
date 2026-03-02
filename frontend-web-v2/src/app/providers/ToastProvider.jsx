@@ -19,7 +19,7 @@ export function ToastProvider({ children }) {
     const info = useCallback((message) => showToast(message, 'info'), [showToast]);
 
     return (
-        <ToastContext.Provider value={{ success, error, warning, info }}>
+        <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
             {children}
             {/* Toast Container - aria-live for accessibility */}
             <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite" aria-atomic="true">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWebSocketStore } from '@shared/stores/websocketStore';
 import { useAuthStore } from '@shared/stores/authStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ConversationList from './components/ConversationList';
 import ChatWindow from './components/ChatWindow';
 import CreateRoomModal from './components/CreateRoomModal';
@@ -9,6 +10,8 @@ import RoomInfoPanel from './components/RoomInfoPanel';
 export default function ChatPage() {
     const { connect, disconnect, connected } = useWebSocketStore();
     const { token } = useAuthStore();
+    const { hasPermission } = useWorkspaceStore();
+    const canCreateGroup = hasPermission('chatCreateGroup');
     const [selectedRoomId, setSelectedRoomId] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
@@ -38,7 +41,7 @@ export default function ChatPage() {
             <ConversationList
                 selectedRoomId={selectedRoomId}
                 onSelectRoom={setSelectedRoomId}
-                onCreateRoom={() => setShowCreateModal(true)}
+                onCreateRoom={canCreateGroup ? () => setShowCreateModal(true) : undefined}
             />
 
             {/* Main Chat Area */}

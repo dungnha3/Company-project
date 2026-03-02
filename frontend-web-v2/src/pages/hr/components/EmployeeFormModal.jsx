@@ -86,7 +86,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
             }
         },
         onSuccess: () => {
-            showToast(isEditMode ? 'Cập nhật thành công!' : 'Thêm nhân viên thành công!', 'success');
+            showToast(isEditMode ? 'Cập nhật thành công!' : 'Tạo hồ sơ nhân viên thành công!', 'success');
             queryClient.invalidateQueries(['employees']);
             onClose();
             setFormData(INITIAL_STATE);
@@ -140,7 +140,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'Cập nhật hồ sơ nhân viên' : 'Thêm nhân viên mới'}</h2>
+                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'Cập nhật hồ sơ nhân viên' : 'Tạo hồ sơ nhân viên mới'}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <i className="fa-solid fa-xmark text-xl" />
                     </button>

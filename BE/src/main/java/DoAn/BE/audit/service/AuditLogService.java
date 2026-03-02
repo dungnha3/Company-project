@@ -126,11 +126,6 @@ public class AuditLogService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditLog> getAdminActionsOnManagers(Pageable pageable) {
-        return auditLogRepository.findAdminActionsOnManagers(pageable);
-    }
-
-    @Transactional(readOnly = true)
     public Page<AuditLog> getRecentLogs(Pageable pageable) {
         if (pageable.getSort().isUnsorted()) {
             pageable = org.springframework.data.domain.PageRequest.of(

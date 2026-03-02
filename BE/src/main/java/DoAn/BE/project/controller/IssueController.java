@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class IssueController {
 
     private final IssueService issueService;

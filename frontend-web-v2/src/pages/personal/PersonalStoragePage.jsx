@@ -238,7 +238,7 @@ export default function PersonalStoragePage() {
                 </div>
             )}
 
-            {/* Breadcrumb - TODO: implement folder path tracking */}
+            {/* Breadcrumb */}
             {currentFolder && (
                 <div className="flex items-center gap-2 text-sm">
                     <button

@@ -40,6 +40,7 @@ public class AuthService {
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final org.springframework.web.reactive.function.client.WebClient webClient;
     private final DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository;
+    private final TwoFactorService twoFactorService;
     private final int maxLoginAttempts;
     private final int lockoutDurationMinutes;
     private final String googleTokenInfoUrl;
@@ -56,6 +57,7 @@ public class AuthService {
             DoAn.BE.audit.service.AuditLogService auditLogService,
             org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder,
             DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository,
+            TwoFactorService twoFactorService,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.max-attempts:5}") int maxLoginAttempts,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.lockout-minutes:15}") int lockoutDurationMinutes,
             @org.springframework.beans.factory.annotation.Value("${app.security.google.token-info-url:https://oauth2.googleapis.com/tokeninfo}") String googleTokenInfoUrl,
@@ -73,6 +75,7 @@ public class AuthService {
         this.auditLogService = auditLogService;
         this.webClient = webClientBuilder.build();
         this.personalWorkspaceRepository = personalWorkspaceRepository;
+        this.twoFactorService = twoFactorService;
         this.maxLoginAttempts = maxLoginAttempts;
         this.lockoutDurationMinutes = lockoutDurationMinutes;
         this.googleTokenInfoUrl = googleTokenInfoUrl;
@@ -94,6 +97,17 @@ public class AuthService {
             recordFailedLogin(request.getUsername(), ipAddress, "Mật khẩu không chính xác");
             throw new UnauthorizedException("Thông tin đăng nhập không chính xác");
         }
+
+        // 2FA check — if enabled, return partial response requiring TOTP code
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            clearFailedAttempts(request.getUsername(), ipAddress);
+            String tempToken = jwtService.generateTempToken(user);
+            AuthResponse twoFactorResponse = new AuthResponse();
+            twoFactorResponse.setRequiresTwoFactor(true);
+            twoFactorResponse.setTempToken(tempToken);
+            return twoFactorResponse;
+        }
+
         clearFailedAttempts(request.getUsername(), ipAddress);
         updateUserLoginStatus(user);
 
@@ -115,6 +129,64 @@ public class AuthService {
             accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
             log.info("User {} auto-selected company {} with role {}",
                     user.getUsername(), singleMember.getCompany().getName(), primaryRole);
+        } else {
+            accessToken = jwtService.generateToken(user);
+        }
+        String refreshToken = createRefreshToken(user);
+
+        return buildAuthResponse(accessToken, refreshToken, user, memberships, selectedCompanyId);
+    }
+
+    @Transactional
+    public AuthResponse verify2fa(String tempToken, String code, String ipAddress, String userAgent) {
+        if (tempToken == null || code == null) {
+            throw new BadRequestException("Token và mã xác thực không được để trống");
+        }
+
+        // Validate temp token
+        if (!jwtService.validateToken(tempToken)) {
+            throw new UnauthorizedException("Token tạm đã hết hạn. Vui lòng đăng nhập lại.");
+        }
+
+        io.jsonwebtoken.Claims claims = jwtService.extractClaim(tempToken, c -> c);
+        if (!"2fa_temp".equals(claims.get("type"))) {
+            throw new UnauthorizedException("Token không hợp lệ");
+        }
+
+        Long userId = claims.get("userId", Long.class);
+        User user = userService.getUserById(userId);
+
+        // Verify TOTP code or backup code
+        boolean verified = twoFactorService.verifyCode(user.getTwoFactorSecret(), code);
+
+        // If TOTP fails, try backup code
+        if (!verified && user.getTwoFactorBackupCodes() != null) {
+            String remainingCodes = twoFactorService.verifyBackupCode(user.getTwoFactorBackupCodes(), code);
+            if (remainingCodes != null) {
+                verified = true;
+                user.setTwoFactorBackupCodes(remainingCodes);
+                userService.save(user);
+                log.info("User {} used a backup code for 2FA", user.getUsername());
+            }
+        }
+
+        if (!verified) {
+            throw new UnauthorizedException("Mã xác thực không đúng");
+        }
+
+        // Complete login flow
+        updateUserLoginStatus(user);
+        sessionService.createSession(user, ipAddress, userAgent);
+        List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
+
+        String accessToken;
+        Long selectedCompanyId = null;
+        if (memberships.size() == 1) {
+            CompanyMember singleMember = memberships.get(0);
+            selectedCompanyId = singleMember.getCompany().getCompanyId();
+            CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                    .orElse(CompanyRole.EMPLOYEE);
+            accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
         } else {
             accessToken = jwtService.generateToken(user);
         }
@@ -390,6 +462,7 @@ public class AuthService {
         userInfo.setIsActive(user.getIsActive());
         userInfo.setIsSystemAdmin(user.isSystemAdminAccount()); // [SAAS] System Admin flag
         userInfo.setPersonalPlan(user.getPersonalPlan()); // [NEW] Personal plan
+        userInfo.setTwoFactorEnabled(Boolean.TRUE.equals(user.getTwoFactorEnabled()));
         response.setUser(userInfo);
         personalWorkspaceRepository.findByUser_UserId(user.getUserId())
                 .ifPresent(pw -> {

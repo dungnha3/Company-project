@@ -150,7 +150,7 @@ public class CompanyService {
         if (companyId == null) {
             throw new BadRequestException("ID công ty không được để trống");
         }
-        accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
+        accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
 
         CompanySettings settings = companySettingsRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));

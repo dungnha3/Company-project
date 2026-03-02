@@ -53,7 +53,7 @@ public class AttendanceService {
     }
 
     public Attendance createAttendance(AttendanceRequest request, User currentUser) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkAttendanceEditPermission();
 
         Long employeeId = request.getEmployeeId();
         if (employeeId == null) {
@@ -82,7 +82,7 @@ public class AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
 
         try {
-            accessControlService.checkHrViewPermission();
+            accessControlService.checkAttendanceViewAllPermission();
             return attendance;
         } catch (ForbiddenException ignored) {
             // Fall through to self-view check
@@ -96,7 +96,7 @@ public class AttendanceService {
     }
 
     public List<Attendance> getAllAttendance(User currentUser) {
-        accessControlService.checkHrViewPermission();
+        accessControlService.checkAttendanceViewAllPermission();
 
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -107,7 +107,7 @@ public class AttendanceService {
 
     public org.springframework.data.domain.Page<Attendance> getAllAttendancePaged(User currentUser,
             org.springframework.data.domain.Pageable pageable) {
-        accessControlService.checkHrViewPermission();
+        accessControlService.checkAttendanceViewAllPermission();
 
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) {
@@ -117,7 +117,7 @@ public class AttendanceService {
     }
 
     public Attendance updateAttendance(Long id, AttendanceRequest request, User currentUser) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkAttendanceEditPermission();
 
         log.info("HR Manager {} updating attendance ID: {}", currentUser.getUsername(), id);
 
@@ -204,7 +204,7 @@ public class AttendanceService {
     }
 
     public void deleteAttendance(Long id, User currentUser) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkAttendanceEditPermission();
 
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
@@ -218,7 +218,7 @@ public class AttendanceService {
 
         boolean hasViewPermission;
         try {
-            accessControlService.checkHrViewPermission();
+            accessControlService.checkAttendanceViewAllPermission();
             hasViewPermission = true;
         } catch (ForbiddenException e) {
             hasViewPermission = false;
@@ -243,7 +243,7 @@ public class AttendanceService {
 
         boolean hasViewPermission;
         try {
-            accessControlService.checkHrViewPermission();
+            accessControlService.checkAttendanceViewAllPermission();
             hasViewPermission = true;
         } catch (ForbiddenException e) {
             hasViewPermission = false;
@@ -259,6 +259,7 @@ public class AttendanceService {
 
         return attendanceRepository.findByEmployee_EmployeeIdOrderByAttendanceDateDesc(employeeId, pageable);
     }
+
     @Transactional(readOnly = true)
     public List<Attendance> getAttendanceByDateRange(LocalDate startDate, LocalDate endDate) {
         Long companyId = TenantContext.getCompanyId();
@@ -266,6 +267,7 @@ public class AttendanceService {
             return java.util.Collections.emptyList();
         return attendanceRepository.findByAttendanceDateBetweenAndCompanyId(startDate, endDate, companyId);
     }
+
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<Attendance> getAttendanceByDateRangePaged(LocalDate startDate,
             LocalDate endDate, org.springframework.data.domain.Pageable pageable) {
@@ -315,7 +317,7 @@ public class AttendanceService {
         } else {
             boolean hasEditPermission;
             try {
-                accessControlService.checkHrEditPermission();
+                accessControlService.checkAttendanceEditPermission();
                 hasEditPermission = true;
             } catch (ForbiddenException e) {
                 hasEditPermission = false;

@@ -30,13 +30,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
                      "AND a.createdAt BETWEEN :startDate AND :endDate")
        Page<AuditLog> findCriticalLogsBetween(@Param("startDate") LocalDateTime startDate,
                      @Param("endDate") LocalDateTime endDate, Pageable pageable);
-       @Query("SELECT DISTINCT a FROM AuditLog a " +
-                     "JOIN a.actor.memberships mActor " +
-                     "LEFT JOIN a.targetUser.memberships mTarget " +
-                     "WHERE 'ADMIN' MEMBER OF mActor.roles " +
-                     "AND a.targetUser IS NOT NULL " +
-                     "AND ('MANAGER_HR' MEMBER OF mTarget.roles OR 'MANAGER_ACCOUNTING' MEMBER OF mTarget.roles OR 'MANAGER_PROJECT' MEMBER OF mTarget.roles)")
-       Page<AuditLog> findAdminActionsOnManagers(Pageable pageable);
+
        @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "actor", "targetUser" })
        @Query("SELECT a FROM AuditLog a")
        Page<AuditLog> findAllLogs(Pageable pageable);

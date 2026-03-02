@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ import java.util.List;
 @RequestMapping("/api/workspaces")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 @RestController
 @RequestMapping("/api/sysadmin/companies")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SysAdminCompanyController {
 
     private final CompanyAdminService companyAdminService;

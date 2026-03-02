@@ -1,7 +1,15 @@
 package DoAn.BE.user.controller;
 
-import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,18 +26,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.user.dto.UpdatePasswordRequest;
 import DoAn.BE.user.dto.UserDTO;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.mapper.UserMapper;
 import DoAn.BE.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Đây là alias controller cho frontend gọi /api/users thay vì /api/accounts
+// Unified User Controller — merged from AccountController + UsersController
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class UsersController {
 
     private final UserService userService;
@@ -38,7 +50,6 @@ public class UsersController {
     private final DoAn.BE.auth.service.AuthService authService;
     private final DoAn.BE.company.repository.CompanyMemberRepository companyMemberRepository;
     private final DoAn.BE.company.repository.CompanyRepository companyRepository;
-    private final DoAn.BE.company.service.RoleTemplateService roleTemplateService;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final DoAn.BE.company.service.SubscriptionService subscriptionService;
 
@@ -84,7 +95,7 @@ public class UsersController {
                 member.setCompany(company);
                 member.getRoles().add(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
                 member.setPermissions(
-                        roleTemplateService.getTemplate(java.util.Set.of(DoAn.BE.company.entity.CompanyRole.EMPLOYEE)));
+                        DoAn.BE.company.entity.UserPermissions.defaultFor(DoAn.BE.company.entity.CompanyRole.EMPLOYEE));
                 member.setInvitedAt(java.time.LocalDateTime.now());
                 member.setIsActive(true);
                 companyMemberRepository.save(member);
@@ -117,32 +128,41 @@ public class UsersController {
     }
 
     @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers(
+    public ResponseEntity<Page<UserDTO>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) Long companyId,
             @AuthenticationPrincipal User currentUser) {
-
-        log.debug("=== GET /api/users ===");
-        log.debug("currentUser: {}", currentUser != null ? currentUser.getUsername() : "NULL");
 
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
         // System Admin có thể xem tất cả
         if (currentUser.isSystemAdminAccount()) {
-            List<User> users = userService.getAllUsers();
-            return ResponseEntity.ok(userMapper.toDTOList(users));
+            Page<User> users;
+            if (companyId != null) {
+                users = userService.getUsersByCompanyId(companyId, pageable);
+            } else {
+                users = userService.getAllUsers(pageable);
+            }
+            return ResponseEntity.ok(eagerMapPage(users));
         }
 
         // Company users with hrViewList permission can view all
         try {
             accessControlService.checkHrViewPermission();
-            List<User> users = userService.getUsersByCurrentCompanyWithoutPaging();
-            return ResponseEntity.ok(userMapper.toDTOList(users));
+            Page<User> users = userService.getUsersByCurrentCompany(pageable);
+            return ResponseEntity.ok(eagerMapPage(users));
         } catch (ForbiddenException ignored) {
             // no permission
         }
 
-        log.warn("User {} không có quyền truy cập /api/users", currentUser.getUsername());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
@@ -340,5 +360,138 @@ public class UsersController {
                 null);
 
         return ResponseEntity.ok(userMapper.toDTO(user));
+    }
+
+    // ===== Merged from AccountController =====
+
+    @PutMapping("/{userId}/password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdatePasswordRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (!currentUser.getUserId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        userService.changePassword(userId, request, currentUser);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Đổi mật khẩu thành công");
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{userId}/status")
+    public ResponseEntity<Map<String, String>> toggleUserStatus(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        boolean hasEditPermission;
+        try {
+            accessControlService.checkHrEditPermission();
+            hasEditPermission = true;
+        } catch (ForbiddenException e) {
+            hasEditPermission = false;
+        }
+        if (!currentUser.isSystemAdminAccount() && !hasEditPermission) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        User user = userService.toggleUserStatus(userId, currentUser);
+        Map<String, String> response = new HashMap<>();
+        response.put("message",
+                user.getIsActive() ? "Kích hoạt tài khoản thành công" : "Vô hiệu hóa tài khoản thành công");
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{userId}/role")
+    public ResponseEntity<Map<String, String>> updateUserRole(
+            @PathVariable Long userId,
+            @RequestParam Long companyId,
+            @RequestParam String role,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null || !currentUser.isSystemAdminAccount()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        userService.updateUserRoleInCompany(userId, companyId, role, currentUser);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Cập nhật role thành công");
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{userId}/system-admin")
+    public ResponseEntity<Map<String, String>> updateSystemAdminStatus(
+            @PathVariable Long userId,
+            @RequestParam Boolean isSystemAdmin,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null || !currentUser.isSystemAdminAccount()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        userService.updateSystemAdminStatus(userId, isSystemAdmin, currentUser);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", isSystemAdmin ? "Đã cấp quyền System Admin" : "Đã thu hồi quyền System Admin");
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/role/{role}")
+    public ResponseEntity<List<UserDTO>> getUsersByRole(
+            @PathVariable CompanyRole role,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        List<User> users = userService.getUsersByRole(role);
+        return ResponseEntity.ok(userMapper.toDTOList(users));
+    }
+
+    @GetMapping("/count/role/{role}")
+    public ResponseEntity<Map<String, Long>> countUsersByRole(
+            @PathVariable CompanyRole role,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        Map<String, Long> response = new HashMap<>();
+        response.put("count", userService.countUsersByRole(role));
+        response.put("role", (long) role.ordinal());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/count/online")
+    public ResponseEntity<Map<String, Long>> countOnlineUsers(
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            accessControlService.checkHrViewPermission();
+        } catch (ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        Map<String, Long> response = new HashMap<>();
+        response.put("count", userService.countOnlineUsers());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Eagerly map Page<User> to Page<UserDTO> to avoid LazyInitializationException
+     * during JSON serialization
+     */
+    private Page<UserDTO> eagerMapPage(Page<User> users) {
+        List<UserDTO> dtos = users.getContent().stream()
+                .map(userMapper::toDTO)
+                .collect(java.util.stream.Collectors.toList());
+        return new org.springframework.data.domain.PageImpl<>(dtos, users.getPageable(), users.getTotalElements());
     }
 }

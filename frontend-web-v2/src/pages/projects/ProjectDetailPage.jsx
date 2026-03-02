@@ -45,7 +45,7 @@ export default function ProjectDetailPage() {
         ];
 
         if (isProjectFeatureEnabled(settings, 'analytics')) {
-            baseTabs.push({ id: 'analytics', label: 'Analytics', icon: 'fa-chart-line' });
+            baseTabs.push({ id: 'analytics', label: 'Thống kê', icon: 'fa-chart-line' });
         }
         // Webhook integration replaces removed Automation module
         if (isProjectFeatureEnabled(settings, 'webhook')) {
@@ -84,7 +84,7 @@ export default function ProjectDetailPage() {
                         )}
                         {showTimelogs && (
                             <Link to="/app/me/timelogs" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                                <i className="fa-solid fa-clock mr-2" />Time Logs
+                                <i className="fa-solid fa-clock mr-2" />Nhật ký giờ
                             </Link>
                         )}
                         <ExportDropdown projectId={project.projectId} projectName={project.name} />

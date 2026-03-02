@@ -21,17 +21,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("LEAVE")
+@Transactional(readOnly = true)
 public class LeaveRequestController {
 
     private final LeaveRequestService leaveRequestService;
     private final LeaveRequestMapper leaveRequestMapper;
 
+    @Transactional
     @PostMapping
     public ResponseEntity<LeaveRequestDTO> createLeaveRequest(
             @Valid @RequestBody LeaveRequestRequest request,
@@ -57,6 +60,7 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<LeaveRequestDTO> updateLeaveRequest(
             @PathVariable Long id,
@@ -66,6 +70,7 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteLeaveRequest(
             @PathVariable Long id,
@@ -121,6 +126,7 @@ public class LeaveRequestController {
     }
 
     // [Approve leave request] (Permission: leaveApprove)
+    @Transactional
     @PatchMapping("/{id}/approve")
     public ResponseEntity<LeaveRequestDTO> approveLeaveRequest(
             @PathVariable Long id,
@@ -130,6 +136,7 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
+    @Transactional
     @PatchMapping("/{id}/reject")
     public ResponseEntity<LeaveRequestDTO> rejectLeaveRequest(
             @PathVariable Long id,

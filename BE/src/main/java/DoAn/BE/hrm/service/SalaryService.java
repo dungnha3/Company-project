@@ -170,6 +170,24 @@ public class SalaryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Salary not found"));
     }
 
+    /**
+     * Verify the salary belongs to the current tenant (company).
+     * Prevents cross-tenant modification attacks.
+     */
+    private void verifyCompanyOwnership(Salary salary) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            throw new ForbiddenException("Company context is required");
+        }
+        Long salaryCompanyId = salary.getEmployee() != null
+                && salary.getEmployee().getCompany() != null
+                        ? salary.getEmployee().getCompany().getCompanyId()
+                        : null;
+        if (salaryCompanyId == null || !salaryCompanyId.equals(companyId)) {
+            throw new ForbiddenException("Access denied: salary does not belong to your company");
+        }
+    }
+
     public org.springframework.data.domain.Page<Salary> getAllSalariesPaged(User currentUser,
             org.springframework.data.domain.Pageable pageable) {
         accessControlService.checkSalaryViewPermission();
@@ -183,6 +201,7 @@ public class SalaryService {
         accessControlService.checkSalaryCalculatePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
 
         if (request.getMonth() != null)
             salary.setMonth(request.getMonth());
@@ -226,6 +245,7 @@ public class SalaryService {
         accessControlService.checkSalaryCalculatePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
         salaryRepository.delete(salary);
     }
 
@@ -272,6 +292,7 @@ public class SalaryService {
         accessControlService.checkSalaryApprovePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
         salary.setPaymentStatus(Salary.PaymentStatus.PAID);
         Salary saved = salaryRepository.save(salary);
 
@@ -319,6 +340,7 @@ public class SalaryService {
         accessControlService.checkSalaryApprovePermission();
 
         Salary salary = getSalaryById(id);
+        verifyCompanyOwnership(salary);
         salary.setPaymentStatus(Salary.PaymentStatus.CANCELLED);
         return salaryRepository.save(salary);
     }

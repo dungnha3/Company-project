@@ -42,10 +42,10 @@ export function EmptyEmployees({ onAdd }) {
         <EmptyState
             icon="fa-users"
             title="Chưa có nhân viên nào"
-            description="Bắt đầu bằng cách thêm nhân viên đầu tiên vào hệ thống."
+            description="Bắt đầu bằng cách tạo hồ sơ nhân viên đầu tiên."
             action={onAdd && (
                 <button onClick={onAdd} className="btn-primary">
-                    <i className="fa-solid fa-plus mr-2" />Thêm nhân viên
+                    <i className="fa-solid fa-plus mr-2" />Tạo hồ sơ nhân viên
                 </button>
             )}
         />

@@ -6,6 +6,7 @@ import DoAn.BE.company.dto.InviteRequest;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.company.entity.UserPermissions;
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.notification.service.EmailNotificationService;
@@ -31,7 +32,6 @@ public class InviteService {
     private final CompanyMemberRepository memberRepository;
     private final CompanyRepository companyRepository;
     private final EmailNotificationService emailService;
-    private final RoleTemplateService roleTemplateService;
     private final DoAn.BE.common.service.QuotaService quotaService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
@@ -71,6 +71,25 @@ public class InviteService {
             throw new BadRequestException(
                     "Không thể mời thành viên với vai trò Owner. Sử dụng chức năng chuyển quyền sở hữu.");
         }
+        // [PRIVILEGE ESCALATION GUARD] Chỉ OWNER mới được invite COMPANY_ADMIN
+        if (request.getRole() == CompanyRole.COMPANY_ADMIN) {
+            Long companyId = TenantContext.getCompanyId();
+            // Lấy current user từ SecurityContext
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof DoAn.BE.user.entity.User currentUser) {
+                CompanyMember caller = memberRepository.findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(
+                        currentUser.getUserId(), companyId)
+                        .orElseThrow(() -> new BadRequestException("Không tìm thấy thành viên"));
+                if (!caller.hasAnyRole(CompanyRole.OWNER)) {
+                    throw new DoAn.BE.common.exception.ForbiddenException(
+                            "Chỉ Chủ sở hữu mới có quyền mời Quản trị viên");
+                }
+            } else {
+                throw new DoAn.BE.common.exception.ForbiddenException(
+                        "Không xác định được người dùng hiện tại");
+            }
+        }
     }
 
     private void handleExistingUser(Company company, User user, CompanyRole role) {
@@ -81,7 +100,7 @@ public class InviteService {
         member.setUser(user);
         member.setCompany(company);
         member.getRoles().add(role);
-        member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(role)));
+        member.setPermissions(UserPermissions.defaultFor(role));
         member.setInvitedAt(LocalDateTime.now());
         // invite.
         member.setIsActive(false);
@@ -98,7 +117,7 @@ public class InviteService {
         member.setUser(newUser);
         member.setCompany(company);
         member.getRoles().add(role);
-        member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(role)));
+        member.setPermissions(UserPermissions.defaultFor(role));
         member.setInvitedAt(LocalDateTime.now());
         member.setIsActive(false);
 

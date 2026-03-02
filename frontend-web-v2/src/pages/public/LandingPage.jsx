@@ -253,11 +253,6 @@ export default function LandingPage() {
                             <p className="text-gray-400 text-sm mb-4">
                                 Nền tảng quản trị doanh nghiệp toàn diện cho thời đại số.
                             </p>
-                            <div className="flex gap-4">
-                                <a href="#" className="text-gray-400 hover:text-white transition-colors"><i className="fa-brands fa-facebook text-xl" /></a>
-                                <a href="#" className="text-gray-400 hover:text-white transition-colors"><i className="fa-brands fa-linkedin text-xl" /></a>
-                                <a href="#" className="text-gray-400 hover:text-white transition-colors"><i className="fa-brands fa-youtube text-xl" /></a>
-                            </div>
                         </div>
 
                         {/* Product */}
@@ -266,8 +261,7 @@ export default function LandingPage() {
                             <ul className="space-y-2 text-gray-400 text-sm">
                                 <li><a href="#features" className="hover:text-white transition-colors">Tính năng</a></li>
                                 <li><a href="#pricing" className="hover:text-white transition-colors">Bảng giá</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Changelog</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">API Docs</a></li>
+                                <li><a href="#testimonials" className="hover:text-white transition-colors">Khách hàng</a></li>
                             </ul>
                         </div>
 
@@ -275,10 +269,9 @@ export default function LandingPage() {
                         <div>
                             <h4 className="font-bold mb-4">Doanh nghiệp</h4>
                             <ul className="space-y-2 text-gray-400 text-sm">
-                                <li><a href="#" className="hover:text-white transition-colors">Về chúng tôi</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Tuyển dụng</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Liên hệ</a></li>
+                                <li><a href="#testimonials" className="hover:text-white transition-colors">Về chúng tôi</a></li>
+                                <li><a href="/register" className="hover:text-white transition-colors">Đăng ký dùng thử</a></li>
+                                <li><a href="mailto:support@saas-enterprise.vn" className="hover:text-white transition-colors">Liên hệ</a></li>
                             </ul>
                         </div>
 
@@ -286,16 +279,14 @@ export default function LandingPage() {
                         <div>
                             <h4 className="font-bold mb-4">Hỗ trợ</h4>
                             <ul className="space-y-2 text-gray-400 text-sm">
-                                <li><a href="#" className="hover:text-white transition-colors">Trung tâm trợ giúp</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Điều khoản sử dụng</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Status Page</a></li>
+                                <li><a href="mailto:support@saas-enterprise.vn" className="hover:text-white transition-colors">Trung tâm trợ giúp</a></li>
+                                <li><a href="/login" className="hover:text-white transition-colors">Đăng nhập</a></li>
                             </ul>
                         </div>
                     </div>
 
                     <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <p className="text-gray-500 text-sm">© 2024 SaaS Enterprise. All rights reserved.</p>
+                        <p className="text-gray-500 text-sm">© {new Date().getFullYear()} SaaS Enterprise. All rights reserved.</p>
                         <div className="flex items-center gap-2 text-gray-500 text-sm">
                             <span>Made with</span>
                             <i className="fa-solid fa-heart text-red-500" />

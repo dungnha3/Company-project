@@ -10,11 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import DoAn.BE.common.service.AccessControlService;
 import java.time.LocalDateTime;
+import org.springframework.transaction.annotation.Transactional;
 
 // Chỉ Admin có quyền truy cập
 @RestController
 @RequestMapping("/api/audit-logs")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AuditLogController {
 
     private final AuditLogService auditLogService;
@@ -23,7 +25,7 @@ public class AuditLogController {
     // GET /api/audit-logs
     @GetMapping
     public ResponseEntity<Page<AuditLogDTO>> getRecentLogs(Pageable pageable) {
-        accessControlService.checkAdminPermission();
+        accessControlService.checkCompanyAdminPermission();
         Page<AuditLogDTO> logs = auditLogService.getRecentLogs(pageable).map(AuditLogDTO::fromEntity);
         return ResponseEntity.ok(logs);
     }
@@ -33,7 +35,7 @@ public class AuditLogController {
     public ResponseEntity<Page<AuditLogDTO>> getLogsByActor(
             @PathVariable Long actorId,
             Pageable pageable) {
-        accessControlService.checkAdminPermission();
+        accessControlService.checkCompanyAdminPermission();
         Page<AuditLogDTO> logs = auditLogService.getLogsByActor(actorId, pageable).map(AuditLogDTO::fromEntity);
         return ResponseEntity.ok(logs);
     }
@@ -43,7 +45,7 @@ public class AuditLogController {
     public ResponseEntity<Page<AuditLogDTO>> getLogsByTargetUser(
             @PathVariable Long targetUserId,
             Pageable pageable) {
-        accessControlService.checkAdminPermission();
+        accessControlService.checkCompanyAdminPermission();
         Page<AuditLogDTO> logs = auditLogService.getLogsByTargetUser(targetUserId, pageable)
                 .map(AuditLogDTO::fromEntity);
         return ResponseEntity.ok(logs);
@@ -55,17 +57,10 @@ public class AuditLogController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             Pageable pageable) {
-        accessControlService.checkAdminPermission();
+        accessControlService.checkCompanyAdminPermission();
         Page<AuditLogDTO> logs = auditLogService.getCriticalLogs(startDate, endDate, pageable)
                 .map(AuditLogDTO::fromEntity);
         return ResponseEntity.ok(logs);
     }
 
-    // GET /api/audit-logs/admin-on-managers
-    @GetMapping("/admin-on-managers")
-    public ResponseEntity<Page<AuditLogDTO>> getAdminActionsOnManagers(Pageable pageable) {
-        accessControlService.checkAdminPermission();
-        Page<AuditLogDTO> logs = auditLogService.getAdminActionsOnManagers(pageable).map(AuditLogDTO::fromEntity);
-        return ResponseEntity.ok(logs);
-    }
 }

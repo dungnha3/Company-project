@@ -110,27 +110,41 @@ export default function BillingPage() {
     const { data: billing, isLoading } = useQuery({
         queryKey: ['billing', activeTab, currentWorkspace?.id],
         queryFn: async () => {
-            // Mock data - replace with real API
+            // Use real company data from workspace
+            const plan = activeTab === 'personal' ? (user?.personalPlan || 'FREE') : (currentWorkspace?.plan || 'FREE');
             return {
-                currentPlan: activeTab === 'personal' ? (user?.personalPlan || 'FREE') : (currentWorkspace?.plan || 'FREE'),
+                currentPlan: plan,
                 status: 'active',
-                nextBillingDate: '2026-02-15',
+                nextBillingDate: null,
                 usage: {
-                    members: { used: 24, limit: 100 },
-                    projects: { used: 12, limit: 100 },
-                    storage: { used: 25.6, limit: 100 },
+                    members: { used: currentWorkspace?.memberCount || 0, limit: currentWorkspace?.memberLimit || 5 },
+                    projects: { used: currentWorkspace?.projectCount || 0, limit: currentWorkspace?.projectLimit || 3 },
+                    storage: { used: currentWorkspace?.storageUsedGB || 0, limit: currentWorkspace?.storageLimitGB || 1 },
                 },
             };
         },
     });
 
-    const handleUpgrade = (planId) => {
-        const targetLabel = activeTab === 'personal' ? 'Personal Workspace' : currentWorkspace?.name;
-        toast.info(`Đang xử lý nâng cấp ${planId} cho ${targetLabel}...`);
+    const handleUpgrade = async (planId) => {
+        if (planId === 'ENTERPRISE') {
+            toast.info('Gói Enterprise yêu cầu tư vấn riêng. Vui lòng liên hệ support@saas-enterprise.vn để được hỗ trợ.');
+            return;
+        }
+        try {
+            await apiClient.put(ENDPOINTS.SYSADMIN.COMPANY_PLAN(currentWorkspace?.id) + `?plan=${planId}`);
+            toast.success(`Đã chuyển sang gói ${planId} thành công!`);
+            queryClient.invalidateQueries(['billing-info']);
+        } catch (error) {
+            if (error.response?.status === 403) {
+                toast.warning('Bạn không có quyền thay đổi gói dịch vụ. Vui lòng liên hệ quản trị viên hệ thống.');
+            } else {
+                toast.error(error.response?.data?.message || 'Không thể thay đổi gói dịch vụ. Vui lòng thử lại sau.');
+            }
+        }
     };
 
     const handleBundlePurchase = (bundleId) => {
-        toast.info(`Đang xử lý mua gói ${bundleId}...`);
+        toast.info('Vui lòng liên hệ support@saas-enterprise.vn để mua gói Bundle.');
     };
 
     if (isLoading) {

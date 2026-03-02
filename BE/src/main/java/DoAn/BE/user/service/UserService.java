@@ -17,8 +17,8 @@ import DoAn.BE.common.event.UserDeletedEvent;
 import DoAn.BE.common.event.UserUpdatedEvent;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.company.entity.UserPermissions;
 import DoAn.BE.company.repository.CompanyMemberRepository;
-import DoAn.BE.company.service.RoleTemplateService;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.DuplicateException;
@@ -40,7 +40,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final CompanyMemberRepository companyMemberRepository;
-    private final RoleTemplateService roleTemplateService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // Delegated services
@@ -213,7 +212,7 @@ public class UserService {
                     if (newRole != null && (!member.hasAnyRole(newRole) || member.getRoles().size() > 1)) {
                         member.getRoles().clear();
                         member.getRoles().add(newRole);
-                        member.setPermissions(roleTemplateService.getTemplate(java.util.Set.of(newRole)));
+                        member.setPermissions(UserPermissions.defaultFor(newRole));
                         companyMemberRepository.save(member);
                         if (eventPublisher != null) {
                             eventPublisher.publishEvent(new UserUpdatedEvent(this, user, currentUser,

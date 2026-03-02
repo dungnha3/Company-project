@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatCurrency, formatNumber } from '@shared/utils/formatters';
 
 export default function SalariesPage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState('list');
@@ -24,17 +24,8 @@ export default function SalariesPage() {
         },
     });
 
-    const generateMutation = useMutation({
-        mutationFn: () => apiClient.post(ENDPOINTS.SALARIES.GENERATE, null, { params: { period } }),
-        onSuccess: () => {
-            showToast(`Đã tạo bảng lương tháng ${period}`, 'success');
-            queryClient.invalidateQueries(['salaries']);
-        },
-        onError: (err) => showToast(err.response?.data?.message || 'Lỗi tạo bảng lương', 'error')
-    });
-
     const payMutation = useMutation({
-        mutationFn: (id) => apiClient.post(ENDPOINTS.SALARIES.PAY(id)),
+        mutationFn: (id) => apiClient.patch(ENDPOINTS.SALARIES.PAY(id)),
         onSuccess: () => {
             showToast('Đã xác nhận thanh toán', 'success');
             queryClient.invalidateQueries(['salaries']);
@@ -61,7 +52,7 @@ export default function SalariesPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Bảng lương</h1>
                     <p className="text-gray-500 text-sm">Quản lý và tính lương nhân viên</p>
                 </div>
-                {hasRole('MANAGER_ACCOUNTING', 'OWNER') && (
+                {hasPermission('salaryCalculate') && (
                     <div className="flex gap-2 items-center">
                         <input
                             type="month"
@@ -78,14 +69,8 @@ export default function SalariesPage() {
                             filename={`BangLuong_${period.replace('-', '')}.xlsx`}
                             label="Xuất Excel"
                         />
-                        <button
-                            onClick={() => generateMutation.mutate()}
-                            disabled={generateMutation.isPending}
-                            className="btn-primary"
-                        >
-                            {generateMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : <><i className="fa-solid fa-calculator mr-2" /> Tính lương</>}
-                        </button>
                     </div>
+
                 )}
             </div>
 
@@ -136,7 +121,7 @@ export default function SalariesPage() {
                     isLoading={isLoading}
                     onPay={(id) => payMutation.mutate(id)}
                     onViewPayslip={(salary) => setSelectedSalary(salary)}
-                    hasRole={hasRole}
+                    hasPermission={hasPermission}
                 />
             )}
             {activeTab === 'chart' && <SalaryCharts salaries={salaryList} stats={stats} />}
@@ -181,7 +166,7 @@ const TabButton = memo(function TabButton({ active, onClick, icon, label }) {
     );
 });
 
-function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasRole }) {
+function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasPermission }) {
     const columns = [
         {
             header: 'Nhân viên',
@@ -240,7 +225,7 @@ function SalaryTable({ salaries, isLoading, onPay, onViewPayslip, hasRole }) {
                     >
                         <i className="fa-solid fa-file-invoice-dollar" />
                     </button>
-                    {hasRole('MANAGER_ACCOUNTING', 'OWNER') && row.status !== 'PAID' && (
+                    {hasPermission('salaryApprove') && row.status !== 'PAID' && (
                         <button
                             onClick={() => {
                                 if (window.confirm('Xác nhận đã thanh toán?')) onPay(row.salaryId);
@@ -269,7 +254,7 @@ function SalaryCharts({ salaries, stats }) {
     const departments = Object.entries(deptData).sort((a, b) => b[1] - a[1]);
     const maxDeptValue = Math.max(...departments.map(d => d[1]));
 
-    // Payment status pie chart mock
+    // Payment status breakdown
     const paidPercent = stats.paidCount / (stats.paidCount + stats.pendingCount) * 100 || 0;
 
     return (
@@ -413,6 +398,48 @@ function PayslipModal({ salary, onClose }) {
     const deductions = salary.deductions || 0;
     const net = salary.netSalary || 0;
 
+    const handlePrint = () => {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html><head><title>Phiếu lương - ${salary.employeeName || salary.employee?.fullName}</title>
+            <style>
+                body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #111; }
+                h1 { text-align: center; margin-bottom: 4px; }
+                .subtitle { text-align: center; color: #666; margin-bottom: 24px; }
+                .info { display: flex; gap: 40px; margin-bottom: 24px; }
+                .info span { color: #666; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+                th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+                th { color: #666; font-size: 13px; }
+                .amount { text-align: right; font-family: monospace; }
+                .deduct { color: #dc2626; }
+                .total-row { background: #f0fdf4; font-weight: bold; }
+                .total-row .amount { color: #16a34a; font-size: 18px; }
+            </style></head><body>
+            <h1>PHIẾU LƯƠNG</h1>
+            <p class="subtitle">Tháng ${salary.month}/${salary.year}</p>
+            <div class="info">
+                <div><span>Nhân viên:</span> <strong>${salary.employeeName || salary.employee?.fullName || ''}</strong></div>
+                <div><span>Chức vụ:</span> ${salary.employee?.position?.name || 'N/A'}</div>
+                <div><span>Phòng ban:</span> ${salary.employee?.department?.name || 'N/A'}</div>
+            </div>
+            <table>
+                <thead><tr><th>Khoản mục</th><th class="amount">Số tiền</th></tr></thead>
+                <tbody>
+                    <tr><td>Lương cơ bản</td><td class="amount">${formatCurrency(gross)}</td></tr>
+                    ${bonus > 0 ? `<tr><td>Thưởng</td><td class="amount">${formatCurrency(bonus)}</td></tr>` : ''}
+                    <tr><td>Thuế TNCN</td><td class="amount deduct">- ${formatCurrency(tax)}</td></tr>
+                    <tr><td>BHXH (10.5%)</td><td class="amount deduct">- ${formatCurrency(insurance)}</td></tr>
+                    ${deductions > 0 ? `<tr><td>Khấu trừ khác</td><td class="amount deduct">- ${formatCurrency(deductions)}</td></tr>` : ''}
+                    <tr class="total-row"><td>THỰC LĨNH</td><td class="amount">${formatCurrency(net)}</td></tr>
+                </tbody>
+            </table>
+            <script>window.print(); window.close();</script>
+            </body></html>
+        `);
+        printWindow.document.close();
+    };
+
     return (
         <div className="modal-overlay">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -460,12 +487,9 @@ function PayslipModal({ salary, onClose }) {
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 flex justify-between">
-                    <button className="text-gray-500 hover:text-gray-700 flex items-center gap-2">
-                        <i className="fa-solid fa-print" /> In phiếu
-                    </button>
-                    <button className="text-indigo-600 hover:text-indigo-700 flex items-center gap-2">
-                        <i className="fa-solid fa-download" /> Tải PDF
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+                    <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium">
+                        <i className="fa-solid fa-print" /> In / Tải PDF
                     </button>
                 </div>
             </div>

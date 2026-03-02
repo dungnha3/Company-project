@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import DoAn.BE.user.entity.User;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Tag(name = "Custom Fields", description = "Manage custom fields for issues")
 @FeatureFlag("PROJECT")
+@Transactional(readOnly = true)
 public class CustomFieldController {
 
     private final CustomFieldService customFieldService;

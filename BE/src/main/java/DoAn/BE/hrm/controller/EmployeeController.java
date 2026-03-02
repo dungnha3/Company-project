@@ -22,16 +22,27 @@ import java.util.List;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
 @FeatureFlag("HR")
+@Transactional(readOnly = true)
 public class EmployeeController {
 
     private final EmployeeService employeeService;
     private final EmployeeMapper employeeMapper;
     private final DoAn.BE.common.service.AccessControlService accessControlService;
+
+    @Transactional
+    @PostMapping
+    public ResponseEntity<EmployeeDTO> createEmployee(
+            @Valid @RequestBody EmployeeRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        Employee employee = employeeService.createEmployee(request, currentUser);
+        return ResponseEntity.status(201).body(employeeMapper.toDTO(employee, currentUser));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDTO> getEmployeeById(
@@ -79,6 +90,7 @@ public class EmployeeController {
         return ResponseEntity.ok(dtoPage);
     }
 
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeDTO> updateEmployee(
             @PathVariable Long id,
@@ -88,9 +100,10 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
 
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteEmployee(@PathVariable Long id) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkHrDeleteEmployeePermission();
         employeeService.deleteEmployee(id);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted employee successfully");
@@ -133,6 +146,7 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
+    @Transactional
     @PatchMapping("/{id}/status")
     public ResponseEntity<EmployeeDTO> updateStatus(
             @PathVariable Long id,

@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 public class CompanyMemberService {
 
     private final CompanyMemberRepository memberRepository;
-    private final RoleTemplateService roleTemplateService;
     private final AccessControlService accessControlService;
 
     // [Lấy danh sách thành viên của công ty]
@@ -59,7 +58,7 @@ public class CompanyMemberService {
         }
 
         // [Authorization: Check quyền Admin của người gọi]
-        accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
+        accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
 
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
 
@@ -67,7 +66,7 @@ public class CompanyMemberService {
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException("Không thể thay đổi vai trò của Chủ sở hữu");
         }
-        if (targetMember.hasAnyRole(CompanyRole.ADMIN)) {
+        if (targetMember.hasAnyRole(CompanyRole.COMPANY_ADMIN)) {
             CompanyMember currentMember = accessControlService.getCurrentMember();
             if (currentMember == null || !currentMember.hasAnyRole(CompanyRole.OWNER)) {
                 throw new ForbiddenException("Chỉ Chủ sở hữu mới có quyền thay đổi vai trò của Quản trị viên");
@@ -81,13 +80,21 @@ public class CompanyMemberService {
                     "Không thể gán vai trò Chủ sở hữu trực tiếp. Vui lòng dùng chức năng Chuyển quyền sở hữu.");
         }
 
+        // [PRIVILEGE ESCALATION GUARD] Chỉ OWNER mới gán được COMPANY_ADMIN
+        if (newRole == CompanyRole.COMPANY_ADMIN) {
+            CompanyMember currentMember = accessControlService.getCurrentMember();
+            if (currentMember == null || !currentMember.hasAnyRole(CompanyRole.OWNER)) {
+                throw new ForbiddenException("Chỉ Chủ sở hữu mới có quyền gán vai trò Quản trị viên");
+            }
+        }
+
         // [CORE LOGIC: Cập nhật Role và Reset Quyền theo Template]
         // REFACTOR: Replacing all roles with the new single role
         targetMember.getRoles().clear();
         targetMember.getRoles().add(newRole);
 
         // Lấy mẫu quyền tương ứng với Set roles mới
-        targetMember.setPermissions(roleTemplateService.getTemplate(targetMember.getRoles()));
+        targetMember.setPermissions(UserPermissions.defaultFor(newRole));
 
         memberRepository.save(targetMember);
 
@@ -103,13 +110,13 @@ public class CompanyMemberService {
             throw new BadRequestException("ID công ty và ID thành viên không được để trống");
         }
 
-        accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
+        accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
 
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException("Không thể xóa Chủ sở hữu khỏi công ty");
         }
-        if (targetMember.hasAnyRole(CompanyRole.ADMIN)) {
+        if (targetMember.hasAnyRole(CompanyRole.COMPANY_ADMIN)) {
             // Check if current user is OWNER
             DoAn.BE.company.entity.CompanyMember currentMember = accessControlService.getCurrentMember();
             if (currentMember == null || !currentMember.hasAnyRole(CompanyRole.OWNER)) {
@@ -147,7 +154,7 @@ public class CompanyMemberService {
     // Quyền: Chỉ Admin/Owner
     @Transactional
     public void updatePermission(Long companyId, Long targetUserId, String permissionKey, boolean enabled) {
-        accessControlService.checkPermission(companyId, CompanyRole.ADMIN);
+        accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
 
         CompanyMember targetMember = findActiveMember(targetUserId, companyId);
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
@@ -157,7 +164,8 @@ public class CompanyMemberService {
         UserPermissions perms = targetMember.getPermissions();
         if (perms == null) {
             // Fallback nếu null: Lấy template hiện tại của Role đang có
-            perms = roleTemplateService.getTemplate(targetMember.getRoles());
+            CompanyRole primaryRole = targetMember.getRoles().stream().findFirst().orElse(CompanyRole.EMPLOYEE);
+            perms = UserPermissions.defaultFor(primaryRole);
             targetMember.setPermissions(perms);
         }
 
@@ -190,35 +198,118 @@ public class CompanyMemberService {
 
     private void setPermissionByString(UserPermissions p, String key, boolean value) {
         switch (key) {
-            // [HR GROUP]
+            // HR
             case PermissionKeys.HR_VIEW_LIST -> p.setHrViewList(value);
             case PermissionKeys.HR_EDIT_PROFILE -> p.setHrEditProfile(value);
+            case PermissionKeys.HR_CREATE_EMPLOYEE -> p.setHrCreateEmployee(value);
+            case PermissionKeys.HR_DELETE_EMPLOYEE -> p.setHrDeleteEmployee(value);
             case PermissionKeys.HR_MANAGE_CONTRACTS -> p.setHrManageContracts(value);
             case PermissionKeys.HR_MANAGE_REVIEWS -> p.setHrManageReviews(value);
-
-            // [SALARY GROUP]
+            case PermissionKeys.HR_VIEW_DEPARTMENTS -> p.setHrViewDepartments(value);
+            case PermissionKeys.HR_MANAGE_DEPARTMENTS -> p.setHrManageDepartments(value);
+            case PermissionKeys.HR_VIEW_POSITIONS -> p.setHrViewPositions(value);
+            case PermissionKeys.HR_MANAGE_POSITIONS -> p.setHrManagePositions(value);
+            case PermissionKeys.HR_VIEW_DASHBOARD -> p.setHrViewDashboard(value);
+            case PermissionKeys.HR_EXPORT -> p.setHrExport(value);
+            // Contract
+            case PermissionKeys.CONTRACT_VIEW -> p.setContractView(value);
+            case PermissionKeys.CONTRACT_CREATE -> p.setContractCreate(value);
+            case PermissionKeys.CONTRACT_EDIT -> p.setContractEdit(value);
+            case PermissionKeys.CONTRACT_DELETE -> p.setContractDelete(value);
+            case PermissionKeys.CONTRACT_RENEW -> p.setContractRenew(value);
+            // Salary
             case PermissionKeys.SALARY_VIEW -> p.setSalaryView(value);
             case PermissionKeys.SALARY_CALCULATE -> p.setSalaryCalculate(value);
             case PermissionKeys.SALARY_APPROVE -> p.setSalaryApprove(value);
-
-            // [LEAVE GROUP]
+            case PermissionKeys.SALARY_EXPORT -> p.setSalaryExport(value);
+            // Leave
             case PermissionKeys.LEAVE_APPROVE -> p.setLeaveApprove(value);
             case PermissionKeys.LEAVE_VIEW_ALL -> p.setLeaveViewAll(value);
-
-            // [ATTENDANCE GROUP]
+            // Attendance
             case PermissionKeys.ATTENDANCE_VIEW_ALL -> p.setAttendanceViewAll(value);
             case PermissionKeys.ATTENDANCE_EDIT -> p.setAttendanceEdit(value);
-
-            // [PROJECT GROUP]
+            // Review
+            case PermissionKeys.REVIEW_VIEW_ALL -> p.setReviewViewAll(value);
+            case PermissionKeys.REVIEW_CREATE -> p.setReviewCreate(value);
+            case PermissionKeys.REVIEW_APPROVE -> p.setReviewApprove(value);
+            // OKR
+            case PermissionKeys.OKR_MANAGE -> p.setOkrManage(value);
+            // Onboarding
+            case PermissionKeys.ONBOARDING_MANAGE -> p.setOnboardingManage(value);
+            // Project
             case PermissionKeys.PROJECT_CREATE -> p.setProjectCreate(value);
             case PermissionKeys.PROJECT_MANAGE_ALL -> p.setProjectManageAll(value);
             case PermissionKeys.PROJECT_DELETE -> p.setProjectDelete(value);
+            case PermissionKeys.PROJECT_MANAGE_ISSUES -> p.setProjectManageIssues(value);
+            case PermissionKeys.PROJECT_MANAGE_SPRINTS -> p.setProjectManageSprints(value);
+            case PermissionKeys.PROJECT_VIEW_DASHBOARD -> p.setProjectViewDashboard(value);
+            case PermissionKeys.PROJECT_EXPORT -> p.setProjectExport(value);
+            case PermissionKeys.PROJECT_MANAGE_PHASES -> p.setProjectManagePhases(value);
+            case PermissionKeys.PROJECT_RESOURCE_PLANNING -> p.setProjectResourcePlanning(value);
+            // Time Tracking
+            case PermissionKeys.TIMETRACKING_LOG -> p.setTimetrackingLog(value);
+            case PermissionKeys.TIMETRACKING_VIEW_ALL -> p.setTimetrackingViewAll(value);
+            // Analytics
+            case PermissionKeys.ANALYTICS_VIEW -> p.setAnalyticsView(value);
+            // Calendar
+            case PermissionKeys.CALENDAR_VIEW -> p.setCalendarView(value);
+            case PermissionKeys.CALENDAR_MANAGE -> p.setCalendarManage(value);
+            // Chat
             case PermissionKeys.CHAT_CREATE_GROUP -> p.setChatCreateGroup(value);
-
-            // [STORAGE GROUP]
+            case PermissionKeys.CHAT_SEND_MESSAGE -> p.setChatSendMessage(value);
+            case PermissionKeys.CHAT_SHARE_FILE -> p.setChatShareFile(value);
+            // Storage
             case PermissionKeys.STORAGE_UPLOAD -> p.setStorageUpload(value);
+            case PermissionKeys.STORAGE_DELETE -> p.setStorageDelete(value);
+            case PermissionKeys.STORAGE_SHARE -> p.setStorageShare(value);
+            case PermissionKeys.STORAGE_MANAGE_FOLDERS -> p.setStorageManageFolders(value);
+            // AI
+            case PermissionKeys.AI_CHAT -> p.setAiChat(value);
+            case PermissionKeys.AI_CREATE_ISSUES -> p.setAiCreateIssues(value);
 
             default -> throw new BadRequestException("Mã quyền không tồn tại: " + key);
         }
+    }
+
+    // [Bật/tắt tất cả quyền của một module cho member]
+    // Admin tích "HR" → bật tất cả sub-permissions HR cho member đó
+    @Transactional
+    public void applyModuleTemplate(Long companyId, Long targetUserId, String module, boolean enabled) {
+        accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
+
+        CompanyMember targetMember = findActiveMember(targetUserId, companyId);
+        if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
+            throw new ForbiddenException("Không thể sửa quyền hạn của Chủ sở hữu");
+        }
+
+        UserPermissions perms = targetMember.getPermissions();
+        if (perms == null) {
+            CompanyRole primaryRole2 = targetMember.getRoles().stream().findFirst().orElse(CompanyRole.EMPLOYEE);
+            perms = UserPermissions.defaultFor(primaryRole2);
+            targetMember.setPermissions(perms);
+        }
+
+        switch (module.toUpperCase()) {
+            case "HR" -> perms.applyHrTemplate(enabled);
+            case "CONTRACT" -> perms.applyContractTemplate(enabled);
+            case "SALARY" -> perms.applySalaryTemplate(enabled);
+            case "LEAVE" -> perms.applyLeaveTemplate(enabled);
+            case "ATTENDANCE" -> perms.applyAttendanceTemplate(enabled);
+            case "REVIEW" -> perms.applyReviewTemplate(enabled);
+            case "OKR" -> perms.applyOkrTemplate(enabled);
+            case "ONBOARDING" -> perms.applyOnboardingTemplate(enabled);
+            case "PROJECT" -> perms.applyProjectTemplate(enabled);
+            case "TIMETRACKING" -> perms.applyTimetrackingTemplate(enabled);
+            case "ANALYTICS" -> perms.applyAnalyticsTemplate(enabled);
+            case "CALENDAR" -> perms.applyCalendarTemplate(enabled);
+            case "CHAT" -> perms.applyChatTemplate(enabled);
+            case "STORAGE" -> perms.applyStorageTemplate(enabled);
+            case "AI" -> perms.applyAiTemplate(enabled);
+            default -> throw new BadRequestException("Module không tồn tại: " + module);
+        }
+
+        memberRepository.save(targetMember);
+        log.info("Đã áp dụng template {} = {} cho user {} trong công ty {}",
+                module, enabled, targetUserId, companyId);
     }
 }

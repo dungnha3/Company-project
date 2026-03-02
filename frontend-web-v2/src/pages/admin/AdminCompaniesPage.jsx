@@ -25,7 +25,8 @@ export default function AdminCompaniesPage() {
         queryKey: ['admin-companies'],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.SYSADMIN.COMPANIES);
-            return res.data;
+            // BE returns Page<CompanyResponse> with .content array
+            return Array.isArray(res.data) ? res.data : (res.data.content || []);
         },
     });
 

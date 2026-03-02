@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { getRoleLabel } from '@shared/utils/roleHelper';
 import CreateCompanyModal from '@features/company/components/CreateCompanyModal';
@@ -43,12 +44,16 @@ export default function CompanySwitcher({ collapsed }) {
         }
     }, [workspaces]);
 
+    const navigate = useNavigate();
+
     const handleSelect = async (workspace) => {
         // Fix: Use switchToCompany for company workspaces to properly fetch settings
         if (workspace.type === 'COMPANY') {
             await useWorkspaceStore.getState().switchToCompany(workspace.id);
+            navigate('/app', { replace: true });
         } else {
             selectWorkspace(workspace);
+            navigate('/app/me/tasks', { replace: true });
         }
         setIsOpen(false);
     };
@@ -66,7 +71,7 @@ export default function CompanySwitcher({ collapsed }) {
         const roles = currentWorkspace.roles || (currentWorkspace.role ? [currentWorkspace.role] : []);
         if (roles.length === 0) return 'Member';
         // Show highest priority role
-        const priorityOrder = ['OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT', 'EMPLOYEE'];
+        const priorityOrder = ['OWNER', 'COMPANY_ADMIN', 'EMPLOYEE'];
         const primaryRole = priorityOrder.find(r => roles.includes(r)) || roles[0];
         return getRoleLabel(primaryRole);
     };

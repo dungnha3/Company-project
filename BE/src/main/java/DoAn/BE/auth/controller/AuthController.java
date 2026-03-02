@@ -16,12 +16,14 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@Transactional(readOnly = true)
 public class AuthController {
 
     private final AuthService authService;
@@ -62,6 +64,30 @@ public class AuthController {
         String userAgent = httpRequest.getHeader("User-Agent");
 
         AuthResponse response = authService.login(request, ipAddress, userAgent);
+
+        // If 2FA required, return partial response without cookie
+        if (Boolean.TRUE.equals(response.getRequiresTwoFactor())) {
+            return ResponseEntity.ok(response);
+        }
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<AuthResponse> verify2fa(
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        String tempToken = request.get("tempToken");
+        String code = request.get("code");
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        AuthResponse response = authService.verify2fa(tempToken, code, ipAddress, userAgent);
 
         ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
         response.setRefreshToken(null);

@@ -11,15 +11,18 @@ import DoAn.BE.analytics.service.ProjectAnalyticsService;
 import DoAn.BE.common.annotation.FeatureFlag;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
 @FeatureFlag("ANALYTICS")
+@Transactional(readOnly = true)
 public class AnalyticsController {
 
     private final ProjectAnalyticsService analyticsService;
     private final DoAn.BE.project.repository.ProjectMemberRepository projectMemberRepository;
+
     private void validateProjectAccess(Long projectId, User currentUser) {
         if (currentUser.isSystemAdminAccount())
             return;

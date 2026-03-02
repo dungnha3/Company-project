@@ -65,7 +65,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                 estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : null,
                 dueDate: data.dueDate || null,
             };
-            return (await apiClient.post(`/api/issues`, payload)).data;
+            return (await apiClient.post(ENDPOINTS.ISSUES.CREATE, payload)).data;
         },
         onSuccess: (issue) => {
             toast.success(`Tạo ${form.issueType === 'BUG' ? 'bug' : 'task'} thành công!`);
@@ -118,7 +118,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-cyan-600">
                     <div>
-                        <h2 className="text-xl font-bold text-white">Tạo Task Mới</h2>
+                        <h2 className="text-xl font-bold text-white">Tạo Issue Mới</h2>
                         <p className="text-indigo-100 text-sm">Thêm công việc vào dự án</p>
                     </div>
                     <button
@@ -233,7 +233,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                     <option value="">-- Chọn người --</option>
                                     {members.map(m => (
                                         <option key={m.userId} value={m.userId}>
-                                            {m.username || m.fullName} ({m.role})
+                                            {m.username || m.fullName} ({m.role === 'OWNER' ? 'Chủ dự án' : m.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'})
                                         </option>
                                     ))}
                                 </select>

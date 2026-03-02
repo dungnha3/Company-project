@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("SALARY")
+@Transactional(readOnly = true)
 public class SalaryController {
 
     private final SalaryService salaryService;

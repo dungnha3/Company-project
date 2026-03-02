@@ -77,6 +77,7 @@ public class WorkspaceService {
                         .type(WorkspaceType.COMPANY)
                         .plan(m.getCompany().getPlan())
                         .roles(roleNames)
+                        .permissions(m.getPermissions())
                         .isActive(m.getCompany().getIsActive())
                         .build());
             }

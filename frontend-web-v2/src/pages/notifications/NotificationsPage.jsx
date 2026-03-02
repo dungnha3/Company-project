@@ -87,7 +87,7 @@ export default function NotificationsPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id) => apiClient.delete(ENDPOINTS.NOTIFICATIONS.DELETE?.(id) || `/api/notifications/${id}`),
+        mutationFn: (id) => apiClient.delete(ENDPOINTS.NOTIFICATIONS.DELETE(id)),
         onSuccess: () => {
             queryClient.invalidateQueries(['notifications']);
             showToast('Đã xóa thông báo', 'success');
@@ -303,24 +303,38 @@ function NotificationItem({ notification, onClick, onDelete, isPersonal }) {
 
 function NotificationPreferencesModal({ onClose, isPersonal }) {
     const { showToast } = useToast();
+    const [saving, setSaving] = useState(false);
     const [preferences, setPreferences] = useState({
-        emailEnabled: true,
-        pushEnabled: true,
-        taskNotifications: true,
-        leaveNotifications: !isPersonal,
-        mentionNotifications: !isPersonal,
-        inviteNotifications: isPersonal,
-        systemNotifications: true,
-        digestFrequency: 'daily',
+        emailNewMessage: true,
+        emailMentions: true,
+        emailWeeklyDigest: false,
+        pushDesktop: true,
+        pushMobile: true,
+        soundEnabled: true,
     });
+
+    // Load current settings from BE
+    useEffect(() => {
+        apiClient.get(ENDPOINTS.PROFILE.NOTIFICATION_SETTINGS)
+            .then(res => { if (res.data) setPreferences(res.data); })
+            .catch(() => { });
+    }, []);
 
     const togglePref = (key) => {
         setPreferences({ ...preferences, [key]: !preferences[key] });
     };
 
-    const handleSave = () => {
-        showToast('Đã lưu cài đặt thông báo', 'success');
-        onClose();
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await apiClient.put(ENDPOINTS.PROFILE.NOTIFICATION_SETTINGS, preferences);
+            showToast('Đã lưu cài đặt thông báo', 'success');
+            onClose();
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Lỗi lưu cài đặt', 'error');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -337,94 +351,66 @@ function NotificationPreferencesModal({ onClose, isPersonal }) {
                 </div>
 
                 <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-                    {/* Delivery Methods */}
+                    {/* Email */}
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Phương thức nhận</h4>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Email</h4>
                         <div className="space-y-3">
                             <ToggleRow
                                 icon="fa-envelope"
-                                label="Email"
-                                desc="Gửi thông báo qua email"
-                                enabled={preferences.emailEnabled}
-                                onToggle={() => togglePref('emailEnabled')}
+                                label="Tin nhắn mới"
+                                desc="Gửi email khi có tin nhắn mới"
+                                enabled={preferences.emailNewMessage}
+                                onToggle={() => togglePref('emailNewMessage')}
                                 accentColor={isPersonal ? 'violet' : 'blue'}
                             />
                             <ToggleRow
-                                icon="fa-bell"
-                                label="Push Notification"
-                                desc="Thông báo trên trình duyệt"
-                                enabled={preferences.pushEnabled}
-                                onToggle={() => togglePref('pushEnabled')}
+                                icon="fa-at"
+                                label="Mentions"
+                                desc="Gửi email khi ai đó @mention bạn"
+                                enabled={preferences.emailMentions}
+                                onToggle={() => togglePref('emailMentions')}
+                                accentColor={isPersonal ? 'violet' : 'blue'}
+                            />
+                            <ToggleRow
+                                icon="fa-calendar-week"
+                                label="Tổng hợp tuần"
+                                desc="Nhận email tổng hợp hoạt động hàng tuần"
+                                enabled={preferences.emailWeeklyDigest}
+                                onToggle={() => togglePref('emailWeeklyDigest')}
                                 accentColor={isPersonal ? 'violet' : 'blue'}
                             />
                         </div>
                     </div>
 
-                    {/* Notification Types */}
+                    {/* Push & Sound */}
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Loại thông báo</h4>
+                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Thông báo đẩy</h4>
                         <div className="space-y-3">
                             <ToggleRow
-                                icon="fa-list-check"
-                                label={isPersonal ? 'Tasks cá nhân' : 'Công việc'}
-                                desc={isPersonal ? 'Nhắc nhở, hạn chót' : 'Tasks, dự án, deadlines'}
-                                enabled={preferences.taskNotifications}
-                                onToggle={() => togglePref('taskNotifications')}
+                                icon="fa-desktop"
+                                label="Desktop"
+                                desc="Thông báo trên trình duyệt"
+                                enabled={preferences.pushDesktop}
+                                onToggle={() => togglePref('pushDesktop')}
                                 accentColor={isPersonal ? 'violet' : 'blue'}
                             />
-                            {isPersonal ? (
-                                <ToggleRow
-                                    icon="fa-envelope"
-                                    label="Lời mời"
-                                    desc="Lời mời tham gia workspace"
-                                    enabled={preferences.inviteNotifications}
-                                    onToggle={() => togglePref('inviteNotifications')}
-                                    accentColor="violet"
-                                />
-                            ) : (
-                                <>
-                                    <ToggleRow
-                                        icon="fa-calendar-check"
-                                        label="Nghỉ phép"
-                                        desc="Đơn nghỉ phép, phê duyệt"
-                                        enabled={preferences.leaveNotifications}
-                                        onToggle={() => togglePref('leaveNotifications')}
-                                        accentColor="blue"
-                                    />
-                                    <ToggleRow
-                                        icon="fa-at"
-                                        label="Mentions"
-                                        desc="Khi ai đó @mention bạn"
-                                        enabled={preferences.mentionNotifications}
-                                        onToggle={() => togglePref('mentionNotifications')}
-                                        accentColor="blue"
-                                    />
-                                </>
-                            )}
                             <ToggleRow
-                                icon="fa-cog"
-                                label="Hệ thống"
-                                desc="Thông báo từ hệ thống"
-                                enabled={preferences.systemNotifications}
-                                onToggle={() => togglePref('systemNotifications')}
+                                icon="fa-mobile-screen"
+                                label="Di động"
+                                desc="Thông báo trên ứng dụng di động"
+                                enabled={preferences.pushMobile}
+                                onToggle={() => togglePref('pushMobile')}
+                                accentColor={isPersonal ? 'violet' : 'blue'}
+                            />
+                            <ToggleRow
+                                icon="fa-volume-high"
+                                label="Âm thanh"
+                                desc="Phát âm thanh khi có thông báo mới"
+                                enabled={preferences.soundEnabled}
+                                onToggle={() => togglePref('soundEnabled')}
                                 accentColor={isPersonal ? 'violet' : 'blue'}
                             />
                         </div>
-                    </div>
-
-                    {/* Digest Frequency */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Tần suất tổng hợp</h4>
-                        <select
-                            value={preferences.digestFrequency}
-                            onChange={(e) => setPreferences({ ...preferences, digestFrequency: e.target.value })}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                        >
-                            <option value="realtime">Tức thì</option>
-                            <option value="daily">Hàng ngày</option>
-                            <option value="weekly">Hàng tuần</option>
-                            <option value="none">Không gửi</option>
-                        </select>
                     </div>
                 </div>
 
@@ -434,12 +420,13 @@ function NotificationPreferencesModal({ onClose, isPersonal }) {
                     </button>
                     <button
                         onClick={handleSave}
-                        className={`px-4 py-2.5 text-white rounded-xl font-medium ${isPersonal
+                        disabled={saving}
+                        className={`px-4 py-2.5 text-white rounded-xl font-medium disabled:opacity-50 ${isPersonal
                             ? 'bg-gradient-to-r from-violet-500 to-purple-600'
                             : 'bg-indigo-600 hover:bg-indigo-700'
                             }`}
                     >
-                        Lưu thay đổi
+                        {saving ? <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang lưu...</> : 'Lưu thay đổi'}
                     </button>
                 </div>
             </div>

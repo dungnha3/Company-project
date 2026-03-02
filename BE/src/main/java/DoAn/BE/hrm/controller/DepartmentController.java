@@ -17,44 +17,55 @@ import DoAn.BE.common.service.AccessControlService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.transaction.annotation.Transactional;
+
 @RestController
 @RequestMapping("/api/departments")
 @RequiredArgsConstructor
 @FeatureFlag("HR")
+@Transactional(readOnly = true)
 public class DepartmentController {
 
     private final DepartmentService departmentService;
     private final DepartmentMapper departmentMapper;
     private final AccessControlService accessControlService;
+
+    @Transactional
     @PostMapping
     public ResponseEntity<DepartmentDTO> createDepartment(@Valid @RequestBody DepartmentRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkHrManageDepartmentsPermission();
         Department department = departmentService.createDepartment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(departmentMapper.toDTO(department));
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<DepartmentDTO> getDepartmentById(@PathVariable Long id) {
-        accessControlService.checkHrViewPermission();
+        accessControlService.checkHrViewDepartmentsPermission();
         Department department = departmentService.getDepartmentById(id);
         return ResponseEntity.ok(departmentMapper.toDTO(department));
     }
+
     @GetMapping
     public ResponseEntity<List<DepartmentDTO>> getAllDepartments() {
-        accessControlService.checkHrViewPermission();
+        accessControlService.checkHrViewDepartmentsPermission();
         List<Department> departments = departmentService.getAllDepartments();
         return ResponseEntity.ok(departmentMapper.toDTOList(departments));
     }
+
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<DepartmentDTO> updateDepartment(
             @PathVariable Long id,
             @Valid @RequestBody DepartmentRequest request) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkHrManageDepartmentsPermission();
         Department department = departmentService.updateDepartment(id, request);
         return ResponseEntity.ok(departmentMapper.toDTO(department));
     }
+
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteDepartment(@PathVariable Long id) {
-        accessControlService.checkHrEditPermission();
+        accessControlService.checkHrManageDepartmentsPermission();
         departmentService.deleteDepartment(id);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted department successfully");

@@ -209,6 +209,7 @@ public class ProjectService {
 
     @Transactional
     public ProjectDTO updateProject(Long projectId, UpdateProjectRequest request, Long userId) {
+        accessControlService.checkProjectManageAllPermission();
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
@@ -276,6 +277,7 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(Long projectId, Long userId) {
+        accessControlService.checkProjectDeletePermission();
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
