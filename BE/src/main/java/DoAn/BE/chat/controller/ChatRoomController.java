@@ -112,6 +112,17 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRoom);
     }
 
+    @PutMapping("/{roomId}/read")
+    @Transactional
+    public ResponseEntity<Map<String, String>> markRoomAsRead(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal User currentUser) {
+        chatRoomService.markRoomAsRead(roomId, currentUser.getUserId());
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Đã đánh dấu đã đọc");
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{roomId}/leave")
     public ResponseEntity<Map<String, String>> leaveRoom(
             @PathVariable Long roomId,

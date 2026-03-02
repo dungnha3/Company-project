@@ -82,26 +82,37 @@ export const useWorkspaceStore = create(
                     w => w.type === 'COMPANY' && w.id === companyId
                 );
                 if (company) {
-                    // Fetch company settings
-                    let settings = null;
-                    try {
-                        const res = await apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId));
-                        settings = res.data;
-                    } catch (error) {
-                        console.warn('Failed to fetch company settings:', error);
-                    }
-
                     // Convert single role to array if needed (backward compatibility)
                     const roles = company.roles || (company.role ? [company.role] : []);
 
+                    // Set workspace state FIRST so localStorage is updated for future requests
                     set({
                         currentWorkspace: {
                             ...company,
-                            settings, // Attach settings to workspace
+                            settings: null,
                             roles: roles,
                         },
                         workspaceType: 'COMPANY',
                     });
+
+                    // Fetch company settings with explicit header
+                    // (localStorage may not be flushed yet, so pass header directly)
+                    try {
+                        const res = await apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId), {
+                            headers: {
+                                'X-Company-Id': companyId,
+                                'X-Workspace-Type': 'COMPANY',
+                            }
+                        });
+                        set((prev) => ({
+                            currentWorkspace: {
+                                ...prev.currentWorkspace,
+                                settings: res.data,
+                            },
+                        }));
+                    } catch (error) {
+                        console.warn('Failed to fetch company settings:', error);
+                    }
                 }
             },
 
@@ -193,7 +204,12 @@ export const useWorkspaceStore = create(
                         import('@shared/api/endpoints').then(({ ENDPOINTS }) => {
                             // Fetch BOTH settings and workspaces to get fresh roles
                             Promise.all([
-                                apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId)),
+                                apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId), {
+                                    headers: {
+                                        'X-Company-Id': companyId,
+                                        'X-Workspace-Type': 'COMPANY',
+                                    }
+                                }),
                                 apiClient.get(ENDPOINTS.WORKSPACES.LIST)
                             ])
                                 .then(([settingsRes, workspacesRes]) => {

@@ -23,20 +23,23 @@ public class WebSocketNotificationService {
     }
 
     public void notifyNewMessage(Long roomId, MessDTO message) {
+        Long senderId = message.getSender() != null ? message.getSender().getUserId() : null;
+        String senderUsername = message.getSender() != null ? message.getSender().getUsername() : "System";
+
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.CHAT_MESSAGE,
                 roomId,
-                message.getSender().getUserId(),
-                message.getSender().getUsername(),
+                senderId,
+                senderUsername,
                 message.getContent());
         wsMessage.setMessageId(message.getMessageId());
-        wsMessage.setTimestamp(message.getSentAt().toString());
+        wsMessage.setTimestamp(message.getSentAt() != null ? message.getSentAt().toString() : null);
         wsMessage.setData(message); // Set full message object for frontend
 
         messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
         List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
         for (ChatRoomMember member : members) {
-            if (!member.getUser().getUserId().equals(message.getSender().getUserId())) {
+            if (senderId != null && !member.getUser().getUserId().equals(senderId)) {
                 // Smart Notification Filtering
                 User.PresenceStatus status = member.getUser().getPresenceStatus();
                 if (status != User.PresenceStatus.BUSY && status != User.PresenceStatus.IN_MEETING) {

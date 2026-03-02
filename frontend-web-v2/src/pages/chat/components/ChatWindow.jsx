@@ -31,7 +31,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
         queryKey: ['chat-messages', roomId],
         queryFn: async () => {
             const response = (await apiClient.get(ENDPOINTS.CHAT.MESSAGES(roomId))).data;
-            return response?.content || [];
+            return Array.isArray(response) ? response : (response?.content || []);
         },
         enabled: !!roomId,
     });
@@ -71,8 +71,11 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
         if (!roomId) return;
 
         const topic = `/topic/room.${roomId}`;
-        subscribe(topic, (newMessage) => {
-            queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), newMessage]);
+        subscribe(topic, (wsMessage) => {
+            // Backend sends WebSocketMessage wrapper with full MessDTO in .data
+            if (wsMessage.type === 'CHAT_MESSAGE' && wsMessage.data) {
+                queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), wsMessage.data]);
+            }
             queryClient.invalidateQueries(['chat-rooms']);
         });
 
@@ -101,7 +104,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
 
     const handleDelete = (message) => {
         if (confirm('Bạn có chắc muốn xóa tin nhắn này?')) {
-            deleteMutation.mutate(message.id);
+            deleteMutation.mutate(message.messageId);
         }
     };
 
@@ -212,12 +215,12 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
                     </div>
                 ) : (
                     filteredMessages.map((msg, index) => {
-                        const isMe = msg.senderId === user?.userId;
-                        const showAvatar = !isMe && (index === 0 || filteredMessages[index - 1].senderId !== msg.senderId);
+                        const isMe = msg.sender?.userId === user?.userId;
+                        const showAvatar = !isMe && (index === 0 || filteredMessages[index - 1].sender?.userId !== msg.sender?.userId);
 
                         return (
                             <MessageItem
-                                key={msg.id || index}
+                                key={msg.messageId || index}
                                 message={msg}
                                 isMe={isMe}
                                 showAvatar={showAvatar}

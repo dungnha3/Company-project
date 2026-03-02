@@ -7,20 +7,20 @@ import IssueDetailModal from '../components/IssueDetailModal';
 
 // Reusing IssueRow logic or similar
 function IssueRow({ issue, onClick }) {
-    const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.status !== 'DONE';
+    const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.statusName !== 'Done';
 
-    const getStatusBadge = (status, statusName) => {
+    const getStatusBadge = (statusName) => {
         const colors = {
-            'TODO': 'bg-gray-100 text-gray-700',
-            'IN_PROGRESS': 'bg-indigo-100 text-indigo-700',
-            'IN_REVIEW': 'bg-purple-100 text-purple-700',
-            'DONE': 'bg-green-100 text-green-700',
+            'To Do': 'bg-gray-100 text-gray-700',
+            'In Progress': 'bg-indigo-100 text-indigo-700',
+            'Review': 'bg-purple-100 text-purple-700',
+            'Done': 'bg-green-100 text-green-700',
         };
-        const colorClass = colors[status] || 'bg-gray-100 text-gray-700';
+        const colorClass = colors[statusName] || 'bg-gray-100 text-gray-700';
 
         return (
             <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-                {statusName || status}
+                {statusName}
             </span>
         );
     };
@@ -41,7 +41,7 @@ function IssueRow({ issue, onClick }) {
                 </div>
             </td>
             <td className="px-6 py-4">
-                {getStatusBadge(issue.status, issue.statusName)}
+                {getStatusBadge(issue.statusName)}
             </td>
             <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded-full text-xs ${issue.priority === 'CRITICAL' ? 'bg-red-100 text-red-700' :

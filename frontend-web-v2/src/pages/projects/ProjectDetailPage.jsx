@@ -192,6 +192,13 @@ function OverviewTab({ project }) {
         },
     });
 
+    // Fetch members from dedicated endpoint (same as Settings tab)
+    const { data: members = [] } = useQuery({
+        queryKey: ['projectMembers', project.projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.MEMBERS(project.projectId))).data,
+        enabled: !!project?.projectId,
+    });
+
     const activities = activitiesData?.content || [];
 
     return (
@@ -240,9 +247,9 @@ function OverviewTab({ project }) {
                     </div>
                 </div>
                 <div className="card p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Thành viên ({project.members?.length || 0})</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Thành viên ({members.length})</h3>
                     <div className="flex flex-col gap-3">
-                        {project.members?.map(m => (
+                        {members.map(m => (
                             <div key={m.userId} className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
                                     {m.fullName?.charAt(0)}
@@ -253,7 +260,7 @@ function OverviewTab({ project }) {
                                 </div>
                             </div>
                         ))}
-                        {(!project.members || project.members.length === 0) && <p className="text-gray-500 text-sm">Chưa có thành viên.</p>}
+                        {members.length === 0 && <p className="text-gray-500 text-sm">Chưa có thành viên.</p>}
                     </div>
                 </div>
             </div>

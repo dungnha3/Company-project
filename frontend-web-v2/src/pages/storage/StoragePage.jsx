@@ -22,11 +22,10 @@ export default function StoragePage() {
     const [showNewFolderModal, setShowNewFolderModal] = useState(false);
     const fileInputRef = useRef(null);
 
-    // Fetch files and folders
-    const { data: items = [], isLoading } = useQuery({
-        queryKey: ['storage', currentFolder],
+    // Fetch files
+    const { data: files = [], isLoading: loadingFiles } = useQuery({
+        queryKey: ['storage-files', currentFolder],
         queryFn: async () => {
-            // Use correct endpoint: MY_FILES for root, FILES_IN_FOLDER for subfolder
             const endpoint = currentFolder
                 ? ENDPOINTS.STORAGE.FILES_IN_FOLDER(currentFolder)
                 : ENDPOINTS.STORAGE.MY_FILES;
@@ -37,9 +36,21 @@ export default function StoragePage() {
         },
     });
 
-    // Separate folders and files
-    const folders = items.filter(item => item.isFolder);
-    const files = items.filter(item => !item.isFolder);
+    // Fetch folders
+    const { data: folders = [], isLoading: loadingFolders } = useQuery({
+        queryKey: ['storage-folders', currentFolder],
+        queryFn: async () => {
+            const endpoint = currentFolder
+                ? ENDPOINTS.STORAGE.SUBFOLDERS(currentFolder)
+                : ENDPOINTS.STORAGE.MY_FOLDERS;
+            const response = await apiClient.get(endpoint, {
+                params: currentFolder ? {} : { filter: 'all' }
+            });
+            return response.data?.content || response.data || [];
+        },
+    });
+
+    const isLoading = loadingFiles || loadingFolders;
 
     // Upload mutation
     const uploadMutation = useMutation({
@@ -48,7 +59,7 @@ export default function StoragePage() {
         }),
         onSuccess: () => {
             showToast('Tải lên thành công!', 'success');
-            queryClient.invalidateQueries(['storage']);
+            queryClient.invalidateQueries(['storage-files']);
         },
         onError: (err) => showToast(err.response?.data?.message || 'Lỗi tải lên', 'error')
     });
@@ -61,7 +72,7 @@ export default function StoragePage() {
         }),
         onSuccess: () => {
             showToast('Tạo thư mục thành công!', 'success');
-            queryClient.invalidateQueries(['storage']);
+            queryClient.invalidateQueries(['storage-folders']);
             setShowNewFolderModal(false);
         },
         onError: (err) => showToast(err.response?.data?.message || 'Lỗi tạo thư mục', 'error')
@@ -89,11 +100,12 @@ export default function StoragePage() {
     };
 
     const navigateToFolder = (folder) => {
-        setCurrentFolder(folder.id);
-        if (folder.id === null) {
+        const fId = folder.folderId || folder.id;
+        setCurrentFolder(fId);
+        if (fId === null) {
             setFolderPath([{ id: null, name: 'Root' }]);
         } else {
-            setFolderPath([...folderPath, { id: folder.id, name: folder.originalName || folder.name }]);
+            setFolderPath([...folderPath, { id: fId, name: folder.name }]);
         }
     };
 
@@ -159,7 +171,7 @@ export default function StoragePage() {
                         onClick={() => setViewMode('grid')}
                         className={`p-2 rounded ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'text-gray-500'}`}
                     >
-                        <i className="fa-solid fa-grid-2" />
+                        <i className="fa-solid fa-th-large" />
                     </button>
                     <button
                         onClick={() => setViewMode('list')}
@@ -197,21 +209,55 @@ export default function StoragePage() {
             {folders.length > 0 && (
                 <div>
                     <h3 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide">Thư mục</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {folders.map(folder => (
-                            <div
-                                key={folder.id}
-                                onClick={() => navigateToFolder(folder)}
-                                className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 hover:border-indigo-200 hover:shadow-md cursor-pointer transition-all group"
-                            >
-                                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-200 transition-colors">
-                                    <i className="fa-solid fa-folder text-2xl text-indigo-500" />
+                    {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {folders.map(folder => (
+                                <div
+                                    key={folder.folderId || folder.id}
+                                    onClick={() => navigateToFolder(folder)}
+                                    className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 hover:border-indigo-200 hover:shadow-md cursor-pointer transition-all group"
+                                >
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-200 transition-colors">
+                                        <i className={`fa-solid ${folder.folderType === 'PROJECT' ? 'fa-folder-tree' : 'fa-folder'} text-2xl text-indigo-500`} />
+                                    </div>
+                                    <div className="font-medium text-gray-800 truncate">{folder.name}</div>
+                                    <div className="flex items-center justify-between mt-1">
+                                        <span className="text-xs text-gray-400">{folder.fileCount || 0} files</span>
+                                        {folder.folderType === 'PROJECT' && (
+                                            <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">Dự án</span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="font-medium text-gray-800 truncate">{folder.originalName || folder.name}</div>
-                                <div className="text-xs text-gray-400">{folder.itemCount || 0} items</div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 divide-y">
+                            {folders.map(folder => (
+                                <div
+                                    key={folder.folderId || folder.id}
+                                    onClick={() => navigateToFolder(folder)}
+                                    className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                            <i className={`fa-solid ${folder.folderType === 'PROJECT' ? 'fa-folder-tree' : 'fa-folder'} text-lg text-indigo-500`} />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-medium text-gray-900 truncate">{folder.name}</div>
+                                            <div className="text-xs text-gray-500">
+                                                {folder.fileCount || 0} files
+                                                {folder.folderType === 'PROJECT' && ' • Dự án'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {folder.folderType === 'PROJECT' && (
+                                        <span className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded-full">Dự án</span>
+                                    )}
+                                    <i className="fa-solid fa-chevron-right text-gray-300 ml-4" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 

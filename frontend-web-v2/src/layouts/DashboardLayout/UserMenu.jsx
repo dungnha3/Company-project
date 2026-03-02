@@ -32,25 +32,25 @@ export default function UserMenu() {
                     />
 
                     {/* Dropdown */}
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
-                        <div className="px-4 py-3 border-b border-gray-100">
-                            <div className="font-semibold">{user?.username}</div>
-                            <div className="text-sm text-gray-500">{user?.email}</div>
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-50">
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                            <div className="font-semibold dark:text-gray-100">{user?.username}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</div>
                         </div>
 
                         <div className="py-2">
                             <Link
-                                to="/profile"
+                                to="/app/me/profile"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                className="flex items-center gap-3 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 <i className="fa-solid fa-user w-4" />
                                 Hồ sơ cá nhân
                             </Link>
                             <Link
-                                to="/profile"
+                                to="/app/me/profile?tab=security"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                className="flex items-center gap-3 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 <i className="fa-solid fa-gear w-4" />
                                 Cài đặt

@@ -179,7 +179,7 @@ function ProjectListView({ projects, navigate }) {
             cell: (row) => (
                 <div className="flex justify-end gap-2">
                     <button
-                        onClick={() => navigate(`/projects/${row.projectId}`)}
+                        onClick={() => navigate(`/app/projects/${row.projectId}`)}
                         className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-all"
                     >
                         <i className="fa-solid fa-arrow-right" />
@@ -226,7 +226,7 @@ function ProjectCardView({ projects, navigate }) {
             {projects.map(project => (
                 <div
                     key={project.projectId}
-                    onClick={() => navigate(`/projects/${project.projectId}`)}
+                    onClick={() => navigate(`/app/projects/${project.projectId}`)}
                     className="group bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
                 >
                     <div className="absolute top-0 left-0 w-1 h-full bg-primary/0 group-hover:bg-primary transition-all"></div>

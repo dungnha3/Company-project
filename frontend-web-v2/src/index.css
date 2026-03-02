@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-/* Tailwind v4: Dark mode configured in tailwind.config.js */
+/* Tailwind v4: Use class-based dark mode (toggled via .dark on <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================
    DESIGN TOKEN CSS VARIABLES

@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@shared/stores/authStore';
 import apiClient from '@shared/api/client';
@@ -18,8 +19,20 @@ export default function ProfilePage() {
     const { user, updateUser } = useAuthStore();
     const toast = useToast();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState('info');
+    const [searchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState(() => {
+        const tab = searchParams.get('tab');
+        return TABS.some(t => t.id === tab) ? tab : 'info';
+    });
     const fileInputRef = useRef(null);
+
+    // Sync tab with URL query param
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && TABS.some(t => t.id === tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
 
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -208,7 +221,6 @@ function SecurityTab() {
     const [deleting, setDeleting] = useState(false);
 
     // 2FA State
-    const queryClient = useQueryClient();
     const [twoFaStep, setTwoFaStep] = useState('idle'); // idle, setup, verify, backupCodes, disabling
     const [twoFaData, setTwoFaData] = useState(null); // { secret, qrCodeUri }
     const [twoFaCode, setTwoFaCode] = useState('');
@@ -217,14 +229,8 @@ function SecurityTab() {
 
     const { user } = useAuthStore();
 
-    const { data: profileData } = useQuery({
-        queryKey: ['profile-2fa-status'],
-        queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.AUTH.ME);
-            return res.data;
-        }
-    });
-    const is2faEnabled = profileData?.user?.twoFactorEnabled || false;
+    // Use 2FA status from authStore user object (no extra API call needed)
+    const [is2faEnabled, setIs2faEnabled] = useState(user?.twoFactorEnabled || false);
 
     const handleChangePassword = async () => {
         if (passwords.new !== passwords.confirm) {
@@ -391,7 +397,7 @@ function SecurityTab() {
                                         const res = await apiClient.post(ENDPOINTS.PROFILE.TWO_FACTOR_VERIFY, { code: twoFaCode });
                                         setBackupCodes(res.data.backupCodes || []);
                                         setTwoFaStep('backupCodes');
-                                        queryClient.invalidateQueries({ queryKey: ['profile-2fa-status'] });
+                                        setIs2faEnabled(true);
                                         toast.success('2FA đã được bật thành công!');
                                     } catch (err) {
                                         toast.error(err.response?.data?.message || 'Mã không đúng');
@@ -456,7 +462,7 @@ function SecurityTab() {
                                     toast.success('2FA đã được tắt');
                                     setTwoFaStep('idle');
                                     setDisablePassword('');
-                                    queryClient.invalidateQueries({ queryKey: ['profile-2fa-status'] });
+                                    setIs2faEnabled(false);
                                 } catch (err) {
                                     toast.error(err.response?.data?.message || 'Mật khẩu không đúng');
                                 }

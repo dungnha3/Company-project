@@ -41,9 +41,13 @@ public class ChatRoomMember {
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 
+    @Column(name = "last_read_at")
+    private LocalDateTime lastReadAt;
+
     @PrePersist
     protected void onCreate() {
         this.joinedAt = LocalDateTime.now();
+        this.lastReadAt = LocalDateTime.now();
     }
 
     public enum MemberRole {

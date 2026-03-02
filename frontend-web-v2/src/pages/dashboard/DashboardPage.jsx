@@ -217,15 +217,20 @@ function PersonalDashboard({ user, greeting }) {
 
 // ==================== COMPANY DASHBOARD ====================
 function CompanyDashboard({ user, greeting, currentWorkspace }) {
-    // Fetch dashboard data
+    // Only admin/manager roles have HR_VIEW_DASHBOARD permission
+    const userRoles = currentWorkspace?.roles || [];
+    const canViewHrDashboard = userRoles.some(r => ['OWNER', 'COMPANY_ADMIN', 'MANAGER'].includes(r));
+
+    // Fetch dashboard data (only if user has permission)
     const { data: stats } = useQuery({
         queryKey: ['dashboard-stats'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.DASHBOARD.STATS)).data,
+        enabled: canViewHrDashboard,
     });
 
     const { data: myTasks = [] } = useQuery({
         queryKey: ['my-tasks'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.MY_ISSUES)).data?.content?.slice(0, 5) || []
+        queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data?.content?.slice(0, 5) || []
     });
 
     const { data: notifications = [] } = useQuery({

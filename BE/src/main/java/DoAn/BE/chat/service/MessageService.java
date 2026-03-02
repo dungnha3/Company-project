@@ -322,14 +322,17 @@ public class MessageService {
     public MessDTO convertToMessageDTO(Message message) {
         MessDTO dto = new MessDTO();
         dto.setMessageId(message.getMessageId());
-        dto.setRoomId(message.getChatRoom().getRoomId());
+        dto.setRoomId(message.getChatRoom() != null ? message.getChatRoom().getRoomId() : null);
 
-        UserDTO senderDTO = new UserDTO();
-        senderDTO.setUserId(message.getSender().getUserId());
-        senderDTO.setUsername(message.getSender().getUsername());
-        senderDTO.setEmail(message.getSender().getEmail());
-        senderDTO.setAvatarUrl(message.getSender().getAvatarUrl());
-        dto.setSender(senderDTO);
+        // Null-safe sender handling (SYSTEM messages may have null sender)
+        if (message.getSender() != null) {
+            UserDTO senderDTO = new UserDTO();
+            senderDTO.setUserId(message.getSender().getUserId());
+            senderDTO.setUsername(message.getSender().getUsername());
+            senderDTO.setEmail(message.getSender().getEmail());
+            senderDTO.setAvatarUrl(message.getSender().getAvatarUrl());
+            dto.setSender(senderDTO);
+        }
 
         dto.setContent(message.getContent());
         dto.setMessageType(message.getMessageType());
@@ -357,27 +360,37 @@ public class MessageService {
         }
 
         // Populate reactions map (emoji -> list of usernames)
-        Map<String, List<String>> reactions = new HashMap<>();
-        reactionRepository.findByMessage_MessageId(message.getMessageId()).forEach(reaction -> {
-            reactions.computeIfAbsent(reaction.getEmoji(), k -> new java.util.ArrayList<>())
-                    .add(reaction.getUser().getUsername());
-        });
-        dto.setReactions(reactions);
+        try {
+            Map<String, List<String>> reactions = new HashMap<>();
+            reactionRepository.findByMessage_MessageId(message.getMessageId()).forEach(reaction -> {
+                reactions.computeIfAbsent(reaction.getEmoji(), k -> new java.util.ArrayList<>())
+                        .add(reaction.getUser() != null ? reaction.getUser().getUsername() : "Unknown");
+            });
+            dto.setReactions(reactions);
+        } catch (Exception e) {
+            log.warn("Failed to load reactions for message {}: {}", message.getMessageId(), e.getMessage());
+            dto.setReactions(new HashMap<>());
+        }
 
         // Populate seenBy list
-        List<UserDTO> seenBy = messageStatusRepository
-                .findByMessage_MessageIdAndStatus(message.getMessageId(), MessageStatus.MessageStatusType.SEEN)
-                .stream()
-                .map(status -> {
-                    User u = status.getUser();
-                    UserDTO uDTO = new UserDTO();
-                    uDTO.setUserId(u.getUserId());
-                    uDTO.setUsername(u.getUsername());
-                    uDTO.setAvatarUrl(u.getAvatarUrl());
-                    return uDTO;
-                })
-                .collect(Collectors.toList());
-        dto.setSeenBy(seenBy);
+        try {
+            List<UserDTO> seenBy = messageStatusRepository
+                    .findByMessage_MessageIdAndStatus(message.getMessageId(), MessageStatus.MessageStatusType.SEEN)
+                    .stream()
+                    .map(status -> {
+                        User u = status.getUser();
+                        UserDTO uDTO = new UserDTO();
+                        uDTO.setUserId(u.getUserId());
+                        uDTO.setUsername(u.getUsername());
+                        uDTO.setAvatarUrl(u.getAvatarUrl());
+                        return uDTO;
+                    })
+                    .collect(Collectors.toList());
+            dto.setSeenBy(seenBy);
+        } catch (Exception e) {
+            log.warn("Failed to load seenBy for message {}: {}", message.getMessageId(), e.getMessage());
+            dto.setSeenBy(java.util.Collections.emptyList());
+        }
 
         return dto;
     }

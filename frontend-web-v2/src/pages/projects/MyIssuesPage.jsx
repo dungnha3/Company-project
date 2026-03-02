@@ -9,9 +9,9 @@ import { EmptyInbox } from '@/components/ui/EmptyState';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả trạng thái' },
-    { value: 'TODO', label: 'Cần làm' },
-    { value: 'IN_PROGRESS', label: 'Đang làm' },
-    { value: 'DONE', label: 'Hoàn thành' },
+    { value: 'To Do', label: 'Cần làm' },
+    { value: 'In Progress', label: 'Đang làm' },
+    { value: 'Done', label: 'Hoàn thành' },
 ];
 
 const VIEW_MODES = [
@@ -72,7 +72,7 @@ export default function MyIssuesPage() {
                 const today = new Date();
                 issues = [...assignedIssues, ...reportedIssues].filter(
                     (i, idx, arr) => arr.findIndex(x => x.issueId === i.issueId) === idx // unique
-                ).filter(i => i.dueDate && new Date(i.dueDate) < today && i.status !== 'DONE');
+                ).filter(i => i.dueDate && new Date(i.dueDate) < today && i.statusName !== 'Done');
                 break;
             default:
                 // All unique issues
@@ -83,7 +83,7 @@ export default function MyIssuesPage() {
 
         // Apply status filter
         if (statusFilter) {
-            issues = issues.filter(i => i.status === statusFilter || i.statusName === statusFilter);
+            issues = issues.filter(i => i.statusName === statusFilter);
         }
 
         // Apply search
@@ -106,7 +106,7 @@ export default function MyIssuesPage() {
         reported: reportedIssues.length,
         overdue: [...assignedIssues, ...reportedIssues].filter(
             (i, idx, arr) => arr.findIndex(x => x.issueId === i.issueId) === idx
-        ).filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.status !== 'DONE').length,
+        ).filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.statusName !== 'Done').length,
     };
 
     const handleIssueClick = (issue) => {
@@ -291,20 +291,20 @@ function StatCard({ icon, iconColor, label, value, highlight = false }) {
 }
 
 function IssueRow({ issue, onClick }) {
-    const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.status !== 'DONE';
+    const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.statusName !== 'Done';
 
-    const getStatusBadge = (status, statusName, statusColor) => {
+    const getStatusBadge = (statusName) => {
         const colors = {
-            'TODO': 'bg-gray-100 text-gray-700',
-            'IN_PROGRESS': 'bg-indigo-100 text-indigo-700',
-            'IN_REVIEW': 'bg-purple-100 text-purple-700',
-            'DONE': 'bg-green-100 text-green-700',
+            'To Do': 'bg-gray-100 text-gray-700',
+            'In Progress': 'bg-indigo-100 text-indigo-700',
+            'Review': 'bg-purple-100 text-purple-700',
+            'Done': 'bg-green-100 text-green-700',
         };
-        const colorClass = colors[status] || 'bg-gray-100 text-gray-700';
+        const colorClass = colors[statusName] || 'bg-gray-100 text-gray-700';
 
         return (
             <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-                {statusName || status}
+                {statusName}
             </span>
         );
     };
@@ -331,7 +331,7 @@ function IssueRow({ issue, onClick }) {
                 </span>
             </td>
             <td className="px-6 py-4">
-                {getStatusBadge(issue.status, issue.statusName, issue.statusColor)}
+                {getStatusBadge(issue.statusName)}
             </td>
             <td className="px-6 py-4">
                 {issue.dueDate ? (

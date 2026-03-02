@@ -48,31 +48,46 @@ public class ChatWebSocketHandler {
         try {
             Object principal = headerAccessor.getUser();
             if (principal == null) {
+                log.warn("WebSocket sendMessage: No principal found");
                 return; // User not authenticated
             }
 
             // Extract User from Authentication wrapper
-            User user;
+            // AuthChannelInterceptor sets principal as UsernamePasswordAuthenticationToken
+            // with username (String) as the principal, NOT a User entity
+            User user = null;
             if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
-                if (authToken.getPrincipal() instanceof User u) {
+                Object tokenPrincipal = authToken.getPrincipal();
+                if (tokenPrincipal instanceof User u) {
                     user = u;
-                } else {
-                    return;
+                } else if (tokenPrincipal instanceof String username) {
+                    // AuthChannelInterceptor sets username as String principal
+                    user = userRepository.findByUsername(username).orElse(null);
                 }
             } else if (principal instanceof User u) {
                 user = u;
-            } else {
+            } else if (principal instanceof java.security.Principal p) {
+                // Fallback: get name from principal
+                String username = p.getName();
+                user = userRepository.findByUsername(username).orElse(null);
+            }
+
+            if (user == null) {
+                log.warn("WebSocket sendMessage: Could not resolve user from principal: {}",
+                        principal.getClass().getName());
                 return;
             }
 
             Long roomId = message.getRoomId();
             if (roomId == null || user.getUserId() == null) {
+                log.warn("WebSocket sendMessage: Invalid roomId or userId");
                 return; // Invalid data
             }
 
             // Check if user is member of the room
             boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, user.getUserId());
             if (!isMember) {
+                log.warn("WebSocket sendMessage: User {} not member of room {}", user.getUserId(), roomId);
                 return; // User not authorized
             }
 
@@ -94,11 +109,15 @@ public class ChatWebSocketHandler {
             Object principal = headerAccessor.getUser();
             User user = null;
             if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
-                if (authToken.getPrincipal() instanceof User u) {
+                Object tp = authToken.getPrincipal();
+                if (tp instanceof User u)
                     user = u;
-                }
+                else if (tp instanceof String uname)
+                    user = userRepository.findByUsername(uname).orElse(null);
             } else if (principal instanceof User u) {
                 user = u;
+            } else if (principal instanceof java.security.Principal p) {
+                user = userRepository.findByUsername(p.getName()).orElse(null);
             }
             if (user == null)
                 return;
@@ -136,11 +155,15 @@ public class ChatWebSocketHandler {
             Object principal = headerAccessor.getUser();
             User user = null;
             if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
-                if (authToken.getPrincipal() instanceof User u) {
+                Object tp = authToken.getPrincipal();
+                if (tp instanceof User u)
                     user = u;
-                }
+                else if (tp instanceof String uname)
+                    user = userRepository.findByUsername(uname).orElse(null);
             } else if (principal instanceof User u) {
                 user = u;
+            } else if (principal instanceof java.security.Principal p) {
+                user = userRepository.findByUsername(p.getName()).orElse(null);
             }
             if (user == null)
                 return;
@@ -180,11 +203,15 @@ public class ChatWebSocketHandler {
                 return;
             User user = null;
             if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
-                if (authToken.getPrincipal() instanceof User u) {
+                Object tp = authToken.getPrincipal();
+                if (tp instanceof User u)
                     user = u;
-                }
+                else if (tp instanceof String uname)
+                    user = userRepository.findByUsername(uname).orElse(null);
             } else if (principal instanceof User u) {
                 user = u;
+            } else if (principal instanceof java.security.Principal p) {
+                user = userRepository.findByUsername(p.getName()).orElse(null);
             }
             if (user == null)
                 return;
@@ -223,11 +250,15 @@ public class ChatWebSocketHandler {
                 return;
             User user = null;
             if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
-                if (authToken.getPrincipal() instanceof User u) {
+                Object tp = authToken.getPrincipal();
+                if (tp instanceof User u)
                     user = u;
-                }
+                else if (tp instanceof String uname)
+                    user = userRepository.findByUsername(uname).orElse(null);
             } else if (principal instanceof User u) {
                 user = u;
+            } else if (principal instanceof java.security.Principal p) {
+                user = userRepository.findByUsername(p.getName()).orElse(null);
             }
             if (user == null)
                 return;
@@ -270,11 +301,15 @@ public class ChatWebSocketHandler {
                 return;
             User user = null;
             if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken) {
-                if (authToken.getPrincipal() instanceof User u) {
+                Object tp = authToken.getPrincipal();
+                if (tp instanceof User u)
                     user = u;
-                }
+                else if (tp instanceof String uname)
+                    user = userRepository.findByUsername(uname).orElse(null);
             } else if (principal instanceof User u) {
                 user = u;
+            } else if (principal instanceof java.security.Principal p) {
+                user = userRepository.findByUsername(p.getName()).orElse(null);
             }
             if (user == null)
                 return;

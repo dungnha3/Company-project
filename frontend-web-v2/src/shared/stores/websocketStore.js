@@ -15,17 +15,22 @@ const WS_URL = `${BASE_URL}/ws/chat`;
 export const useWebSocketStore = create((set, get) => ({
     client: null,
     connected: false,
+    connecting: false, // Prevent concurrent connect attempts
     subscriptions: {}, // Map topic -> STOMP subscription object
     pendingSubscriptions: {}, // Map topic -> callback (queued before connection)
 
     connect: () => {
-        console.log('[WS] connect() called');
         const token = localStorage.getItem('accessToken');
-        const { connected, client: existingClient } = get();
+        const { connected, client: existingClient, connecting } = get();
 
-        if (connected || (existingClient && existingClient.active)) {
-            console.log('[WS] Already connected or client active, skipping');
+        // Skip if already connected, connecting, or client is still active
+        if (connected || connecting) {
             return;
+        }
+
+        // Deactivate any existing client first
+        if (existingClient) {
+            try { existingClient.deactivate(); } catch { }
         }
 
         if (!token) {
@@ -33,26 +38,24 @@ export const useWebSocketStore = create((set, get) => ({
             return;
         }
 
+        set({ connecting: true });
         console.log('[WS] Creating STOMP client, URL:', WS_URL);
         const client = new Client({
             // Use SockJS fallback
             webSocketFactory: () => {
-                console.log('[WS] Creating SockJS instance for:', WS_URL);
                 return new SockJS(WS_URL);
             },
             connectHeaders: {
                 Authorization: `Bearer ${token}`,
             },
-            debug: (str) => {
-                console.log('STOMP: ' + str);
-            },
+            debug: () => { }, // Suppress STOMP debug logs
             reconnectDelay: 5000,
             heartbeatIncoming: 4000,
             heartbeatOutgoing: 4000,
 
             onConnect: () => {
                 console.log('[WS] ✅ WebSocket Connected');
-                set({ connected: true });
+                set({ connected: true, connecting: false });
 
                 // Replay any pending subscriptions that were queued before connection
                 const { pendingSubscriptions } = get();
@@ -74,11 +77,10 @@ export const useWebSocketStore = create((set, get) => ({
             },
             onStompError: (frame) => {
                 console.error('Broker reported error: ' + frame.headers['message']);
-                console.error('Additional details: ' + frame.body);
+                set({ connecting: false });
             },
             onWebSocketClose: () => {
-                // console.log('WebSocket Closed');
-                set({ connected: false });
+                set({ connected: false, connecting: false });
             }
         });
 
@@ -89,8 +91,8 @@ export const useWebSocketStore = create((set, get) => ({
     disconnect: () => {
         const { client } = get();
         if (client) {
-            client.deactivate();
-            set({ client: null, connected: false, subscriptions: {}, pendingSubscriptions: {} });
+            try { client.deactivate(); } catch { }
+            set({ client: null, connected: false, connecting: false, subscriptions: {}, pendingSubscriptions: {} });
         }
     },
 

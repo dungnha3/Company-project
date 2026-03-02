@@ -51,14 +51,11 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
         }
 
         // Send message via WebSocket
+        // Backend expects WebSocketMessage with type=CHAT_MESSAGE, roomId, content
         sendMessage('/app/chat.sendMessage', {
+            type: 'CHAT_MESSAGE',
             roomId,
             content: inputValue.trim() || (fileName ? `📎 ${fileName}` : ''),
-            type: fileUrl ? 'FILE' : 'TEXT',
-            fileUrl,
-            fileName,
-            fileType,
-            replyToId: replyTo?.id,
         });
 
         setInputValue('');
@@ -99,7 +96,7 @@ export default function MessageInput({ roomId, replyTo, onCancelReply, onMessage
                 <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-indigo-50 rounded-lg text-sm">
                     <i className="fa-solid fa-reply text-indigo-500" />
                     <span className="text-gray-500">Đang trả lời</span>
-                    <span className="font-medium text-gray-700">{replyTo.senderName}</span>
+                    <span className="font-medium text-gray-700">{replyTo.sender?.username}</span>
                     <span className="text-gray-400 truncate flex-1">{replyTo.content}</span>
                     <button onClick={onCancelReply} className="text-gray-400 hover:text-gray-600">
                         <i className="fa-solid fa-times" />

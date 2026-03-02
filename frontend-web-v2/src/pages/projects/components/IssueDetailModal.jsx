@@ -7,10 +7,10 @@ import { useToast } from '@app/providers/ToastProvider';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 const STATUSES = [
-    { value: 'TODO', label: 'Chờ xử lý', color: 'bg-gray-100 text-gray-700' },
-    { value: 'IN_PROGRESS', label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700' },
-    { value: 'IN_REVIEW', label: 'Đang review', color: 'bg-purple-100 text-purple-700' },
-    { value: 'DONE', label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
+    { value: 1, label: 'Chờ xử lý', color: 'bg-gray-100 text-gray-700' },
+    { value: 2, label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700' },
+    { value: 3, label: 'Đang review', color: 'bg-purple-100 text-purple-700' },
+    { value: 4, label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
 ];
 
 const PRIORITIES = [
@@ -55,10 +55,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         enabled: !!issue?.issueId && activeTab === 'comments',
     });
 
-    // Update status mutation
     const statusMutation = useMutation({
-        mutationFn: async (newStatus) => {
-            await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS(issue.issueId), { status: newStatus });
+        mutationFn: async (statusId) => {
+            await apiClient.patch(`/api/issues/${issue.issueId}/status/${statusId}`);
         },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
@@ -133,8 +132,8 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <select
-                                value={currentIssue.status || 'TODO'}
-                                onChange={(e) => statusMutation.mutate(e.target.value)}
+                                value={currentIssue.statusId || 1}
+                                onChange={(e) => statusMutation.mutate(Number(e.target.value))}
                                 disabled={statusMutation.isPending}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                             >

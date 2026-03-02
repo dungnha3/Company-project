@@ -9,26 +9,34 @@ export default function HRDashboardPage() {
     const navigate = useNavigate();
     const { hasPermission } = useWorkspaceStore();
 
+    const canViewHR = hasPermission('hrViewList');
+
     // Fetch employees for charts and lists
     const { data: employees, isLoading: loadingEmployees } = useQuery({
         queryKey: ['employees-dashboard'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
+        enabled: canViewHR,
+        retry: false,
     });
 
     // Fetch Dashboard Stats (Server-side aggregation for accurate counts)
     const { data: dashboardStats } = useQuery({
         queryKey: ['hr-dashboard-stats'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.HR_DASHBOARD.STATS)).data,
+        enabled: canViewHR,
+        retry: false,
     });
 
-    // Fetch pending leave requests
+    // Fetch pending leave requests (requires leave management permission)
+    const canViewLeave = hasPermission('hrManageLeave') || hasPermission('leaveView');
     const { data: leaveRequests } = useQuery({
         queryKey: ['pending-leaves-dashboard'],
         queryFn: async () => {
             const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
             return response.data?.content || response.data || [];
         },
-        enabled: hasPermission('hrViewDashboard'),
+        enabled: canViewHR && canViewLeave,
+        retry: false,
     });
 
     // Fetch pending reviews
@@ -36,12 +44,15 @@ export default function HRDashboardPage() {
         queryKey: ['pending-reviews-dashboard'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.PENDING)).data,
         enabled: hasPermission('salaryView'),
+        retry: false,
     });
 
     // Fetch today's attendance (retained for detailed report if needed)
     const { data: attendance } = useQuery({
         queryKey: ['attendance-today'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.REPORT)).data,
+        enabled: canViewHR,
+        retry: false,
     });
 
     // Calculate stats

@@ -31,14 +31,14 @@ export default function BurndownChart({ sprintId, sprintName }) {
         const idealPath = data.map((point, i) => {
             const x = (i / (data.length - 1)) * 100;
             const y = ((maxIssues - point.idealRemaining) / maxIssues) * chartHeight;
-            return `${i === 0 ? 'M' : 'L'} ${x}% ${y + padding.top}`;
+            return `${i === 0 ? 'M' : 'L'} ${x} ${y + padding.top}`;
         }).join(' ');
 
         // Generate path for actual line
         const actualPath = data.map((point, i) => {
             const x = (i / (data.length - 1)) * 100;
             const y = ((maxIssues - point.remainingIssues) / maxIssues) * chartHeight;
-            return `${i === 0 ? 'M' : 'L'} ${x}% ${y + padding.top}`;
+            return `${i === 0 ? 'M' : 'L'} ${x} ${y + padding.top}`;
         }).join(' ');
 
         return {

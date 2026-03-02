@@ -42,6 +42,26 @@ export function AccessControlGuard({
     const hasShownToast = useRef(false);
 
     // 1. Authentication Check
+    // On F5 reload: zustand may not have rehydrated yet, so also check localStorage
+    const hasPersistedAuth = (() => {
+        try {
+            const stored = localStorage.getItem('auth-storage');
+            if (!stored) return false;
+            const { state } = JSON.parse(stored);
+            return state?.isAuthenticated === true;
+        } catch { return false; }
+    })();
+
+    // If store says not authenticated but localStorage has auth data, wait for rehydration
+    if (requireAuth && !isAuthenticated && hasPersistedAuth) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    // If truly not authenticated (both store and localStorage agree), redirect to login
     if (requireAuth && (!isAuthenticated || !user)) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }

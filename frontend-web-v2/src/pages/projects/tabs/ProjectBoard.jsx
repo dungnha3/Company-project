@@ -22,15 +22,23 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import IssueDetailModal from '../components/IssueDetailModal';
 
-// Map status to columns
+// Map status to columns - must match backend IssueStatus names
 const COLUMNS = {
-    TODO: { id: 'OPEN', title: 'To Do', color: 'bg-gray-100' },
-    IN_PROGRESS: { id: 'IN_PROGRESS', title: 'In Progress', color: 'bg-indigo-50' },
-    REVIEW: { id: 'IN_REVIEW', title: 'Review', color: 'bg-yellow-50' },
-    DONE: { id: 'CLOSED', title: 'Done', color: 'bg-green-50' },
+    TODO: { id: 'To Do', title: 'To Do', color: 'bg-gray-100' },
+    IN_PROGRESS: { id: 'In Progress', title: 'In Progress', color: 'bg-indigo-50' },
+    REVIEW: { id: 'Review', title: 'Review', color: 'bg-yellow-50' },
+    DONE: { id: 'Done', title: 'Done', color: 'bg-green-50' },
 };
 
 const COLUMN_IDS = Object.values(COLUMNS).map(c => c.id);
+
+// Map statusName → statusId (matches issue_statuses table)
+const STATUS_NAME_TO_ID = {
+    'To Do': 1,
+    'In Progress': 2,
+    'Review': 3,
+    'Done': 4,
+};
 
 export default function ProjectBoard({ project }) {
     const queryClient = useQueryClient();
@@ -58,28 +66,26 @@ export default function ProjectBoard({ project }) {
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // Group issues by status
+    // Group issues by statusName
     const boardData = useMemo(() => {
         const grouped = {
-            OPEN: [],
-            IN_PROGRESS: [],
-            IN_REVIEW: [],
-            CLOSED: []
+            'To Do': [],
+            'In Progress': [],
+            'Review': [],
+            'Done': []
         };
         issues.forEach(issue => {
-            // Map backend status to frontend columns if needed, or assume exact match
-            const status = issue.status || 'OPEN';
-            if (grouped[status]) grouped[status].push(issue);
-            else grouped['OPEN'].push(issue); // Fallback
+            const statusName = issue.statusName || 'To Do';
+            if (grouped[statusName]) grouped[statusName].push(issue);
+            else grouped['To Do'].push(issue); // Fallback
         });
         return grouped;
     }, [issues]);
 
-    // Mutation for Drag End
+    // Mutation for Drag End - uses PATCH with statusId in path
     const moveIssueMutation = useMutation({
-        mutationFn: ({ id, status }) => apiClient.put(ENDPOINTS.ISSUES.UPDATE_STATUS(id), null, { params: { status } }),
+        mutationFn: ({ id, statusId }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`),
         onSuccess: () => {
-            // We can optimize this by optimistic update instead of invalidate
             queryClient.invalidateQueries(['issues', project.projectId]);
         },
         onError: () => {
@@ -104,21 +110,24 @@ export default function ProjectBoard({ project }) {
         // Find which container the active item is in (current status from active.data.current)
         // AND which container it was dropped over.
 
-        let newStatus = null;
+        let newStatusName = null;
 
         // Check if over is a container column
         if (COLUMN_IDS.includes(overId)) {
-            newStatus = overId;
+            newStatusName = overId;
         } else {
-            // Over is another item, find its status
+            // Over is another item, find its statusName
             const overIssue = issues.find(i => i.issueId === overId);
-            if (overIssue) newStatus = overIssue.status;
+            if (overIssue) newStatusName = overIssue.statusName;
         }
 
         const activeIssue = issues.find(i => i.issueId === activeIssueId);
 
-        if (activeIssue && newStatus && activeIssue.status !== newStatus) {
-            moveIssueMutation.mutate({ id: activeIssueId, status: newStatus });
+        if (activeIssue && newStatusName && activeIssue.statusName !== newStatusName) {
+            const statusId = STATUS_NAME_TO_ID[newStatusName];
+            if (statusId) {
+                moveIssueMutation.mutate({ id: activeIssueId, statusId });
+            }
         }
     };
 
@@ -241,7 +250,7 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 </button>
             </div>
 
-            <h4 className="text-sm font-medium text-gray-800 mb-2 line-clamp-2">{issue.subject}</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-2 line-clamp-2">{issue.title}</h4>
 
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
                 <div className="text-xs text-gray-400 font-mono">#{issue.issueId}</div>
@@ -264,10 +273,10 @@ function IssueCard({ issue, isOverlay, onClick }) {
 
 function getPriorityColor(priority) {
     switch (priority) {
-        case 'URGENT': return 'bg-red-100 text-red-700';
+        case 'CRITICAL': return 'bg-red-100 text-red-700';
         case 'HIGH': return 'bg-orange-100 text-orange-700';
         case 'LOW': return 'bg-gray-100 text-gray-700';
-        default: return 'bg-indigo-50 text-indigo-700'; // NORMAL
+        default: return 'bg-indigo-50 text-indigo-700'; // MEDIUM
     }
 }
 

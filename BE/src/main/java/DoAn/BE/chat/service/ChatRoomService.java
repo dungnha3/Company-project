@@ -465,6 +465,24 @@ public class ChatRoomService {
         return convertToChatRoomDTO(chatRoom);
     }
 
+    /**
+     * Mark all messages in a room as read for the given user
+     * by updating lastReadAt on the ChatRoomMember record.
+     */
+    public void markRoomAsRead(Long roomId, Long userId) {
+        if (roomId == null || userId == null) {
+            throw new BadRequestException("Room ID và User ID không được để trống");
+        }
+        chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
+
+        ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
+                .orElseThrow(() -> new BadRequestException("Bạn không phải thành viên của phòng chat này"));
+
+        member.setLastReadAt(LocalDateTime.now());
+        chatRoomMemberRepository.save(member);
+    }
+
     private ChatRoomDTO convertToChatRoomDTO(ChatRoom chatRoom) {
         if (chatRoom == null) {
             throw new IllegalArgumentException("ChatRoom không được null");
