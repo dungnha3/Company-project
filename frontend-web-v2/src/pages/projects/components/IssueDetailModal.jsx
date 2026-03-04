@@ -214,6 +214,68 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 </p>
                             </div>
 
+                            {/* New Fields: Weight, Start Date, Important/Urgent, Eisenhower */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
+                                {/* Start Date */}
+                                <div>
+                                    <span className="text-xs text-gray-500">Ngày bắt đầu</span>
+                                    <div className="text-sm font-medium text-gray-900">
+                                        {currentIssue.startDate ? formatDate(currentIssue.startDate) : '—'}
+                                    </div>
+                                </div>
+                                {/* Due Date */}
+                                <div>
+                                    <span className="text-xs text-gray-500">Hạn chót</span>
+                                    <div className={`text-sm font-medium ${currentIssue.dueDate && new Date(currentIssue.dueDate) < new Date() && currentIssue.statusName !== 'Done' ? 'text-red-600' : 'text-gray-900'}`}>
+                                        {currentIssue.dueDate ? formatDate(currentIssue.dueDate) : '—'}
+                                    </div>
+                                </div>
+                                {/* Completed At */}
+                                <div>
+                                    <span className="text-xs text-gray-500">Hoàn thành lúc</span>
+                                    <div className="text-sm font-medium text-emerald-600">
+                                        {currentIssue.completedAt ? formatDateTime(currentIssue.completedAt) : '—'}
+                                    </div>
+                                </div>
+                                {/* Weight */}
+                                <div>
+                                    <span className="text-xs text-gray-500">Trọng số (1-10)</span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full ${(currentIssue.weight || 0) >= 7 ? 'bg-red-500' : (currentIssue.weight || 0) >= 4 ? 'bg-amber-500' : 'bg-green-500'}`}
+                                                style={{ width: `${((currentIssue.weight || 0) / 10) * 100}%` }} />
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-900 min-w-[20px]">{currentIssue.weight || '—'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Eisenhower + Importance/Urgency */}
+                            <div className="flex flex-wrap gap-3 pt-2">
+                                {currentIssue.isImportant && (
+                                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 flex items-center gap-1">
+                                        <i className="fa-solid fa-star text-[10px]" /> Quan trọng
+                                    </span>
+                                )}
+                                {currentIssue.isUrgent && (
+                                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 flex items-center gap-1">
+                                        <i className="fa-solid fa-bolt text-[10px]" /> Khẩn cấp
+                                    </span>
+                                )}
+                                {currentIssue.eisenhowerQuadrant && (
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${currentIssue.eisenhowerQuadrant === 1 ? 'bg-red-100 text-red-700' :
+                                            currentIssue.eisenhowerQuadrant === 2 ? 'bg-blue-100 text-blue-700' :
+                                                currentIssue.eisenhowerQuadrant === 3 ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-gray-100 text-gray-600'
+                                        }`}>
+                                        <i className="fa-solid fa-grid-2 text-[10px]" />
+                                        {currentIssue.eisenhowerQuadrant === 1 ? 'Làm ngay' :
+                                            currentIssue.eisenhowerQuadrant === 2 ? 'Lên kế hoạch' :
+                                                currentIssue.eisenhowerQuadrant === 3 ? 'Giao lại' : 'Làm sau'}
+                                    </span>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
                                 <div>
                                     <span className="text-xs text-gray-500">Người tạo</span>

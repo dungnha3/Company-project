@@ -300,6 +300,9 @@ export const ENDPOINTS = {
         REMOVE_MEMBER: (id, userId) => `/api/projects/${id}/members/${userId}`,
         PHASES: (id) => `/api/projects/${id}/phases`,
         GANTT: (id) => `/api/projects/${id}/gantt`,
+        GOALS: (id) => `/api/projects/${id}/goals`,
+        GOAL_TOGGLE: (id, goalId) => `/api/projects/${id}/goals/${goalId}/toggle`,
+        GOAL_DELETE: (id, goalId) => `/api/projects/${id}/goals/${goalId}`,
     },
     // Project Dashboard & Export
     PROJECT_DASHBOARD: {

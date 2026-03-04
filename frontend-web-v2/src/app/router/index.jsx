@@ -51,6 +51,7 @@ const PersonalTasksPage = lazy(() => import('@pages/personal/PersonalTasksPage')
 const PersonalStoragePage = lazy(() => import('@pages/personal/PersonalStoragePage'));
 const PersonalCalendarPage = lazy(() => import('@pages/personal/PersonalCalendarPage'));
 const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
+const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
 
 // New feature pages
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
@@ -475,6 +476,18 @@ const router = createBrowserRouter([
                     <AccessControlGuard requiredFeature="analytics">
                         <Suspense fallback={<PageLoader />}>
                             <AnalyticsPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+
+            // Reports
+            {
+                path: 'reports',
+                element: (
+                    <AccessControlGuard requiredFeature="project">
+                        <Suspense fallback={<PageLoader />}>
+                            <ReportsPage />
                         </Suspense>
                     </AccessControlGuard>
                 ),

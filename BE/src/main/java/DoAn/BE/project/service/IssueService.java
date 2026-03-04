@@ -81,7 +81,11 @@ public class IssueService {
         issue.setReporter(reporter);
         issue.setAssignee(assignee);
         issue.setEstimatedHours(request.getEstimatedHours());
+        issue.setStartDate(request.getStartDate());
         issue.setDueDate(request.getDueDate());
+        issue.setWeight(request.getWeight());
+        issue.setIsImportant(request.getIsImportant() != null ? request.getIsImportant() : false);
+        issue.setIsUrgent(request.getIsUrgent() != null ? request.getIsUrgent() : false);
 
         if (request.getSprintId() != null) {
             Sprint sprint = sprintRepository.findById(request.getSprintId())
@@ -254,6 +258,18 @@ public class IssueService {
         }
         if (request.getDueDate() != null) {
             issue.setDueDate(request.getDueDate());
+        }
+        if (request.getStartDate() != null) {
+            issue.setStartDate(request.getStartDate());
+        }
+        if (request.getWeight() != null) {
+            issue.setWeight(request.getWeight());
+        }
+        if (request.getIsImportant() != null) {
+            issue.setIsImportant(request.getIsImportant());
+        }
+        if (request.getIsUrgent() != null) {
+            issue.setIsUrgent(request.getIsUrgent());
         }
 
         issue = issueRepository.save(issue);
@@ -454,7 +470,13 @@ public class IssueService {
 
         dto.setEstimatedHours(issue.getEstimatedHours());
         dto.setActualHours(issue.getActualHours());
+        dto.setStartDate(issue.getStartDate());
         dto.setDueDate(issue.getDueDate());
+        dto.setWeight(issue.getWeight());
+        dto.setIsImportant(issue.getIsImportant());
+        dto.setIsUrgent(issue.getIsUrgent());
+        dto.setEisenhowerQuadrant(issue.getEisenhowerQuadrant());
+        dto.setCompletedAt(issue.getCompletedAt());
         dto.setCreatedAt(issue.getCreatedAt());
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setIsOverdue(issue.isOverdue());

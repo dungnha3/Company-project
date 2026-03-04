@@ -30,6 +30,7 @@ public class IssueController {
     private final IssueService issueService;
 
     @PostMapping
+    @Transactional
     public ResponseEntity<IssueDTO> createIssue(
             @Valid @RequestBody CreateIssueRequest request,
             Authentication authentication) {
@@ -50,6 +51,7 @@ public class IssueController {
     }
 
     @PutMapping("/{issueId}")
+    @Transactional
     public ResponseEntity<IssueDTO> updateIssue(
             @PathVariable Long issueId,
             @Valid @RequestBody UpdateIssueRequest request,
@@ -60,6 +62,7 @@ public class IssueController {
     }
 
     @DeleteMapping("/{issueId}")
+    @Transactional
     public ResponseEntity<Void> deleteIssue(
             @PathVariable Long issueId,
             Authentication authentication) {
@@ -106,6 +109,7 @@ public class IssueController {
         Page<IssueDTO> issues = issueService.getMyIssuesPaginated(user.getUserId(), pageable);
         return ResponseEntity.ok(issues);
     }
+
     @GetMapping("/my-reported")
     public ResponseEntity<Page<IssueDTO>> getMyReportedIssues(
             Authentication authentication,
@@ -116,6 +120,7 @@ public class IssueController {
     }
 
     @PatchMapping("/{issueId}/assign/{assigneeId}")
+    @Transactional
     public ResponseEntity<IssueDTO> assignIssue(
             @PathVariable Long issueId,
             @PathVariable Long assigneeId,
@@ -126,6 +131,7 @@ public class IssueController {
     }
 
     @PatchMapping("/{issueId}/status/{statusId}")
+    @Transactional
     public ResponseEntity<IssueDTO> changeIssueStatus(
             @PathVariable Long issueId,
             @PathVariable Integer statusId,

@@ -27,7 +27,11 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         priority: 'MEDIUM',
         assigneeId: '',
         estimatedHours: '',
+        startDate: '',
         dueDate: '',
+        weight: '',
+        isImportant: false,
+        isUrgent: false,
     });
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -66,7 +70,11 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                 priority: data.priority,
                 assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
                 estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : null,
+                startDate: data.startDate || null,
                 dueDate: data.dueDate || null,
+                weight: data.weight ? parseInt(data.weight) : null,
+                isImportant: data.isImportant,
+                isUrgent: data.isUrgent,
             };
             return (await apiClient.post(ENDPOINTS.ISSUES.CREATE, payload)).data;
         },
@@ -105,7 +113,11 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             priority: 'MEDIUM',
             assigneeId: '',
             estimatedHours: '',
+            startDate: '',
             dueDate: '',
+            weight: '',
+            isImportant: false,
+            isUrgent: false,
         });
         onClose();
     };
@@ -266,6 +278,40 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                             </div>
 
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Trọng số (1-10)</label>
+                                <div className="relative">
+                                    <i className="fa-solid fa-weight-scale absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="number"
+                                        name="weight"
+                                        value={form.weight}
+                                        onChange={handleInputChange}
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        placeholder="5"
+                                        min="1"
+                                        max="10"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Start Date & Due Date Row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                                <div className="relative">
+                                    <i className="fa-solid fa-play absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="date"
+                                        name="startDate"
+                                        value={form.startDate}
+                                        onChange={handleInputChange}
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Hạn chót</label>
                                 <div className="relative">
                                     <i className="fa-solid fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -278,6 +324,32 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                     />
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Important & Urgent Checkboxes */}
+                        <div className="flex gap-6">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={form.isImportant}
+                                    onChange={(e) => setForm(prev => ({ ...prev, isImportant: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                />
+                                <span className="text-sm text-gray-700 group-hover:text-purple-600 transition-colors">
+                                    <i className="fa-solid fa-star text-purple-500 mr-1" /> Quan trọng
+                                </span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={form.isUrgent}
+                                    onChange={(e) => setForm(prev => ({ ...prev, isUrgent: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                />
+                                <span className="text-sm text-gray-700 group-hover:text-red-600 transition-colors">
+                                    <i className="fa-solid fa-bolt text-red-500 mr-1" /> Khẩn cấp
+                                </span>
+                            </label>
                         </div>
                     </div>
 

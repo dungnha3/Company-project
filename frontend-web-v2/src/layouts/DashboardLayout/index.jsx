@@ -44,11 +44,11 @@ export default function DashboardLayout() {
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900 transition-colors duration-300">
             <Sidebar />
-            <main className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
+            <main className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
                 <Header />
                 {/* Quota Warning Banner - shows when near/at quota limits */}
                 <QuotaWarningBanner />
-                <div className="p-6 animate-fade-in flex-1">
+                <div className="p-6 animate-fade-in flex-1 overflow-x-hidden">
                     <Outlet />
                 </div>
             </main>

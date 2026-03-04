@@ -1,36 +1,31 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     DndContext,
-    closestCorners,
-    KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
-    DragOverlay
+    DragOverlay,
+    useDroppable,
+    useDraggable,
+    pointerWithin,
+    rectIntersection,
 } from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
-    useSortable
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import IssueDetailModal from '../components/IssueDetailModal';
+import CreateIssueModal from '../components/CreateIssueModal';
 
 // Map status to columns - must match backend IssueStatus names
-const COLUMNS = {
-    TODO: { id: 'To Do', title: 'To Do', color: 'bg-gray-100' },
-    IN_PROGRESS: { id: 'In Progress', title: 'In Progress', color: 'bg-indigo-50' },
-    REVIEW: { id: 'Review', title: 'Review', color: 'bg-yellow-50' },
-    DONE: { id: 'Done', title: 'Done', color: 'bg-green-50' },
-};
+const COLUMNS = [
+    { id: 'To Do', title: 'Chờ xử lý', color: 'bg-gray-100', headerColor: 'bg-slate-200' },
+    { id: 'In Progress', title: 'Đang thực hiện', color: 'bg-indigo-50', headerColor: 'bg-indigo-200' },
+    { id: 'Review', title: 'Đang review', color: 'bg-yellow-50', headerColor: 'bg-yellow-200' },
+    { id: 'Done', title: 'Hoàn thành', color: 'bg-green-50', headerColor: 'bg-green-200' },
+];
 
-const COLUMN_IDS = Object.values(COLUMNS).map(c => c.id);
+const COLUMN_IDS = COLUMNS.map(c => c.id);
 
 // Map statusName → statusId (matches issue_statuses table)
 const STATUS_NAME_TO_ID = {
@@ -40,20 +35,35 @@ const STATUS_NAME_TO_ID = {
     'Done': 4,
 };
 
+// Custom collision detection: prioritize droppable columns, then fall back
+function kanbanCollisionDetection(args) {
+    // First try pointerWithin — checks which droppable the pointer is inside
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+        // Prefer column containers over individual items
+        const columnHit = pointerCollisions.find(c => COLUMN_IDS.includes(c.id));
+        if (columnHit) return [columnHit];
+        return pointerCollisions;
+    }
+    // Fallback to rect intersection
+    return rectIntersection(args);
+}
+
 export default function ProjectBoard({ project }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const [activeId, setActiveId] = useState(null);
     const [selectedIssue, setSelectedIssue] = useState(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
-    // Fetch Issues (Assuming active sprint or all issues for now)
-    // Ideally we filter by active sprint. For now let's fetch all project issues.
+    // Fetch all project issues
     const { data: issues = [], isLoading } = useQuery({
         queryKey: ['issues', project.projectId],
         queryFn: async () => {
             try {
-                const response = (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(project.projectId))).data;
-                // Handle paginated response (has .content) or direct array
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(project.projectId), {
+                    params: { size: 500, sort: 'createdAt,desc' }
+                })).data;
                 return response?.content || response || [];
             } catch {
                 return [];
@@ -62,8 +72,7 @@ export default function ProjectBoard({ project }) {
     });
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
     );
 
     // Group issues by statusName
@@ -77,46 +86,45 @@ export default function ProjectBoard({ project }) {
         issues.forEach(issue => {
             const statusName = issue.statusName || 'To Do';
             if (grouped[statusName]) grouped[statusName].push(issue);
-            else grouped['To Do'].push(issue); // Fallback
+            else grouped['To Do'].push(issue);
         });
         return grouped;
     }, [issues]);
 
-    // Mutation for Drag End - uses PATCH with statusId in path
+    // Mutation for status change
     const moveIssueMutation = useMutation({
         mutationFn: ({ id, statusId }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`),
         onSuccess: () => {
             queryClient.invalidateQueries(['issues', project.projectId]);
+            showToast('Đã cập nhật trạng thái', 'success');
         },
         onError: () => {
             showToast('Không thể cập nhật trạng thái', 'error');
-            queryClient.invalidateQueries(['issues', project.projectId]); // Revert
+            queryClient.invalidateQueries(['issues', project.projectId]);
         }
     });
 
-    const handleDragStart = (event) => {
+    const handleDragStart = useCallback((event) => {
         setActiveId(event.active.id);
-    };
+    }, []);
 
-    const handleDragEnd = (event) => {
+    const handleDragEnd = useCallback((event) => {
         const { active, over } = event;
         setActiveId(null);
 
         if (!over) return;
 
         const activeIssueId = active.id;
-        const overId = over.id; // Could be a container ID or another item ID
+        const overId = over.id;
 
-        // Find which container the active item is in (current status from active.data.current)
-        // AND which container it was dropped over.
-
+        // Determine the target column
         let newStatusName = null;
 
-        // Check if over is a container column
         if (COLUMN_IDS.includes(overId)) {
+            // Dropped directly onto a column
             newStatusName = overId;
         } else {
-            // Over is another item, find its statusName
+            // Dropped onto another issue card — find which column that issue is in
             const overIssue = issues.find(i => i.issueId === overId);
             if (overIssue) newStatusName = overIssue.statusName;
         }
@@ -129,36 +137,53 @@ export default function ProjectBoard({ project }) {
                 moveIssueMutation.mutate({ id: activeIssueId, statusId });
             }
         }
-    };
+    }, [issues, moveIssueMutation]);
 
-    const handleIssueClick = (issue) => {
-        setSelectedIssue(issue);
-    };
+    const handleDragCancel = useCallback(() => {
+        setActiveId(null);
+    }, []);
+
+    const activeIssue = activeId ? issues.find(i => i.issueId === activeId) : null;
 
     if (isLoading) return <LoadingBoard />;
 
     return (
         <>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">{issues.length} công việc</span>
+                </div>
+                <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                    <i className="fa-solid fa-plus" />
+                    Tạo Issue
+                </button>
+            </div>
+
             <DndContext
                 sensors={sensors}
-                collisionDetection={closestCorners}
+                collisionDetection={kanbanCollisionDetection}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
             >
-                <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-250px)]">
-                    {Object.values(COLUMNS).map(col => (
+                <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-300px)]">
+                    {COLUMNS.map(col => (
                         <BoardColumn
                             key={col.id}
                             column={col}
                             issues={boardData[col.id] || []}
-                            onIssueClick={handleIssueClick}
+                            onIssueClick={setSelectedIssue}
                         />
                     ))}
                 </div>
 
-                <DragOverlay>
-                    {activeId ? (
-                        <IssueCard issue={issues.find(i => i.issueId === activeId)} isOverlay />
+                <DragOverlay dropAnimation={null}>
+                    {activeIssue ? (
+                        <IssueCard issue={activeIssue} isOverlay />
                     ) : null}
                 </DragOverlay>
             </DndContext>
@@ -171,15 +196,31 @@ export default function ProjectBoard({ project }) {
                     onUpdate={() => queryClient.invalidateQueries(['issues', project.projectId])}
                 />
             )}
+
+            {/* Create Issue Modal */}
+            <CreateIssueModal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onSuccess={() => {
+                    setShowCreateModal(false);
+                    queryClient.invalidateQueries(['issues', project.projectId]);
+                }}
+                defaultProjectId={project.projectId}
+            />
         </>
     );
 }
 
+/* ─── Column (Droppable) ──────────────────────────────────────────── */
 function BoardColumn({ column, issues, onIssueClick }) {
-    const { setNodeRef } = useSortable({ id: column.id, data: { type: 'Container', id: column.id } });
+    const { setNodeRef, isOver } = useDroppable({
+        id: column.id,
+        data: { type: 'Column', statusName: column.id },
+    });
 
     return (
-        <div className={`flex-shrink-0 w-80 flex flex-col rounded-xl ${column.color} max-h-full`}>
+        <div className={`flex-shrink-0 w-80 flex flex-col rounded-xl ${column.color} max-h-full transition-all duration-200 ${isOver ? 'ring-2 ring-indigo-400 scale-[1.02] shadow-lg' : ''
+            }`}>
             <div className="p-4 font-bold text-gray-700 flex justify-between items-center bg-white/50 rounded-t-xl mb-1 sticky top-0 backdrop-blur-sm">
                 <span>{column.title}</span>
                 <span className="bg-white px-2 py-0.5 rounded-full text-xs text-gray-500 shadow-sm border border-gray-100">
@@ -187,14 +228,17 @@ function BoardColumn({ column, issues, onIssueClick }) {
                 </span>
             </div>
 
-            <div ref={setNodeRef} className="flex-1 p-3 overflow-y-auto custom-scrollbar space-y-3 min-h-[100px]">
-                <SortableContext items={issues.map(i => i.issueId)} strategy={verticalListSortingStrategy}>
-                    {issues.map(issue => (
-                        <SortableIssue key={issue.issueId} issue={issue} onClick={() => onIssueClick?.(issue)} />
-                    ))}
-                </SortableContext>
+            <div
+                ref={setNodeRef}
+                className={`flex-1 p-3 overflow-y-auto custom-scrollbar space-y-3 min-h-[120px] transition-colors duration-200 ${isOver ? 'bg-indigo-100/40' : ''
+                    }`}
+            >
+                {issues.map(issue => (
+                    <DraggableIssue key={issue.issueId} issue={issue} onClick={() => onIssueClick?.(issue)} />
+                ))}
                 {issues.length === 0 && (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg py-8">
+                    <div className={`h-full flex items-center justify-center text-xs border-2 border-dashed rounded-lg py-8 transition-colors ${isOver ? 'border-indigo-300 text-indigo-400 bg-indigo-50/50' : 'border-gray-200 text-gray-400'
+                        }`}>
                         Thả thẻ vào đây
                     </div>
                 )}
@@ -203,20 +247,23 @@ function BoardColumn({ column, issues, onIssueClick }) {
     );
 }
 
-function SortableIssue({ issue, onClick }) {
+/* ─── Draggable Issue Card ────────────────────────────────────────── */
+function DraggableIssue({ issue, onClick }) {
     const {
         attributes,
         listeners,
         setNodeRef,
         transform,
-        transition,
-        isDragging
-    } = useSortable({ id: issue.issueId, data: { type: 'Issue', issue } });
+        isDragging,
+    } = useDraggable({
+        id: issue.issueId,
+        data: { type: 'Issue', issue, statusName: issue.statusName },
+    });
 
     const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        opacity: isDragging ? 0.3 : 1,
+        zIndex: isDragging ? 999 : 'auto',
     };
 
     return (
@@ -226,6 +273,7 @@ function SortableIssue({ issue, onClick }) {
     );
 }
 
+/* ─── Issue Card (visual only) ────────────────────────────────────── */
 function IssueCard({ issue, isOverlay, onClick }) {
     if (!issue) return null;
 
@@ -233,7 +281,7 @@ function IssueCard({ issue, isOverlay, onClick }) {
         <div
             className={`
                 bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group
-                ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-primary ring-opacity-50' : ''}
+                ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-indigo-500 ring-opacity-50 scale-105' : ''}
             `}
             onDoubleClick={onClick}
         >

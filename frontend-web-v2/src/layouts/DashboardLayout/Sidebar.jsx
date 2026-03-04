@@ -73,6 +73,7 @@ export const NAV_CONFIG = [
         companyOnly: true,
         items: [
             { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án', feature: 'project' },
+            { path: '/app/reports', icon: 'fa-chart-bar', label: 'Báo cáo', feature: 'project' },
             { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu chung', feature: 'storage' },
             { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện', feature: 'chat' },
             { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },

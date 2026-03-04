@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
@@ -17,6 +17,9 @@ const SprintTab = lazy(() => import('./tabs/SprintTab'));
 const PhaseTab = lazy(() => import('./tabs/PhaseTab'));
 const IssueListTab = lazy(() => import('./tabs/IssueListTab'));
 const ProjectSettingsTab = lazy(() => import('./tabs/ProjectSettingsTab'));
+const ProjectCalendarTab = lazy(() => import('./tabs/ProjectCalendarTab'));
+const EisenhowerMatrixTab = lazy(() => import('./tabs/EisenhowerMatrixTab'));
+const TimelineTab = lazy(() => import('./tabs/TimelineTab'));
 
 const PageLoader = () => <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-2xl text-primary" /></div>;
 
@@ -42,6 +45,9 @@ export default function ProjectDetailPage() {
             { id: 'phases', label: 'Giai đoạn', icon: 'fa-diagram-project' },
             { id: 'list', label: 'Danh sách việc', icon: 'fa-list-check' },
             { id: 'gantt', label: 'Gantt Chart', icon: 'fa-timeline' },
+            { id: 'timeline', label: 'Timeline', icon: 'fa-bars-progress' },
+            { id: 'eisenhower', label: 'Eisenhower', icon: 'fa-grid-2' },
+            { id: 'calendar', label: 'Lịch công việc', icon: 'fa-calendar-days' },
         ];
 
         if (isProjectFeatureEnabled(settings, 'analytics')) {
@@ -112,8 +118,8 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* Tabs Navigation */}
-            <div className="border-b border-gray-200">
-                <nav className="flex space-x-8" aria-label="Tabs">
+            <div className="border-b border-gray-200 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                <nav className="flex space-x-4 min-w-max" aria-label="Tabs">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -152,6 +158,21 @@ export default function ProjectDetailPage() {
                     </Suspense>
                 )}
                 {activeTab === 'gantt' && <ProjectGantt project={project} />}
+                {activeTab === 'calendar' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <ProjectCalendarTab projectId={project.projectId} />
+                    </Suspense>
+                )}
+                {activeTab === 'eisenhower' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <EisenhowerMatrixTab projectId={project.projectId} />
+                    </Suspense>
+                )}
+                {activeTab === 'timeline' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <TimelineTab projectId={project.projectId} />
+                    </Suspense>
+                )}
                 {activeTab === 'analytics' && (
                     <Suspense fallback={<PageLoader />}>
                         <AnalyticsPage />
@@ -184,6 +205,12 @@ export default function ProjectDetailPage() {
 }
 
 function OverviewTab({ project }) {
+    const queryClient = useQueryClient();
+    const [newGoalTitle, setNewGoalTitle] = useState('');
+    const now = new Date();
+    const [goalMonth, setGoalMonth] = useState(now.getMonth() + 1);
+    const [goalYear, setGoalYear] = useState(now.getFullYear());
+
     const { data: activitiesData, isLoading } = useQuery({
         queryKey: ['project-activities', project.projectId],
         queryFn: async () => {
@@ -192,14 +219,46 @@ function OverviewTab({ project }) {
         },
     });
 
-    // Fetch members from dedicated endpoint (same as Settings tab)
     const { data: members = [] } = useQuery({
         queryKey: ['projectMembers', project.projectId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.MEMBERS(project.projectId))).data,
         enabled: !!project?.projectId,
     });
 
+    const { data: goals = [] } = useQuery({
+        queryKey: ['project-goals', project.projectId, goalMonth, goalYear],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.GOALS(project.projectId), { params: { month: goalMonth, year: goalYear } })).data,
+        enabled: !!project?.projectId,
+    });
+
+    const addGoalMutation = useMutation({
+        mutationFn: async () => {
+            await apiClient.post(ENDPOINTS.PROJECTS.GOALS(project.projectId), {
+                title: newGoalTitle.trim(), month: goalMonth, year: goalYear,
+            });
+        },
+        onSuccess: () => {
+            setNewGoalTitle('');
+            queryClient.invalidateQueries(['project-goals', project.projectId]);
+        },
+    });
+
+    const toggleGoalMutation = useMutation({
+        mutationFn: async (goalId) => {
+            await apiClient.patch(ENDPOINTS.PROJECTS.GOAL_TOGGLE(project.projectId, goalId));
+        },
+        onSuccess: () => queryClient.invalidateQueries(['project-goals', project.projectId]),
+    });
+
+    const deleteGoalMutation = useMutation({
+        mutationFn: async (goalId) => {
+            await apiClient.delete(ENDPOINTS.PROJECTS.GOAL_DELETE(project.projectId, goalId));
+        },
+        onSuccess: () => queryClient.invalidateQueries(['project-goals', project.projectId]),
+    });
+
     const activities = activitiesData?.content || [];
+    const completedGoals = goals.filter(g => g.isCompleted).length;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -221,9 +280,7 @@ function OverviewTab({ project }) {
                                         <p className="text-sm text-gray-900">
                                             <span className="font-medium">{act.user?.fullName}</span> {act.description}
                                         </p>
-                                        <p className="text-xs text-gray-500 mt-0.5">
-                                            {formatDateTime(act.createdAt)}
-                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{formatDateTime(act.createdAt)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -232,6 +289,65 @@ function OverviewTab({ project }) {
                 </div>
             </div>
             <div className="space-y-6">
+                {/* Goals Section */}
+                <div className="card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <i className="fa-solid fa-bullseye text-emerald-500" /> Mục tiêu
+                        </h3>
+                        <div className="flex items-center gap-1 text-xs">
+                            <select value={goalMonth} onChange={e => setGoalMonth(Number(e.target.value))}
+                                className="border border-gray-200 rounded px-1.5 py-1 text-xs">
+                                {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>T{i + 1}</option>)}
+                            </select>
+                            <select value={goalYear} onChange={e => setGoalYear(Number(e.target.value))}
+                                className="border border-gray-200 rounded px-1.5 py-1 text-xs">
+                                {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y =>
+                                    <option key={y} value={y}>{y}</option>
+                                )}
+                            </select>
+                        </div>
+                    </div>
+                    {goals.length > 0 && (
+                        <div className="mb-3">
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>{completedGoals}/{goals.length} hoàn thành</span>
+                                <span>{Math.round((completedGoals / goals.length) * 100)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${(completedGoals / goals.length) * 100}%` }} />
+                            </div>
+                        </div>
+                    )}
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto mb-3">
+                        {goals.map(g => (
+                            <div key={g.goalId} className="flex items-center gap-2 group hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors">
+                                <button onClick={() => toggleGoalMutation.mutate(g.goalId)}
+                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${g.isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 hover:border-emerald-400'}`}>
+                                    {g.isCompleted && <i className="fa-solid fa-check text-[10px]" />}
+                                </button>
+                                <span className={`text-sm flex-1 ${g.isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>{g.title}</span>
+                                <button onClick={() => deleteGoalMutation.mutate(g.goalId)}
+                                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition-opacity">
+                                    <i className="fa-solid fa-trash-can" />
+                                </button>
+                            </div>
+                        ))}
+                        {goals.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4">Chưa có mục tiêu</p>}
+                    </div>
+                    <div className="flex gap-2">
+                        <input type="text" value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && newGoalTitle.trim() && addGoalMutation.mutate()}
+                            placeholder="Thêm mục tiêu mới..."
+                            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                        <button onClick={() => newGoalTitle.trim() && addGoalMutation.mutate()}
+                            disabled={!newGoalTitle.trim() || addGoalMutation.isPending}
+                            className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600 disabled:opacity-50">
+                            <i className="fa-solid fa-plus" />
+                        </button>
+                    </div>
+                </div>
+
                 <div className="card p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Thống kê</h3>
                     <div className="space-y-4">
@@ -267,3 +383,4 @@ function OverviewTab({ project }) {
         </div>
     );
 }
+

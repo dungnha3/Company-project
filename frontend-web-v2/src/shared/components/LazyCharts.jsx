@@ -25,11 +25,15 @@ const LazyAreaChart = lazy(() =>
     import('recharts').then(module => ({ default: module.AreaChart }))
 );
 
+const LazyTreemap = lazy(() =>
+    import('recharts').then(module => ({ default: module.Treemap }))
+);
+
 // Re-export other Recharts components (small, don't need lazy loading)
 export {
     Bar, Line, Pie, Area, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    ResponsiveContainer
+    ResponsiveContainer, Rectangle
 } from 'recharts';
 
 /**
@@ -87,6 +91,21 @@ export function AreaChart({ children, fallbackHeight = 256, ...props }) {
                 <LazyAreaChart {...props}>
                     {children}
                 </LazyAreaChart>
+            </Suspense>
+        </ChartErrorBoundary>
+    );
+}
+
+/**
+ * Wrapped Treemap with lazy loading, error boundary, and loading skeleton
+ */
+export function Treemap({ children, fallbackHeight = 300, ...props }) {
+    return (
+        <ChartErrorBoundary>
+            <Suspense fallback={<SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />}>
+                <LazyTreemap {...props}>
+                    {children}
+                </LazyTreemap>
             </Suspense>
         </ChartErrorBoundary>
     );

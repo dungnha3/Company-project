@@ -16,14 +16,18 @@ import lombok.NoArgsConstructor;
 public class UpdateIssueRequest {
     @Size(max = 255, message = "Tiêu đề không được quá 255 ký tự")
     private String title;
-    
+
     @Size(max = 2000, message = "Mô tả không được quá 2000 ký tự")
     private String description;
-    
+
     private Integer statusId;
     private Priority priority;
     private Long assigneeId;
     private BigDecimal estimatedHours;
     private BigDecimal actualHours;
+    private LocalDate startDate;
     private LocalDate dueDate;
+    private Integer weight; // 1-10
+    private Boolean isImportant;
+    private Boolean isUrgent;
 }

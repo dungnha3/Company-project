@@ -86,6 +86,21 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
+    // Trọng số (1-10) đại diện mức độ khó/dễ
+    @Column(name = "weight")
+    private Integer weight;
+
+    // Eisenhower Matrix flags
+    @Column(name = "is_important")
+    private Boolean isImportant = false;
+
+    @Column(name = "is_urgent")
+    private Boolean isUrgent = false;
+
+    // Timestamp khi issue được hoàn thành (Done)
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     // Custom field values for this issue
     // /
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -115,6 +130,29 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     public void changeStatus(IssueStatus newStatus) {
         this.issueStatus = newStatus;
         this.setUpdatedAt(LocalDateTime.now());
+        // Auto-set completedAt when status changes to Done
+        if ("Done".equals(newStatus.getName())) {
+            if (this.completedAt == null) {
+                this.completedAt = LocalDateTime.now();
+            }
+        } else {
+            this.completedAt = null; // Reset if moved away from Done
+        }
+    }
+
+    /**
+     * Eisenhower quadrant: 1=Làm ngay, 2=Lên kế hoạch, 3=Giao lại, 4=Làm sau
+     */
+    public int getEisenhowerQuadrant() {
+        boolean imp = Boolean.TRUE.equals(this.isImportant);
+        boolean urg = Boolean.TRUE.equals(this.isUrgent);
+        if (imp && urg)
+            return 1;
+        if (imp && !urg)
+            return 2;
+        if (!imp && urg)
+            return 3;
+        return 4;
     }
 
     // Enum
