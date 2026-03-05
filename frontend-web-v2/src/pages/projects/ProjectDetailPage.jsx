@@ -257,7 +257,7 @@ function OverviewTab({ project }) {
         onSuccess: () => queryClient.invalidateQueries(['project-goals', project.projectId]),
     });
 
-    const activities = activitiesData?.content || [];
+    const activities = Array.isArray(activitiesData) ? activitiesData : (activitiesData?.content || []);
     const completedGoals = goals.filter(g => g.isCompleted).length;
 
     return (
@@ -270,19 +270,9 @@ function OverviewTab({ project }) {
                     ) : activities.length === 0 ? (
                         <p className="text-gray-500 italic">Chưa có hoạt động nào.</p>
                     ) : (
-                        <div className="space-y-4">
-                            {activities.map(act => (
-                                <div key={act.activityId || act.id} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
-                                        {act.user?.fullName?.charAt(0) || 'U'}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-900">
-                                            <span className="font-medium">{act.user?.fullName}</span> {act.description}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{formatDateTime(act.createdAt)}</p>
-                                    </div>
-                                </div>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                            {activities.slice(0, 20).map(act => (
+                                <ActivityItem key={act.activityId || act.id} act={act} />
                             ))}
                         </div>
                     )}
@@ -384,3 +374,52 @@ function OverviewTab({ project }) {
     );
 }
 
+const ACTIVITY_ICONS = {
+    CREATED: { icon: 'fa-plus', bg: 'bg-green-100', text: 'text-green-600' },
+    STATUS_CHANGED: { icon: 'fa-arrow-right-arrow-left', bg: 'bg-blue-100', text: 'text-blue-600' },
+    ASSIGNEE_CHANGED: { icon: 'fa-user-pen', bg: 'bg-purple-100', text: 'text-purple-600' },
+    PRIORITY_CHANGED: { icon: 'fa-flag', bg: 'bg-amber-100', text: 'text-amber-600' },
+    SPRINT_CHANGED: { icon: 'fa-layer-group', bg: 'bg-cyan-100', text: 'text-cyan-600' },
+    DUE_DATE_CHANGED: { icon: 'fa-calendar-day', bg: 'bg-orange-100', text: 'text-orange-600' },
+    TITLE_CHANGED: { icon: 'fa-pen', bg: 'bg-gray-100', text: 'text-gray-600' },
+    DESCRIPTION_CHANGED: { icon: 'fa-align-left', bg: 'bg-gray-100', text: 'text-gray-600' },
+    COMMENT_ADDED: { icon: 'fa-comment', bg: 'bg-indigo-100', text: 'text-indigo-600' },
+    COMMENT_EDITED: { icon: 'fa-comment-dots', bg: 'bg-indigo-100', text: 'text-indigo-500' },
+    COMMENT_DELETED: { icon: 'fa-comment-slash', bg: 'bg-red-100', text: 'text-red-500' },
+    ESTIMATED_HOURS_CHANGED: { icon: 'fa-clock', bg: 'bg-teal-100', text: 'text-teal-600' },
+    ACTUAL_HOURS_CHANGED: { icon: 'fa-hourglass-half', bg: 'bg-teal-100', text: 'text-teal-600' },
+};
+
+function ActivityItem({ act }) {
+    const style = ACTIVITY_ICONS[act.activityType] || { icon: 'fa-circle-info', bg: 'bg-gray-100', text: 'text-gray-500' };
+    const userName = act.userName || 'Người dùng';
+
+    return (
+        <div className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0 group hover:bg-gray-50/50 -mx-2 px-2 py-1.5 rounded-lg transition-colors">
+            <div className={`w-8 h-8 rounded-full ${style.bg} flex items-center justify-center ${style.text} shrink-0`}>
+                <i className={`fa-solid ${style.icon} text-xs`} />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-900 leading-relaxed">
+                    {act.description || (
+                        <>
+                            <span className="font-semibold">{userName}</span>{' '}
+                            đã thực hiện thay đổi
+                            {act.issueTitle && (
+                                <> trong <span className="font-medium text-indigo-600">'{act.issueTitle}'</span></>
+                            )}
+                        </>
+                    )}
+                </p>
+                {act.oldValue && act.newValue && (
+                    <div className="mt-1 flex items-center gap-1.5 text-xs flex-wrap">
+                        <span className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded line-through">{act.oldValue}</span>
+                        <i className="fa-solid fa-arrow-right text-gray-300 text-[10px]" />
+                        <span className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded font-medium">{act.newValue}</span>
+                    </div>
+                )}
+                <p className="text-xs text-gray-400 mt-1">{formatDateTime(act.createdAt)}</p>
+            </div>
+        </div>
+    );
+}

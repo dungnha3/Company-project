@@ -80,6 +80,10 @@ function IssueRow({ issue, onClick }) {
 
 export default function IssueListTab({ projectId }) {
     const [selectedIssue, setSelectedIssue] = useState(null);
+    const [search, setSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterPriority, setFilterPriority] = useState('');
+    const [filterAssignee, setFilterAssignee] = useState('');
     const queryClient = useQueryClient();
 
     // Fetch project issues
@@ -88,20 +92,101 @@ export default function IssueListTab({ projectId }) {
         queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(projectId))).data,
     });
 
-    const issues = issuesData?.content || [];
+    const allIssues = issuesData?.content || [];
+
+    // Extract unique filter options from data
+    const statusOptions = [...new Set(allIssues.map(i => i.statusName).filter(Boolean))];
+    const priorityOptions = [...new Set(allIssues.map(i => i.priority).filter(Boolean))];
+    const assigneeOptions = [...new Set(allIssues.map(i => i.assigneeName).filter(Boolean))];
+
+    // Apply filters
+    const issues = allIssues.filter(issue => {
+        if (search && !issue.title?.toLowerCase().includes(search.toLowerCase()) &&
+            !issue.issueKey?.toLowerCase().includes(search.toLowerCase())) return false;
+        if (filterStatus && issue.statusName !== filterStatus) return false;
+        if (filterPriority && issue.priority !== filterPriority) return false;
+        if (filterAssignee && issue.assigneeName !== filterAssignee) return false;
+        return true;
+    });
+
+    const hasFilters = search || filterStatus || filterPriority || filterAssignee;
+
+    const clearFilters = () => {
+        setSearch('');
+        setFilterStatus('');
+        setFilterPriority('');
+        setFilterAssignee('');
+    };
 
     const handleCloseModal = () => {
         setSelectedIssue(null);
         queryClient.invalidateQueries(['project-issues', projectId]);
     };
 
+    const priorityLabels = { CRITICAL: 'Khẩn cấp', HIGH: 'Cao', MEDIUM: 'Trung bình', LOW: 'Thấp' };
+
     return (
         <div className="space-y-4">
-            {/* Toolbar if needed */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                <div className="text-gray-500 text-sm">Hiển thị {issues.length} công việc</div>
-                <div className="flex gap-2">
-                    {/* Filters can go here */}
+            {/* Toolbar with Filters */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* Search */}
+                    <div className="relative flex-1 min-w-[200px]">
+                        <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            placeholder="Tìm theo tên hoặc mã..."
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                    >
+                        <option value="">Tất cả trạng thái</option>
+                        {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+
+                    {/* Priority Filter */}
+                    <select
+                        value={filterPriority}
+                        onChange={(e) => setFilterPriority(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                    >
+                        <option value="">Tất cả ưu tiên</option>
+                        {priorityOptions.map(p => <option key={p} value={p}>{priorityLabels[p] || p}</option>)}
+                    </select>
+
+                    {/* Assignee Filter */}
+                    <select
+                        value={filterAssignee}
+                        onChange={(e) => setFilterAssignee(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                    >
+                        <option value="">Tất cả người thực hiện</option>
+                        {assigneeOptions.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+
+                    {/* Clear Filters */}
+                    {hasFilters && (
+                        <button
+                            onClick={clearFilters}
+                            className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                            <i className="fa-solid fa-times" />
+                            Xóa bộ lọc
+                        </button>
+                    )}
+                </div>
+
+                {/* Result count */}
+                <div className="text-gray-500 text-sm">
+                    Hiển thị {issues.length}{hasFilters ? ` / ${allIssues.length}` : ''} công việc
                 </div>
             </div>
 

@@ -48,7 +48,8 @@ public class TimeLogController {
     public ResponseEntity<List<TimeLogDTO>> getIssueTimeLogs(
             @PathVariable Long issueId,
             @AuthenticationPrincipal User currentUser) {
-        accessControlService.checkTimetrackingViewAllPermission();
+        // No permission check needed — any authenticated project member can view
+        // timelogs
         return ResponseEntity.ok(timeTrackingService.getIssueTimeLogs(issueId, currentUser));
     }
 
@@ -93,7 +94,8 @@ public class TimeLogController {
     public ResponseEntity<BigDecimal> getTotalHoursByIssue(
             @PathVariable Long issueId,
             @AuthenticationPrincipal User currentUser) {
-        accessControlService.checkTimetrackingViewAllPermission();
+        // No permission check needed — any authenticated project member can view total
+        // hours
         return ResponseEntity.ok(timeTrackingService.getTotalHoursByIssue(issueId, currentUser));
     }
 }

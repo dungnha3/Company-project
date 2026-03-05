@@ -11,17 +11,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
 @RestController
 @RequestMapping("/api/sprints")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
-@Transactional(readOnly = true)
 public class SprintController {
 
     private final SprintService sprintService;
+
     @PostMapping
     public ResponseEntity<SprintDTO> createSprint(
             @Valid @RequestBody CreateSprintRequest request,
@@ -29,6 +29,7 @@ public class SprintController {
         SprintDTO sprint = sprintService.createSprint(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(sprint);
     }
+
     @GetMapping("/{sprintId}")
     public ResponseEntity<SprintDTO> getSprint(
             @PathVariable Long sprintId,
@@ -36,6 +37,7 @@ public class SprintController {
         SprintDTO sprint = sprintService.getSprintById(sprintId, currentUser);
         return ResponseEntity.ok(sprint);
     }
+
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<SprintDTO>> getProjectSprints(
             @PathVariable Long projectId,
@@ -43,6 +45,7 @@ public class SprintController {
         List<SprintDTO> sprints = sprintService.getProjectSprints(projectId, currentUser);
         return ResponseEntity.ok(sprints);
     }
+
     @PutMapping("/{sprintId}")
     public ResponseEntity<SprintDTO> updateSprint(
             @PathVariable Long sprintId,
@@ -51,6 +54,7 @@ public class SprintController {
         SprintDTO sprint = sprintService.updateSprint(sprintId, request, currentUser);
         return ResponseEntity.ok(sprint);
     }
+
     @DeleteMapping("/{sprintId}")
     public ResponseEntity<Void> deleteSprint(
             @PathVariable Long sprintId,
@@ -58,6 +62,7 @@ public class SprintController {
         sprintService.deleteSprint(sprintId, currentUser);
         return ResponseEntity.noContent().build();
     }
+
     @PostMapping("/{sprintId}/start")
     public ResponseEntity<SprintDTO> startSprint(
             @PathVariable Long sprintId,
@@ -65,6 +70,7 @@ public class SprintController {
         SprintDTO sprint = sprintService.startSprint(sprintId, currentUser);
         return ResponseEntity.ok(sprint);
     }
+
     @PostMapping("/{sprintId}/complete")
     public ResponseEntity<SprintDTO> completeSprint(
             @PathVariable Long sprintId,
@@ -72,6 +78,7 @@ public class SprintController {
         SprintDTO sprint = sprintService.completeSprint(sprintId, currentUser);
         return ResponseEntity.ok(sprint);
     }
+
     @PostMapping("/{sprintId}/issues/{issueId}")
     public ResponseEntity<Void> addIssueToSprint(
             @PathVariable Long sprintId,
@@ -80,6 +87,7 @@ public class SprintController {
         sprintService.addIssueToSprint(sprintId, issueId, currentUser);
         return ResponseEntity.ok().build();
     }
+
     @DeleteMapping("/{sprintId}/issues/{issueId}")
     public ResponseEntity<Void> removeIssueFromSprint(
             @PathVariable Long sprintId,

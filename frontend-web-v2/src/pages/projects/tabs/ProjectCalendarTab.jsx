@@ -53,7 +53,11 @@ export default function ProjectCalendarTab({ projectId }) {
     const toDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const todayStr = toDateStr(new Date());
 
-    const getIssuesForDate = (dateStr) => filteredIssues.filter(i => i.dueDate?.startsWith(dateStr));
+    const getIssuesForDate = (dateStr) => filteredIssues.filter(issue => {
+        const start = issue.startDate?.substring(0, 10);
+        const end = issue.dueDate?.substring(0, 10);
+        return dateStr === start || dateStr === end;
+    });
 
     const handleIssueHover = (e, issue) => {
         setHoveredIssue(issue);
@@ -113,9 +117,15 @@ export default function ProjectCalendarTab({ projectId }) {
     };
 
     // ==================== ISSUE CARD ====================
-    const IssueCard = ({ issue, compact = false }) => {
+    const IssueCard = ({ issue, dateStr, compact = false }) => {
         const statusColor = STATUS_COLORS[issue.statusName] || STATUS_COLORS['To Do'];
         const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.statusName !== 'Done';
+        const startStr = issue.startDate?.substring(0, 10);
+        const endStr = issue.dueDate?.substring(0, 10);
+        const isStart = dateStr && startStr === dateStr;
+        const isEnd = dateStr && endStr === dateStr;
+        // If start and end are same day, show both
+        const isSameDay = startStr && endStr && startStr === endStr;
         return (
             <div
                 onClick={() => setSelectedIssue(issue)}
@@ -123,6 +133,15 @@ export default function ProjectCalendarTab({ projectId }) {
                 onMouseLeave={() => setHoveredIssue(null)}
                 className={`group flex items-center gap-1 px-1.5 py-1 rounded-md text-[11px] cursor-pointer transition-all hover:shadow-sm ${statusColor.bg} ${statusColor.text} ${isOverdue ? 'ring-1 ring-red-300' : ''}`}
             >
+                {isStart && (
+                    <span className="px-1 py-0 rounded text-[9px] font-bold bg-green-500 text-white shrink-0" title="Ngày bắt đầu">BĐ</span>
+                )}
+                {isEnd && !isSameDay && (
+                    <span className="px-1 py-0 rounded text-[9px] font-bold bg-orange-500 text-white shrink-0" title="Hạn chót">KT</span>
+                )}
+                {isSameDay && isEnd && (
+                    <span className="px-1 py-0 rounded text-[9px] font-bold bg-orange-500 text-white shrink-0" title="Hạn chót">KT</span>
+                )}
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColor.dot}`} />
                 {issue.assigneeName && (
                     <span className="w-4 h-4 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">
@@ -211,7 +230,7 @@ export default function ProjectCalendarTab({ projectId }) {
                                                 {dayIssues.length > 0 && <span className="text-[10px] text-gray-400 font-medium">{dayIssues.length}</span>}
                                             </div>
                                             <div className="space-y-0.5 overflow-hidden max-h-[75px] overflow-y-auto">
-                                                {dayIssues.slice(0, 3).map(issue => <IssueCard key={issue.issueId} issue={issue} />)}
+                                                {dayIssues.slice(0, 3).map(issue => <IssueCard key={`${issue.issueId}-${cell.dateStr}`} issue={issue} dateStr={cell.dateStr} />)}
                                                 {dayIssues.length > 3 && <div className="text-[10px] text-gray-400 text-center font-medium py-0.5 cursor-pointer hover:text-violet-600">+{dayIssues.length - 3} khác</div>}
                                             </div>
                                         </div>
@@ -242,7 +261,7 @@ export default function ProjectCalendarTab({ projectId }) {
                                     return (
                                         <div key={i} className={`p-2 border-r border-gray-100 ${isToday ? 'bg-violet-50/30' : ''}`}>
                                             <div className="space-y-1">
-                                                {dayIssues.map(issue => <IssueCard key={issue.issueId} issue={issue} />)}
+                                                {dayIssues.map(issue => <IssueCard key={`${issue.issueId}-${d.dateStr}`} issue={issue} dateStr={d.dateStr} />)}
                                                 {dayIssues.length === 0 && <p className="text-[10px] text-gray-300 text-center py-8 italic">Trống</p>}
                                             </div>
                                         </div>

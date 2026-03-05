@@ -102,6 +102,11 @@ public class IssueService {
 
         issue = issueRepository.save(issue);
 
+        // Log activity for issue creation
+        IssueActivity createdActivity = new IssueActivity(issue, reporter, ActivityType.CREATED,
+                reporter.getUsername() + " đã tạo issue '" + issue.getTitle() + "'");
+        issueActivityRepository.save(createdActivity);
+
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
 
         return convertToDTO(issue);
@@ -229,6 +234,16 @@ public class IssueService {
 
         validateProjectAccess(issue.getProject().getProjectId(), userId);
 
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        // Track old values for activity logging
+        String oldTitle = issue.getTitle();
+        String oldPriority = issue.getPriority() != null ? issue.getPriority().name() : null;
+        String oldAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+        String oldDueDate = issue.getDueDate() != null ? issue.getDueDate().toString() : null;
+        String oldStatusName = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : null;
+
         // Update fields if provided
         if (request.getTitle() != null) {
             issue.setTitle(request.getTitle());
@@ -273,6 +288,38 @@ public class IssueService {
         }
 
         issue = issueRepository.save(issue);
+
+        // Log activity for meaningful field changes
+        if (request.getTitle() != null && !request.getTitle().equals(oldTitle)) {
+            issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.TITLE_CHANGED,
+                    "Title", oldTitle, request.getTitle()));
+        }
+        if (request.getPriority() != null && !request.getPriority().name().equals(oldPriority)) {
+            issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.PRIORITY_CHANGED,
+                    "Priority", oldPriority, request.getPriority().name()));
+        }
+        if (request.getAssigneeId() != null) {
+            String newAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+            if (newAssigneeName != null && !newAssigneeName.equals(oldAssigneeName)) {
+                issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.ASSIGNEE_CHANGED,
+                        "Assignee", oldAssigneeName, newAssigneeName));
+            }
+        }
+        if (request.getStatusId() != null) {
+            String newStatusName = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : null;
+            if (newStatusName != null && !newStatusName.equals(oldStatusName)) {
+                issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.STATUS_CHANGED,
+                        "Status", oldStatusName, newStatusName));
+            }
+        }
+        if (request.getDueDate() != null) {
+            String newDueDate = request.getDueDate().toString();
+            if (!newDueDate.equals(oldDueDate)) {
+                issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.DUE_DATE_CHANGED,
+                        "DueDate", oldDueDate, newDueDate));
+            }
+        }
+
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
 
         return convertToDTO(issue);
@@ -309,12 +356,21 @@ public class IssueService {
 
         validateProjectManagement(issue.getProject().getProjectId(), userId);
 
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        String oldAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+
         User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
         validateProjectAccess(issue.getProject().getProjectId(), assigneeId);
 
         issue.assignTo(assignee);
         issue = issueRepository.save(issue);
+
+        // Log activity for assignment change
+        issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.ASSIGNEE_CHANGED,
+                "Assignee", oldAssigneeName, assignee.getUsername()));
 
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
 
@@ -357,7 +413,8 @@ public class IssueService {
                     "Status",
                     oldStatus,
                     newStatus);
-            activity.setDescription(user.getUsername() + " đã thay đổi trạng thái");
+            activity.setDescription(
+                    user.getUsername() + " đã chuyển '" + issue.getTitle() + "' từ " + oldStatus + " → " + newStatus);
             issueActivityRepository.save(activity);
         }
 

@@ -24,7 +24,6 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
 @FeatureFlag("CHAT")
-@Transactional(readOnly = true)
 public class ChatRoomController {
 
     private final ChatRoomService chatRoomService;
@@ -46,6 +45,7 @@ public class ChatRoomController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<org.springframework.data.domain.Page<ChatRoomDTO>> getMyChatRooms(
             @AuthenticationPrincipal User currentUser,
             org.springframework.data.domain.Pageable pageable) {
@@ -55,6 +55,7 @@ public class ChatRoomController {
     }
 
     @GetMapping("/{roomId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ChatRoomDTO> getChatRoom(
             @PathVariable Long roomId,
             @AuthenticationPrincipal User currentUser) {
@@ -63,6 +64,7 @@ public class ChatRoomController {
     }
 
     @GetMapping("/project/{projectId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ChatRoomDTO> getProjectChatRoom(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -71,10 +73,12 @@ public class ChatRoomController {
     }
 
     @GetMapping("/{roomId}/members")
-    public ResponseEntity<List<ChatRoomMember>> getRoomMembers(
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<DoAn.BE.chat.dto.ChatRoomDTO.MemberDTO>> getRoomMembers(
             @PathVariable Long roomId,
             @AuthenticationPrincipal User currentUser) {
-        List<ChatRoomMember> members = chatRoomService.getRoomMembers(roomId, currentUser.getUserId());
+        List<DoAn.BE.chat.dto.ChatRoomDTO.MemberDTO> members = chatRoomService.getRoomMemberDTOs(roomId,
+                currentUser.getUserId());
         return ResponseEntity.ok(members);
     }
 

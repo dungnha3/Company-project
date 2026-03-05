@@ -11,7 +11,10 @@ import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.IssueActivityRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
+import DoAn.BE.project.entity.IssueActivity;
+import DoAn.BE.project.entity.IssueActivity.ActivityType;
 import DoAn.BE.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueRepository issueRepository;
+    private final IssueActivityRepository issueActivityRepository;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -215,6 +219,15 @@ public class SprintService {
         sprint.setStatus(SprintStatus.ACTIVE);
         sprint = sprintRepository.save(sprint);
 
+        // Log activity for all issues in this sprint
+        List<Issue> sprintIssues = issueRepository.findBySprint_SprintId(sprintId);
+        if (!sprintIssues.isEmpty()) {
+            Issue firstIssue = sprintIssues.get(0);
+            issueActivityRepository.save(new IssueActivity(firstIssue, currentUser, ActivityType.SPRINT_CHANGED,
+                    currentUser.getUsername() + " đã bắt đầu sprint '" + sprint.getName() + "' với "
+                            + sprintIssues.size() + " issues"));
+        }
+
         log.info("Sprint {} started", sprint.getName());
 
         SprintDTO sprintDTO = convertToDTO(sprint);
@@ -250,6 +263,15 @@ public class SprintService {
         int completedIssues = (int) sprintIssues.stream()
                 .filter(Issue::isDone)
                 .count();
+
+        // Log activity for sprint completion
+        if (!sprintIssues.isEmpty()) {
+            Issue firstIssue = sprintIssues.get(0);
+            issueActivityRepository.save(new IssueActivity(firstIssue, currentUser, ActivityType.SPRINT_CHANGED,
+                    currentUser.getUsername() + " đã hoàn thành sprint '" + sprint.getName() + "' (" + completedIssues
+                            + "/" + totalIssues + " issues hoàn thành)"));
+        }
+
         sprintIssues.stream()
                 .filter(issue -> !issue.isDone())
                 .forEach(issue -> {
@@ -298,8 +320,13 @@ public class SprintService {
             throw new BadRequestException("Không thể thêm issue vào sprint đã hoàn thành hoặc bị hủy");
         }
 
+        String oldSprintName = issue.getSprint() != null ? issue.getSprint().getName() : null;
         issue.setSprint(sprint);
         issueRepository.save(issue);
+
+        // Log activity
+        issueActivityRepository.save(new IssueActivity(issue, currentUser, ActivityType.SPRINT_CHANGED,
+                "Sprint", oldSprintName, sprint.getName()));
     }
 
     @Transactional
@@ -321,8 +348,13 @@ public class SprintService {
             throw new BadRequestException("Issue không thuộc sprint này");
         }
 
+        String oldSprintName = sprint.getName();
         issue.setSprint(null);
         issueRepository.save(issue);
+
+        // Log activity
+        issueActivityRepository.save(new IssueActivity(issue, currentUser, ActivityType.SPRINT_CHANGED,
+                "Sprint", oldSprintName, null));
     }
 
     private void validateProjectAccess(Long projectId, Long userId) {

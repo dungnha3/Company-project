@@ -11,27 +11,28 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface IssueCommentRepository extends JpaRepository<IssueComment, Long> {
 
-    // [OPTIMIZED: Fetch with user for comment display]
-    @EntityGraph(attributePaths = { "user" })
-    List<IssueComment> findByIssue_IssueIdOrderByCreatedAtAsc(Long issueId);
+        // [OPTIMIZED: Fetch with user for comment display]
+        @EntityGraph(attributePaths = { "author" })
+        List<IssueComment> findByIssue_IssueIdOrderByCreatedAtAsc(Long issueId);
 
-    @Query("SELECT COUNT(c) FROM IssueComment c WHERE c.issue.issueId = :issueId")
-    long countByIssueId(@Param("issueId") Long issueId);
+        @Query("SELECT COUNT(c) FROM IssueComment c WHERE c.issue.issueId = :issueId")
+        long countByIssueId(@Param("issueId") Long issueId);
 
-    // [OPTIMIZED: Fetch with user and issue for project activity]
-    @EntityGraph(attributePaths = { "user", "issue" })
-    @Query("SELECT c FROM IssueComment c WHERE c.issue.project.projectId = :projectId ORDER BY c.createdAt DESC")
-    List<IssueComment> findByProjectIdOrderByCreatedAtDesc(@Param("projectId") Long projectId);
+        // [OPTIMIZED: Fetch with user and issue for project activity]
+        @EntityGraph(attributePaths = { "author", "issue" })
+        @Query("SELECT c FROM IssueComment c WHERE c.issue.project.projectId = :projectId ORDER BY c.createdAt DESC")
+        List<IssueComment> findByProjectIdOrderByCreatedAtDesc(@Param("projectId") Long projectId);
 
-    // [OPTIMIZED: Count comments since date - for dashboard]
-    @Query("SELECT COUNT(c) FROM IssueComment c WHERE c.issue.project.projectId = :projectId AND c.createdAt > :since")
-    long countByProjectIdSince(@Param("projectId") Long projectId, @Param("since") java.time.LocalDateTime since);
-    @EntityGraph(attributePaths = { "user" })
-    org.springframework.data.domain.Page<IssueComment> findByIssue_IssueIdOrderByCreatedAtAsc(Long issueId,
-            org.springframework.data.domain.Pageable pageable);
+        // [OPTIMIZED: Count comments since date - for dashboard]
+        @Query("SELECT COUNT(c) FROM IssueComment c WHERE c.issue.project.projectId = :projectId AND c.createdAt > :since")
+        long countByProjectIdSince(@Param("projectId") Long projectId, @Param("since") java.time.LocalDateTime since);
 
-    @EntityGraph(attributePaths = { "user", "issue" })
-    @Query("SELECT c FROM IssueComment c WHERE c.issue.project.projectId = :projectId ORDER BY c.createdAt DESC")
-    org.springframework.data.domain.Page<IssueComment> findByProjectIdOrderByCreatedAtDesc(
-            @Param("projectId") Long projectId, org.springframework.data.domain.Pageable pageable);
+        @EntityGraph(attributePaths = { "author" })
+        org.springframework.data.domain.Page<IssueComment> findByIssue_IssueIdOrderByCreatedAtAsc(Long issueId,
+                        org.springframework.data.domain.Pageable pageable);
+
+        @EntityGraph(attributePaths = { "author", "issue" })
+        @Query("SELECT c FROM IssueComment c WHERE c.issue.project.projectId = :projectId ORDER BY c.createdAt DESC")
+        org.springframework.data.domain.Page<IssueComment> findByProjectIdOrderByCreatedAtDesc(
+                        @Param("projectId") Long projectId, org.springframework.data.domain.Pageable pageable);
 }

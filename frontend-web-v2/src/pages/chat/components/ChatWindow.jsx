@@ -8,7 +8,7 @@ import { useToast } from '@app/providers/ToastProvider';
 import MessageItem from './MessageItem';
 import MessageInput from './MessageInput';
 
-export default function ChatWindow({ roomId, onOpenRoomInfo }) {
+export default function ChatWindow({ roomId, onOpenRoomInfo, onStartCall, onCallSignal }) {
     const { user } = useAuthStore();
     const { subscribe, unsubscribe, sendMessage } = useWebSocketStore();
     const queryClient = useQueryClient();
@@ -65,6 +65,10 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
         }
     });
 
+    // Use refs for callbacks to avoid stale closure in WebSocket subscription
+    const callSignalRef = useRef(onCallSignal);
+    callSignalRef.current = onCallSignal;
+
     // WebSocket subscription
     useEffect(() => {
         // Guard: Only proceed if roomId is valid
@@ -72,6 +76,12 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
 
         const topic = `/topic/room.${roomId}`;
         subscribe(topic, (wsMessage) => {
+            // Forward call signals to parent (use ref to always get latest handler)
+            const callTypes = ['CALL_OFFER', 'CALL_ANSWER', 'ICE_CANDIDATE', 'CALL_REJECT', 'CALL_END'];
+            if (callTypes.includes(wsMessage.type)) {
+                callSignalRef.current && callSignalRef.current(wsMessage);
+                return;
+            }
             // Backend sends WebSocketMessage wrapper with full MessDTO in .data
             if (wsMessage.type === 'CHAT_MESSAGE' && wsMessage.data) {
                 queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), wsMessage.data]);
@@ -161,12 +171,20 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
                     </button>
 
                     {/* Video Call */}
-                    <button className="w-9 h-9 rounded-full text-gray-400 hover:bg-gray-100 flex items-center justify-center">
+                    <button
+                        onClick={() => onStartCall && onStartCall(true)}
+                        className="w-9 h-9 rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-500 flex items-center justify-center transition-colors"
+                        title="Gọi video"
+                    >
                         <i className="fa-solid fa-video" />
                     </button>
 
                     {/* Voice Call */}
-                    <button className="w-9 h-9 rounded-full text-gray-400 hover:bg-gray-100 flex items-center justify-center">
+                    <button
+                        onClick={() => onStartCall && onStartCall(false)}
+                        className="w-9 h-9 rounded-full text-gray-400 hover:bg-green-50 hover:text-green-500 flex items-center justify-center transition-colors"
+                        title="Gọi thoại"
+                    >
                         <i className="fa-solid fa-phone" />
                     </button>
 

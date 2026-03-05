@@ -28,7 +28,6 @@ import DoAn.BE.common.annotation.FeatureFlag;
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
-@Transactional(readOnly = true)
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -44,6 +43,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ProjectDTO> getProject(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -52,6 +52,7 @@ public class ProjectController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<ProjectDTO>> getAllProjects(
             @AuthenticationPrincipal User currentUser,
             Pageable pageable) {
@@ -60,6 +61,7 @@ public class ProjectController {
     }
 
     @GetMapping("/my-projects")
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<ProjectDTO>> getMyProjects(
             @AuthenticationPrincipal User currentUser,
             Pageable pageable) {
@@ -94,6 +96,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/members")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ProjectMemberDTO>> getProjectMembers(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -122,6 +125,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/files")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<FileDTO>> getProjectFiles(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -133,6 +137,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/files/stats")
+    @Transactional(readOnly = true)
     public ResponseEntity<ProjectFileStats> getProjectFileStats(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {

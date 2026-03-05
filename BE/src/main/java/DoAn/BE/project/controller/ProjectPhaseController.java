@@ -7,7 +7,6 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.transaction.annotation.Transactional;
 
 import DoAn.BE.project.dto.ProjectPhaseDTO;
 import DoAn.BE.project.service.ProjectPhaseService;
@@ -18,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 @FeatureFlag("PROJECT")
-@Transactional(readOnly = true)
 public class ProjectPhaseController {
 
     private final ProjectPhaseService projectPhaseService;

@@ -48,10 +48,13 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         enabled: !!fullIssue?.projectId,
     });
 
-    // Fetch comments
+    // Fetch comments (backend returns Page object with .content array)
     const { data: comments = [] } = useQuery({
         queryKey: ['issueComments', issue?.issueId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.COMMENTS.BY_ISSUE(issue.issueId))).data,
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.COMMENTS.BY_ISSUE(issue.issueId))).data;
+            return res?.content || (Array.isArray(res) ? res : []);
+        },
         enabled: !!issue?.issueId && activeTab === 'comments',
     });
 
@@ -70,7 +73,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     // Assign mutation
     const assignMutation = useMutation({
         mutationFn: async (assigneeId) => {
-            await apiClient.patch(ENDPOINTS.ISSUES.ASSIGN(issue.issueId), { assigneeId });
+            await apiClient.patch(`/api/issues/${issue.issueId}/assign/${assigneeId}`);
         },
         onSuccess: () => {
             toast.success('Đã giao việc');
@@ -264,9 +267,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 )}
                                 {currentIssue.eisenhowerQuadrant && (
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${currentIssue.eisenhowerQuadrant === 1 ? 'bg-red-100 text-red-700' :
-                                            currentIssue.eisenhowerQuadrant === 2 ? 'bg-blue-100 text-blue-700' :
-                                                currentIssue.eisenhowerQuadrant === 3 ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-gray-100 text-gray-600'
+                                        currentIssue.eisenhowerQuadrant === 2 ? 'bg-blue-100 text-blue-700' :
+                                            currentIssue.eisenhowerQuadrant === 3 ? 'bg-amber-100 text-amber-700' :
+                                                'bg-gray-100 text-gray-600'
                                         }`}>
                                         <i className="fa-solid fa-grid-2 text-[10px]" />
                                         {currentIssue.eisenhowerQuadrant === 1 ? 'Làm ngay' :

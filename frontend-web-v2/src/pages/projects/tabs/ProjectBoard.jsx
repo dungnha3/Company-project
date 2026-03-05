@@ -277,20 +277,52 @@ function DraggableIssue({ issue, onClick }) {
 function IssueCard({ issue, isOverlay, onClick }) {
     if (!issue) return null;
 
+    const isImportant = issue.isImportant;
+    const isUrgent = issue.isUrgent;
+    const isBoth = isImportant && isUrgent;
+
+    // Build highlight classes
+    const highlightClasses = isBoth
+        ? 'border-l-4 border-l-red-500 ring-2 ring-red-200 bg-gradient-to-r from-red-50/80 via-white to-orange-50/60 shadow-md shadow-red-100/50 animate-kanban-pulse'
+        : isUrgent
+            ? 'border-l-4 border-l-red-400 bg-red-50/40 ring-1 ring-red-100'
+            : isImportant
+                ? 'border-l-4 border-l-purple-400 bg-purple-50/40 ring-1 ring-purple-100'
+                : '';
+
     return (
         <div
             className={`
                 bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group
                 ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-indigo-500 ring-opacity-50 scale-105' : ''}
+                ${!isOverlay ? highlightClasses : ''}
             `}
             onDoubleClick={onClick}
         >
             <div className="flex justify-between items-start mb-2">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getPriorityColor(issue.priority)}`}>
-                    {issue.priority || 'NORMAL'}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getPriorityColor(issue.priority)}`}>
+                        {issue.priority || 'NORMAL'}
+                    </span>
+                    {/* Important & Urgent badges */}
+                    {isBoth && (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-sm">
+                            <i className="fa-solid fa-fire text-[8px]" /> Làm ngay
+                        </span>
+                    )}
+                    {isImportant && !isBoth && (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                            <i className="fa-solid fa-star text-[8px]" /> Quan trọng
+                        </span>
+                    )}
+                    {isUrgent && !isBoth && (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">
+                            <i className="fa-solid fa-bolt text-[8px]" /> Khẩn cấp
+                        </span>
+                    )}
+                </div>
                 <button
-                    className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                     onClick={(e) => { e.stopPropagation(); onClick?.(); }}
                     title="Xem chi tiết"
                 >
