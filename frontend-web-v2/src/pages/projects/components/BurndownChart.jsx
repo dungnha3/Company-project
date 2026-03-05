@@ -20,25 +20,29 @@ export default function BurndownChart({ sprintId, sprintName }) {
         if (!burndown?.burndownData?.length) return null;
 
         const data = burndown.burndownData;
-        const maxIssues = burndown.totalIssues || Math.max(...data.map(d => d.remainingIssues));
+        const maxIssues = burndown.totalIssues || Math.max(...data.map(d => d.remainingIssues)) || 1;
         const width = 100; // percentage-based
         const height = 200;
         const padding = { top: 20, right: 20, bottom: 40, left: 40 };
         const chartWidth = width;
         const chartHeight = height - padding.top - padding.bottom;
 
+        // Safe x calculation: avoid division by zero when only 1 data point
+        const getX = (i) => data.length <= 1 ? 50 : (i / (data.length - 1)) * 100;
+        const getY = (value) => ((maxIssues - value) / maxIssues) * chartHeight;
+
         // Generate path for ideal line
         const idealPath = data.map((point, i) => {
-            const x = (i / (data.length - 1)) * 100;
-            const y = ((maxIssues - point.idealRemaining) / maxIssues) * chartHeight;
-            return `${i === 0 ? 'M' : 'L'} ${x}% ${y + padding.top}`;
+            const x = getX(i);
+            const y = getY(point.idealRemaining ?? 0);
+            return `${i === 0 ? 'M' : 'L'} ${x} ${y + padding.top}`;
         }).join(' ');
 
         // Generate path for actual line
         const actualPath = data.map((point, i) => {
-            const x = (i / (data.length - 1)) * 100;
-            const y = ((maxIssues - point.remainingIssues) / maxIssues) * chartHeight;
-            return `${i === 0 ? 'M' : 'L'} ${x}% ${y + padding.top}`;
+            const x = getX(i);
+            const y = getY(point.remainingIssues ?? 0);
+            return `${i === 0 ? 'M' : 'L'} ${x} ${y + padding.top}`;
         }).join(' ');
 
         return {
@@ -48,6 +52,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
             actualPath,
             chartHeight,
             padding,
+            getX,
         };
     }, [burndown]);
 
@@ -72,7 +77,7 @@ export default function BurndownChart({ sprintId, sprintName }) {
         );
     }
 
-    const { data, maxIssues, idealPath, actualPath, chartHeight, padding } = chartData;
+    const { data, maxIssues, idealPath, actualPath, chartHeight, padding, getX } = chartData;
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
@@ -132,8 +137,9 @@ export default function BurndownChart({ sprintId, sprintName }) {
 
                     {/* Data points */}
                     {data.map((point, i) => {
-                        const x = (i / (data.length - 1)) * 100;
-                        const y = ((maxIssues - point.remainingIssues) / maxIssues) * chartHeight + padding.top;
+                        const x = getX(i);
+                        const remaining = point.remainingIssues ?? 0;
+                        const y = ((maxIssues - remaining) / maxIssues) * chartHeight + padding.top;
                         return (
                             <circle
                                 key={i}

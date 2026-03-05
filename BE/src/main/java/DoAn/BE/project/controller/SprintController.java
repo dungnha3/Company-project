@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.service.SprintService;
 import DoAn.BE.user.entity.User;
@@ -12,17 +14,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// [Controller quản lý sprints] (Role: Project Members)
 @RestController
 @RequestMapping("/api/sprints")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class SprintController {
 
     private final SprintService sprintService;
 
-    // ==================== CRUD ====================
-
-    // [Tạo sprint mới] (Role: Project Manager)
     @PostMapping
     public ResponseEntity<SprintDTO> createSprint(
             @Valid @RequestBody CreateSprintRequest request,
@@ -31,7 +30,6 @@ public class SprintController {
         return ResponseEntity.status(HttpStatus.CREATED).body(sprint);
     }
 
-    // [Lấy thông tin sprint] (Role: Project Member)
     @GetMapping("/{sprintId}")
     public ResponseEntity<SprintDTO> getSprint(
             @PathVariable Long sprintId,
@@ -40,7 +38,6 @@ public class SprintController {
         return ResponseEntity.ok(sprint);
     }
 
-    // [Lấy danh sách sprint của project] (Role: Project Member)
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<SprintDTO>> getProjectSprints(
             @PathVariable Long projectId,
@@ -49,7 +46,6 @@ public class SprintController {
         return ResponseEntity.ok(sprints);
     }
 
-    // [Cập nhật sprint] (Role: Project Manager)
     @PutMapping("/{sprintId}")
     public ResponseEntity<SprintDTO> updateSprint(
             @PathVariable Long sprintId,
@@ -59,7 +55,6 @@ public class SprintController {
         return ResponseEntity.ok(sprint);
     }
 
-    // [Xóa sprint] (Role: Project Manager)
     @DeleteMapping("/{sprintId}")
     public ResponseEntity<Void> deleteSprint(
             @PathVariable Long sprintId,
@@ -68,9 +63,6 @@ public class SprintController {
         return ResponseEntity.noContent().build();
     }
 
-    // ==================== SPRINT LIFECYCLE ====================
-
-    // [Bắt đầu sprint] (Role: Project Manager)
     @PostMapping("/{sprintId}/start")
     public ResponseEntity<SprintDTO> startSprint(
             @PathVariable Long sprintId,
@@ -79,7 +71,6 @@ public class SprintController {
         return ResponseEntity.ok(sprint);
     }
 
-    // [Hoàn thành sprint] (Role: Project Manager)
     @PostMapping("/{sprintId}/complete")
     public ResponseEntity<SprintDTO> completeSprint(
             @PathVariable Long sprintId,
@@ -88,9 +79,6 @@ public class SprintController {
         return ResponseEntity.ok(sprint);
     }
 
-    // ==================== ISSUE MANAGEMENT ====================
-
-    // [Thêm issue vào sprint] (Role: Project Manager)
     @PostMapping("/{sprintId}/issues/{issueId}")
     public ResponseEntity<Void> addIssueToSprint(
             @PathVariable Long sprintId,
@@ -100,7 +88,6 @@ public class SprintController {
         return ResponseEntity.ok().build();
     }
 
-    // [Xóa issue khỏi sprint] (Role: Project Manager)
     @DeleteMapping("/{sprintId}/issues/{issueId}")
     public ResponseEntity<Void> removeIssueFromSprint(
             @PathVariable Long sprintId,

@@ -7,41 +7,52 @@ import { formatDate } from '@shared/utils/formatters';
 
 export default function HRDashboardPage() {
     const navigate = useNavigate();
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
+
+    const canViewHR = hasPermission('hrViewList');
 
     // Fetch employees for charts and lists
     const { data: employees, isLoading: loadingEmployees } = useQuery({
         queryKey: ['employees-dashboard'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
+        enabled: canViewHR,
+        retry: false,
     });
 
     // Fetch Dashboard Stats (Server-side aggregation for accurate counts)
     const { data: dashboardStats } = useQuery({
         queryKey: ['hr-dashboard-stats'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.HR_DASHBOARD.STATS)).data,
+        enabled: canViewHR,
+        retry: false,
     });
 
-    // Fetch pending leave requests
+    // Fetch pending leave requests (requires leave management permission)
+    const canViewLeave = hasPermission('hrManageLeave') || hasPermission('leaveView');
     const { data: leaveRequests } = useQuery({
         queryKey: ['pending-leaves-dashboard'],
         queryFn: async () => {
             const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
             return response.data?.content || response.data || [];
         },
-        enabled: hasRole('MANAGER_HR', 'OWNER', 'ADMIN'),
+        enabled: canViewHR && canViewLeave,
+        retry: false,
     });
 
     // Fetch pending reviews
     const { data: pendingReviews } = useQuery({
         queryKey: ['pending-reviews-dashboard'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.PENDING)).data,
-        enabled: hasRole('OWNER', 'ADMIN'),
+        enabled: hasPermission('salaryView'),
+        retry: false,
     });
 
     // Fetch today's attendance (retained for detailed report if needed)
     const { data: attendance } = useQuery({
         queryKey: ['attendance-today'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.REPORT)).data,
+        enabled: canViewHR,
+        retry: false,
     });
 
     // Calculate stats
@@ -121,7 +132,7 @@ export default function HRDashboardPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <QuickActionCard
                         icon="fa-user-plus"
-                        label="Thêm nhân viên"
+                        label="Tạo hồ sơ NV"
                         description="Tạo hồ sơ nhân viên mới"
                         color="bg-indigo-500"
                         onClick={() => navigate('/app/hr/employees')}
@@ -212,7 +223,7 @@ export default function HRDashboardPage() {
                     <i className="fa-solid fa-chart-pie text-purple-500 mr-2" />
                     Trạng thái nhân viên
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <StatusCard
                         label="Đang làm việc"
                         count={employeeList.filter(e => e.status === 'ACTIVE').length}
@@ -220,13 +231,7 @@ export default function HRDashboardPage() {
                         color="bg-green-500"
                     />
                     <StatusCard
-                        label="Thử việc"
-                        count={employeeList.filter(e => e.status === 'PROBATION').length}
-                        total={employeeList.length}
-                        color="bg-indigo-500"
-                    />
-                    <StatusCard
-                        label="Đang nghỉ"
+                        label="Tạm nghỉ"
                         count={employeeList.filter(e => e.status === 'ON_LEAVE').length}
                         total={employeeList.length}
                         color="bg-yellow-500"
@@ -234,12 +239,6 @@ export default function HRDashboardPage() {
                     <StatusCard
                         label="Đã nghỉ việc"
                         count={employeeList.filter(e => e.status === 'RESIGNED').length}
-                        total={employeeList.length}
-                        color="bg-gray-500"
-                    />
-                    <StatusCard
-                        label="Tạm nghỉ"
-                        count={employeeList.filter(e => e.status === 'INACTIVE').length}
                         total={employeeList.length}
                         color="bg-red-500"
                     />

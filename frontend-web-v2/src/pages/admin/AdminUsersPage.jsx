@@ -95,25 +95,6 @@ export default function AdminUsersPage() {
             )
         },
         {
-            header: 'Workspace',
-            accessorKey: 'companyName',
-            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.companyName || '---'}</span>
-        },
-        {
-            header: 'Vai trò',
-            accessorKey: 'roles',
-            cell: (row) => (
-                <div className="flex gap-1 flex-wrap max-w-[200px]">
-                    {(row.roles || []).slice(0, 3).map((role) => (
-                        <span key={role} className="badge bg-gray-100 text-gray-600">{role.replace('ROLE_', '')}</span>
-                    ))}
-                    {(row.roles || []).length > 3 && (
-                        <span className="badge bg-gray-100 text-gray-400">+{row.roles.length - 3}</span>
-                    )}
-                </div>
-            )
-        },
-        {
             header: 'Trạng thái',
             accessorKey: 'isActive',
             cell: (row) => (

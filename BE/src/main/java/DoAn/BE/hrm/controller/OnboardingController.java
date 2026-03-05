@@ -1,23 +1,32 @@
 package DoAn.BE.hrm.controller;
 
+import DoAn.BE.hrm.dto.CreateOnboardingTemplateRequest;
+import DoAn.BE.hrm.dto.StartOnboardingRequest;
+import DoAn.BE.hrm.dto.UpdateOnboardingProgressRequest;
 import DoAn.BE.hrm.entity.OnboardingTemplate;
 import DoAn.BE.hrm.entity.OnboardingInstance;
 import DoAn.BE.hrm.service.OnboardingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import DoAn.BE.common.service.AccessControlService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
+
+import DoAn.BE.common.annotation.FeatureFlag;
 
 @RestController
 @RequestMapping("/api/onboarding")
+@FeatureFlag("ONBOARDING")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OnboardingController {
 
     private final OnboardingService onboardingService;
+    private final AccessControlService accessControlService;
 
     @GetMapping("/templates")
     public ResponseEntity<List<OnboardingTemplate>> getTemplates() {
@@ -25,8 +34,9 @@ public class OnboardingController {
     }
 
     @PostMapping("/templates")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
-    public ResponseEntity<OnboardingTemplate> createTemplate(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<OnboardingTemplate> createTemplate(
+            @Valid @RequestBody CreateOnboardingTemplateRequest request) {
+        accessControlService.checkOnboardingManagePermission();
         return ResponseEntity.status(HttpStatus.CREATED).body(onboardingService.createTemplate(request));
     }
 
@@ -36,16 +46,17 @@ public class OnboardingController {
     }
 
     @PostMapping("/instances")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
-    public ResponseEntity<OnboardingInstance> startOnboarding(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<OnboardingInstance> startOnboarding(
+            @Valid @RequestBody StartOnboardingRequest request) {
+        accessControlService.checkOnboardingManagePermission();
         return ResponseEntity.status(HttpStatus.CREATED).body(onboardingService.startOnboarding(request));
     }
 
     @PutMapping("/instances/{id}/progress")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER_HR')")
     public ResponseEntity<OnboardingInstance> updateProgress(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateOnboardingProgressRequest request) {
+        accessControlService.checkOnboardingManagePermission();
         return ResponseEntity.ok(onboardingService.updateProgress(id, request));
     }
 }

@@ -60,9 +60,14 @@ public class DepartmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
     }
 
-    @Cacheable(value = "department", key = "'all'")
+    @Cacheable(value = "department", key = "'all-' + T(DoAn.BE.common.context.TenantContext).getCompanyId()")
     public List<Department> getAllDepartments() {
-        return departmentRepository.findAll();
+        // ALL companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
+        }
+        return departmentRepository.findByCompanyId(companyId);
     }
 
     @CacheEvict(value = "department", allEntries = true)

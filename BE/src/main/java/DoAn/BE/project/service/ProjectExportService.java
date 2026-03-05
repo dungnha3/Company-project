@@ -16,8 +16,6 @@ import DoAn.BE.project.repository.ProjectPhaseRepository;
 import DoAn.BE.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-// [Service xuất dữ liệu Project ra CSV] (Role: Project Member)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -28,8 +26,6 @@ public class ProjectExportService {
     private final ProjectPhaseRepository projectPhaseRepository;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    // [Export Issues ra CSV] (Role: Project Member)
     @Transactional(readOnly = true)
     public byte[] exportIssuesToCsv(Long projectId) throws IOException {
         Project project = projectRepository.findById(projectId)
@@ -59,8 +55,6 @@ public class ProjectExportService {
         log.info("Exported {} issues for project {} to CSV", issues.size(), project.getName());
         return csv.toString().getBytes("UTF-8");
     }
-
-    // [Export Gantt Chart ra CSV] (Role: Project Member)
     @Transactional(readOnly = true)
     public byte[] exportGanttToCsv(Long projectId) throws IOException {
         Project project = projectRepository.findById(projectId)

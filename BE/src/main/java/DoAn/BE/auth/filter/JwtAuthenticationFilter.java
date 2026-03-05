@@ -71,6 +71,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     if (!user.getIsActive()) {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
                         response.getWriter().write("{\"error\":\"Tài khoản đã bị vô hiệu hóa\"}");
                         return;
                     }
@@ -129,16 +131,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
-
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
-        return path.startsWith("/api/auth/login") ||
-                path.startsWith("/api/auth/register") ||
-                path.startsWith("/api/auth/google") ||
-                path.startsWith("/api/public/") ||
-                path.equals("/error") ||
-                path.startsWith("/actuator/") ||
-                path.startsWith("/ws/");
+        for (String publicEndpoint : DoAn.BE.common.util.AppConstants.PUBLIC_ENDPOINTS) {
+            String prefix = publicEndpoint.replace("/**", "");
+            if (path.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return path.equals("/error") || path.startsWith("/actuator/");
     }
 }

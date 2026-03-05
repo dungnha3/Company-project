@@ -55,7 +55,7 @@ public class IssueCommentService {
 
         // Log activity
         IssueActivity activity = new IssueActivity(issue, currentUser, ActivityType.COMMENT_ADDED,
-                "đã thêm comment");
+                currentUser.getUsername() + " đã thêm comment vào '" + issue.getTitle() + "'");
         issueActivityRepository.save(activity);
 
         // Publish Event for Comment Added
@@ -128,7 +128,7 @@ public class IssueCommentService {
 
         // Log activity
         IssueActivity activity = new IssueActivity(comment.getIssue(), currentUser, ActivityType.COMMENT_EDITED,
-                "đã sửa comment");
+                currentUser.getUsername() + " đã sửa comment trong '" + comment.getIssue().getTitle() + "'");
         issueActivityRepository.save(activity);
 
         // Publish Event for Comment Edited
@@ -158,7 +158,7 @@ public class IssueCommentService {
 
         // Log activity trước khi xóa
         IssueActivity activity = new IssueActivity(comment.getIssue(), currentUser, ActivityType.COMMENT_DELETED,
-                "đã xóa comment");
+                currentUser.getUsername() + " đã xóa comment trong '" + comment.getIssue().getTitle() + "'");
         issueActivityRepository.save(activity);
 
         // Publish Event for Comment Deleted (Need to capture issue before delete)
@@ -198,7 +198,6 @@ public class IssueCommentService {
         return comments.map(comment -> convertToDTO(comment, currentUser));
     }
 
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));

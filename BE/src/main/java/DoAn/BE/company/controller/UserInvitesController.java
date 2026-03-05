@@ -8,28 +8,28 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller xử lý các lời mời tham gia công ty từ phía người dùng được mời.
- * Endpoint: /api/invites
- */
+// Controller xử lý các lời mời tham gia công ty từ phía người dùng được mời.
+// Endpoint: /api/invites
+// /
 @RestController
 @RequestMapping("/api/invites")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class UserInvitesController {
 
     private final CompanyMemberRepository memberRepository;
 
-    /**
-     * Lấy danh sách lời mời đang chờ của user hiện tại
-     * GET /api/invites/pending
-     */
+    // Lấy danh sách lời mời đang chờ của user hiện tại
+    // GET /api/invites/pending
+    // /
     @GetMapping("/pending")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getPendingInvites() {
@@ -56,10 +56,9 @@ public class UserInvitesController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Chấp nhận lời mời tham gia công ty
-     * POST /api/invites/accept
-     */
+    // Chấp nhận lời mời tham gia công ty
+    // POST /api/invites/accept
+    // /
     @PostMapping("/accept")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> acceptInvite(@RequestBody Map<String, Long> request) {
@@ -93,7 +92,7 @@ public class UserInvitesController {
         invite.setJoinedAt(LocalDateTime.now());
         memberRepository.save(invite);
 
-        log.info("✅ User {} đã chấp nhận lời mời vào công ty {}", userId, invite.getCompany().getName());
+        log.info("User {} đã chấp nhận lời mời vào công ty {}", userId, invite.getCompany().getName());
 
         return ResponseEntity.ok(Map.of(
                 "message", "Đã chấp nhận lời mời thành công",
@@ -101,10 +100,9 @@ public class UserInvitesController {
                 "companyName", invite.getCompany().getName()));
     }
 
-    /**
-     * Từ chối/hủy lời mời
-     * DELETE /api/invites/{inviteId}
-     */
+    // Từ chối/hủy lời mời
+    // DELETE /api/invites/{inviteId}
+    // /
     @DeleteMapping("/{inviteId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> declineInvite(@PathVariable Long inviteId) {
@@ -125,7 +123,7 @@ public class UserInvitesController {
         // Xóa invite
         memberRepository.delete(invite);
 
-        log.info("❌ User {} đã từ chối lời mời vào công ty {}", userId, invite.getCompany().getName());
+        log.info("User {} đã từ chối lời mời vào công ty {}", userId, invite.getCompany().getName());
 
         return ResponseEntity.ok(Map.of("message", "Đã từ chối lời mời"));
     }

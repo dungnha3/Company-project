@@ -10,15 +10,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 // Position entity - renamed from ChucVu
 @Entity
 @Table(name = "positions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public class Position extends DoAn.BE.common.entity.BaseEntity {
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class Position extends DoAn.BE.common.entity.TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "position_id")
+    @EqualsAndHashCode.Include
     private Long positionId;
 
     @Column(name = "name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")
@@ -40,36 +42,4 @@ public class Position extends DoAn.BE.common.entity.BaseEntity {
     @JsonIgnore
     private List<Employee> employees;
 
-    // Legacy getters/setters for backward compatibility
-    public Long getChucvuId() {
-        return positionId;
-    }
-
-    public void setChucvuId(Long id) {
-        this.positionId = id;
-    }
-
-    public String getTenChucVu() {
-        return name;
-    }
-
-    public void setTenChucVu(String ten) {
-        this.name = ten;
-    }
-
-    public String getMoTa() {
-        return description;
-    }
-
-    public void setMoTa(String moTa) {
-        this.description = moTa;
-    }
-
-    public Double getHeSoLuong() {
-        return salaryCoefficient;
-    }
-
-    public void setHeSoLuong(Double heSo) {
-        this.salaryCoefficient = heSo;
-    }
 }

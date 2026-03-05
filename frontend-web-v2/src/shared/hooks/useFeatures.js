@@ -12,10 +12,13 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
  * Hook to check if a feature is enabled for the current workspace
  */
 export function useFeatureEnabled(featureKey) {
-    const { currentWorkspace } = useWorkspaceStore();
+    const { currentWorkspace, workspaceType } = useWorkspaceStore();
     const settings = currentWorkspace?.settings;
 
-    if (!settings) return { isEnabled: true, isLoading: false };
+    // Personal workspace: no company features, only personal-scoped features
+    if (workspaceType === 'PERSONAL' || !settings) {
+        return { isEnabled: false, isLoading: false };
+    }
 
     const featureMap = {
         hr: settings.hrModuleEnabled,
@@ -29,7 +32,6 @@ export function useFeatureEnabled(featureKey) {
         contract: settings.hrModuleEnabled && settings.contractEnabled,
         review: settings.hrModuleEnabled && settings.reviewEnabled,
         okr: settings.hrModuleEnabled && settings.okrEnabled,
-        skillsMatrix: settings.hrModuleEnabled && settings.skillsMatrixEnabled,
         onboarding: settings.hrModuleEnabled && settings.onboardingEnabled,
         resourcePlanning: settings.hrModuleEnabled && settings.resourcePlanningEnabled,
         orgChart: settings.hrModuleEnabled && settings.orgChartEnabled,
@@ -40,7 +42,7 @@ export function useFeatureEnabled(featureKey) {
     };
 
     return {
-        isEnabled: featureMap[featureKey] ?? true,
+        isEnabled: featureMap[featureKey] ?? false,
         isLoading: false,
     };
 }
@@ -104,7 +106,7 @@ export function useQuotaCheck(quotaType) {
  * Hook to get user permissions in current workspace
  */
 export function usePermissions() {
-    const { currentWorkspace, workspaceType } = useWorkspaceStore();
+    const { currentWorkspace, workspaceType, hasPermission } = useWorkspaceStore();
 
     // Get roles array (with fallback for backward compatibility)
     const roles = workspaceType === 'PERSONAL'
@@ -118,11 +120,14 @@ export function usePermissions() {
         roles,
         primaryRole,
         hasRole,
+        hasPermission,
+        // Role-based (correct for admin-level checks)
         isOwner: hasRole('OWNER'),
-        isAdmin: hasRole('ADMIN', 'OWNER'),
-        isManager: hasRole('OWNER', 'ADMIN', 'MANAGER_HR', 'MANAGER_PROJECT', 'MANAGER_ACCOUNTING'),
-        canManageHR: hasRole('OWNER', 'ADMIN', 'MANAGER_HR'),
-        canManageProjects: hasRole('OWNER', 'ADMIN', 'MANAGER_PROJECT'),
-        canManageFinance: hasRole('OWNER', 'ADMIN', 'MANAGER_ACCOUNTING'),
+        isAdmin: hasRole('COMPANY_ADMIN', 'OWNER'),
+        // Permission-based (granular, admin can toggle per member)
+        isManager: hasPermission('hrViewList') || hasPermission('projectManageAll') || hasPermission('salaryView'),
+        canManageHR: hasPermission('hrViewList'),
+        canManageProjects: hasPermission('projectManageAll'),
+        canManageFinance: hasPermission('salaryView'),
     };
 }

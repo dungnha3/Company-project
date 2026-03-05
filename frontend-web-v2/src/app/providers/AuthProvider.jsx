@@ -9,11 +9,16 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         const init = async () => {
-            await initAuth();
+            // Skip initAuth if already authenticated (e.g., just logged in)
+            // Only re-validate when there's a token but no user data (page reload)
+            const hasToken = Boolean(localStorage.getItem('accessToken'));
+            if (!isAuthenticated && hasToken) {
+                await initAuth();
+            }
             setLoading(false);
         };
         init();
-    }, [initAuth]);
+    }, []);
 
     const value = {
         user,

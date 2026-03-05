@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
-// [Listener handling User -> HRM events] (Role: HR System)
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -24,13 +23,20 @@ public class HrmUserListener {
     public void handleUserCreated(UserCreatedEvent event) {
         DoAn.BE.user.entity.User user = event.getUser();
 
-        // Check if user already has Employee profile
-        if (employeeRepository.findByUser_UserId(user.getUserId()).isPresent()) {
-            return;
+        // Check if user already has Employee profile in this company
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            if (employeeRepository.findByUser_UserIdAndCompany_CompanyId(user.getUserId(), companyId).isPresent()) {
+                return;
+            }
+        } else {
+            if (employeeRepository.findByUser_UserId(user.getUserId()).isPresent()) {
+                return;
+            }
         }
 
         try {
-            log.info("👤 [HRM] Detecting new user: {}. Auto-creating Employee profile...", user.getUsername());
+            log.info("[HRM] Detecting new user: {}. Auto-creating Employee profile...", user.getUsername());
 
             Employee employee = new Employee();
             employee.setUser(user);
@@ -39,12 +45,13 @@ public class HrmUserListener {
             employee.setGender(Employee.Gender.OTHER); // Default
             employee.setHireDate(LocalDate.now());
             employee.setStatus(Employee.EmployeeStatus.ACTIVE);
+            // company_id is auto-set by TenantScopedEntity.prePersistTenant()
             // Department & Position will be updated later by HR
 
             employeeRepository.save(employee);
-            log.info("✅ [HRM] Created Employee profile for user: {}", user.getUsername());
+            log.info("[HRM] Created Employee profile for user: {}", user.getUsername());
         } catch (Exception e) {
-            log.error("❌ [HRM] Failed to create Employee profile for user {}: {}", user.getUsername(), e.getMessage());
+            log.error("[HRM] Failed to create Employee profile for user {}: {}", user.getUsername(), e.getMessage());
         }
     }
 

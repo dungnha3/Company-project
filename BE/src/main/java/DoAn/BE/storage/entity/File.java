@@ -8,24 +8,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import DoAn.BE.common.entity.TenantScopedEntity;
 import org.hibernate.annotations.Filter;
 import DoAn.BE.user.entity.User;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 
-// [Entity quản lý file - upload, download, versioning, soft delete, quota] (Role: Data Model)
 @Entity
 @Table(name = "files", indexes = {
         // Index cho query: findByFolder (Files trong folder)
@@ -37,16 +22,18 @@ import lombok.NoArgsConstructor;
         // Index cho query: findByMimeType (File type filter)
         @jakarta.persistence.Index(name = "idx_file_mimetype", columnList = "mime_type")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class File extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "file_id")
+    @EqualsAndHashCode.Include
     private Long fileId;
 
     @Column(name = "filename", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
@@ -64,18 +51,18 @@ public class File extends TenantScopedEntity {
     @Column(name = "mime_type", length = 100, columnDefinition = "NVARCHAR(100)")
     private String mimeType;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
     private Folder folder;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
     @Column(name = "version")
     private Integer version = 1;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_file_id")
     private File parentFile;
 
@@ -112,7 +99,6 @@ public class File extends TenantScopedEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Lấy extension của file
     public String getFileExtension() {
         if (originalFilename != null && originalFilename.contains(".")) {
             return originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
@@ -125,36 +111,32 @@ public class File extends TenantScopedEntity {
         if (fileSize == null)
             return "0 B";
 
-        long size = fileSize;
+        double size = fileSize;
         String[] units = { "B", "KB", "MB", "GB", "TB" };
         int unitIndex = 0;
 
         while (size >= 1024 && unitIndex < units.length - 1) {
-            size /= 1024;
+            size /= 1024.0;
             unitIndex++;
         }
 
-        return size + " " + units[unitIndex];
+        return String.format("%.1f %s", size, units[unitIndex]);
     }
 
-    // Kiểm tra file là ảnh
     public boolean isImage() {
         return mimeType != null && mimeType.startsWith("image/");
     }
 
-    // Kiểm tra file là document (PDF, Word, Excel)
     public boolean isDocument() {
         return mimeType != null && (mimeType.startsWith("application/pdf") ||
                 mimeType.startsWith("application/msword") ||
                 mimeType.startsWith("application/vnd.openxmlformats-officedocument"));
     }
 
-    // Kiểm tra file là video
     public boolean isVideo() {
         return mimeType != null && mimeType.startsWith("video/");
     }
 
-    // Kiểm tra đây có phải phiên bản mới nhất không
     public boolean isLatestVersion() {
         return parentFile == null;
     }

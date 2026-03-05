@@ -43,18 +43,18 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
             const emp = res.data;
             setFormData({
                 userId: emp.user?.userId || '', // Read only in edit
-                fullName: emp.hoTen,
-                gender: emp.gioiTinh || 'NAM',
-                dateOfBirth: emp.ngaySinh || '',
-                idCard: emp.cccd || '',
+                fullName: emp.fullName || '',
+                gender: emp.gender || 'MALE',
+                dateOfBirth: emp.dateOfBirth || '',
+                idCard: emp.idCard || '',
                 email: emp.email || '', // Read only
-                phone: emp.soDienThoai || '',
-                address: emp.diaChi || '',
-                departmentId: emp.phongban?.departmentId || '', // Check BE entity field name
-                positionId: emp.chucvu?.positionId || '',
-                startDate: emp.ngayVaoLam || '',
-                baseSalary: emp.luongCoBan || '',
-                status: emp.trangThai || 'DANG_LAM_VIEC',
+                phone: emp.phone || '',
+                address: emp.address || '',
+                departmentId: emp.departmentId || '',
+                positionId: emp.positionId || '',
+                startDate: emp.hireDate || '',
+                baseSalary: emp.baseSalary || '',
+                status: emp.status || 'ACTIVE',
             });
             return emp;
         },
@@ -66,17 +66,17 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
         mutationFn: async (data) => {
             const payload = {
                 userId: Number(data.userId),
-                hoTen: data.fullName,
-                gioiTinh: data.gender,
-                ngaySinh: data.dateOfBirth,
-                cccd: data.idCard,
-                soDienThoai: data.phone,
-                diaChi: data.address,
-                phongbanId: Number(data.departmentId),
-                chucvuId: Number(data.positionId),
-                ngayVaoLam: data.startDate,
-                luongCoBan: Number(data.baseSalary),
-                trangThai: data.status
+                fullName: data.fullName,
+                gender: data.gender,
+                dateOfBirth: data.dateOfBirth,
+                idCard: data.idCard,
+                phone: data.phone,
+                address: data.address,
+                departmentId: Number(data.departmentId),
+                positionId: Number(data.positionId),
+                hireDate: data.startDate,
+                baseSalary: Number(data.baseSalary),
+                status: data.status
             };
 
             if (isEditMode) {
@@ -86,7 +86,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
             }
         },
         onSuccess: () => {
-            showToast(isEditMode ? 'Cập nhật thành công!' : 'Thêm nhân viên thành công!', 'success');
+            showToast(isEditMode ? 'Cập nhật thành công!' : 'Tạo hồ sơ nhân viên thành công!', 'success');
             queryClient.invalidateQueries(['employees']);
             onClose();
             setFormData(INITIAL_STATE);
@@ -140,7 +140,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'Cập nhật hồ sơ nhân viên' : 'Thêm nhân viên mới'}</h2>
+                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'Cập nhật hồ sơ nhân viên' : 'Tạo hồ sơ nhân viên mới'}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <i className="fa-solid fa-xmark text-xl" />
                     </button>
@@ -184,9 +184,9 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                         <div>
                             <label className="label">Giới tính</label>
                             <select name="gender" className="input w-full" value={formData.gender} onChange={handleChange}>
-                                <option value="NAM">Nam</option>
-                                <option value="NU">Nữ</option>
-                                <option value="KHAC">Khác</option>
+                                <option value="MALE">Nam</option>
+                                <option value="FEMALE">Nữ</option>
+                                <option value="OTHER">Khác</option>
                             </select>
                         </div>
 
@@ -243,9 +243,9 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                         <div>
                             <label className="label">Trạng thái</label>
                             <select name="status" className="input w-full" value={formData.status} onChange={handleChange}>
-                                <option value="DANG_LAM_VIEC">Đang làm việc</option>
-                                <option value="TAM_NGHI">Tạm nghỉ</option>
-                                <option value="NGHI_VIEC">Nghỉ việc</option>
+                                <option value="ACTIVE">Đang làm việc</option>
+                                <option value="ON_LEAVE">Tạm nghỉ</option>
+                                <option value="RESIGNED">Nghỉ việc</option>
                             </select>
                         </div>
 
@@ -287,7 +287,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 const INITIAL_STATE = {
     userId: '',
     fullName: '',
-    gender: 'NAM',
+    gender: 'MALE',
     dateOfBirth: '',
     idCard: '',
     phone: '',
@@ -296,5 +296,5 @@ const INITIAL_STATE = {
     positionId: '',
     startDate: new Date().toISOString().split('T')[0],
     baseSalary: '',
-    status: 'DANG_LAM_VIEC'
+    status: 'ACTIVE'
 };

@@ -22,22 +22,24 @@ public class WebSocketNotificationService {
         this.chatRoomMemberRepository = chatRoomMemberRepository;
     }
 
-    // Gửi thông báo tin nhắn mới
     public void notifyNewMessage(Long roomId, MessDTO message) {
+        Long senderId = message.getSender() != null ? message.getSender().getUserId() : null;
+        String senderUsername = message.getSender() != null ? message.getSender().getUsername() : "System";
+
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.CHAT_MESSAGE,
                 roomId,
-                message.getSender().getUserId(),
-                message.getSender().getUsername(),
+                senderId,
+                senderUsername,
                 message.getContent());
         wsMessage.setMessageId(message.getMessageId());
-        wsMessage.setTimestamp(message.getSentAt().toString());
+        wsMessage.setTimestamp(message.getSentAt() != null ? message.getSentAt().toString() : null);
         wsMessage.setData(message); // Set full message object for frontend
 
         messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
         List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
         for (ChatRoomMember member : members) {
-            if (!member.getUser().getUserId().equals(message.getSender().getUserId())) {
+            if (senderId != null && !member.getUser().getUserId().equals(senderId)) {
                 // Smart Notification Filtering
                 User.PresenceStatus status = member.getUser().getPresenceStatus();
                 if (status != User.PresenceStatus.BUSY && status != User.PresenceStatus.IN_MEETING) {
@@ -112,7 +114,6 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
     }
 
-    // Gửi typing indicator
     public void notifyTyping(Long roomId, Long userId, String username, boolean isTyping) {
         WebSocketMessage.MessageType type = isTyping ? WebSocketMessage.MessageType.TYPING_START
                 : WebSocketMessage.MessageType.TYPING_STOP;
@@ -142,7 +143,6 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSend("/topic/room." + roomId, wsMessage);
     }
 
-    // Gửi notification chung
     public void sendNotification(String username, String message, Object data) {
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.NOTIFICATION,
@@ -155,7 +155,6 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSendToUser(username, "/queue/notifications", wsMessage);
     }
 
-    // Gửi notification đến tất cả thành viên trong phòng
     public void sendNotificationToRoom(Long roomId, String type, String message, Object data) {
         WebSocketMessage wsMessage = new WebSocketMessage(
                 WebSocketMessage.MessageType.NOTIFICATION,

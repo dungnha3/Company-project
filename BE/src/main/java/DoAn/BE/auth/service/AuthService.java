@@ -2,6 +2,7 @@ package DoAn.BE.auth.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,7 +25,6 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 
-// [Service xử lý authentication] (Role: System)
 @Service
 @Slf4j
 public class AuthService {
@@ -40,12 +40,13 @@ public class AuthService {
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
     private final org.springframework.web.reactive.function.client.WebClient webClient;
     private final DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository;
-
-    // [Cấu hình bảo vệ brute force] (Role: Config)
+    private final TwoFactorService twoFactorService;
     private final int maxLoginAttempts;
     private final int lockoutDurationMinutes;
     private final String googleTokenInfoUrl;
+    private final String googleClientId; // [SECURITY] Required for audience verification
     private final String defaultAvatarUrlPattern; // Configurable Avatar URL
+    private final org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     public AuthService(@org.springframework.context.annotation.Lazy UserService userService, JwtService jwtService,
             @org.springframework.context.annotation.Lazy SessionService sessionService,
@@ -56,10 +57,13 @@ public class AuthService {
             DoAn.BE.audit.service.AuditLogService auditLogService,
             org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder,
             DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository,
+            TwoFactorService twoFactorService,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.max-attempts:5}") int maxLoginAttempts,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.lockout-minutes:15}") int lockoutDurationMinutes,
             @org.springframework.beans.factory.annotation.Value("${app.security.google.token-info-url:https://oauth2.googleapis.com/tokeninfo}") String googleTokenInfoUrl,
-            @org.springframework.beans.factory.annotation.Value("${app.user.default-avatar-url:https://ui-avatars.com/api/?name=%s&background=random&color=fff&size=128}") String defaultAvatarUrlPattern) {
+            @org.springframework.beans.factory.annotation.Value("${app.security.google.client-id:}") String googleClientId,
+            @org.springframework.beans.factory.annotation.Value("${app.user.default-avatar-url:https://ui-avatars.com/api/?name=%s&background=random&color=fff&size=128}") String defaultAvatarUrlPattern,
+            org.springframework.transaction.PlatformTransactionManager transactionManager) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.sessionService = sessionService;
@@ -71,64 +75,55 @@ public class AuthService {
         this.auditLogService = auditLogService;
         this.webClient = webClientBuilder.build();
         this.personalWorkspaceRepository = personalWorkspaceRepository;
+        this.twoFactorService = twoFactorService;
         this.maxLoginAttempts = maxLoginAttempts;
         this.lockoutDurationMinutes = lockoutDurationMinutes;
         this.googleTokenInfoUrl = googleTokenInfoUrl;
+        this.googleClientId = googleClientId;
         this.defaultAvatarUrlPattern = defaultAvatarUrlPattern;
+        this.transactionManager = transactionManager;
     }
 
-    // [Đăng nhập - Generate JWT + Refresh token] (Role: All)
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
-        // [Validate input] (Role: Guard)
         if (request == null || request.getUsername() == null || request.getPassword() == null) {
             throw new BadRequestException("Thông tin đăng nhập không được để trống");
         }
-
-        // [Kiểm tra brute force] (Role: Security)
         checkLoginAttempts(request.getUsername(), ipAddress);
-
-        // [Tìm user] (Role: Query)
         User user = userService.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UnauthorizedException("Thông tin đăng nhập không chính xác"));
-
-        // [Kiểm tra user active] (Role: Validation)
         validateUserActive(user, request.getUsername(), ipAddress);
-
-        // [Kiểm tra password] (Role: Security)
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             recordFailedLogin(request.getUsername(), ipAddress, "Mật khẩu không chính xác");
             throw new UnauthorizedException("Thông tin đăng nhập không chính xác");
         }
 
-        // [Xóa failed attempts sau đăng nhập thành công] (Role: Cleanup)
-        clearFailedAttempts(request.getUsername(), ipAddress);
+        // 2FA check — if enabled, return partial response requiring TOTP code
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            clearFailedAttempts(request.getUsername(), ipAddress);
+            String tempToken = jwtService.generateTempToken(user);
+            AuthResponse twoFactorResponse = new AuthResponse();
+            twoFactorResponse.setRequiresTwoFactor(true);
+            twoFactorResponse.setTempToken(tempToken);
+            return twoFactorResponse;
+        }
 
-        // [Cập nhật trạng thái user] (Role: Update)
+        clearFailedAttempts(request.getUsername(), ipAddress);
         updateUserLoginStatus(user);
 
-        // [MIGRATION] Đảm bảo user cũ có Personal Workspace (Role: Create)
         if (!personalWorkspaceRepository.existsByUser_UserId(user.getUserId())) {
             DoAn.BE.user.entity.PersonalWorkspace pw = DoAn.BE.user.entity.PersonalWorkspace.createFor(user);
             personalWorkspaceRepository.save(pw);
             log.info("Đã tạo Personal Workspace cho user cũ: {}", user.getUsername());
         }
-
-        // [Tạo session] (Role: Session)
         sessionService.createSession(user, ipAddress, userAgent);
-
-        // [Lấy danh sách công ty] (Role: Query)
         List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
 
-        // [Tạo tokens] (Role: Token)
-        // [FIX] Nếu user chỉ có 1 company, tự động include companyId và role vào token
         String accessToken;
         Long selectedCompanyId = null;
         if (memberships.size() == 1) {
             CompanyMember singleMember = memberships.get(0);
             selectedCompanyId = singleMember.getCompany().getCompanyId();
-            // [Fix] Use first role or primary role logic. For now, sending the first role
-            // found.
             CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
                     .orElse(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
             accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
@@ -142,7 +137,64 @@ public class AuthService {
         return buildAuthResponse(accessToken, refreshToken, user, memberships, selectedCompanyId);
     }
 
-    // [Lấy thông tin User hiện tại] (Role: Query)
+    @Transactional
+    public AuthResponse verify2fa(String tempToken, String code, String ipAddress, String userAgent) {
+        if (tempToken == null || code == null) {
+            throw new BadRequestException("Token và mã xác thực không được để trống");
+        }
+
+        // Validate temp token
+        if (!jwtService.validateToken(tempToken)) {
+            throw new UnauthorizedException("Token tạm đã hết hạn. Vui lòng đăng nhập lại.");
+        }
+
+        io.jsonwebtoken.Claims claims = jwtService.extractClaim(tempToken, c -> c);
+        if (!"2fa_temp".equals(claims.get("type"))) {
+            throw new UnauthorizedException("Token không hợp lệ");
+        }
+
+        Long userId = claims.get("userId", Long.class);
+        User user = userService.getUserById(userId);
+
+        // Verify TOTP code or backup code
+        boolean verified = twoFactorService.verifyCode(user.getTwoFactorSecret(), code);
+
+        // If TOTP fails, try backup code
+        if (!verified && user.getTwoFactorBackupCodes() != null) {
+            String remainingCodes = twoFactorService.verifyBackupCode(user.getTwoFactorBackupCodes(), code);
+            if (remainingCodes != null) {
+                verified = true;
+                user.setTwoFactorBackupCodes(remainingCodes);
+                userService.save(user);
+                log.info("User {} used a backup code for 2FA", user.getUsername());
+            }
+        }
+
+        if (!verified) {
+            throw new UnauthorizedException("Mã xác thực không đúng");
+        }
+
+        // Complete login flow
+        updateUserLoginStatus(user);
+        sessionService.createSession(user, ipAddress, userAgent);
+        List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
+
+        String accessToken;
+        Long selectedCompanyId = null;
+        if (memberships.size() == 1) {
+            CompanyMember singleMember = memberships.get(0);
+            selectedCompanyId = singleMember.getCompany().getCompanyId();
+            CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                    .orElse(CompanyRole.EMPLOYEE);
+            accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
+        } else {
+            accessToken = jwtService.generateToken(user);
+        }
+        String refreshToken = createRefreshToken(user);
+
+        return buildAuthResponse(accessToken, refreshToken, user, memberships, selectedCompanyId);
+    }
+
     @Transactional(readOnly = true)
     public AuthResponse getCurrentUser(Long userId) {
         User user = userService.getUserById(userId);
@@ -151,28 +203,20 @@ public class AuthService {
         return buildAuthResponse(null, null, user, memberships, null);
     }
 
-    // [Chọn công ty để làm việc] (Role: Authenticated User)
     @Transactional
     public AuthResponse selectCompany(Long userId, Long companyId, String ipAddress, String userAgent) {
-        // [Validate input] (Role: Guard)
         if (userId == null || companyId == null) {
             throw new BadRequestException("userId và companyId không được để trống");
         }
 
         User user = userService.getUserById(userId);
-
-        // [Kiểm tra quyền truy cập công ty] (Role: Authorization)
         CompanyMember member = companyMemberRepository
                 .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(userId, companyId)
                 .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập công ty này"));
 
         log.info("User {} đã chọn công ty {} với vai trò {}",
                 user.getUsername(), member.getCompany().getName(), member.getRoles());
-
-        // [Lấy danh sách công ty] (Role: Query)
         List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(userId);
-
-        // [Tạo token mới với companyId và role] (Role: Token)
         CompanyRole primaryRole = member.getRoles().stream().findFirst()
                 .orElse(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
         String accessToken = jwtService.generateToken(user, companyId, primaryRole);
@@ -181,10 +225,8 @@ public class AuthService {
         return buildAuthResponse(accessToken, refreshToken, user, memberships, companyId);
     }
 
-    // [Làm mới access token] (Role: Authenticated User)
     @Transactional
     public AuthResponse refreshToken(String refreshTokenString) {
-        // [Validate token] (Role: Guard)
         if (refreshTokenString == null || refreshTokenString.isBlank()) {
             throw new UnauthorizedException("Refresh token không được để trống");
         }
@@ -204,21 +246,25 @@ public class AuthService {
         if (!user.getIsActive()) {
             throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
         }
-
-        // [Lấy danh sách công ty] (Role: Query)
         List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
+        String newAccessToken;
+        Long selectedCompanyId = null;
+        if (memberships.size() == 1) {
+            CompanyMember singleMember = memberships.get(0);
+            selectedCompanyId = singleMember.getCompany().getCompanyId();
+            CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                    .orElse(CompanyRole.EMPLOYEE);
+            newAccessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
+        } else {
+            newAccessToken = jwtService.generateToken(user);
+        }
 
-        // [Tạo access token mới] (Role: Token)
-        String newAccessToken = jwtService.generateToken(user);
-
-        // [Rotate refresh token] (Role: Security)
         refreshTokenRepository.delete(refreshToken);
         String newRefreshToken = createRefreshToken(user);
 
-        return buildAuthResponse(newAccessToken, newRefreshToken, user, memberships, null);
+        return buildAuthResponse(newAccessToken, newRefreshToken, user, memberships, selectedCompanyId);
     }
 
-    // [Đăng xuất] (Role: Authenticated User)
     @Transactional
     public void logout(String refreshTokenString, String sessionId) {
         if (refreshTokenString != null) {
@@ -233,7 +279,6 @@ public class AuthService {
         }
     }
 
-    // [Đăng xuất tất cả thiết bị] (Role: Authenticated User)
     @Transactional
     public void logoutAllDevices(Long userId) {
         if (userId == null) {
@@ -250,63 +295,23 @@ public class AuthService {
                 "Bạn đã đăng xuất khỏi tất cả thiết bị.");
     }
 
-    /**
-     * [Đăng nhập bằng Google] (Role: All)
-     * PERFORMANCE OPTIMIZATION: verifyGoogleToken (External API) được gọi TRƯỚC khi
-     * mở Transaction.
-     * Điều này ngăn chặn việc giữ Connection DB trong khi chờ Google phản hồi (có
-     * thể mất vài giây).
-     */
     public AuthResponse loginWithGoogle(String idToken, String ipAddress, String userAgent) {
-        // [Validate input] (Role: Guard)
         if (idToken == null || idToken.isBlank()) {
             throw new BadRequestException("Google ID token không được để trống");
         }
 
-        // 1. [Verify Token với Google] - NON-TRANSACTIONAL (Network Call)
-        // Calling external API before any DB transaction to avoid connection holding
         java.util.Map<String, Object> googleUser = verifyGoogleToken(idToken);
 
         String email = (String) googleUser.get("email");
+        Object emailVerified = googleUser.get("email_verified");
+        if (!"true".equals(String.valueOf(emailVerified))) {
+            throw new BadRequestException("Email Google chưa được xác minh");
+        }
         String picture = (String) googleUser.get("picture");
 
-        // 2. [Process DB Logic]
         return processGoogleLoginTransactional(email, picture, ipAddress, userAgent);
     }
 
-    // Helper method separate for Transaction (cần được gọi từ proxy, nhưng ở đây ta
-    // chưa setup self-injection).
-    // Tạm thời ta sẽ để logic DB trực tiếp ở đây và bọc bằng Transaction thủ công
-    // nếu cần.
-    // NHƯNG, để code chạy ngay mà không setup self-inject, ta sẽ dùng
-    // @Transactional cho `loginWithGoogle`
-    // VÀ chấp nhận trừ 0.5 điểm hiệu năng? User muốn 10 điểm.
-
-    // OK, ta sẽ implement Self-Injection pattern.
-    // (Cần thêm field `private AuthService self;` và setter `@Autowired`).
-    // Nhưng vì ta đang dùng Constructor Injection, circular dependency sẽ xảy ra.
-
-    // Final Decision: Tách logic DB ra method `processGoogleLoginDB`.
-    // Và sửa Architecture 1 chút: Inject `TransactionTemplate`.
-
-    // Vì không import được TransactionTemplate dễ dàng mà không check import,
-    // Ta sẽ quay lại cách: `@Transactional` ở class level (như cũ), NHƯNG move
-    // `verifyGoogleToken` ra ngoài?
-    // Không được.
-
-    // Ta sẽ dùng cách đơn giản nhất:
-    // `loginWithGoogle` KHÔNG @Transactional.
-    // Nó gọi Repositories (đã có TX).
-    // Chỉ có đoạn `createGoogleUser` + `sessionService` cần consistency.
-    // Thực tế rủi ro thấp. Ta sẽ bỏ @Transactional ở method này. Các method con
-    // `save`, `createSession` đều có TX riêng của chúng.
-    // User creation là atomic. Session creation là atomic.
-    // Chỉ rủi ro là: Tạo user xong, fail session -> User rác. (Chấp nhận được).
-
-    // Re-implementation of loginWithGoogle (Non-Transactional Wrapper):
-    // ... code below ...
-
-    // [Impersonate User - System Admin only] (Role: System Admin)
     @Transactional
     public AuthResponse impersonateUser(Long adminUserId, Long targetUserId, String ipAddress, String userAgent) {
         // ... (giữ nguyên logic)
@@ -317,7 +322,7 @@ public class AuthService {
         User targetUser = userService.getUserById(targetUserId);
 
         auditLogService.logAction(
-                admin,
+                admin.getUserId(),
                 "IMPERSONATE_USER",
                 "AUTH",
                 targetUser.getUserId(),
@@ -356,25 +361,17 @@ public class AuthService {
         }
     }
 
-    // [Đăng ký tài khoản thủ công] (Role: All)
     @Transactional
     public AuthResponse register(RegisterRequest request, String ipAddress, String userAgent) {
-        // [Validate input] (Role: Guard)
         if (request == null) {
             throw new BadRequestException("Thông tin đăng ký không được để trống");
         }
-
-        // [Kiểm tra email đã tồn tại] (Role: Validation)
         if (userService.findByEmail(request.getEmail()).isPresent()) {
             throw new BadRequestException("Email đã được sử dụng");
         }
-
-        // [Kiểm tra username đã tồn tại] (Role: Validation)
         if (userService.findByUsername(request.getUsername()).isPresent()) {
             throw new BadRequestException("Username đã tồn tại");
         }
-
-        // [Tạo user mới] (Role: Create)
         User newUser = new User();
         newUser.setEmail(request.getEmail());
         newUser.setUsername(request.getUsername());
@@ -389,23 +386,13 @@ public class AuthService {
 
         newUser = userService.save(newUser);
         log.info("Đã tạo tài khoản mới: {}", newUser.getUsername());
-
-        // [Auto-create Personal Workspace] (Role: Create)
         DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
                 .createFor(newUser);
         personalWorkspaceRepository.save(personalWorkspace);
         log.info("Đã tạo Personal Workspace cho user: {}", newUser.getUsername());
-
-        // [Cập nhật trạng thái login] (Role: Update)
         updateUserLoginStatus(newUser);
-
-        // [Tạo session] (Role: Session)
         sessionService.createSession(newUser, ipAddress, userAgent);
-
-        // [User mới chưa thuộc công ty nào] (Role: Query)
         List<CompanyMember> memberships = List.of();
-
-        // [Tạo tokens] (Role: Token)
         String accessToken = jwtService.generateToken(newUser);
         String refreshToken = createRefreshToken(newUser);
 
@@ -414,37 +401,35 @@ public class AuthService {
 
     private AuthResponse processGoogleLoginTransactional(String email, String picture, String ipAddress,
             String userAgent) {
-        // [Note] This private method is called from inside loginWithGoogle (which has
-        // no Transaction)
-        // We rely on underlying Repository transactions for each operation.
-        // For stricter consistency, a TransactionTemplate or Self-Injection pattern
-        // could be used.
+        org.springframework.transaction.support.TransactionTemplate txTemplate = new org.springframework.transaction.support.TransactionTemplate(
+                transactionManager);
+        return txTemplate.execute(status -> {
+            User user = userService.findByEmail(email).orElseGet(() -> createGoogleUser(email, picture));
 
-        // [Tìm hoặc tạo user] (Role: Upsert)
-        User user = userService.findByEmail(email).orElseGet(() -> createGoogleUser(email, picture));
+            if (!user.getIsActive()) {
+                throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+            }
+            updateUserLoginStatus(user);
+            sessionService.createSession(user, ipAddress, userAgent);
+            List<CompanyMember> memberships = companyMemberRepository
+                    .findByUser_UserIdAndIsActiveTrue(user.getUserId());
+            String accessToken;
+            Long selectedCompanyId = null;
+            if (memberships.size() == 1) {
+                CompanyMember singleMember = memberships.get(0);
+                selectedCompanyId = singleMember.getCompany().getCompanyId();
+                CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                        .orElse(CompanyRole.EMPLOYEE);
+                accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
+            } else {
+                accessToken = jwtService.generateToken(user);
+            }
+            String refreshToken = createRefreshToken(user);
 
-        if (!user.getIsActive()) {
-            throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
-        }
-
-        // [Cập nhật trạng thái] (Role: Update)
-        updateUserLoginStatus(user);
-
-        // [Tạo session] (Role: Session)
-        sessionService.createSession(user, ipAddress, userAgent);
-
-        // [Lấy danh sách công ty] (Role: Query)
-        List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
-
-        // [Tạo tokens] (Role: Token)
-        String accessToken = jwtService.generateToken(user);
-        String refreshToken = createRefreshToken(user);
-
-        return buildAuthResponse(accessToken, refreshToken, user, memberships, null);
+            return buildAuthResponse(accessToken, refreshToken, user, memberships, selectedCompanyId);
+        });
     }
 
-    // [Tạo user từ Google login] (Role: Create)
-    // Make public/protected? No, keep private.
     private User createGoogleUser(String email, String picture) {
         User newUser = new User();
         newUser.setEmail(email);
@@ -454,8 +439,6 @@ public class AuthService {
         newUser.setStatus(User.UserStatus.ACTIVE);
         newUser.setAvatarUrl(picture);
         newUser = userService.save(newUser);
-
-        // [Auto-create Personal Workspace for Google User] (Role: Create)
         DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
                 .createFor(newUser);
         personalWorkspaceRepository.save(personalWorkspace);
@@ -464,7 +447,6 @@ public class AuthService {
         return newUser;
     }
 
-    // [Xây dựng AuthResponse] (Role: DTO Builder)
     private AuthResponse buildAuthResponse(String accessToken, String refreshToken, User user,
             List<CompanyMember> memberships, Long selectedCompanyId) {
         AuthResponse response = new AuthResponse();
@@ -473,8 +455,6 @@ public class AuthService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtService.getJwtExpiration() / 1000);
         response.setSelectedCompanyId(selectedCompanyId);
-
-        // [Build User info] (Role: DTO)
         AuthResponse.UserInfo userInfo = new AuthResponse.UserInfo();
         userInfo.setUserId(user.getUserId());
         userInfo.setUsername(user.getUsername());
@@ -482,9 +462,8 @@ public class AuthService {
         userInfo.setIsActive(user.getIsActive());
         userInfo.setIsSystemAdmin(user.isSystemAdminAccount()); // [SAAS] System Admin flag
         userInfo.setPersonalPlan(user.getPersonalPlan()); // [NEW] Personal plan
+        userInfo.setTwoFactorEnabled(Boolean.TRUE.equals(user.getTwoFactorEnabled()));
         response.setUser(userInfo);
-
-        // [Build Personal Workspace info] (Role: DTO)
         personalWorkspaceRepository.findByUser_UserId(user.getUserId())
                 .ifPresent(pw -> {
                     AuthResponse.PersonalWorkspaceInfo pwInfo = new AuthResponse.PersonalWorkspaceInfo();
@@ -493,8 +472,6 @@ public class AuthService {
                     pwInfo.setPlan(user.getPersonalPlan());
                     response.setPersonalWorkspace(pwInfo);
                 });
-
-        // [Build Companies list] (Role: DTO)
         List<AuthResponse.CompanyDTO> companies = memberships.stream()
                 .map(m -> new AuthResponse.CompanyDTO(
                         m.getCompany().getCompanyId(),
@@ -509,81 +486,72 @@ public class AuthService {
         return response;
     }
 
-    // [Quên mật khẩu - Gửi email reset] (Role: All)
+    @Transactional
     public void forgotPassword(String email) {
-        User user = userService.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException("Email không tồn tại trong hệ thống"));
+        Optional<User> userOpt = userService.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            log.info("Password reset requested for non-existent email: {}", email);
+            return;
+        }
+        User user = userOpt.get();
 
-        // Tạo token reset
         String resetToken = java.util.UUID.randomUUID().toString();
         user.setResetPasswordToken(resetToken);
-        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusHours(1)); // Token hết hạn sau 1 giờ
+        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusHours(1));
         userService.save(user);
 
-        // Gửi email thông báo (sử dụng AuthNotificationService)
-        // Publish Event
         eventPublisher.publishEvent(new DoAn.BE.auth.event.AuthEvent(
                 this,
                 DoAn.BE.auth.event.AuthEvent.Type.PASSWORD_RESET_REQUESTED,
                 user.getUserId(),
                 user.getUsername(),
                 "Password Reset Requested",
-                "Reset Token: " + resetToken));
+                null));
 
         log.info("Sent password reset email to: {}", email);
     }
 
-    // [Reset mật khẩu với token] (Role: All)
+    @Transactional
     public void resetPassword(String token, String newPassword) {
         User user = userService.findByResetPasswordToken(token)
                 .orElseThrow(() -> new BadRequestException("Token không hợp lệ hoặc đã hết hạn"));
 
-        // Kiểm tra token còn hạn không
         if (user.getResetPasswordTokenExpiry() == null ||
                 user.getResetPasswordTokenExpiry().isBefore(LocalDateTime.now())) {
             throw new BadRequestException("Token đã hết hạn. Vui lòng yêu cầu reset mật khẩu mới.");
         }
 
-        // Đổi mật khẩu
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setResetPasswordToken(null);
         user.setResetPasswordTokenExpiry(null);
         userService.save(user);
 
-        // Revoke tất cả refresh token (bảo mật)
         refreshTokenRepository.revokeAllTokensByUser(user);
 
         log.info("Password reset successful for user: {}", user.getUsername());
     }
 
-    // [Đổi mật khẩu khi đã login] (Role: Authenticated User)
+    @Transactional
     public void changePassword(Long userId, String oldPassword, String newPassword) {
         User user = userService.findById(userId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng"));
 
-        // Verify mật khẩu cũ
         if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
             throw new BadRequestException("Mật khẩu cũ không chính xác");
         }
 
-        // Không cho phép đặt mật khẩu mới giống mật khẩu cũ
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
             throw new BadRequestException("Mật khẩu mới không được giống mật khẩu cũ");
         }
 
-        // Đổi mật khẩu
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userService.save(user);
 
-        // Gửi thông báo bảo mật
         sendSecurityAlert(userId, "Đổi mật khẩu", "Mật khẩu tài khoản của bạn đã được thay đổi");
 
         log.info("Password changed for user: {}", user.getUsername());
     }
 
-    // ==================== PRIVATE METHODS ====================
-
-    // [Kiểm tra user active] (Role: Internal)
     private void validateUserActive(User user, String username, String ipAddress) {
         if (!user.getIsActive()) {
             recordFailedLogin(username, ipAddress, "Tài khoản đã bị vô hiệu hóa");
@@ -593,14 +561,12 @@ public class AuthService {
         }
     }
 
-    // [Cập nhật trạng thái login của user] (Role: Internal)
     private void updateUserLoginStatus(User user) {
         user.setLastLogin(LocalDateTime.now());
         user.setIsOnline(true);
         userService.save(user);
     }
 
-    // [Tạo refresh token] (Role: Internal)
     private String createRefreshToken(User user) {
         List<RefreshToken> existingTokens = refreshTokenRepository.findValidTokensByUser(user, LocalDateTime.now());
         if (existingTokens != null && !existingTokens.isEmpty()) {
@@ -618,7 +584,6 @@ public class AuthService {
         return tokenString;
     }
 
-    // [Kiểm tra số lần đăng nhập thất bại] (Role: Security)
     private void checkLoginAttempts(String username, String ipAddress) {
         LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(this.lockoutDurationMinutes);
         long recentAttempts = loginAttemptRepository.countRecentFailedAttempts(username, ipAddress, cutoffTime);
@@ -632,23 +597,25 @@ public class AuthService {
         }
     }
 
-    // [Ghi lại login thất bại] (Role: Logging)
     private void recordFailedLogin(String username, String ipAddress, String reason) {
         LoginAttempt attempt = new LoginAttempt();
         attempt.setUsername(username);
         attempt.setIpAddress(ipAddress);
-        attempt.setAttemptedAt(LocalDateTime.now());
         attempt.setSuccess(false);
         attempt.setFailureReason(reason);
         loginAttemptRepository.save(attempt);
     }
 
-    // [Xóa các lần thử thất bại] (Role: Cleanup)
     private void clearFailedAttempts(String username, String ipAddress) {
-        loginAttemptRepository.deleteByUsernameAndIpAddress(username, ipAddress);
+        LoginAttempt successAttempt = new LoginAttempt();
+        successAttempt.setUsername(username);
+        successAttempt.setIpAddress(ipAddress);
+        successAttempt.setSuccess(true);
+        successAttempt.setFailureReason(null);
+        loginAttemptRepository.save(successAttempt);
+        loginAttemptRepository.deleteByUsernameAndIpAddressAndSuccessFalse(username, ipAddress);
     }
 
-    // [Gửi cảnh báo bảo mật] (Role: Notification)
     private void sendSecurityAlert(Long userId, String title, String message) {
         try {
             eventPublisher.publishEvent(new DoAn.BE.auth.event.AuthEvent(
@@ -664,7 +631,6 @@ public class AuthService {
         }
     }
 
-    // [Xác thực Google token] (Role: External API)
     private java.util.Map<String, Object> verifyGoogleToken(String idToken) {
         java.util.Map<String, Object> googleUser = webClient.get()
                 .uri(this.googleTokenInfoUrl + "?id_token=" + idToken)
@@ -676,6 +642,15 @@ public class AuthService {
         if (googleUser == null || googleUser.get("email") == null) {
             throw new BadRequestException("Google token không hợp lệ");
         }
+        String audience = (String) googleUser.get("aud");
+        if (this.googleClientId == null || this.googleClientId.isBlank()) {
+            log.warn("Google Client ID not configured — audience verification SKIPPED. "
+                    + "Set app.security.google.client-id to enable audience verification.");
+        } else if (!this.googleClientId.equals(audience)) {
+            log.warn("Google token audience mismatch: expected={}, actual={}", this.googleClientId, audience);
+            throw new UnauthorizedException("Google token không hợp lệ cho ứng dụng này");
+        }
+
         return googleUser;
     }
 }

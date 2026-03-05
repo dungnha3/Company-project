@@ -71,10 +71,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
         List<Attendance> findByEmployee_User_UserIdIn(List<Long> userIds);
 
-        // ==================== TENANT-AWARE QUERIES ====================
-
-        // ==================== PAGINATION SUPPORT ====================
-
         @EntityGraph(attributePaths = { "employee", "employee.user" })
         @Query("SELECT a FROM Attendance a WHERE a.company.companyId = :companyId ORDER BY a.attendanceDate DESC")
         List<Attendance> findByCompanyId(@Param("companyId") Long companyId);
@@ -97,4 +93,14 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
         org.springframework.data.domain.Page<Attendance> findByEmployeeAndMonth(@Param("employeeId") Long employeeId,
                         @Param("month") int month, @Param("year") int year,
                         org.springframework.data.domain.Pageable pageable);
+        @EntityGraph(attributePaths = { "employee" })
+        @Query("SELECT a FROM Attendance a WHERE a.attendanceDate BETWEEN :start AND :end AND a.company.companyId = :companyId ORDER BY a.attendanceDate DESC")
+        List<Attendance> findByAttendanceDateBetweenAndCompanyId(@Param("start") LocalDate start,
+                        @Param("end") LocalDate end, @Param("companyId") Long companyId);
+
+        @EntityGraph(attributePaths = { "employee" })
+        @Query("SELECT a FROM Attendance a WHERE a.attendanceDate BETWEEN :start AND :end AND a.company.companyId = :companyId ORDER BY a.attendanceDate DESC")
+        org.springframework.data.domain.Page<Attendance> findByAttendanceDateBetweenAndCompanyId(
+                        @Param("start") LocalDate start, @Param("end") LocalDate end,
+                        @Param("companyId") Long companyId, org.springframework.data.domain.Pageable pageable);
 }

@@ -29,7 +29,6 @@ public class AsyncConfig {
         executor.setWaitForTasksToCompleteOnShutdown(true);
         // Wait timeout on shutdown (seconds)
         executor.setAwaitTerminationSeconds(30);
-        executor.setAwaitTerminationSeconds(30);
         executor.setTaskDecorator(new ContextAwareTaskDecorator());
         executor.initialize();
         return executor;
@@ -44,7 +43,6 @@ public class AsyncConfig {
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("Notification-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(60);
         executor.setAwaitTerminationSeconds(60);
         executor.setTaskDecorator(new ContextAwareTaskDecorator());
         executor.initialize();
@@ -65,21 +63,20 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
-
-    /**
-     * Decorator to propagate TenantContext to async threads
-     */
+    // threads
     public static class ContextAwareTaskDecorator implements org.springframework.core.task.TaskDecorator {
         @Override
         public Runnable decorate(Runnable runnable) {
-            // Setup context from calling thread
+            // Capture context from calling thread
             Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
             boolean personalMode = DoAn.BE.common.context.TenantContext.isPersonalMode();
             Long userId = DoAn.BE.common.context.TenantContext.getCurrentUserId();
+            org.springframework.security.core.context.SecurityContext securityContext = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext();
 
             return () -> {
                 try {
-                    // Apply to async thread
+                    // Apply TenantContext to async thread
                     if (companyId != null) {
                         DoAn.BE.common.context.TenantContext.setCompanyId(companyId);
                     }
@@ -89,11 +86,13 @@ public class AsyncConfig {
                     if (userId != null) {
                         DoAn.BE.common.context.TenantContext.setCurrentUserId(userId);
                     }
+                    // Apply SecurityContext to async thread
+                    org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext);
 
                     runnable.run();
                 } finally {
-                    // Cleanup
                     DoAn.BE.common.context.TenantContext.clear();
+                    org.springframework.security.core.context.SecurityContextHolder.clearContext();
                 }
             };
         }

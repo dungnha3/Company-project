@@ -11,7 +11,7 @@ import DoAn.BE.hrm.entity.Review.ReviewStatus;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.repository.ReviewRepository;
 import DoAn.BE.user.entity.User;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,10 +34,7 @@ public class ReviewService {
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public Review createReview(ReviewRequest request, User currentUser) {
-        if (!accessControlService.isHRManager() && !accessControlService.isProjectManager()) {
-            throw new ForbiddenException(
-                    "Only HR Manager and Project Manager can create reviews");
-        }
+        accessControlService.checkReviewCreatePermission();
 
         log.info("User {} creating review for employee ID: {}", currentUser.getUsername(), request.getEmployeeId());
         Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -50,8 +47,16 @@ public class ReviewService {
             throw new BadRequestException("Employee already has a review for this period");
         }
 
-        Employee reviewer = employeeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("Reviewer employee profile not found"));
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        Employee reviewer;
+        if (companyId != null) {
+            reviewer = employeeRepository.findByUser_UserIdAndCompany_CompanyId(currentUser.getUserId(), companyId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Reviewer employee profile not found in current company"));
+        } else {
+            reviewer = employeeRepository.findByUser_UserId(currentUser.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Reviewer employee profile not found"));
+        }
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException("End date must be after start date");
@@ -88,8 +93,11 @@ public class ReviewService {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
-        if (accessControlService.isHRManager() || accessControlService.isProjectManager()) {
+        try {
+            accessControlService.checkReviewViewAllPermission();
             return review;
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
 
         if (!review.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
@@ -100,34 +108,35 @@ public class ReviewService {
     }
 
     public List<Review> getAllReviews(User currentUser) {
-        if (!accessControlService.isHRManager() && !accessControlService.isProjectManager()) {
-            throw new ForbiddenException("You do not have permission to view all reviews");
+        accessControlService.checkReviewViewAllPermission();
+        // companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
         }
-
-        if (accessControlService.isHRManager()) {
-            return reviewRepository.findAll();
-        }
-
-        Employee pmEmployee = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
-        if (pmEmployee != null) {
-            return reviewRepository.findByReviewer_EmployeeIdOrderByCreatedAtDesc(pmEmployee.getEmployeeId());
-        }
-
-        return List.of();
+        return reviewRepository.findByCompanyId(companyId);
     }
 
     public Page<Review> getAllReviewsPage(Pageable pageable, User currentUser) {
-        if (!accessControlService.isHRManager() && !accessControlService.isProjectManager()) {
-            throw new ForbiddenException("You do not have permission to view reviews");
-        }
-
-        return reviewRepository.findAllByOrderByCreatedAtDesc(pageable);
+        accessControlService.checkReviewViewAllPermission();
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return Page.empty(pageable);
+        return reviewRepository.findByCompanyId(companyId, pageable);
     }
 
     public Review updateReview(Long id, ReviewRequest request, User currentUser) {
         Review review = getReviewById(id, currentUser);
 
-        if (!accessControlService.isHRManager() &&
+        boolean hasReviewPermission;
+        try {
+            accessControlService.checkReviewCreatePermission();
+            hasReviewPermission = true;
+        } catch (ForbiddenException e) {
+            hasReviewPermission = false;
+        }
+
+        if (!hasReviewPermission &&
                 !review.getReviewer().getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You do not have permission to edit this review");
         }
@@ -151,10 +160,7 @@ public class ReviewService {
     }
 
     public Review approveReview(Long id, String note, User currentUser) {
-        // Fix: Use generic access check or add specific HR check if implemented
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR can approve reviews");
-        }
+        accessControlService.checkReviewApprovePermission();
 
         Review review = getReviewById(id, currentUser);
 
@@ -168,7 +174,8 @@ public class ReviewService {
         review.setCompletedDate(LocalDate.now());
 
         if (note != null && !note.trim().isEmpty()) {
-            review.setComments(review.getComments() + "\n\nHR Note: " + note);
+            String existing = review.getComments() != null ? review.getComments() : "";
+            review.setComments(existing + "\n\nHR Note: " + note);
         }
 
         review = reviewRepository.save(review);
@@ -182,9 +189,7 @@ public class ReviewService {
     }
 
     public Review rejectReview(Long id, String reason, User currentUser) {
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR can reject reviews");
-        }
+        accessControlService.checkReviewApprovePermission();
 
         Review review = getReviewById(id, currentUser);
 
@@ -197,7 +202,8 @@ public class ReviewService {
         review.setStatus(ReviewStatus.REJECTED);
 
         if (reason != null && !reason.trim().isEmpty()) {
-            review.setComments(review.getComments() + "\n\nRejection Reason: " + reason);
+            String existing = review.getComments() != null ? review.getComments() : "";
+            review.setComments(existing + "\n\nRejection Reason: " + reason);
         }
 
         return reviewRepository.save(review);
@@ -221,8 +227,11 @@ public class ReviewService {
     }
 
     public List<Review> getReviewsByEmployee(Long employeeId, User currentUser) {
-        if (accessControlService.isHRManager() || accessControlService.isProjectManager()) {
+        try {
+            accessControlService.checkReviewViewAllPermission();
             return reviewRepository.findByEmployee_EmployeeIdOrderByCreatedAtDesc(employeeId);
+        } catch (ForbiddenException ignored) {
+            // Fall through to self-view check
         }
 
         Employee employee = employeeRepository.findById(employeeId)
@@ -236,16 +245,19 @@ public class ReviewService {
     }
 
     public List<Review> getPendingReviews(User currentUser) {
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR can view pending reviews");
+        accessControlService.checkReviewApprovePermission();
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
         }
-        return reviewRepository.findPendingApproval();
+        return reviewRepository.findPendingApproval().stream()
+                .filter(r -> r.getEmployee() != null && r.getEmployee().getCompany() != null
+                        && companyId.equals(r.getEmployee().getCompany().getCompanyId()))
+                .toList();
     }
 
     public void deleteReview(Long id, User currentUser) {
-        if (!accessControlService.isHRManager()) {
-            throw new ForbiddenException("Only HR can delete reviews");
-        }
+        accessControlService.checkReviewApprovePermission();
 
         Review review = getReviewById(id, currentUser);
 
@@ -257,4 +269,3 @@ public class ReviewService {
         reviewRepository.delete(review);
     }
 }
-

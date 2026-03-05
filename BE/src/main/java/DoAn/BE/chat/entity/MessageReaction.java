@@ -12,14 +12,17 @@ import DoAn.BE.user.entity.User;
 @Entity
 @Table(name = "message_reactions", uniqueConstraints = @UniqueConstraint(columnNames = { "message_id", "user_id",
         "emoji" }))
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class MessageReaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long reactionId;
 
     @ManyToOne(fetch = FetchType.LAZY)

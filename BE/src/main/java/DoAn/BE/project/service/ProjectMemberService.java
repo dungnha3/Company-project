@@ -25,10 +25,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Service để quản lý thành viên dự án
- * Tách từ ProjectService để giảm God class
- */
+// Service để quản lý thành viên dự án
+// Tách từ ProjectService để giảm God class
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -44,17 +43,15 @@ public class ProjectMemberService {
     private final DoAn.BE.project.repository.IssueRepository issueRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    /**
-     * Kiểm tra user có quyền truy cập dự án không
-     */
+    // Kiểm tra user có quyền truy cập dự án không
+    // /
     public void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
     }
 
-    /**
-     * Kiểm tra user có quyền quản lý dự án không
-     */
+    // Kiểm tra user có quyền quản lý dự án không
+    // /
     public void validateProjectManagement(Long projectId, Long userId) {
         ProjectMember member = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
@@ -64,16 +61,14 @@ public class ProjectMemberService {
         }
     }
 
-    /**
-     * Kiểm tra user có phải member của project không
-     */
+    // Kiểm tra user có phải member của project không
+    // /
     public boolean isMember(Long projectId, Long userId) {
         return projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId).isPresent();
     }
 
-    /**
-     * Thêm thành viên vào dự án
-     */
+    // Thêm thành viên vào dự án
+    // /
     @Transactional
     public ProjectMemberDTO addMember(Long projectId, AddMemberRequest request, Long userId) {
         Project project = projectRepository.findById(projectId)
@@ -110,7 +105,6 @@ public class ProjectMemberService {
         return convertToMemberDTO(projectMember);
     }
 
-    // Helper to convert project to DTO for event
     private DoAn.BE.project.dto.ProjectDTO convertToProjectDTO(Project project) {
         DoAn.BE.project.dto.ProjectDTO dto = new DoAn.BE.project.dto.ProjectDTO();
         dto.setProjectId(project.getProjectId());
@@ -118,9 +112,8 @@ public class ProjectMemberService {
         return dto;
     }
 
-    /**
-     * Xóa thành viên khỏi dự án
-     */
+    // Xóa thành viên khỏi dự án
+    // /
     @Transactional
     public void removeMember(Long projectId, Long memberId, Long userId) {
         Project project = projectRepository.findById(projectId)
@@ -152,9 +145,8 @@ public class ProjectMemberService {
                 convertToMemberDTO(memberToRemove)));
     }
 
-    /**
-     * Cập nhật vai trò thành viên
-     */
+    // Cập nhật vai trò thành viên
+    // /
     @Transactional
     public ProjectMemberDTO updateMemberRole(Long projectId, Long memberId, ProjectRole newRole,
             Long userId) {
@@ -199,9 +191,8 @@ public class ProjectMemberService {
         return convertToMemberDTO(memberToUpdate);
     }
 
-    /**
-     * Lấy danh sách thành viên dự án
-     */
+    // Lấy danh sách thành viên dự án
+    // /
     @Transactional(readOnly = true)
     public List<ProjectMemberDTO> getProjectMembers(Long projectId, Long userId) {
         validateProjectAccess(projectId, userId);

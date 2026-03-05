@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import lombok.RequiredArgsConstructor;
 
@@ -54,10 +55,14 @@ public class EmployeeMapper {
         // Card)
         boolean isSelf = currentUser != null && employee.getUser() != null &&
                 employee.getUser().getUserId().equals(currentUser.getUserId());
-        boolean canViewPII = accessControlService.isHRManager() ||
-                accessControlService.isAccountingManager() ||
-                accessControlService.isOwnerOrAdmin() ||
-                isSelf;
+        boolean hasViewPermission;
+        try {
+            accessControlService.checkHrViewPermission();
+            hasViewPermission = true;
+        } catch (ForbiddenException e) {
+            hasViewPermission = false;
+        }
+        boolean canViewPII = hasViewPermission || isSelf;
 
         if (canViewPII) {
             dto.setPhone(employee.getPhone());
@@ -72,10 +77,13 @@ public class EmployeeMapper {
 
         // ===== SALARY VISIBILITY =====
         // HR, Accounting, Owner/Admin, or Self can view Salary
-        boolean canViewSalary = accessControlService.isHRManager() ||
-                accessControlService.isAccountingManager() ||
-                accessControlService.isOwnerOrAdmin() ||
-                isSelf;
+        boolean canViewSalary;
+        try {
+            accessControlService.checkSalaryViewPermission();
+            canViewSalary = true;
+        } catch (ForbiddenException e) {
+            canViewSalary = isSelf;
+        }
 
         if (canViewSalary) {
             dto.setBaseSalary(employee.getBaseSalary());

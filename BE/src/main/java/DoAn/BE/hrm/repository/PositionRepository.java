@@ -28,4 +28,5 @@ public interface PositionRepository extends JpaRepository<Position, Long> {
     // Search by keyword
     @Query("SELECT p FROM Position p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Position> searchByKeyword(@Param("keyword") String keyword);
+    List<Position> findByCompany_CompanyId(Long companyId);
 }

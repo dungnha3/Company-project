@@ -11,7 +11,6 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-// [Entity công việc/task trong dự án] (Role: Data Model)
 @Entity
 @Table(name = "issues", indexes = {
         // Index cho query: findByProject (Project's issues)
@@ -25,26 +24,28 @@ import DoAn.BE.user.entity.User;
         // Index cho query: findByPriority (Priority filter)
         @jakarta.persistence.Index(name = "idx_issue_priority", columnList = "priority")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Issue extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "issue_id")
+    @EqualsAndHashCode.Include
     private Long issueId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sprint_id")
     private Sprint sprint;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "phase_id")
     private ProjectPhase phase; // Giai đoạn (Waterfall)
 
@@ -57,7 +58,7 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_id", nullable = false)
     private IssueStatus issueStatus;
 
@@ -65,11 +66,11 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(length = 20, nullable = false)
     private Priority priority = Priority.MEDIUM;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter; // Người tạo issue
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")
     private User assignee; // Người được giao việc
 
@@ -85,13 +86,26 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
-    /**
-     * Custom field values for this issue
-     */
+    // Trọng số (1-10) đại diện mức độ khó/dễ
+    @Column(name = "weight")
+    private Integer weight;
+
+    // Eisenhower Matrix flags
+    @Column(name = "is_important")
+    private Boolean isImportant = false;
+
+    @Column(name = "is_urgent")
+    private Boolean isUrgent = false;
+
+    // Timestamp khi issue được hoàn thành (Done)
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    // Custom field values for this issue
+    // /
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueCustomFieldValue> customFieldValues = new ArrayList<>();
 
-    // Helper methods
     public boolean isOverdue() {
         return this.dueDate != null &&
                 LocalDate.now().isAfter(this.dueDate) &&
@@ -116,6 +130,29 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     public void changeStatus(IssueStatus newStatus) {
         this.issueStatus = newStatus;
         this.setUpdatedAt(LocalDateTime.now());
+        // Auto-set completedAt when status changes to Done
+        if ("Done".equals(newStatus.getName())) {
+            if (this.completedAt == null) {
+                this.completedAt = LocalDateTime.now();
+            }
+        } else {
+            this.completedAt = null; // Reset if moved away from Done
+        }
+    }
+
+    /**
+     * Eisenhower quadrant: 1=Làm ngay, 2=Lên kế hoạch, 3=Giao lại, 4=Làm sau
+     */
+    public int getEisenhowerQuadrant() {
+        boolean imp = Boolean.TRUE.equals(this.isImportant);
+        boolean urg = Boolean.TRUE.equals(this.isUrgent);
+        if (imp && urg)
+            return 1;
+        if (imp && !urg)
+            return 2;
+        if (!imp && urg)
+            return 3;
+        return 4;
     }
 
     // Enum

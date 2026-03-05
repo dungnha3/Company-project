@@ -17,9 +17,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Service for exporting reports to Excel and PDF
- */
+// Service for exporting reports to Excel and PDF
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,8 +30,6 @@ public class HrmExportService {
     private final SalaryRepository salaryRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final ContractRepository contractRepository;
-
-    // ==================== EXCEL EXPORTS ====================
 
     public byte[] exportEmployeesToExcel() throws IOException {
         log.info("Export Employees - Need to implement Apache POI");
@@ -55,11 +52,8 @@ public class HrmExportService {
         return "Export Leaves - Need to implement Apache POI".getBytes();
     }
 
-    // ==================== PDF EXPORTS ====================
-
-    /**
-     * Export employee list to PDF
-     */
+    // Export employee list to PDF
+    // /
     public byte[] exportEmployeesToPdf(PdfExportService pdfService) {
         log.info("Exporting employees to PDF");
 
@@ -93,9 +87,8 @@ public class HrmExportService {
                 .build();
     }
 
-    /**
-     * Export salary report to PDF
-     */
+    // Export salary report to PDF
+    // /
     public byte[] exportSalaryToPdf(PdfExportService pdfService, int month, int year) {
         log.info("Exporting salary for {}/{} to PDF", month, year);
 

@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.MalformedURLException;
 import java.nio.file.Path;
@@ -24,6 +25,7 @@ import java.nio.file.Paths;
 @RequestMapping("/api/public/files")
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class PublicStorageController {
 
     private final FileRepository fileRepository;
@@ -32,8 +34,11 @@ public class PublicStorageController {
     @Value("${storage.type:local}")
     private String storageType;
 
-// Download a file without authentication.
-// This endpoint is intended for publicly accessible files like company logos.
+    @Value("${file.upload-dir:./uploads}")
+    private String uploadDir;
+
+    // Download a file without authentication.
+    // This endpoint is intended for publicly accessible files like company logos.
     @GetMapping("/{fileId}/download")
     public ResponseEntity<Resource> downloadPublicFile(@PathVariable Long fileId) {
         File file = fileRepository.findById(fileId)
@@ -55,7 +60,12 @@ public class PublicStorageController {
                 java.io.InputStream inputStream = minioService.getFile(file.getFilePath());
                 resource = new org.springframework.core.io.InputStreamResource(inputStream);
             } else {
-                Path filePath = Paths.get(file.getFilePath()).normalize();
+                Path filePath = Paths.get(file.getFilePath()).toAbsolutePath().normalize();
+                Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+                // Prevent path traversal — file must reside within upload directory
+                if (!filePath.startsWith(uploadPath)) {
+                    throw new StorageFileNotFoundException("File path không hợp lệ");
+                }
                 resource = new UrlResource(filePath.toUri());
             }
 
@@ -71,7 +81,10 @@ public class PublicStorageController {
                         .contentType(MediaType.parseMediaType(
                                 file.getMimeType() != null ? file.getMimeType() : "application/octet-stream"))
                         .header(HttpHeaders.CONTENT_DISPOSITION,
-                                contentDisposition + "; filename=\"" + file.getOriginalFilename() + "\"")
+                                org.springframework.http.ContentDisposition
+                                        .builder(contentDisposition)
+                                        .filename(file.getOriginalFilename(), java.nio.charset.StandardCharsets.UTF_8)
+                                        .build().toString())
                         .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400") // Cache for 24 hours
                         .body(resource);
             } else {

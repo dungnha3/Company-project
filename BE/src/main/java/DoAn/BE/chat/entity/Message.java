@@ -20,14 +20,16 @@ import DoAn.BE.storage.entity.File;
         // Index cho query: findByIsDeleted (Non-deleted messages)
         @jakarta.persistence.Index(name = "idx_msg_deleted", columnList = "is_deleted")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Message extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long messageId;
 
     @ManyToOne
@@ -64,7 +66,6 @@ public class Message extends DoAn.BE.common.entity.BaseEntity {
         this.messageType = MessageType.TEXT;
     }
 
-    // Helper methods
     public boolean isTextMessage() {
         return this.messageType == MessageType.TEXT;
     }
@@ -77,7 +78,6 @@ public class Message extends DoAn.BE.common.entity.BaseEntity {
         this.setUpdatedAt(LocalDateTime.now());
     }
 
-    // [Loại tin nhắn] (Role: Enum)
     public enum MessageType {
         TEXT,
         FILE,

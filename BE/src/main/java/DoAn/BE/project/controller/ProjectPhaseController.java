@@ -1,5 +1,7 @@
 package DoAn.BE.project.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -14,13 +16,16 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
+@FeatureFlag("PROJECT")
 public class ProjectPhaseController {
 
     private final ProjectPhaseService projectPhaseService;
 
     @GetMapping("/{projectId}/phases")
-    public ResponseEntity<List<ProjectPhaseDTO.Response>> getPhases(@PathVariable Long projectId) {
-        return ResponseEntity.ok(projectPhaseService.getPhasesByProject(projectId));
+    public ResponseEntity<List<ProjectPhaseDTO.Response>> getPhases(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(projectPhaseService.getPhasesByProject(projectId, user.getUserId()));
     }
 
     // Conflict with GanttController.getGanttData (same path
@@ -42,13 +47,16 @@ public class ProjectPhaseController {
     @PutMapping("/phases/{phaseId}")
     public ResponseEntity<ProjectPhaseDTO.Response> updatePhase(
             @PathVariable Long phaseId,
-            @RequestBody ProjectPhaseDTO.UpdateRequest request) {
-        return ResponseEntity.ok(projectPhaseService.updatePhase(phaseId, request));
+            @RequestBody ProjectPhaseDTO.UpdateRequest request,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(projectPhaseService.updatePhase(phaseId, request, user.getUserId()));
     }
 
     @DeleteMapping("/phases/{phaseId}")
-    public ResponseEntity<Void> deletePhase(@PathVariable Long phaseId) {
-        projectPhaseService.deletePhase(phaseId);
+    public ResponseEntity<Void> deletePhase(
+            @PathVariable Long phaseId,
+            @AuthenticationPrincipal User user) {
+        projectPhaseService.deletePhase(phaseId, user.getUserId());
         return ResponseEntity.noContent().build();
     }
 }

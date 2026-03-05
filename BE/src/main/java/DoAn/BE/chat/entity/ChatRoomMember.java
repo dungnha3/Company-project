@@ -6,7 +6,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-// [Entity thành viên chat room] (Role: Data Model)
 @Entity
 @Table(name = "chat_room_members", indexes = {
         // Index cho query: findByUser_UserId (User's chat rooms - CRITICAL)
@@ -14,12 +13,15 @@ import java.time.LocalDateTime;
         // Index cho query: findByChatRoom_RoomId (Room's members)
         @jakarta.persistence.Index(name = "idx_crm_room", columnList = "room_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class ChatRoomMember {
 
     @EmbeddedId
+    @EqualsAndHashCode.Include
     private ChatRoomMemberId id;
 
     @ManyToOne
@@ -39,9 +41,13 @@ public class ChatRoomMember {
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 
+    @Column(name = "last_read_at")
+    private LocalDateTime lastReadAt;
+
     @PrePersist
     protected void onCreate() {
         this.joinedAt = LocalDateTime.now();
+        this.lastReadAt = LocalDateTime.now();
     }
 
     public enum MemberRole {

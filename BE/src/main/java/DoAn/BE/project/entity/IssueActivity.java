@@ -7,17 +7,19 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-// [Entity lịch sử thay đổi Issue - audit trail] (Role: Data Model)
 @Entity
 @Table(name = "issue_activities")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class IssueActivity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "activity_id")
+    @EqualsAndHashCode.Include
     private Long activityId;
 
     @ManyToOne
@@ -72,7 +74,6 @@ public class IssueActivity {
         this.description = description;
     }
 
-    // Helper methods
     private String generateDescription() {
         switch (activityType) {
             case STATUS_CHANGED:

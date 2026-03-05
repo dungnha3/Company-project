@@ -20,6 +20,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     // [SAAS] Lấy danh sách dự án của công ty (SysAdmin)
     List<Project> findByCompany_CompanyId(Long companyId);
+    List<Project> findByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 
     Optional<Project> findByKeyProject(String keyProject);
 
@@ -28,8 +29,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByIsActiveTrue();
 
     List<Project> findByStatus(Project.ProjectStatus status);
-
-    // ==================== OPTIMIZED QUERIES ====================
 
     // [OPTIMIZED: Fetch project with members to avoid N+1]
     @EntityGraph(attributePaths = { "createdBy", "members" })

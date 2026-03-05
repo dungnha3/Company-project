@@ -22,20 +22,28 @@ import java.util.List;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import org.springframework.transaction.annotation.Transactional;
 
-// [Controller managing employees] (Role: HR Manager)
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
 @FeatureFlag("HR")
+@Transactional(readOnly = true)
 public class EmployeeController {
 
     private final EmployeeService employeeService;
     private final EmployeeMapper employeeMapper;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
 
-    // ==================== READ ====================
+    @Transactional
+    @PostMapping
+    public ResponseEntity<EmployeeDTO> createEmployee(
+            @Valid @RequestBody EmployeeRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        Employee employee = employeeService.createEmployee(request, currentUser);
+        return ResponseEntity.status(201).body(employeeMapper.toDTO(employee, currentUser));
+    }
 
-    // [Get employee by ID] (Role: HR/Self)
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDTO> getEmployeeById(
             @PathVariable Long id,
@@ -44,7 +52,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
 
-    // [Get all employees (no pagination)] (Role: HR/Accounting)
     @GetMapping
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees(
             @AuthenticationPrincipal User currentUser) {
@@ -52,7 +59,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeMapper.toDTOList(employees, currentUser));
     }
 
-    // [Get employees with pagination] (Role: HR/Accounting)
     @GetMapping("/page")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesPage(
             @RequestParam(defaultValue = "0") int page,
@@ -60,6 +66,20 @@ public class EmployeeController {
             @RequestParam(defaultValue = "fullName") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
             @AuthenticationPrincipal User currentUser) {
+
+        // Validate pagination params
+        if (page < 0)
+            page = 0;
+        if (size < 1)
+            size = 10;
+
+        // Validate sortBy field (whitelist valid fields)
+        java.util.Set<String> validSortFields = java.util.Set.of(
+                "fullName", "email", "phoneNumber", "startDate", "status",
+                "employeeId", "dateOfBirth");
+        if (!validSortFields.contains(sortBy)) {
+            sortBy = "fullName";
+        }
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -70,9 +90,7 @@ public class EmployeeController {
         return ResponseEntity.ok(dtoPage);
     }
 
-    // ==================== UPDATE ====================
-
-    // [Update employee] (Role: HR Manager)
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeDTO> updateEmployee(
             @PathVariable Long id,
@@ -82,18 +100,16 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
 
-    // [Delete employee] (Role: HR Manager)
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteEmployee(@PathVariable Long id) {
+        accessControlService.checkHrDeleteEmployeePermission();
         employeeService.deleteEmployee(id);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted employee successfully");
         return ResponseEntity.ok(response);
     }
 
-    // ==================== FILTERS ====================
-
-    // [Filter employees by status] (Role: HR/Accounting)
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesByStatus(
             @PathVariable EmployeeStatus status,
@@ -103,7 +119,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
-    // [Filter employees by department] (Role: HR/Accounting)
     @GetMapping("/department/{departmentId}")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesByDepartment(
             @PathVariable Long departmentId,
@@ -113,7 +128,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
-    // [Filter employees by position] (Role: HR/Accounting)
     @GetMapping("/position/{positionId}")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesByPosition(
             @PathVariable Long positionId,
@@ -123,7 +137,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
-    // [Search employees by keyword] (Role: HR/Accounting)
     @GetMapping("/search")
     public ResponseEntity<Page<EmployeeDTO>> searchEmployees(
             @RequestParam String keyword,
@@ -133,9 +146,7 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
-    // ==================== ACTIONS ====================
-
-    // [Update employee status] (Role: HR Manager)
+    @Transactional
     @PatchMapping("/{id}/status")
     public ResponseEntity<EmployeeDTO> updateStatus(
             @PathVariable Long id,
@@ -145,9 +156,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
 
-    // ==================== USER MAPPING ====================
-
-    // [Get employee by User ID] (Role: HR/Self)
     @GetMapping("/user/{userId}")
     public ResponseEntity<EmployeeDTO> getEmployeeByUserId(
             @PathVariable Long userId,
@@ -156,7 +164,6 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeMapper.toDTO(employee, currentUser));
     }
 
-    // [Check if User has employee profile] (Role: System)
     @GetMapping("/user/{userId}/exists")
     public ResponseEntity<Map<String, Boolean>> hasEmployeeProfile(@PathVariable Long userId) {
         boolean exists = employeeService.hasEmployeeProfile(userId);

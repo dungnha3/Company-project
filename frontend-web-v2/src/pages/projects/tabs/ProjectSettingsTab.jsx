@@ -106,7 +106,7 @@ export default function ProjectSettingsTab({ project }) {
         setSearchError('');
 
         try {
-            const res = await apiClient.get(ENDPOINTS.USERS.SEARCH, { params: { q: memberEmail } });
+            const res = await apiClient.get(ENDPOINTS.USERS.SEARCH, { params: { query: memberEmail } });
             const users = res.data;
             const user = users.find(u => u.email?.toLowerCase() === memberEmail.toLowerCase());
 
@@ -253,8 +253,8 @@ export default function ProjectSettingsTab({ project }) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className={`badge ${member.role === 'OWNER' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
-                                        {member.role}
+                                    <span className={`badge ${member.role === 'OWNER' ? 'bg-purple-100 text-purple-700' : member.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {member.role === 'OWNER' ? 'Chủ dự án' : member.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'}
                                     </span>
                                     {member.role !== 'OWNER' && (
                                         <button

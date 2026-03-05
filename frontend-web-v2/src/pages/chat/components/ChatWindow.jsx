@@ -8,7 +8,7 @@ import { useToast } from '@app/providers/ToastProvider';
 import MessageItem from './MessageItem';
 import MessageInput from './MessageInput';
 
-export default function ChatWindow({ roomId, onOpenRoomInfo }) {
+export default function ChatWindow({ roomId, onOpenRoomInfo, onStartCall, onCallSignal }) {
     const { user } = useAuthStore();
     const { subscribe, unsubscribe, sendMessage } = useWebSocketStore();
     const queryClient = useQueryClient();
@@ -31,7 +31,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
         queryKey: ['chat-messages', roomId],
         queryFn: async () => {
             const response = (await apiClient.get(ENDPOINTS.CHAT.MESSAGES(roomId))).data;
-            return response?.content || [];
+            return Array.isArray(response) ? response : (response?.content || []);
         },
         enabled: !!roomId,
     });
@@ -65,14 +65,27 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
         }
     });
 
+    // Use refs for callbacks to avoid stale closure in WebSocket subscription
+    const callSignalRef = useRef(onCallSignal);
+    callSignalRef.current = onCallSignal;
+
     // WebSocket subscription
     useEffect(() => {
         // Guard: Only proceed if roomId is valid
         if (!roomId) return;
 
         const topic = `/topic/room.${roomId}`;
-        subscribe(topic, (newMessage) => {
-            queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), newMessage]);
+        subscribe(topic, (wsMessage) => {
+            // Forward call signals to parent (use ref to always get latest handler)
+            const callTypes = ['CALL_OFFER', 'CALL_ANSWER', 'ICE_CANDIDATE', 'CALL_REJECT', 'CALL_END'];
+            if (callTypes.includes(wsMessage.type)) {
+                callSignalRef.current && callSignalRef.current(wsMessage);
+                return;
+            }
+            // Backend sends WebSocketMessage wrapper with full MessDTO in .data
+            if (wsMessage.type === 'CHAT_MESSAGE' && wsMessage.data) {
+                queryClient.setQueryData(['chat-messages', roomId], (old) => [...(old || []), wsMessage.data]);
+            }
             queryClient.invalidateQueries(['chat-rooms']);
         });
 
@@ -101,7 +114,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
 
     const handleDelete = (message) => {
         if (confirm('Bạn có chắc muốn xóa tin nhắn này?')) {
-            deleteMutation.mutate(message.id);
+            deleteMutation.mutate(message.messageId);
         }
     };
 
@@ -132,7 +145,7 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
             <div className="h-16 px-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                        {room?.type === 'DIRECT' ? (
+                        {room?.roomType === 'DIRECT' ? (
                             room?.otherUser?.name?.charAt(0) || 'U'
                         ) : (
                             <i className="fa-solid fa-users text-sm" />
@@ -158,12 +171,20 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
                     </button>
 
                     {/* Video Call */}
-                    <button className="w-9 h-9 rounded-full text-gray-400 hover:bg-gray-100 flex items-center justify-center">
+                    <button
+                        onClick={() => onStartCall && onStartCall(true)}
+                        className="w-9 h-9 rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-500 flex items-center justify-center transition-colors"
+                        title="Gọi video"
+                    >
                         <i className="fa-solid fa-video" />
                     </button>
 
                     {/* Voice Call */}
-                    <button className="w-9 h-9 rounded-full text-gray-400 hover:bg-gray-100 flex items-center justify-center">
+                    <button
+                        onClick={() => onStartCall && onStartCall(false)}
+                        className="w-9 h-9 rounded-full text-gray-400 hover:bg-green-50 hover:text-green-500 flex items-center justify-center transition-colors"
+                        title="Gọi thoại"
+                    >
                         <i className="fa-solid fa-phone" />
                     </button>
 
@@ -212,12 +233,12 @@ export default function ChatWindow({ roomId, onOpenRoomInfo }) {
                     </div>
                 ) : (
                     filteredMessages.map((msg, index) => {
-                        const isMe = msg.senderId === user?.userId;
-                        const showAvatar = !isMe && (index === 0 || filteredMessages[index - 1].senderId !== msg.senderId);
+                        const isMe = msg.sender?.userId === user?.userId;
+                        const showAvatar = !isMe && (index === 0 || filteredMessages[index - 1].sender?.userId !== msg.sender?.userId);
 
                         return (
                             <MessageItem
-                                key={msg.id || index}
+                                key={msg.messageId || index}
                                 message={msg}
                                 isMe={isMe}
                                 showAvatar={showAvatar}

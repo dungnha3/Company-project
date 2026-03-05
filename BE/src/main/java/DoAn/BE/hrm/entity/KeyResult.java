@@ -6,15 +6,18 @@ import lombok.*;
 
 @Entity
 @Table(name = "key_results")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class KeyResult {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "key_result_id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(name = "title", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")

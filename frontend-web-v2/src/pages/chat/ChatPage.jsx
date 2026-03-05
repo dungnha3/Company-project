@@ -1,27 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useWebSocketStore } from '@shared/stores/websocketStore';
 import { useAuthStore } from '@shared/stores/authStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ConversationList from './components/ConversationList';
 import ChatWindow from './components/ChatWindow';
 import CreateRoomModal from './components/CreateRoomModal';
 import RoomInfoPanel from './components/RoomInfoPanel';
+import CallModal from './components/CallModal';
+import { useWebRTC, CALL_STATE } from './hooks/useWebRTC';
 
 export default function ChatPage() {
     const { connect, disconnect, connected } = useWebSocketStore();
     const { token } = useAuthStore();
+    const { hasPermission } = useWorkspaceStore();
+    const canCreateGroup = hasPermission('chatCreateGroup');
     const [selectedRoomId, setSelectedRoomId] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
 
-    useEffect(() => {
-        if (token) {
-            connect();
-        }
-        return () => disconnect();
-    }, [token]);
+    // WebRTC hook for voice/video calling
+    const webrtc = useWebRTC();
 
     const handleRoomCreated = (room) => {
         setSelectedRoomId(room.roomId);
+    };
+
+    const handleStartCall = (withVideo) => {
+        if (selectedRoomId && webrtc.callState === CALL_STATE.IDLE) {
+            webrtc.startCall(selectedRoomId, withVideo);
+        }
+    };
+
+    // Forward call signals from ChatWindow's WebSocket subscription
+    const handleCallSignal = (wsMessage) => {
+        webrtc.handleSignal(wsMessage);
     };
 
     return (
@@ -38,13 +50,15 @@ export default function ChatPage() {
             <ConversationList
                 selectedRoomId={selectedRoomId}
                 onSelectRoom={setSelectedRoomId}
-                onCreateRoom={() => setShowCreateModal(true)}
+                onCreateRoom={canCreateGroup ? () => setShowCreateModal(true) : undefined}
             />
 
             {/* Main Chat Area */}
             <ChatWindow
                 roomId={selectedRoomId}
                 onOpenRoomInfo={() => setShowRoomInfo(true)}
+                onStartCall={handleStartCall}
+                onCallSignal={handleCallSignal}
             />
 
             {/* Room Info Panel */}
@@ -62,6 +76,23 @@ export default function ChatPage() {
                     onSuccess={handleRoomCreated}
                 />
             )}
+
+            {/* Call Modal — renders when call is active */}
+            <CallModal
+                callState={webrtc.callState}
+                isVideo={webrtc.isVideo}
+                isMuted={webrtc.isMuted}
+                isCamOff={webrtc.isCamOff}
+                remoteUser={webrtc.remoteUser}
+                callDuration={webrtc.callDuration}
+                localVideoRef={webrtc.localVideoRef}
+                remoteVideoRef={webrtc.remoteVideoRef}
+                onAnswer={webrtc.answerCall}
+                onReject={webrtc.rejectCall}
+                onEnd={webrtc.endCall}
+                onToggleMute={webrtc.toggleMute}
+                onToggleVideo={webrtc.toggleVideo}
+            />
         </div>
     );
 }

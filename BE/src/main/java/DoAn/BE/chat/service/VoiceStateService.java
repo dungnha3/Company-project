@@ -13,7 +13,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 // [COMPLETE - Integrated with WebSocket]
-// Service quản lý trạng thái voice/video trong phòng chat
 // Features: Track voice users, WebSocket notifications, mute/video toggle, presence sync
 @Service
 @Transactional
@@ -125,8 +124,6 @@ public class VoiceStateService {
         return new ArrayList<>(states.values());
     }
 
-    // ============ Private Helper Methods ============
-
     private void notifyVoiceStateChange(Long roomId, Long userId, String username, String eventType) {
         Map<String, Object> data = new HashMap<>();
         data.put("roomId", roomId);
@@ -148,8 +145,6 @@ public class VoiceStateService {
 
         messagingTemplate.convertAndSend("/topic/room." + roomId + ".voice", wsMessage);
     }
-
-    // ============ Inner Class for Voice State ============
 
     @lombok.Data
     @lombok.AllArgsConstructor

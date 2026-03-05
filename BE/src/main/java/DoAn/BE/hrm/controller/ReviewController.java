@@ -16,23 +16,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// [Controller managing employee reviews] (Role: HR Manager)
+import DoAn.BE.common.annotation.FeatureFlag;
 @RestController
 @RequestMapping("/api/reviews")
+@FeatureFlag("REVIEW")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ReviewController {
 
     private final ReviewService reviewService;
     private final ReviewMapper reviewMapper;
-
-    // ==================== CRUD ====================
-
-    // [Create review] (Role: HR Manager)
     @PostMapping
     public ResponseEntity<ReviewDTO> createReview(
             @Valid @RequestBody ReviewRequest request,
@@ -40,8 +39,6 @@ public class ReviewController {
         Review review = reviewService.createReview(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(reviewMapper.toDTO(review));
     }
-
-    // [Get review by ID] (Role: HR/Self)
     @GetMapping("/{id}")
     public ResponseEntity<ReviewDTO> getReviewById(
             @PathVariable Long id,
@@ -49,15 +46,11 @@ public class ReviewController {
         Review review = reviewService.getReviewById(id, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
     }
-
-    // [Get all reviews] (Role: HR Manager)
     @GetMapping
     public ResponseEntity<List<ReviewDTO>> getAllReviews(@AuthenticationPrincipal User currentUser) {
         List<Review> reviews = reviewService.getAllReviews(currentUser);
         return ResponseEntity.ok(reviewMapper.toDTOList(reviews));
     }
-
-    // [Get all reviews with pagination] (Role: HR Manager)
     @GetMapping("/page")
     public ResponseEntity<Page<ReviewDTO>> getAllReviewsPage(
             @RequestParam(defaultValue = "0") int page,
@@ -74,8 +67,6 @@ public class ReviewController {
 
         return ResponseEntity.ok(dtoPage);
     }
-
-    // [Update review] (Role: HR Manager)
     @PutMapping("/{id}")
     public ResponseEntity<ReviewDTO> updateReview(
             @PathVariable Long id,
@@ -84,8 +75,6 @@ public class ReviewController {
         Review review = reviewService.updateReview(id, request, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
     }
-
-    // [Delete review] (Role: HR Manager)
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteReview(
             @PathVariable Long id,
@@ -96,10 +85,6 @@ public class ReviewController {
         response.put("message", "Deleted review successfully");
         return ResponseEntity.ok(response);
     }
-
-    // ==================== QUERIES ====================
-
-    // [Get reviews by employee] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<ReviewDTO>> getReviewsByEmployee(
             @PathVariable Long employeeId,
@@ -107,17 +92,11 @@ public class ReviewController {
         List<Review> reviews = reviewService.getReviewsByEmployee(employeeId, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTOList(reviews));
     }
-
-    // [Get pending reviews] (Role: HR Manager)
     @GetMapping("/pending")
     public ResponseEntity<List<ReviewDTO>> getPendingReviews(@AuthenticationPrincipal User currentUser) {
         List<Review> reviews = reviewService.getPendingReviews(currentUser);
         return ResponseEntity.ok(reviewMapper.toDTOList(reviews));
     }
-
-    // ==================== APPROVAL ACTIONS ====================
-
-    // [Submit review for approval] (Role: HR Manager)
     @PatchMapping("/{id}/submit")
     public ResponseEntity<ReviewDTO> submitForApproval(
             @PathVariable Long id,
@@ -125,8 +104,6 @@ public class ReviewController {
         Review review = reviewService.submitForApproval(id, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
     }
-
-    // [Approve review] (Role: Owner/Admin)
     @PatchMapping("/{id}/approve")
     public ResponseEntity<ReviewDTO> approveReview(
             @PathVariable Long id,
@@ -136,8 +113,6 @@ public class ReviewController {
         Review review = reviewService.approveReview(id, note, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
     }
-
-    // [Reject review] (Role: Owner/Admin)
     @PatchMapping("/{id}/reject")
     public ResponseEntity<ReviewDTO> rejectReview(
             @PathVariable Long id,

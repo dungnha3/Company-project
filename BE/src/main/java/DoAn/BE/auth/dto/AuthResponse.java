@@ -21,6 +21,8 @@ public class AuthResponse {
     private PersonalWorkspaceInfo personalWorkspace; // [NEW] Personal workspace info
     private List<CompanyDTO> companies; // Danh sách công ty user thuộc về
     private Long selectedCompanyId; // Company đã chọn (nếu có)
+    private Boolean requiresTwoFactor; // true nếu cần nhập mã 2FA
+    private String tempToken; // Token tạm để verify 2FA
 
     // Thông tin user cơ bản
     @Data
@@ -33,6 +35,7 @@ public class AuthResponse {
         private Boolean isActive;
         private Boolean isSystemAdmin; // [SAAS] Flag để Frontend phân biệt System Admin
         private Plan personalPlan; // [NEW] User's personal subscription plan
+        private Boolean twoFactorEnabled;
     }
 
     // [NEW] Thông tin Personal Workspace

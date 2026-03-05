@@ -16,13 +16,14 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
 
-// Controller xử lý authentication (login, select-company, logout, refresh token)
 @RestController
 @RequestMapping("/api/auth")
+@Transactional(readOnly = true)
 public class AuthController {
 
     private final AuthService authService;
@@ -35,71 +36,85 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // Helper: Create httpOnly cookie for refreshToken
     private ResponseCookie createRefreshTokenCookie(String refreshToken) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
                 .httpOnly(true)
                 .secure(true) // Use HTTPS in production
                 .path("/api/auth")
                 .maxAge(REFRESH_TOKEN_MAX_AGE)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
     }
 
-    // Helper: Create cookie to clear refreshToken
     private ResponseCookie clearRefreshTokenCookie() {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
                 .secure(true)
                 .path("/api/auth")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
     }
 
-    // Đăng nhập - trả về token và set refreshToken cookie
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
-        try {
-            String ipAddress = getClientIpAddress(httpRequest);
-            String userAgent = httpRequest.getHeader("User-Agent");
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
 
-            AuthResponse response = authService.login(request, ipAddress, userAgent);
+        AuthResponse response = authService.login(request, ipAddress, userAgent);
 
-            // Set refreshToken as httpOnly cookie
-            ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
-
-            // Remove refreshToken from JSON response (keep only in cookie)
-            response.setRefreshToken(null);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body(response);
-        } catch (Exception e) {
-            throw new UnauthorizedException("Đăng nhập thất bại: " + e.getMessage());
+        // If 2FA required, return partial response without cookie
+        if (Boolean.TRUE.equals(response.getRequiresTwoFactor())) {
+            return ResponseEntity.ok(response);
         }
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
-    // [New] Đăng nhập bằng Google
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<AuthResponse> verify2fa(
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        String tempToken = request.get("tempToken");
+        String code = request.get("code");
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        AuthResponse response = authService.verify2fa(tempToken, code, ipAddress, userAgent);
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> loginWithGoogle(
             @RequestBody Map<String, String> request,
             HttpServletRequest httpRequest) {
-        try {
-            String idToken = request.get("token");
-            String ipAddress = getClientIpAddress(httpRequest);
-            String userAgent = httpRequest.getHeader("User-Agent");
+        String idToken = request.get("token");
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
 
-            AuthResponse response = authService.loginWithGoogle(idToken, ipAddress, userAgent);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new UnauthorizedException("Google Login thất bại: " + e.getMessage());
-        }
+        AuthResponse response = authService.loginWithGoogle(idToken, ipAddress, userAgent);
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
-    // Lấy thông tin user hiện tại (cho initAuth FE)
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -138,7 +153,6 @@ public class AuthController {
         }
     }
 
-    // Chọn công ty để làm việc - sinh token mới với companyId
     @PostMapping("/select-company")
     public ResponseEntity<AuthResponse> selectCompany(
             @Valid @RequestBody SelectCompanyRequest request,
@@ -152,82 +166,72 @@ public class AuthController {
 
         AuthResponse response = authService.selectCompany(
                 currentUser.getUserId(), request.getCompanyId(), ipAddress, userAgent);
-        return ResponseEntity.ok(response);
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
-    // Refresh token - read from httpOnly cookie
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
             @RequestBody(required = false) Map<String, String> request) {
-        try {
-            // Priority: cookie > request body (backward compatibility)
-            String refreshToken = cookieRefreshToken;
-            if ((refreshToken == null || refreshToken.trim().isEmpty()) && request != null) {
-                refreshToken = request.get("refreshToken");
-            }
-
-            if (refreshToken == null || refreshToken.trim().isEmpty()) {
-                throw new BadRequestException("Refresh token không được để trống");
-            }
-
-            AuthResponse response = authService.refreshToken(refreshToken);
-
-            // Set new refreshToken cookie
-            ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
-            response.setRefreshToken(null);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body(response);
-        } catch (UnauthorizedException | BadRequestException e) {
-            throw e;
+        String refreshToken = cookieRefreshToken;
+        if ((refreshToken == null || refreshToken.trim().isEmpty()) && request != null) {
+            refreshToken = request.get("refreshToken");
         }
+
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new BadRequestException("Refresh token không được để trống");
+        }
+
+        AuthResponse response = authService.refreshToken(refreshToken);
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
-    // Đăng xuất - clear cookie
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
-            @RequestBody(required = false) Map<String, String> request,
-            HttpServletRequest httpRequest) {
-        try {
-            String refreshToken = cookieRefreshToken;
-            if ((refreshToken == null || refreshToken.isEmpty()) && request != null) {
-                refreshToken = request.get("refreshToken");
-            }
-            String sessionId = request != null ? request.get("sessionId") : null;
-
-            authService.logout(refreshToken, sessionId);
-
-            // Clear the refreshToken cookie
-            ResponseCookie clearCookie = clearRefreshTokenCookie();
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Đăng xuất thành công");
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
-                    .body(response);
-        } catch (Exception e) {
-            throw new BadRequestException("Đăng xuất thất bại: " + e.getMessage());
+            @RequestBody(required = false) Map<String, String> request) {
+        String refreshToken = cookieRefreshToken;
+        if ((refreshToken == null || refreshToken.isEmpty()) && request != null) {
+            refreshToken = request.get("refreshToken");
         }
+        String sessionId = request != null ? request.get("sessionId") : null;
+
+        authService.logout(refreshToken, sessionId);
+
+        ResponseCookie clearCookie = clearRefreshTokenCookie();
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Đăng xuất thành công");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(response);
     }
 
-    // Đăng xuất tất cả thiết bị
     @PostMapping("/logout-all")
-    public ResponseEntity<Map<String, String>> logoutAllDevices(@RequestParam Long userId) {
-        try {
-            authService.logoutAllDevices(userId);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Đăng xuất tất cả thiết bị thành công");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new BadRequestException("Đăng xuất tất cả thiết bị thất bại: " + e.getMessage());
+    public ResponseEntity<Map<String, String>> logoutAllDevices(
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            throw new UnauthorizedException("Chưa đăng nhập");
         }
+        authService.logoutAllDevices(currentUser.getUserId());
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Đăng xuất tất cả thiết bị thành công");
+        return ResponseEntity.ok(response);
     }
 
-    // [System Admin] Đăng nhập dưới danh nghĩa User khác
     @PostMapping("/impersonate/{userId}")
     public ResponseEntity<AuthResponse> impersonateUser(
             @PathVariable Long userId,
@@ -241,10 +245,14 @@ public class AuthController {
         String userAgent = httpRequest.getHeader("User-Agent");
 
         AuthResponse response = authService.impersonateUser(currentUser.getUserId(), userId, ipAddress, userAgent);
-        return ResponseEntity.ok(response);
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
-    // Kiểm tra token có hợp lệ không
     @GetMapping("/validate")
     public ResponseEntity<Map<String, Object>> validateToken(@RequestParam String token) {
         try {
@@ -266,7 +274,6 @@ public class AuthController {
         }
     }
 
-    // Quên mật khẩu - gửi email reset
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(
             @Valid @RequestBody DoAn.BE.auth.dto.ForgotPasswordRequest request) {
@@ -276,7 +283,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Reset mật khẩu với token
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(
             @Valid @RequestBody DoAn.BE.auth.dto.ResetPasswordRequest request) {
@@ -286,7 +292,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Đổi mật khẩu khi đã login
     @PostMapping("/change-password")
     public ResponseEntity<Map<String, String>> changePassword(
             @Valid @RequestBody DoAn.BE.auth.dto.ChangePasswordRequest request,
@@ -300,18 +305,36 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Lấy thông tin client IP address
     private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
-            return xForwardedFor.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        if (isPrivateIp(remoteAddr)) {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+                return xForwardedFor.split(",")[0].trim();
+            }
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+                return xRealIp;
+            }
         }
+        return remoteAddr;
+    }
 
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
-            return xRealIp;
+    private boolean isPrivateIp(String ip) {
+        if (ip == null)
+            return false;
+        if (ip.startsWith("10.") || ip.startsWith("192.168.") || ip.equals("127.0.0.1")
+                || ip.equals("0:0:0:0:0:0:0:1")) {
+            return true;
         }
-
-        return request.getRemoteAddr();
+        if (ip.startsWith("172.")) {
+            try {
+                int secondOctet = Integer.parseInt(ip.split("\\.")[1]);
+                return secondOctet >= 16 && secondOctet <= 31;
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                return false;
+            }
+        }
+        return false;
     }
 }

@@ -6,8 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
-// [DTO thông tin thành viên dự án] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

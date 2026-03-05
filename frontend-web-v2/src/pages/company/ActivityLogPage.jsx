@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatRelativeTime, formatDateTime } from '@shared/utils/formatters';
+import { useToast } from '@app/providers/ToastProvider';
 
 const ACTIVITY_TYPES = {
     all: { label: 'Tất cả', icon: 'fa-list' },
@@ -16,6 +17,7 @@ const ACTIVITY_TYPES = {
 
 export default function ActivityLogPage() {
     const { currentWorkspace } = useWorkspaceStore();
+    const { showToast } = useToast();
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [dateRange, setDateRange] = useState('7d'); // 7d, 30d, 90d, all
@@ -120,7 +122,26 @@ export default function ActivityLogPage() {
                     </select>
 
                     {/* Export */}
-                    <button className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-600 transition-colors">
+                    <button onClick={() => {
+                        const activities = dataPage?.content || [];
+                        if (!activities.length) { showToast('Không có dữ liệu để xuất', 'info'); return; }
+                        const headers = ['Thời gian', 'Người thực hiện', 'Hành động', 'Chi tiết'];
+                        const rows = activities.map(a => [
+                            formatDateTime(a.createdAt || a.timestamp),
+                            a.user?.fullName || a.performedBy || '',
+                            a.action || a.type || '',
+                            (a.details || a.description || '').replace(/,/g, ';'),
+                        ]);
+                        const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+                        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `activity_log_${new Date().toISOString().split('T')[0]}.csv`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        showToast('Đã xuất file CSV', 'success');
+                    }} className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-600 transition-colors">
                         <i className="fa-solid fa-download mr-2" />
                         Xuất CSV
                     </button>

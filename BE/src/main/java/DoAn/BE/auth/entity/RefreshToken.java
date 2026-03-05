@@ -3,14 +3,17 @@ package DoAn.BE.auth.entity;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
-// [Entity lưu refresh token - làm mới access token] (Role: Security)
 @Entity
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "refresh_tokens", indexes = {
@@ -24,6 +27,7 @@ public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(name = "token", nullable = false, unique = true, length = 500)
@@ -47,12 +51,10 @@ public class RefreshToken {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Kiểm tra token đã hết hạn chưa
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiresAt);
     }
 
-    // Kiểm tra token còn hợp lệ không (chưa hết hạn và chưa bị thu hồi)
     public boolean isValid() {
         return !this.isRevoked && !this.isExpired();
     }

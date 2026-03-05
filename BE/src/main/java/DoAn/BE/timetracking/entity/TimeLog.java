@@ -11,10 +11,9 @@ import DoAn.BE.company.entity.Company;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.user.entity.User;
 
-/**
- * Entity lưu trữ log thời gian làm việc cho từng issue
- * Cho phép track chi tiết ai làm gì, bao lâu, khi nào
- */
+// Entity lưu trữ log thời gian làm việc cho từng issue
+// Cho phép track chi tiết ai làm gì, bao lâu, khi nào
+// /
 @Entity
 @Table(name = "time_logs", indexes = {
         @Index(name = "idx_timelog_issue", columnList = "issue_id"),
@@ -22,15 +21,18 @@ import DoAn.BE.user.entity.User;
         @Index(name = "idx_timelog_company", columnList = "company_id"),
         @Index(name = "idx_timelog_work_date", columnList = "work_date")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class TimeLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "log_id")
+    @EqualsAndHashCode.Include
     private Long logId;
 
     @ManyToOne(fetch = FetchType.LAZY)

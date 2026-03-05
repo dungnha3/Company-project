@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -26,6 +27,7 @@ public class InternalNotificationListener {
     private final DoAn.BE.project.repository.ProjectMemberRepository projectMemberRepository;
     private final DoAn.BE.project.service.ProjectChatIntegrationService projectChatIntegrationService;
 
+    // entities
     @Async("notificationExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleProjectEvent(ProjectEvent event) {
@@ -87,8 +89,10 @@ public class InternalNotificationListener {
                 notifyProjectMembers(project.getProjectId(),
                         (userId) -> {
                             if (!userId.equals(actorId)) {
+                                String statusText = project.getStatus() != null ? project.getStatus().toString()
+                                        : "Updated";
                                 projectNotificationService.createProjectStatusChangedNotification(
-                                        userId, project.getName(), "New Status", project.getProjectId());
+                                        userId, project.getName(), statusText, project.getProjectId());
                             }
                         });
                 break;

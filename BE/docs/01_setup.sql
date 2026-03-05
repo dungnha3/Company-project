@@ -1,268 +1,301 @@
 -- =====================================================
--- GEMINI ERP - COMPLETE SETUP SCRIPT
+-- GEMINI ERP - SETUP SCRIPT
 -- File: 01_setup.sql
--- Mục đích: Tạo users, company, settings - thay thế DefaultUsersInitializer.java
--- Chạy SAU KHI application đã tạo tables tự động (start app 1 lần rồi tắt)
+-- Tạo users, companies (4 gói khác nhau), settings
+-- Chạy SAU KHI app đã tạo tables (start app 1 lần rồi tắt)
 -- =====================================================
+
+USE DACN;
+GO
+
+-- FIX: Sửa role 'ADMIN' → 'COMPANY_ADMIN' nếu data cũ còn dùng sai tên
+-- (Java enum là COMPANY_ADMIN, không phải ADMIN)
+-- Phải drop CHECK constraint trước vì constraint cũ chỉ cho phép 'ADMIN'
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'company_member_roles')
+BEGIN
+    -- Drop CHECK constraint trên cột role (tên constraint có thể khác nhau mỗi DB)
+    DECLARE @constraintName NVARCHAR(200);
+    SELECT @constraintName = cc.CONSTRAINT_NAME
+    FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cc
+    JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS ck ON cc.CONSTRAINT_NAME = ck.CONSTRAINT_NAME
+    WHERE cc.TABLE_NAME = 'company_member_roles' AND cc.COLUMN_NAME = 'role';
+
+    IF @constraintName IS NOT NULL
+    BEGIN
+        EXEC('ALTER TABLE company_member_roles DROP CONSTRAINT ' + @constraintName);
+        PRINT N'⚠️ Dropped old CHECK constraint: ' + @constraintName;
+    END
+
+    -- Update role values
+    UPDATE company_member_roles SET [role] = 'COMPANY_ADMIN' WHERE [role] = 'ADMIN';
+    IF @@ROWCOUNT > 0 PRINT N'✅ Fixed ADMIN → COMPANY_ADMIN in company_member_roles';
+
+    -- Tạo lại CHECK constraint với đúng enum values
+    ALTER TABLE company_member_roles ADD CONSTRAINT CK_company_member_roles_role
+        CHECK ([role] IN ('OWNER','COMPANY_ADMIN','EMPLOYEE'));
+    PRINT N'✅ Recreated CHECK constraint with correct enum values';
+END
+GO
+
+-- FIX: Cập nhật permissions cho hr_a (HR + Project) và pm_a (PM + HR view)
+-- Roles giờ chỉ có OWNER, COMPANY_ADMIN, EMPLOYEE. Permissions tùy chỉnh qua JSON.
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'company_members')
+BEGIN
+    -- hr_a: EMPLOYEE + custom HR & Project permissions
+    UPDATE cm SET cm.permissions = '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true}'
+    FROM company_members cm JOIN users u ON cm.user_id = u.user_id
+    WHERE u.username = 'hr_a' AND cm.company_id = 1;
+
+    -- pm_a: EMPLOYEE + custom Project & HR view permissions
+    UPDATE cm SET cm.permissions = '{"projectCreate":true,"projectManageAll":true,"projectDelete":true,"projectManageIssues":true,"projectManageSprints":true,"projectViewDashboard":true,"projectExport":true,"projectManagePhases":true,"projectResourcePlanning":true,"hrViewList":true,"hrViewDepartments":true,"hrViewPositions":true,"hrViewDashboard":true}'
+    FROM company_members cm JOIN users u ON cm.user_id = u.user_id
+    WHERE u.username = 'pm_a' AND cm.company_id = 1;
+
+    -- Migrate any old MANAGER_* roles to EMPLOYEE
+    UPDATE company_member_roles SET [role] = 'EMPLOYEE'
+    WHERE [role] IN ('MANAGER_HR', 'MANAGER_ACCOUNTING', 'MANAGER_PROJECT');
+    IF @@ROWCOUNT > 0 PRINT N'✅ Migrated MANAGER_* roles → EMPLOYEE';
+
+    PRINT N'✅ Updated custom permissions for hr_a and pm_a';
+END
+GO
 
 -- =====================================================
 -- 0. PASSWORD HASH cho "Admin@123" (BCrypt cost=10)
--- Hash được generate từ https://bcrypt-generator.com
 -- =====================================================
-DECLARE @password_hash VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
+DECLARE @pw VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
 
 -- =====================================================
--- 1. COMPANY (Công ty mặc định)
+-- 1. USERS (30 users)
 -- =====================================================
-IF NOT EXISTS (SELECT 1 FROM [dbo].[companies] WHERE company_id = 1)
+IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'sysadmin')
 BEGIN
-    SET IDENTITY_INSERT [dbo].[companies] ON;
-    INSERT INTO [dbo].[companies] (company_id, name, slug, subscription_plan, is_active, created_at, updated_at)
-    VALUES (1, N'QLNV Demo Company', 'qlnv-demo', 'ENTERPRISE', 1, GETDATE(), GETDATE());
-    SET IDENTITY_INSERT [dbo].[companies] OFF;
-    PRINT N'✅ Created company: QLNV Demo Company';
-END
-ELSE
-BEGIN
-    UPDATE [dbo].[companies] SET subscription_plan = 'ENTERPRISE', is_active = 1 WHERE company_id = 1;
-    PRINT N'✅ Updated company to ENTERPRISE plan';
-END
-GO
+    -- System Admin
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
+        ('sysadmin', @pw, 'sysadmin@system.com', 1, 0, 0, 1, 'ACTIVE', 'https://ui-avatars.com/api/?name=SYS&background=7c3aed&color=fff&size=128', GETDATE(), GETDATE());
 
--- =====================================================
--- 2. USERS (26 users) - with is_deleted = 0
--- =====================================================
-DECLARE @password_hash VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
+    -- Company A (ENTERPRISE) - 10 users
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
+        ('owner_a',     @pw, 'owner@companya.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=OA&background=0ea5e9&color=fff&size=128', GETDATE(), GETDATE()),
+        ('admin_a',     @pw, 'admin@companya.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=AA&background=f43f5e&color=fff&size=128', GETDATE(), GETDATE()),
+        ('hr_a',        @pw, 'hr@companya.com',        1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=HR&background=8b5cf6&color=fff&size=128', GETDATE(), GETDATE()),
+        ('acc_a',       @pw, 'acc@companya.com',       1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=AC&background=f97316&color=fff&size=128', GETDATE(), GETDATE()),
+        ('pm_a',        @pw, 'pm@companya.com',        1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=PM&background=14b8a6&color=fff&size=128', GETDATE(), GETDATE()),
+        ('dev_a1',      @pw, 'dev1@companya.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=D1&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('dev_a2',      @pw, 'dev2@companya.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=D2&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('dev_a3',      @pw, 'dev3@companya.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=D3&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('emp_a1',      @pw, 'emp1@companya.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=E1&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('emp_a2',      @pw, 'emp2@companya.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=E2&background=random&color=fff&size=128', GETDATE(), GETDATE());
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE username = 'sysadmin')
-BEGIN
-    -- System Admin (không thuộc company)
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('sysadmin', @password_hash, 'sysadmin@system.com', 1, 0, 0, 1, 'ACTIVE', 'https://ui-avatars.com/api/?name=System+Admin&background=7c3aed&color=fff&size=128', GETDATE(), GETDATE());
-    
-    -- Core users
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('admin', @password_hash, 'admin@example.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=admin&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('hr', @password_hash, 'hr@example.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=hr&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('accounting', @password_hash, 'accounting@example.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=accounting&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('pm', @password_hash, 'pm@example.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=pm&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('employee', @password_hash, 'employee@example.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=employee&background=random&color=fff&size=128', GETDATE(), GETDATE());
+    -- Company B (PROFESSIONAL) - 6 users
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
+        ('owner_b',     @pw, 'owner@companyb.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=OB&background=22c55e&color=fff&size=128', GETDATE(), GETDATE()),
+        ('admin_b',     @pw, 'admin@companyb.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=AB&background=ef4444&color=fff&size=128', GETDATE(), GETDATE()),
+        ('hr_b',        @pw, 'hr@companyb.com',        1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=HB&background=a855f7&color=fff&size=128', GETDATE(), GETDATE()),
+        ('pm_b',        @pw, 'pm@companyb.com',        1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=PB&background=06b6d4&color=fff&size=128', GETDATE(), GETDATE()),
+        ('dev_b1',      @pw, 'dev1@companyb.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=DB&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('emp_b1',      @pw, 'emp1@companyb.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=EB&background=random&color=fff&size=128', GETDATE(), GETDATE());
 
-    -- 5 Admin accounts
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('admin1', @password_hash, 'admin1@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=admin1&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('admin2', @password_hash, 'admin2@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=admin2&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('admin3', @password_hash, 'admin3@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=admin3&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('admin4', @password_hash, 'admin4@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=admin4&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('admin5', @password_hash, 'admin5@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=admin5&background=random&color=fff&size=128', GETDATE(), GETDATE());
+    -- Company C (STARTER) - 4 users
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
+        ('owner_c',     @pw, 'owner@companyc.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=OC&background=eab308&color=fff&size=128', GETDATE(), GETDATE()),
+        ('admin_c',     @pw, 'admin@companyc.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=AC&background=d946ef&color=fff&size=128', GETDATE(), GETDATE()),
+        ('pm_c',        @pw, 'pm@companyc.com',        1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=PC&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('emp_c1',      @pw, 'emp1@companyc.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=EC&background=random&color=fff&size=128', GETDATE(), GETDATE());
 
-    -- 5 HR Manager accounts
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('hr_nguyen_van_a', @password_hash, 'nguyen.van.a@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Nguyen+Van+A&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('hr_tran_thi_b', @password_hash, 'tran.thi.b@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Tran+Thi+B&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('hr_le_van_c', @password_hash, 'le.van.c@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Le+Van+C&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('hr_pham_thi_d', @password_hash, 'pham.thi.d@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Pham+Thi+D&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('hr_hoang_van_e', @password_hash, 'hoang.van.e@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Hoang+Van+E&background=random&color=fff&size=128', GETDATE(), GETDATE());
+    -- Company D (FREE) - 3 users
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
+        ('owner_d',     @pw, 'owner@companyd.com',     1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=OD&background=64748b&color=fff&size=128', GETDATE(), GETDATE()),
+        ('pm_d',        @pw, 'pm@companyd.com',        1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=PD&background=random&color=fff&size=128', GETDATE(), GETDATE()),
+        ('emp_d1',      @pw, 'emp1@companyd.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=ED&background=random&color=fff&size=128', GETDATE(), GETDATE());
 
-    -- 5 Accounting Manager accounts
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('acc_nguyen_thi_f', @password_hash, 'nguyen.thi.f@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Nguyen+Thi+F&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('acc_tran_van_g', @password_hash, 'tran.van.g@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Tran+Van+G&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('acc_le_thi_h', @password_hash, 'le.thi.h@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Le+Thi+H&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('acc_pham_van_i', @password_hash, 'pham.van.i@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Pham+Van+I&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('acc_hoang_thi_j', @password_hash, 'hoang.thi.j@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Hoang+Thi+J&background=random&color=fff&size=128', GETDATE(), GETDATE());
+    -- Multi-company user (thuộc cả Company A + B)
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
+        ('multi_user',  @pw, 'multi@example.com',      1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=MU&background=ec4899&color=fff&size=128', GETDATE(), GETDATE());
 
-    -- 5 Project Manager accounts
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('pm_nguyen_van_k', @password_hash, 'nguyen.van.k@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Nguyen+Van+K&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('pm_tran_thi_l', @password_hash, 'tran.thi.l@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Tran+Thi+L&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('pm_le_van_m', @password_hash, 'le.van.m@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Le+Van+M&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('pm_pham_thi_n', @password_hash, 'pham.thi.n@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Pham+Thi+N&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('pm_hoang_van_o', @password_hash, 'hoang.van.o@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Hoang+Van+O&background=random&color=fff&size=128', GETDATE(), GETDATE());
-
-    -- 5 Employee accounts
-    INSERT INTO [dbo].[users] (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at) VALUES
-        ('emp_nguyen_thi_p', @password_hash, 'nguyen.thi.p@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Nguyen+Thi+P&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('emp_tran_van_q', @password_hash, 'tran.van.q@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Tran+Van+Q&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('emp_le_thi_r', @password_hash, 'le.thi.r@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Le+Thi+R&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('emp_pham_van_s', @password_hash, 'pham.van.s@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Pham+Van+S&background=random&color=fff&size=128', GETDATE(), GETDATE()),
-        ('emp_hoang_thi_t', @password_hash, 'hoang.thi.t@dacn.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=Hoang+Thi+T&background=random&color=fff&size=128', GETDATE(), GETDATE());
-
-    PRINT N'✅ Created 26 users';
+    PRINT N'✅ Created 25 users + 1 sysadmin';
 END
 GO
 
 -- =====================================================
--- 3. COMPANY MEMBERS (Link users to company with roles)
+-- 2. COMPANIES (4 gói khác nhau)
 -- =====================================================
-DECLARE @admin_id BIGINT, @hr_id BIGINT, @acc_id BIGINT, @pm_id BIGINT, @emp_id BIGINT;
-SELECT @admin_id = user_id FROM [dbo].[users] WHERE username = 'admin';
-SELECT @hr_id = user_id FROM [dbo].[users] WHERE username = 'hr';
-SELECT @acc_id = user_id FROM [dbo].[users] WHERE username = 'accounting';
-SELECT @pm_id = user_id FROM [dbo].[users] WHERE username = 'pm';
-SELECT @emp_id = user_id FROM [dbo].[users] WHERE username = 'employee';
+DECLARE @pw2 VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[company_members] WHERE company_id = 1)
+IF NOT EXISTS (SELECT 1 FROM companies WHERE slug = 'tech-corp')
 BEGIN
-    -- Core users
-    INSERT INTO [dbo].[company_members] (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES
-        (@admin_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE()),
-        (@hr_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE()),
-        (@acc_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE()),
-        (@pm_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE()),
-        (@emp_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
-
-    -- Insert roles for core users
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'OWNER' FROM [dbo].[company_members] WHERE user_id = @admin_id AND company_id = 1;
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'MANAGER_HR' FROM [dbo].[company_members] WHERE user_id = @hr_id AND company_id = 1;
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'MANAGER_ACCOUNTING' FROM [dbo].[company_members] WHERE user_id = @acc_id AND company_id = 1;
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'MANAGER_PROJECT' FROM [dbo].[company_members] WHERE user_id = @pm_id AND company_id = 1;
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'EMPLOYEE' FROM [dbo].[company_members] WHERE user_id = @emp_id AND company_id = 1;
-
-    -- 5 Admins
-    INSERT INTO [dbo].[company_members] (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
-    SELECT user_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM [dbo].[users] WHERE username LIKE 'admin[1-5]';
-    
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'ADMIN' FROM [dbo].[company_members] m JOIN [dbo].[users] u ON m.user_id = u.user_id WHERE u.username LIKE 'admin[1-5]';
-
-    -- 5 HR Managers
-    INSERT INTO [dbo].[company_members] (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
-    SELECT user_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM [dbo].[users] WHERE username LIKE 'hr[_]%';
-
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'MANAGER_HR' FROM [dbo].[company_members] m JOIN [dbo].[users] u ON m.user_id = u.user_id WHERE u.username LIKE 'hr[_]%';
-
-    -- 5 Accounting Managers
-    INSERT INTO [dbo].[company_members] (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
-    SELECT user_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM [dbo].[users] WHERE username LIKE 'acc[_]%';
-
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'MANAGER_ACCOUNTING' FROM [dbo].[company_members] m JOIN [dbo].[users] u ON m.user_id = u.user_id WHERE u.username LIKE 'acc[_]%';
-
-    -- 5 Project Managers
-    INSERT INTO [dbo].[company_members] (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
-    SELECT user_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM [dbo].[users] WHERE username LIKE 'pm[_]%';
-
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'MANAGER_PROJECT' FROM [dbo].[company_members] m JOIN [dbo].[users] u ON m.user_id = u.user_id WHERE u.username LIKE 'pm[_]%';
-
-    -- 5 Employees
-    INSERT INTO [dbo].[company_members] (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
-    SELECT user_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM [dbo].[users] WHERE username LIKE 'emp[_]%';
-
-    INSERT INTO [dbo].[company_member_roles] (member_id, [role])
-    SELECT id, 'EMPLOYEE' FROM [dbo].[company_members] m JOIN [dbo].[users] u ON m.user_id = u.user_id WHERE u.username LIKE 'emp[_]%';
-
-    PRINT N'✅ Created company memberships and roles';
+    SET IDENTITY_INSERT companies ON;
+    INSERT INTO companies (company_id, name, description, slug, subscription_plan, is_active, email, phone, address, created_at, updated_at) VALUES
+        (1, N'Tech Corp',         N'Công ty công nghệ hàng đầu',       'tech-corp',     'ENTERPRISE',   1, 'info@techcorp.vn',    '0901234567', N'123 Nguyễn Huệ, Q1, HCM',     GETDATE(), GETDATE()),
+        (2, N'Startup Hub',       N'Công ty khởi nghiệp sáng tạo',     'startup-hub',   'PROFESSIONAL', 1, 'info@startuphub.vn',  '0902345678', N'456 Lý Tự Trọng, Q3, HCM',    GETDATE(), GETDATE()),
+        (3, N'Small Biz',         N'Doanh nghiệp nhỏ',                 'small-biz',     'STARTER',      1, 'info@smallbiz.vn',    '0903456789', N'789 Trần Hưng Đạo, Q5, HCM',  GETDATE(), GETDATE()),
+        (4, N'Free Trial Co',     N'Công ty dùng thử',                  'free-trial',    'FREE',         1, 'info@freetrial.vn',   '0904567890', N'321 Hai Bà Trưng, Q1, HCM',   GETDATE(), GETDATE());
+    SET IDENTITY_INSERT companies OFF;
+    PRINT N'✅ Created 4 companies: ENTERPRISE, PROFESSIONAL, STARTER, FREE';
 END
 GO
 
 -- =====================================================
--- 4. COMPANY SETTINGS (Enable all modules)
+-- 3. COMPANY MEMBERS + ROLES
 -- =====================================================
-IF EXISTS (SELECT 1 FROM [dbo].[company_settings] WHERE company_id = 1)
+IF NOT EXISTS (SELECT 1 FROM company_members WHERE company_id = 1)
 BEGIN
-    UPDATE [dbo].[company_settings] 
-    SET hr_module_enabled = 1,
-        project_module_enabled = 1,
-        chat_module_enabled = 1,
-        storage_module_enabled = 1,
-        ai_module_enabled = 1,
-        webhook_enabled = 1,
-        attendance_enabled = 1,
-        leave_enabled = 1,
-        salary_enabled = 1,
-        contract_enabled = 1,
-        review_enabled = 1,
-        okr_enabled = 1,
-        skills_matrix_enabled = 1,
-        onboarding_enabled = 1,
-        resource_planning_enabled = 1,
-        org_chart_enabled = 1,
-        time_tracking_enabled = 1,
-        analytics_enabled = 1,
-        calendar_enabled = 1,
-        chat_reactions_enabled = 1,
-        chat_file_share_enabled = 1,
-        chat_threads_enabled = 1,
-        chat_search_enabled = 1,
-        max_employees = 9999,
-        max_projects = 9999,
-        max_storage_bytes = 10737418240,
-        max_file_upload_bytes = 104857600,
-        allowed_radius = 100.0,
-        updated_at = GETDATE()
-    WHERE company_id = 1;
+    -- Company A (ENTERPRISE) - 10 members + 1 multi_user
+    DECLARE @uid BIGINT;
+
+    -- owner_a → OWNER
+    SELECT @uid = user_id FROM users WHERE username = 'owner_a';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'OWNER' FROM company_members WHERE user_id = @uid AND company_id = 1;
+
+    -- admin_a → ADMIN
+    SELECT @uid = user_id FROM users WHERE username = 'admin_a';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'COMPANY_ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 1;
+
+    -- hr_a → EMPLOYEE + custom HR & Project permissions
+    SELECT @uid = user_id FROM users WHERE username = 'hr_a';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
+
+    -- acc_a → EMPLOYEE (default permissions)
+    SELECT @uid = user_id FROM users WHERE username = 'acc_a';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
+
+    -- pm_a → EMPLOYEE + custom Project & HR view permissions
+    SELECT @uid = user_id FROM users WHERE username = 'pm_a';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{"projectCreate":true,"projectManageAll":true,"projectDelete":true,"projectManageIssues":true,"projectManageSprints":true,"projectViewDashboard":true,"projectExport":true,"projectManagePhases":true,"projectResourcePlanning":true,"hrViewList":true,"hrViewDepartments":true,"hrViewPositions":true,"hrViewDashboard":true}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
+
+    -- dev_a1, dev_a2, dev_a3, emp_a1, emp_a2 → EMPLOYEE
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
+    SELECT user_id, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM users WHERE username IN ('dev_a1','dev_a2','dev_a3','emp_a1','emp_a2');
+    INSERT INTO company_member_roles (member_id, [role])
+    SELECT m.id, 'EMPLOYEE' FROM company_members m JOIN users u ON m.user_id = u.user_id WHERE u.username IN ('dev_a1','dev_a2','dev_a3','emp_a1','emp_a2') AND m.company_id = 1;
+
+    -- multi_user → EMPLOYEE in Company A
+    SELECT @uid = user_id FROM users WHERE username = 'multi_user';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
+
+    -- Company B (PROFESSIONAL) - 6 members + multi_user
+    SELECT @uid = user_id FROM users WHERE username = 'owner_b';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'OWNER' FROM company_members WHERE user_id = @uid AND company_id = 2;
+
+    SELECT @uid = user_id FROM users WHERE username = 'admin_b';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'COMPANY_ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 2;
+
+    SELECT @uid = user_id FROM users WHERE username = 'hr_b';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 2;
+
+    SELECT @uid = user_id FROM users WHERE username = 'pm_b';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 2;
+
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
+    SELECT user_id, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM users WHERE username IN ('dev_b1','emp_b1');
+    INSERT INTO company_member_roles (member_id, [role])
+    SELECT m.id, 'EMPLOYEE' FROM company_members m JOIN users u ON m.user_id = u.user_id WHERE u.username IN ('dev_b1','emp_b1') AND m.company_id = 2;
+
+    -- multi_user → EMPLOYEE in Company B
+    SELECT @uid = user_id FROM users WHERE username = 'multi_user';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 2;
+
+    -- Company C (STARTER) - 4 members
+    SELECT @uid = user_id FROM users WHERE username = 'owner_c';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 3, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'OWNER' FROM company_members WHERE user_id = @uid AND company_id = 3;
+
+    SELECT @uid = user_id FROM users WHERE username = 'admin_c';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 3, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'COMPANY_ADMIN' FROM company_members WHERE user_id = @uid AND company_id = 3;
+
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
+    SELECT user_id, 3, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM users WHERE username IN ('pm_c','emp_c1');
+    INSERT INTO company_member_roles (member_id, [role])
+    SELECT m.id, 'EMPLOYEE' FROM company_members m JOIN users u ON m.user_id = u.user_id WHERE u.username IN ('pm_c','emp_c1') AND m.company_id = 3;
+
+    -- Company D (FREE) - 3 members
+    SELECT @uid = user_id FROM users WHERE username = 'owner_d';
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 4, 1, GETDATE(), '{}', GETDATE(), GETDATE());
+    INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'OWNER' FROM company_members WHERE user_id = @uid AND company_id = 4;
+
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
+    SELECT user_id, 4, 1, GETDATE(), '{}', GETDATE(), GETDATE() FROM users WHERE username IN ('pm_d','emp_d1');
+    INSERT INTO company_member_roles (member_id, [role])
+    SELECT m.id, 'EMPLOYEE' FROM company_members m JOIN users u ON m.user_id = u.user_id WHERE u.username IN ('pm_d','emp_d1') AND m.company_id = 4;
+
+    PRINT N'✅ Created all company members and roles';
 END
-ELSE
-BEGIN
-    INSERT INTO [dbo].[company_settings] (
-        company_id, 
-        hr_module_enabled, project_module_enabled, chat_module_enabled, storage_module_enabled, ai_module_enabled,
-        webhook_enabled,
-        attendance_enabled, leave_enabled, salary_enabled, contract_enabled, review_enabled,
-        okr_enabled, skills_matrix_enabled, onboarding_enabled, resource_planning_enabled, org_chart_enabled,
-        time_tracking_enabled, analytics_enabled, calendar_enabled,
-        chat_reactions_enabled, chat_file_share_enabled, chat_threads_enabled, chat_search_enabled,
-        max_employees, max_projects, max_storage_bytes, max_file_upload_bytes, allowed_radius,
-        user_storage_quota_bytes, max_leave_days_per_year, created_at, updated_at
-    )
-    VALUES (
-        1, 1, 1, 1, 1, 1, 
-        1, 1, 1, 1, 1, 1, 
-        1, 1, 1, 1, 1, 
-        1, 1, 1, 
-        1, 1, 1, 1, 
-        9999, 9999, 10737418240, 104857600, 100.0,
-        1073741824, 12, GETDATE(), GETDATE()
-    );
-END
-PRINT N'✅ Enabled all modules and features';
+GO
+
+-- =====================================================
+-- 4. COMPANY SETTINGS (theo plan limits)
+-- =====================================================
+-- ENTERPRISE (Company 1) - all enabled, unlimited
+IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 1)
+    INSERT INTO company_settings (company_id, hr_module_enabled, project_module_enabled, chat_module_enabled, storage_module_enabled, ai_module_enabled, webhook_enabled, attendance_enabled, leave_enabled, salary_enabled, contract_enabled, review_enabled, okr_enabled, skills_matrix_enabled, onboarding_enabled, resource_planning_enabled, org_chart_enabled, time_tracking_enabled, analytics_enabled, calendar_enabled, chat_reactions_enabled, chat_file_share_enabled, chat_threads_enabled, chat_search_enabled, max_employees, max_projects, max_storage_bytes, max_file_upload_bytes, allowed_radius, user_storage_quota_bytes, max_leave_days_per_year, created_at, updated_at)
+    VALUES (1, 1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 9999,9999,-1,524288000, 100.0, 10737418240, 15, GETDATE(), GETDATE());
+
+-- PROFESSIONAL (Company 2) - HR enabled, AI enabled
+IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 2)
+    INSERT INTO company_settings (company_id, hr_module_enabled, project_module_enabled, chat_module_enabled, storage_module_enabled, ai_module_enabled, webhook_enabled, attendance_enabled, leave_enabled, salary_enabled, contract_enabled, review_enabled, okr_enabled, skills_matrix_enabled, onboarding_enabled, resource_planning_enabled, org_chart_enabled, time_tracking_enabled, analytics_enabled, calendar_enabled, chat_reactions_enabled, chat_file_share_enabled, chat_threads_enabled, chat_search_enabled, max_employees, max_projects, max_storage_bytes, max_file_upload_bytes, allowed_radius, max_leave_days_per_year, created_at, updated_at)
+    VALUES (2, 1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 100,100,107374182400,104857600, 100.0, 12, GETDATE(), GETDATE());
+
+-- STARTER (Company 3) - no HR, no AI, no webhook
+IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 3)
+    INSERT INTO company_settings (company_id, hr_module_enabled, project_module_enabled, chat_module_enabled, storage_module_enabled, ai_module_enabled, webhook_enabled, attendance_enabled, leave_enabled, salary_enabled, contract_enabled, review_enabled, okr_enabled, skills_matrix_enabled, onboarding_enabled, resource_planning_enabled, org_chart_enabled, time_tracking_enabled, analytics_enabled, calendar_enabled, chat_reactions_enabled, chat_file_share_enabled, chat_threads_enabled, chat_search_enabled, max_employees, max_projects, max_storage_bytes, max_file_upload_bytes, allowed_radius, max_leave_days_per_year, created_at, updated_at)
+    VALUES (3, 0,1,1,1,1,0, 0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0, 20,20,10737418240,52428800, 100.0, 12, GETDATE(), GETDATE());
+
+-- FREE (Company 4) - basic only
+IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 4)
+    INSERT INTO company_settings (company_id, hr_module_enabled, project_module_enabled, chat_module_enabled, storage_module_enabled, ai_module_enabled, webhook_enabled, attendance_enabled, leave_enabled, salary_enabled, contract_enabled, review_enabled, okr_enabled, skills_matrix_enabled, onboarding_enabled, resource_planning_enabled, org_chart_enabled, time_tracking_enabled, analytics_enabled, calendar_enabled, chat_reactions_enabled, chat_file_share_enabled, chat_threads_enabled, chat_search_enabled, max_employees, max_projects, max_storage_bytes, max_file_upload_bytes, allowed_radius, max_leave_days_per_year, created_at, updated_at)
+    VALUES (4, 0,1,1,1,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0, 5,3,1073741824,10485760, 100.0, 12, GETDATE(), GETDATE());
+
+PRINT N'✅ Created company settings for 4 plans';
 GO
 
 -- =====================================================
 -- 5. ISSUE STATUSES (Global - Kanban columns)
 -- =====================================================
-IF NOT EXISTS (SELECT 1 FROM [dbo].[issue_statuses] WHERE name = 'To Do')
-    INSERT INTO [dbo].[issue_statuses] (name, order_index, color) VALUES ('To Do', 1, '#E2E8F0');
-IF NOT EXISTS (SELECT 1 FROM [dbo].[issue_statuses] WHERE name = 'In Progress')
-    INSERT INTO [dbo].[issue_statuses] (name, order_index, color) VALUES ('In Progress', 2, '#4BADE8');
-IF NOT EXISTS (SELECT 1 FROM [dbo].[issue_statuses] WHERE name = 'Review')
-    INSERT INTO [dbo].[issue_statuses] (name, order_index, color) VALUES ('Review', 3, '#F6AD55');
-IF NOT EXISTS (SELECT 1 FROM [dbo].[issue_statuses] WHERE name = 'Done')
-    INSERT INTO [dbo].[issue_statuses] (name, order_index, color) VALUES ('Done', 4, '#48BB78');
+IF NOT EXISTS (SELECT 1 FROM issue_statuses WHERE name = 'To Do')
+    INSERT INTO issue_statuses (name, order_index, color) VALUES ('To Do', 1, '#E2E8F0');
+IF NOT EXISTS (SELECT 1 FROM issue_statuses WHERE name = 'In Progress')
+    INSERT INTO issue_statuses (name, order_index, color) VALUES ('In Progress', 2, '#4BADE8');
+IF NOT EXISTS (SELECT 1 FROM issue_statuses WHERE name = 'Review')
+    INSERT INTO issue_statuses (name, order_index, color) VALUES ('Review', 3, '#F6AD55');
+IF NOT EXISTS (SELECT 1 FROM issue_statuses WHERE name = 'Done')
+    INSERT INTO issue_statuses (name, order_index, color) VALUES ('Done', 4, '#48BB78');
 PRINT N'✅ Created issue statuses';
 GO
 
 -- =====================================================
--- DONE - Setup complete!
+-- DONE
 -- =====================================================
 PRINT N'';
 PRINT N'=====================================================';
-PRINT N'✅ GEMINI ERP SETUP COMPLETE!';
+PRINT N'✅ SETUP COMPLETE!';
 PRINT N'=====================================================';
 PRINT N'';
-PRINT N'📊 CREATED:';
-SELECT 'Users' as [Table], COUNT(*) as [Count] FROM [dbo].[users] UNION ALL
-SELECT 'Company Members', COUNT(*) FROM [dbo].[company_members] WHERE company_id = 1;
+PRINT N'📊 Companies:';
+PRINT N'  | Company       | Plan         | Members |';
+PRINT N'  |---------------|--------------|---------|';
+PRINT N'  | Tech Corp     | ENTERPRISE   | 11      |';
+PRINT N'  | Startup Hub   | PROFESSIONAL | 7       |';
+PRINT N'  | Small Biz     | STARTER      | 4       |';
+PRINT N'  | Free Trial Co | FREE         | 3       |';
 PRINT N'';
-PRINT N'📌 TÀI KHOẢN TEST (Password: Admin@123):';
-PRINT N'   | Username  | Role                |';
-PRINT N'   |-----------|---------------------|';
-PRINT N'   | sysadmin  | System Admin        |';
-PRINT N'   | admin     | OWNER (full access) |';
-PRINT N'   | hr        | MANAGER_HR          |';
-PRINT N'   | accounting| MANAGER_ACCOUNTING  |';
-PRINT N'   | pm        | MANAGER_PROJECT     |';
-PRINT N'   | employee  | EMPLOYEE            |';
-PRINT N'   + 20 more accounts...            |';
-PRINT N'=====================================================';
+PRINT N'📌 Tài khoản test (Password: Admin@123):';
+PRINT N'  sysadmin    → System Admin';
+PRINT N'  owner_a     → OWNER @ Tech Corp';
+PRINT N'  hr_a        → EMPLOYEE + HR permissions @ Tech Corp';
+PRINT N'  pm_a        → EMPLOYEE + PM permissions @ Tech Corp';
+PRINT N'  multi_user  → EMPLOYEE @ Tech Corp + EMPLOYEE @ Startup Hub';
 PRINT N'';
-PRINT N'▶️ Tiếp theo: Chạy file 02_seed_data.sql để tạo dữ liệu test';
+PRINT N'▶️ Tiếp theo: Chạy 02_seed_data.sql';
 GO

@@ -26,7 +26,6 @@ public abstract class TenantScopedEntity extends BaseEntity {
     @JoinColumn(name = "company_id")
     private Company company;
 
-    // Tự động gán company từ TenantContext khi persist
     @PrePersist
     protected void prePersistTenant() {
         if (company == null && TenantContext.getCompanyId() != null) {

@@ -11,7 +11,10 @@ import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.IssueActivityRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
+import DoAn.BE.project.entity.IssueActivity;
+import DoAn.BE.project.entity.IssueActivity.ActivityType;
 import DoAn.BE.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
@@ -31,8 +34,12 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueRepository issueRepository;
+    private final IssueActivityRepository issueActivityRepository;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private jakarta.persistence.EntityManager entityManager;
 
     @Transactional
     public SprintDTO createSprint(CreateSprintRequest request, User currentUser) {
@@ -54,8 +61,12 @@ public class SprintService {
         }
 
         // Kiểm tra không có sprint ACTIVE khác
+        // Fix: Acquire lock on project to prevent concurrent sprint creations bypassing
+        // the check
+        Project lockedProject = entityManager.find(Project.class, request.getProjectId(),
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         List<Sprint> activeSprints = sprintRepository.findByProject_ProjectIdAndStatus(
-                request.getProjectId(), SprintStatus.ACTIVE);
+                lockedProject.getProjectId(), SprintStatus.ACTIVE);
         if (!activeSprints.isEmpty()) {
             throw new BadRequestException("Dự án đã có sprint đang hoạt động");
         }
@@ -196,14 +207,26 @@ public class SprintService {
         }
 
         // Kiểm tra không có sprint ACTIVE khác
+        // Fix: Use PESSIMISTIC_WRITE lock to prevent race condition during start
+        Project lockedProject = entityManager.find(Project.class, sprint.getProject().getProjectId(),
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         List<Sprint> activeSprints = sprintRepository.findByProject_ProjectIdAndStatus(
-                sprint.getProject().getProjectId(), SprintStatus.ACTIVE);
+                lockedProject.getProjectId(), SprintStatus.ACTIVE);
         if (!activeSprints.isEmpty()) {
             throw new BadRequestException("Dự án đã có sprint đang hoạt động");
         }
 
         sprint.setStatus(SprintStatus.ACTIVE);
         sprint = sprintRepository.save(sprint);
+
+        // Log activity for all issues in this sprint
+        List<Issue> sprintIssues = issueRepository.findBySprint_SprintId(sprintId);
+        if (!sprintIssues.isEmpty()) {
+            Issue firstIssue = sprintIssues.get(0);
+            issueActivityRepository.save(new IssueActivity(firstIssue, currentUser, ActivityType.SPRINT_CHANGED,
+                    currentUser.getUsername() + " đã bắt đầu sprint '" + sprint.getName() + "' với "
+                            + sprintIssues.size() + " issues"));
+        }
 
         log.info("Sprint {} started", sprint.getName());
 
@@ -241,7 +264,23 @@ public class SprintService {
                 .filter(Issue::isDone)
                 .count();
 
-        log.info("Sprint {} completed", sprint.getName());
+        // Log activity for sprint completion
+        if (!sprintIssues.isEmpty()) {
+            Issue firstIssue = sprintIssues.get(0);
+            issueActivityRepository.save(new IssueActivity(firstIssue, currentUser, ActivityType.SPRINT_CHANGED,
+                    currentUser.getUsername() + " đã hoàn thành sprint '" + sprint.getName() + "' (" + completedIssues
+                            + "/" + totalIssues + " issues hoàn thành)"));
+        }
+
+        sprintIssues.stream()
+                .filter(issue -> !issue.isDone())
+                .forEach(issue -> {
+                    issue.setSprint(null);
+                    issueRepository.save(issue);
+                });
+
+        log.info("Sprint {} completed. {}/{} issues done. {} moved to backlog.",
+                sprint.getName(), completedIssues, totalIssues, totalIssues - completedIssues);
 
         SprintDTO sprintDTO = convertToDTO(sprint);
         sprintDTO.setTotalIssues(totalIssues);
@@ -281,8 +320,13 @@ public class SprintService {
             throw new BadRequestException("Không thể thêm issue vào sprint đã hoàn thành hoặc bị hủy");
         }
 
+        String oldSprintName = issue.getSprint() != null ? issue.getSprint().getName() : null;
         issue.setSprint(sprint);
         issueRepository.save(issue);
+
+        // Log activity
+        issueActivityRepository.save(new IssueActivity(issue, currentUser, ActivityType.SPRINT_CHANGED,
+                "Sprint", oldSprintName, sprint.getName()));
     }
 
     @Transactional
@@ -304,11 +348,15 @@ public class SprintService {
             throw new BadRequestException("Issue không thuộc sprint này");
         }
 
+        String oldSprintName = sprint.getName();
         issue.setSprint(null);
         issueRepository.save(issue);
+
+        // Log activity
+        issueActivityRepository.save(new IssueActivity(issue, currentUser, ActivityType.SPRINT_CHANGED,
+                "Sprint", oldSprintName, null));
     }
 
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
@@ -364,12 +412,10 @@ public class SprintService {
         }
 
         dto.setCreatedAt(sprint.getCreatedAt());
-
-        List<Issue> sprintIssues = issueRepository.findBySprint_SprintId(sprint.getSprintId());
-        dto.setTotalIssues(sprintIssues.size());
-        dto.setCompletedIssues((int) sprintIssues.stream()
-                .filter(Issue::isDone)
-                .count());
+        long totalIssues = issueRepository.countBySprint_SprintId(sprint.getSprintId());
+        long completedIssues = issueRepository.countCompletedBySprint(sprint.getSprintId());
+        dto.setTotalIssues((int) totalIssues);
+        dto.setCompletedIssues((int) completedIssues);
 
         return dto;
     }

@@ -29,10 +29,9 @@ public class ProjectAnalyticsService {
         private final SprintRepository sprintRepository;
         private final TimeLogRepository timeLogRepository;
 
-        /**
-         * Get burndown chart data for a sprint
-         * Shows remaining work over time
-         */
+        // Get burndown chart data for a sprint
+        // Shows remaining work over time
+        // /
         public BurndownDataDTO getBurndownData(Long projectId, Long sprintId) {
                 Sprint sprint = sprintRepository.findById(sprintId).orElse(null);
                 if (sprint == null) {
@@ -40,6 +39,9 @@ public class ProjectAnalyticsService {
                                         .sprintName("N/A")
                                         .dataPoints(new ArrayList<>())
                                         .build();
+                }
+                if (sprint.getProject() == null || !sprint.getProject().getProjectId().equals(projectId)) {
+                        throw new DoAn.BE.common.exception.BadRequestException("Sprint không thuộc dự án này");
                 }
 
                 List<Issue> sprintIssues = issueRepository.findBySprint_SprintId(sprintId);
@@ -98,9 +100,8 @@ public class ProjectAnalyticsService {
                                 .build();
         }
 
-        /**
-         * Get velocity data - issues completed per sprint
-         */
+        // Get velocity data - issues completed per sprint
+        // /
         public VelocityDataDTO getVelocityData(Long projectId, int sprintCount) {
                 List<Sprint> sprints = sprintRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
 
@@ -135,9 +136,8 @@ public class ProjectAnalyticsService {
                                 .build();
         }
 
-        /**
-         * Get issue status distribution (for pie chart)
-         */
+        // Get issue status distribution (for pie chart)
+        // /
         public StatusDistributionDTO getStatusDistribution(Long projectId) {
                 List<Issue> issues = issueRepository.findByProject_ProjectId(projectId);
 
@@ -163,9 +163,8 @@ public class ProjectAnalyticsService {
                                 .build();
         }
 
-        /**
-         * Get team workload - hours logged per team member
-         */
+        // Get team workload - hours logged per team member
+        // /
         public TeamWorkloadDTO getTeamWorkload(Long projectId) {
                 BigDecimal totalHours = timeLogRepository.sumHoursByProject(projectId);
 

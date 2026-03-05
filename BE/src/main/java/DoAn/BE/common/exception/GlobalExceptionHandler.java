@@ -8,9 +8,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
@@ -106,15 +103,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    // instead of Map
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        StringBuilder sb = new StringBuilder();
+        ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            if (!sb.isEmpty())
+                sb.append("; ");
+            sb.append(fieldName).append(": ").append(errorMessage);
         });
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+        ErrorResponse errorResp = new ErrorResponse(sb.toString(), HttpStatus.BAD_REQUEST.value());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResp);
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameter(
+            org.springframework.web.bind.MissingServletRequestParameterException ex) {
+        String message = "Missing required parameter: " + ex.getParameterName();
+        ErrorResponse error = new ErrorResponse(message, HttpStatus.BAD_REQUEST.value());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
@@ -141,18 +150,12 @@ public class GlobalExceptionHandler {
             // Kiểm tra các lỗi phổ biến
             if (causeMsg != null) {
                 if (causeMsg.contains("Duplicate")) {
-                    if (causeMsg.contains("username")) {
-                        message = "Tên đăng nhập đã tồn tại";
-                    } else if (causeMsg.contains("email")) {
-                        message = "Email đã tồn tại";
-                    } else {
-                        message = "Dữ liệu đã tồn tại trong hệ thống";
-                    }
+                    message = "Dữ liệu đã tồn tại trong hệ thống";
                 } else if (causeMsg.contains("FK") || causeMsg.contains("REFERENCE")) {
                     message = "Không thể xóa: Dữ liệu đang được sử dụng ở nơi khác";
                 } else {
-                    // Hiển thị chi tiết để debug
-                    message = "Lỗi database: " + causeMsg;
+                    log.error("DB error detail (not sent to client): {}", causeMsg);
+                    message = "Lỗi ràng buộc dữ liệu. Vui lòng kiểm tra lại thông tin.";
                 }
             }
         }
@@ -173,13 +176,11 @@ public class GlobalExceptionHandler {
             // Ignore auth check errors during exception handling
         }
 
-        log.error("❌ Exception at {} {}: User={}. Error: {}",
+        log.error("Exception at {} {}: User={}. Error: {}",
                 request.getMethod(), request.getRequestURI(), username, ex.getMessage());
         log.error("Stack trace:", ex);
-
-        ErrorResponse error = new ErrorResponse("Lỗi hệ thống: " + ex.getMessage(),
+        ErrorResponse error = new ErrorResponse("Lỗi hệ thống. Vui lòng thử lại sau.",
                 HttpStatus.INTERNAL_SERVER_ERROR.value());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
-

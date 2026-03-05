@@ -32,18 +32,22 @@ build/
 ### VS Code ###
 .vscode/
 
-### Logs ###
+### Logs & temp output ###
 logs/
 *.log
 *.gz
+*.txt
+!README.txt
+
+### Temp scripts ###
+*.py
 
 ### Environment & Security (NEVER COMMIT!) ###
-application-local.properties
-**/application.properties
-!**/application.properties.example
 .env
 .env.*
 *.env
+application-local.properties
+application-prod.properties
 serviceAccountKey.json
 *.p12
 *.jks

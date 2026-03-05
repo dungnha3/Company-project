@@ -7,23 +7,35 @@ import ThemeToggle from '@components/ui/ThemeToggle';
 import GlobalSearch from '@shared/components/GlobalSearch';
 
 const PAGE_TITLES = {
-    '/': 'Dashboard',
-    '/employees': 'Quản lý nhân viên',
-    '/departments': 'Quản lý phòng ban',
-    '/positions': 'Quản lý chức vụ',
-    '/contracts': 'Quản lý hợp đồng',
-    '/attendance': 'Chấm công',
-    '/leave-requests': 'Nghỉ phép',
-    '/salaries': 'Bảng lương',
-    '/projects': 'Dự án',
-    '/my-issues': 'Công việc của tôi',
-    '/storage': 'Tài liệu',
-    '/chat': 'Trò chuyện',
-    '/notifications': 'Thông báo',
-    '/profile': 'Cài đặt tài khoản',
-    '/org-chart': 'Sơ đồ tổ chức',
-    '/hr-dashboard': 'HR Dashboard',
-    '/reviews': 'Đánh giá nhân viên',
+    '/app': 'Dashboard',
+    '/app/me/issues': 'Công việc của tôi',
+    '/app/me/tasks': 'Tasks cá nhân',
+    '/app/me/storage': 'Tài liệu cá nhân',
+    '/app/me/calendar': 'Lịch cá nhân',
+    '/app/me/personal-calendar': 'Lịch cá nhân',
+    '/app/me/timelogs': 'Chấm công (Logs)',
+    '/app/me/profile': 'Cài đặt tài khoản',
+    '/app/hr/dashboard': 'Nhân sự (HR)',
+    '/app/hr/employees': 'Quản lý nhân viên',
+    '/app/hr/departments': 'Quản lý phòng ban',
+    '/app/hr/positions': 'Quản lý chức vụ',
+    '/app/hr/contracts': 'Quản lý hợp đồng',
+    '/app/hr/attendance': 'Chấm công',
+    '/app/hr/leave-requests': 'Nghỉ phép',
+    '/app/hr/salaries': 'Bảng lương',
+    '/app/hr/reviews': 'Đánh giá nhân viên',
+    '/app/hr/okr': 'OKR/KPI',
+    '/app/hr/onboarding': 'Onboarding',
+    '/app/hr/org-chart': 'Sơ đồ tổ chức',
+    '/app/hr/resource-planning': 'Quản lý nguồn lực',
+    '/app/projects': 'Dự án',
+    '/app/storage': 'Tài liệu chung',
+    '/app/chat': 'Trò chuyện',
+    '/app/notifications': 'Thông báo',
+    '/app/billing': 'Gói & Thanh toán',
+    '/app/company/dashboard': 'Quản trị Workspace',
+    '/app/company/activity': 'Nhật ký hoạt động',
+    '/app/company/settings': 'Cài đặt chung',
 };
 
 export default function Header() {
@@ -47,13 +59,17 @@ export default function Header() {
 
     // Get page title based on current path
     const getPageTitle = () => {
-        // Exact match
+        // Exact match first
         if (PAGE_TITLES[location.pathname]) {
             return PAGE_TITLES[location.pathname];
         }
-        // Check for detail pages
-        if (location.pathname.startsWith('/employees/')) return 'Chi tiết nhân viên';
-        if (location.pathname.startsWith('/projects/')) return 'Chi tiết dự án';
+        // Detail pages
+        if (location.pathname.startsWith('/app/hr/employees/')) return 'Chi tiết nhân viên';
+        if (location.pathname.startsWith('/app/projects/')) return 'Chi tiết dự án';
+        // Section-level fallback
+        if (location.pathname.startsWith('/app/hr/')) return 'Nhân sự (HR)';
+        if (location.pathname.startsWith('/app/company/')) return 'Quản trị Workspace';
+        if (location.pathname.startsWith('/app/me/')) return 'Cá nhân';
         return 'Tổng quan';
     };
 

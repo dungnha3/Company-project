@@ -27,7 +27,6 @@ const FEATURE_SETTINGS_MAP = {
 
     // HR Competitive features (NEW)
     'okr': 'okrEnabled',
-    'skillsMatrix': 'skillsMatrixEnabled',
     'onboarding': 'onboardingEnabled',
     'resourcePlanning': 'resourcePlanningEnabled',
     'orgChart': 'orgChartEnabled',
@@ -36,7 +35,7 @@ const FEATURE_SETTINGS_MAP = {
     'timeTracking': 'timeTrackingEnabled',
     'analytics': 'analyticsEnabled',
     'calendar': 'calendarEnabled',
-    'webhook': 'webhookEnabled',
+
 
     // Chat Sub-features (NEW)
     'chatReactions': 'chatReactionsEnabled',
@@ -50,13 +49,13 @@ const FEATURE_SETTINGS_MAP = {
  */
 const HR_DEPENDENT_FEATURES = [
     'attendance', 'leave', 'salary', 'contract', 'review',
-    'okr', 'skillsMatrix', 'onboarding', 'resourcePlanning', 'orgChart'
+    'okr', 'onboarding', 'resourcePlanning', 'orgChart'
 ];
 
 /**
  * Check xem feature có yêu cầu Project module không
  */
-const PROJECT_DEPENDENT_FEATURES = ['timeTracking', 'analytics', 'webhook'];
+const PROJECT_DEPENDENT_FEATURES = ['timeTracking', 'analytics'];
 
 /**
  * Feature Helper - Kết hợp Plan + CompanySettings + UserPermissions
@@ -95,7 +94,7 @@ const FEATURE_PERMISSION_MAP = {
  * Check specifically for user permission (Granular)
  */
 export function hasUserPermission(permissions, feature) {
-    if (!permissions) return true; // No permissions object provided (or Personal/Owner), assume Allowed or handled elsewhere
+    if (!permissions) return false; // No permissions = deny by default (Owner/Admin should be checked at call-site)
 
     // Direct field check if feature matches permission key
     if (permissions[feature] !== undefined) return permissions[feature];
@@ -121,9 +120,9 @@ export function isFeatureEnabled(plan, settings, feature, permissions = null) {
         return false;
     }
 
-    // 2. Personal Workspace Check (No settings, no perms usually)
+    // 2. No settings (Personal or loading) → deny
     if (!settings) {
-        return planHasFeature('FREE', planFeature);
+        return false;
     }
 
     // 3. Company Settings Check
@@ -194,7 +193,6 @@ export function isMenuItemEnabled(itemPath, plan, settings, permissions = null) 
         '/app/hr-dashboard': 'hr',
         '/app/org-chart': 'orgChart',
         '/app/okr': 'okr',
-        '/app/skills-matrix': 'skillsMatrix',
         '/app/onboarding': 'onboarding',
         '/app/resource-planning': 'resourcePlanning',
     };
@@ -213,10 +211,9 @@ export function isProjectFeatureEnabled(settings, feature) {
         'timeTracking': 'timeTrackingEnabled',
         'analytics': 'analyticsEnabled',
         'calendar': 'calendarEnabled',
-        'webhook': 'webhookEnabled',
     };
 
-    if (!settings) return true; // Personal workspace
+    if (!settings) return false; // No settings = no access (Personal workspace or loading)
     if (!settings.projectModuleEnabled) return false;
 
     const key = map[feature];

@@ -42,7 +42,7 @@ export default function AdminCompanyDetailPage() {
         queryKey: ['admin-company-users', companyId],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.SYSADMIN.TENANTS.USERS(companyId));
-            return res.data;
+            return Array.isArray(res.data) ? res.data : (res.data.content || []);
         },
         enabled: activeTab === 'resources'
     });
@@ -298,9 +298,34 @@ export default function AdminCompanyDetailPage() {
                                     />
                                     <p className="text-xs text-gray-500 mt-1">Nhân viên phải ở trong bán kính này để chấm công</p>
                                 </div>
-                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
-                                    <i className="fa-solid fa-info-circle text-amber-500 mr-2" />
-                                    <span className="text-amber-800">Mở Google Maps, click phải vào vị trí văn phòng để lấy tọa độ.</span>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                                        onClick={() => {
+                                            if (!navigator.geolocation) {
+                                                alert('Trình duyệt không hỗ trợ định vị');
+                                                return;
+                                            }
+                                            navigator.geolocation.getCurrentPosition(
+                                                (pos) => {
+                                                    updateSettingsMutation.mutate({
+                                                        officeLatitude: parseFloat(pos.coords.latitude.toFixed(6)),
+                                                        officeLongitude: parseFloat(pos.coords.longitude.toFixed(6)),
+                                                    });
+                                                },
+                                                (err) => alert('Không thể lấy vị trí: ' + err.message),
+                                                { enableHighAccuracy: true }
+                                            );
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-location-crosshairs" />
+                                        Lấy vị trí hiện tại
+                                    </button>
+                                </div>
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm">
+                                    <i className="fa-solid fa-lightbulb text-blue-500 mr-2" />
+                                    <span className="text-blue-800">Mở trang này trên máy tính ở văn phòng, rồi bấm "Lấy vị trí hiện tại" để tự động điền tọa độ chính xác.</span>
                                 </div>
                             </div>
 

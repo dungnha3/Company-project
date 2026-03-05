@@ -7,7 +7,7 @@ import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function PositionsPage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
 
@@ -38,7 +38,7 @@ export default function PositionsPage() {
         {
             header: '',
             accessorKey: 'actions',
-            cell: (row) => hasRole('MANAGER_HR') && (
+            cell: (row) => hasPermission('hrManagePositions') && (
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => { setSelectedPos(row); setShowModal(true); }}
@@ -79,7 +79,7 @@ export default function PositionsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Chức vụ & Vị trí</h1>
                     <p className="text-gray-500 text-sm">Quản lý các vị trí công việc và hệ số lương</p>
                 </div>
-                {hasRole('MANAGER_HR') && (
+                {hasPermission('hrManagePositions') && (
                     <button onClick={() => { setSelectedPos(null); setShowModal(true); }} className="btn-primary">
                         <i className="fa-solid fa-plus mr-2" /> Thêm chức vụ
                     </button>

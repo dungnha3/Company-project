@@ -9,7 +9,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// [DTO thông tin công việc/task] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,7 +31,13 @@ public class IssueDTO {
     private String assigneeName;
     private BigDecimal estimatedHours;
     private BigDecimal actualHours;
+    private LocalDate startDate;
     private LocalDate dueDate;
+    private Integer weight;
+    private Boolean isImportant;
+    private Boolean isUrgent;
+    private Integer eisenhowerQuadrant;
+    private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isOverdue;

@@ -1,18 +1,21 @@
 package DoAn.BE.chat.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.user.entity.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
+@FeatureFlag("CHAT")
+@Transactional(readOnly = true)
 public class ChatUtilityController {
-
-    // [Lấy thông tin user hiện tại] (Role: User)
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> getCurrentUserInfo(@AuthenticationPrincipal User currentUser) {
         Map<String, Object> userInfo = new HashMap<>();
@@ -24,8 +27,6 @@ public class ChatUtilityController {
 
         return ResponseEntity.ok(userInfo);
     }
-
-    // [Health check endpoint] (Role: System)
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         Map<String, String> response = new HashMap<>();

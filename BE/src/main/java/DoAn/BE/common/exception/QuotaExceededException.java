@@ -1,9 +1,8 @@
 package DoAn.BE.common.exception;
 
-/**
- * Exception thrown when a company exceeds their quota limits
- * (max employees, max projects, max storage, etc.)
- */
+// Exception thrown when a company exceeds their quota limits
+// (max employees, max projects, max storage, etc.)
+// /
 public class QuotaExceededException extends RuntimeException {
 
     private final String quotaType;

@@ -1,6 +1,5 @@
 package DoAn.BE.common.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -11,38 +10,34 @@ import DoAn.BE.company.service.CompanyService;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.storage.repository.FileRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Service for validating company quotas before creating new resources.
- * Checks: maxEmployees, maxProjects, maxStorageBytes
- */
+// Service for validating company quotas before creating new resources.
+// Checks: maxEmployees, maxProjects, maxStorageBytes
+// /
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class QuotaService {
 
-    @Autowired
     @Lazy
-    private CompanyService companyService;
+    private final CompanyService companyService;
+    private final EmployeeRepository employeeRepository;
+    private final ProjectRepository projectRepository;
+    private final FileRepository fileRepository;
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private FileRepository fileRepository;
-
-    /**
-     * Validate that creating a new employee won't exceed the company's quota.
-     * 
-     * @throws QuotaExceededException if quota would be exceeded
-     */
+    // Validate that creating a new employee won't exceed the company's quota.
+    //
+    // @throws QuotaExceededException if quota would be exceeded
+    // /
     public void validateEmployeeQuota() {
         Long companyId = TenantContext.getCompanyId();
-        if (companyId == null)
+        if (companyId == null) {
+            log.warn(
+                    "QuotaService: companyId is null, skipping employee quota check. Caller may be missing tenant context.");
             return;
+        }
 
         CompanySettings settings = companyService.getSettingsCached(companyId);
         if (settings == null)
@@ -51,17 +46,20 @@ public class QuotaService {
         long currentCount = employeeRepository.countByCompanyId(companyId);
         int maxEmployees = settings.getMaxEmployees();
 
+        if (maxEmployees <= 0) {
+            return; // Unlimited
+        }
+
         if (currentCount >= maxEmployees) {
             log.warn("Company {} exceeded employee quota: {}/{}", companyId, currentCount, maxEmployees);
             throw new QuotaExceededException("EMPLOYEES", currentCount, maxEmployees);
         }
     }
 
-    /**
-     * Validate that creating a new project won't exceed the company's quota.
-     * 
-     * @throws QuotaExceededException if quota would be exceeded
-     */
+    // Validate that creating a new project won't exceed the company's quota.
+    //
+    // @throws QuotaExceededException if quota would be exceeded
+    // /
     public void validateProjectQuota() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)
@@ -74,18 +72,21 @@ public class QuotaService {
         long currentCount = projectRepository.countByCompany_CompanyId(companyId);
         int maxProjects = settings.getMaxProjects();
 
+        if (maxProjects <= 0) {
+            return; // Unlimited
+        }
+
         if (currentCount >= maxProjects) {
             log.warn("Company {} exceeded project quota: {}/{}", companyId, currentCount, maxProjects);
             throw new QuotaExceededException("PROJECTS", currentCount, maxProjects);
         }
     }
 
-    /**
-     * Validate that uploading a file won't exceed the company's storage quota.
-     * 
-     * @param fileSize size of the file being uploaded in bytes
-     * @throws QuotaExceededException if quota would be exceeded
-     */
+    // Validate that uploading a file won't exceed the company's storage quota.
+    //
+    // @param fileSize size of the file being uploaded in bytes
+    // @throws QuotaExceededException if quota would be exceeded
+    // /
     public void validateStorageQuota(long fileSize) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)
@@ -101,6 +102,10 @@ public class QuotaService {
 
         long maxStorage = settings.getMaxStorageBytes();
 
+        if (maxStorage <= 0) {
+            return; // Unlimited
+        }
+
         if (currentUsage + fileSize > maxStorage) {
             log.warn("Company {} exceeded storage quota: {} + {} > {}",
                     companyId, currentUsage, fileSize, maxStorage);
@@ -111,9 +116,32 @@ public class QuotaService {
         }
     }
 
-    /**
-     * Get remaining storage space in bytes.
-     */
+    // Validate that the file size doesn't exceed the single file upload limit.
+    //
+    // @param fileSize size of the file being uploaded in bytes
+    // @throws DoAn.BE.common.exception.BadRequestException if limit exceeded
+    // /
+    public void validateFileSize(long fileSize) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null)
+            return;
+
+        CompanySettings settings = companyService.getSettingsCached(companyId);
+        if (settings == null)
+            return;
+
+        long maxFileBytes = settings.getMaxFileUploadBytes();
+
+        if (fileSize > maxFileBytes) {
+            log.warn("Company {} exceeded max file upload size: {} > {}", companyId, fileSize, maxFileBytes);
+            throw new DoAn.BE.common.exception.BadRequestException(
+                    String.format("[LIMIT_REACHED] Kích thước file vượt quá %d MB cho phép của gói cước.",
+                            maxFileBytes / (1024 * 1024)));
+        }
+    }
+
+    // Get remaining storage space in bytes.
+    // /
     public long getRemainingStorageBytes() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)
@@ -130,9 +158,8 @@ public class QuotaService {
         return Math.max(0, settings.getMaxStorageBytes() - currentUsage);
     }
 
-    /**
-     * Get quota usage summary for a company.
-     */
+    // Get quota usage summary for a company.
+    // /
     public QuotaUsage getQuotaUsage() {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null)

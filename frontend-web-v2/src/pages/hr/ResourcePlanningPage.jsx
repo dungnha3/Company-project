@@ -1,11 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate } from '@shared/utils/formatters';
+import { useToast } from '@app/providers/ToastProvider';
 
 export default function ResourcePlanningPage() {
-    const [viewMode, setViewMode] = useState('timeline'); // timeline, heatmap
+    const { showToast } = useToast();
+    const queryClient = useQueryClient();
+    const [viewMode, setViewMode] = useState('timeline');
+    const [showAllocationModal, setShowAllocationModal] = useState(false);
 
     // Fetch employees
     const { data: employees, isLoading: loadingEmployees } = useQuery({
@@ -89,7 +93,7 @@ export default function ResourcePlanningPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Quản lý nguồn lực</h1>
-                    <p className="text-gray-500 text-sm">Phân bổ và theo dõi workload team</p>
+                    <p className="text-gray-500 text-sm">Phân bổ và theo dõi khối lượng công việc đội nhóm</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex bg-gray-100 rounded-lg p-1">
@@ -108,7 +112,7 @@ export default function ResourcePlanningPage() {
                             <i className="fa-solid fa-fire mr-1" /> Heatmap
                         </button>
                     </div>
-                    <button className="btn-primary">
+                    <button onClick={() => setShowAllocationModal(true)} className="btn-primary">
                         <i className="fa-solid fa-plus mr-2" /> Phân bổ mới
                     </button>
                 </div>
@@ -189,6 +193,15 @@ export default function ResourcePlanningPage() {
                 <LegendItem color="bg-indigo-500" label="100%" />
                 <LegendItem color="bg-red-500" label=">100%" />
             </div>
+
+            {showAllocationModal && (
+                <AllocationModal
+                    onClose={() => setShowAllocationModal(false)}
+                    employees={empList}
+                    showToast={showToast}
+                    queryClient={queryClient}
+                />
+            )}
         </div>
     );
 }
@@ -258,6 +271,107 @@ function LegendItem({ color, label }) {
         <div className="flex items-center gap-2">
             <div className={`w-4 h-4 rounded ${color}`} />
             <span className="text-gray-600 dark:text-gray-400">{label}</span>
+        </div>
+    );
+}
+
+function AllocationModal({ onClose, employees, showToast, queryClient }) {
+    const [form, setForm] = useState({
+        employeeId: '',
+        projectId: '',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: '',
+        allocation: 50,
+        note: '',
+    });
+
+    const { data: projects = [] } = useQuery({
+        queryKey: ['projects-for-allocation'],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
+            return res.data?.content || res.data || [];
+        },
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (data) => apiClient.post(ENDPOINTS.RESOURCE_PLANNING.ALLOCATIONS, data),
+        onSuccess: () => {
+            showToast('Phân bổ nguồn lực thành công', 'success');
+            queryClient.invalidateQueries(['resource-allocations']);
+            onClose();
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Lỗi phân bổ', 'error'),
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!form.employeeId || !form.startDate || !form.endDate) {
+            showToast('Vui lòng điền đầy đủ thông tin', 'error');
+            return;
+        }
+        createMutation.mutate({
+            employeeId: Number(form.employeeId),
+            projectId: form.projectId ? Number(form.projectId) : null,
+            startDate: form.startDate,
+            endDate: form.endDate,
+            allocation: Number(form.allocation),
+            note: form.note,
+        });
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fade-in">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-indigo-600">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-white">Phân bổ nguồn lực mới</h2>
+                        <button onClick={onClose} className="text-white/80 hover:text-white">
+                            <i className="fa-solid fa-xmark" />
+                        </button>
+                    </div>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên *</label>
+                        <select value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" required>
+                            <option value="">Chọn nhân viên</option>
+                            {(employees || []).map(emp => <option key={emp.id} value={emp.id}>{emp.fullName}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Dự án</label>
+                        <select value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl">
+                            <option value="">Không gắn dự án</option>
+                            {projects.map(p => <option key={p.projectId || p.id} value={p.projectId || p.id}>{p.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu *</label>
+                            <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc *</label>
+                            <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" required />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tỷ lệ phân bổ ({form.allocation}%)</label>
+                        <input type="range" min="0" max="100" value={form.allocation} onChange={e => setForm({ ...form, allocation: e.target.value })} className="w-full" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" rows={2} placeholder="Ghi chú tùy chọn..." />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl">Hủy</button>
+                        <button type="submit" disabled={createMutation.isPending} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium disabled:opacity-50">
+                            {createMutation.isPending ? <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang lưu...</> : 'Tạo phân bổ'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

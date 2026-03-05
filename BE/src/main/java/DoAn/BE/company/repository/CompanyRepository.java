@@ -10,13 +10,10 @@ import java.util.Optional;
 @Repository
 public interface CompanyRepository extends JpaRepository<Company, Long> {
 
-    // Tìm company theo slug
     Optional<Company> findBySlug(String slug);
 
-    // Kiểm tra slug đã tồn tại chưa
     boolean existsBySlug(String slug);
 
-    // Tìm company theo tên
     Optional<Company> findByName(String name);
 
     // [SAAS] Kiểm tra công ty có đang hoạt động không

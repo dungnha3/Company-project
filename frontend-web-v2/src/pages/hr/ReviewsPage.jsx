@@ -9,13 +9,13 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ReviewFormModal from './components/ReviewFormModal';
 
 export default function ReviewsPage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('all-reviews');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingReview, setEditingReview] = useState(null);
 
-    const isManager = hasRole('MANAGER_HR', 'OWNER', 'ADMIN');
-    const canApprove = hasRole('OWNER', 'ADMIN');
+    const isManager = hasPermission('reviewCreate');
+    const canApprove = hasPermission('reviewApprove');
 
     return (
         <div className="space-y-6">
@@ -92,9 +92,9 @@ function ReviewStats() {
 
     const stats = {
         total: reviewList.length,
-        pending: reviewList.filter(r => r.status === 'PENDING_APPROVAL').length,
+        pending: reviewList.filter(r => r.status === 'PENDING').length,
         approved: reviewList.filter(r => r.status === 'APPROVED').length,
-        draft: reviewList.filter(r => r.status === 'DRAFT').length,
+        inProgress: reviewList.filter(r => r.status === 'IN_PROGRESS').length,
     };
 
     return (
@@ -119,7 +119,7 @@ function ReviewStats() {
             />
             <StatCard
                 label="Bản nháp"
-                value={stats.draft}
+                value={stats.inProgress}
                 icon="fa-file-pen"
                 color="bg-gray-100 text-gray-600"
             />
@@ -214,7 +214,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             header: 'Điểm TB',
             accessorKey: 'averageScore',
             cell: (row) => {
-                const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.leadershipScore].filter(s => s != null);
+                const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.softSkillsScore].filter(s => s != null);
                 const avg = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
                 return <ScoreBadge score={avg} />;
             }
@@ -236,14 +236,15 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                 <div className="flex justify-end gap-2">
                     {/* View */}
                     <button
+                        onClick={() => onEdit(row)}
                         className="btn-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded px-2 py-1"
                         title="Xem chi tiết"
                     >
                         <i className="fa-solid fa-eye" />
                     </button>
 
-                    {/* Edit (for DRAFT only) */}
-                    {isManager && row.status === 'DRAFT' && (
+                    {/* Edit (for IN_PROGRESS only) */}
+                    {isManager && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => onEdit(row)}
                             className="btn-xs bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded px-2 py-1"
@@ -253,8 +254,8 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                         </button>
                     )}
 
-                    {/* Submit for approval (for DRAFT) */}
-                    {isManager && row.status === 'DRAFT' && (
+                    {/* Submit for approval (for IN_PROGRESS) */}
+                    {isManager && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => submitMutation.mutate(row.reviewId || row.id)}
                             className="btn-xs bg-orange-100 text-orange-600 hover:bg-orange-200 rounded px-2 py-1"
@@ -265,7 +266,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                     )}
 
                     {/* Approve (for PENDING) */}
-                    {canApprove && row.status === 'PENDING_APPROVAL' && (
+                    {canApprove && row.status === 'PENDING' && (
                         <button
                             onClick={() => approveMutation.mutate(row.reviewId || row.id)}
                             className="btn-xs bg-green-100 text-green-600 hover:bg-green-200 rounded px-2 py-1"
@@ -275,8 +276,8 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                         </button>
                     )}
 
-                    {/* Delete (for DRAFT only) */}
-                    {isManager && row.status === 'DRAFT' && (
+                    {/* Delete (for IN_PROGRESS only) */}
+                    {isManager && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => {
                                 if (window.confirm('Xác nhận xóa đánh giá này?')) {
@@ -453,21 +454,22 @@ function PendingReviewsTable({ canApprove }) {
 // Badge Components
 function StatusBadge({ status }) {
     const styles = {
-        DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Bản nháp' },
-        PENDING_APPROVAL: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Chờ duyệt' },
+        IN_PROGRESS: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đang đánh giá' },
+        PENDING: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Chờ duyệt' },
         APPROVED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đã duyệt' },
         REJECTED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Từ chối' },
     };
-    const s = styles[status] || styles.DRAFT;
+    const s = styles[status] || styles.IN_PROGRESS;
     return <span className={`badge ${s.bg} ${s.text} text-xs px-2 py-1 rounded-full`}>{s.label}</span>;
 }
 
 function ReviewTypeBadge({ type }) {
     const styles = {
-        QUARTERLY: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'Quý' },
-        SEMI_ANNUAL: { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Nửa năm' },
-        ANNUAL: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'Cuối năm' },
+        QUARTERLY: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'Hàng quý' },
+        ANNUAL: { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Cuối năm' },
         PROBATION: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Thử việc' },
+        PROMOTION: { bg: 'bg-green-50', text: 'text-green-700', label: 'Thăng chức' },
+        SALARY_REVIEW: { bg: 'bg-orange-50', text: 'text-orange-700', label: 'Xét tăng lương' },
     };
     const s = styles[type] || { bg: 'bg-gray-50', text: 'text-gray-700', label: type };
     return <span className={`${s.bg} ${s.text} text-xs px-2 py-1 rounded font-medium`}>{s.label}</span>;

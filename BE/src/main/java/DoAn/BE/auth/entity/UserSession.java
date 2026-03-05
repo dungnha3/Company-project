@@ -3,14 +3,17 @@ package DoAn.BE.auth.entity;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
-// [Entity quản lý session - đa phiên đăng nhập] (Role: Security)
 @Entity
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "user_sessions", indexes = {
@@ -26,6 +29,7 @@ public class UserSession {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -56,16 +60,10 @@ public class UserSession {
         this.lastActivity = LocalDateTime.now();
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.lastActivity = LocalDateTime.now();
-    }
-
     public void updateActivity() {
         this.lastActivity = LocalDateTime.now();
     }
 
-    // Kiểm tra session đã hết hạn chưa
     public boolean isExpired(int timeoutMinutes) {
         if (this.lastActivity == null)
             return true;

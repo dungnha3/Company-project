@@ -17,7 +17,6 @@ public interface EventAttendeeRepository extends JpaRepository<EventAttendee, Lo
 
     boolean existsByEvent_EventIdAndUser_UserId(Long eventId, Long userId);
 
-    // Find events where user is attendee
     List<EventAttendee> findByUser_UserIdAndResponseStatus(Long userId, ResponseStatus status);
 
     void deleteByEvent_EventId(Long eventId);

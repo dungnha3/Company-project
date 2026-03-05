@@ -13,13 +13,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -28,7 +27,6 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.FetchType;
 import org.hibernate.annotations.BatchSize;
-import org.hibernate.annotations.Filter;
 
 // Entity liên kết Người dùng với Công ty (1 người dùng có thể tham gia nhiều công ty)
 @Entity
@@ -40,11 +38,10 @@ import org.hibernate.annotations.Filter;
         // Index cho query: findByCompany_CompanyIdAndIsActiveTrue (Member List)
         @jakarta.persistence.Index(name = "idx_cm_company_active", columnList = "company_id, is_active")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-@Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class CompanyMember extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
@@ -92,16 +89,18 @@ public class CompanyMember extends DoAn.BE.common.entity.BaseEntity {
 
     @Column(name = "invited_by", length = 100)
     private String invitedBy;
+    // BaseEntity handles createdAt/updatedAt via its own @PrePersist
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof CompanyMember other))
+            return false;
+        return id != null && id.equals(other.getId());
+    }
 
-    // BaseEntity handles createdAt/updatedAt
-
-    @PrePersist
-    protected void initDefaults() {
-        if (this.joinedAt == null) {
-            this.joinedAt = LocalDateTime.now();
-        }
-        if (this.permissions == null) {
-            this.permissions = new UserPermissions();
-        }
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

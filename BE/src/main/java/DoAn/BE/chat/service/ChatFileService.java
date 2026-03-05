@@ -52,10 +52,6 @@ public class ChatFileService {
     public MessDTO uploadAndSendFile(MultipartFile file, Long roomId, String content, Long senderId) {
         validateFileUpload(file, roomId, senderId);
 
-        if (file.getSize() > 10 * 1024 * 1024) {
-            throw new BadRequestException("File không được vượt quá 10MB");
-        }
-
         FileUploadResponse uploadResponse = fileStorageService.uploadFile(file, null, senderId, null, null);
 
         log.info("Chat file uploaded: {} for room {}", uploadResponse.getOriginalFilename(), roomId);
@@ -76,10 +72,6 @@ public class ChatFileService {
     // Upload hình ảnh và gửi tin nhắn
     public MessDTO uploadAndSendImage(MultipartFile imageFile, Long roomId, String caption, Long senderId) {
         validateFileUpload(imageFile, roomId, senderId);
-
-        if (imageFile.getSize() > 5 * 1024 * 1024) {
-            throw new BadRequestException("Hình ảnh không được vượt quá 5MB");
-        }
 
         String contentType = imageFile.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
@@ -107,7 +99,6 @@ public class ChatFileService {
         return messageService.sendMessage(request, senderId);
     }
 
-    // Gửi file đã tồn tại từ Storage vào chat
     public MessDTO sendExistingFile(Long fileId, Long roomId, String content, Long senderId) {
         validateRoomAccess(roomId, senderId);
 
@@ -134,7 +125,6 @@ public class ChatFileService {
         return messageService.sendMessage(request, senderId);
     }
 
-    // Lấy danh sách file trong phòng chat
     public List<MessDTO> getFilesByRoomId(Long roomId, Long userId) {
         validateRoomAccess(roomId, userId);
 
@@ -146,7 +136,6 @@ public class ChatFileService {
                 .collect(Collectors.toList());
     }
 
-    // Lấy danh sách hình ảnh trong phòng chat
     public List<MessDTO> getImagesByRoomId(Long roomId, Long userId) {
         validateRoomAccess(roomId, userId);
 
@@ -157,8 +146,6 @@ public class ChatFileService {
                 .map(messageService::convertToMessageDTO)
                 .collect(Collectors.toList());
     }
-
-    // ============ Private Helper Methods ============
 
     private void validateFileUpload(MultipartFile file, Long roomId, Long senderId) {
         if (file == null || file.isEmpty()) {
@@ -204,4 +191,3 @@ public class ChatFileService {
         return Message.MessageType.FILE;
     }
 }
-

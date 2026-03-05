@@ -6,7 +6,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 // Utility class để làm việc với Spring Security Context
 public class SecurityUtil {
-// Lấy User object hiện tại từ SecurityContext
 
 // @return User object đã đăng nhập
 
@@ -22,7 +21,6 @@ public class SecurityUtil {
         throw new RuntimeException("User chưa được xác thực");
     }
 
-// Lấy userId của user hiện tại
 
 // @return userId của user đã đăng nhập
 
@@ -31,7 +29,6 @@ public class SecurityUtil {
         return getCurrentUser().getUserId();
     }
 
-// Kiểm tra xem user có đã đăng nhập không
 
 // @return true nếu user đã đăng nhập
     public static boolean isAuthenticated() {
@@ -40,7 +37,6 @@ public class SecurityUtil {
                !authentication.getPrincipal().equals("anonymousUser");
     }
 
-// Lấy username của user hiện tại
 
 // @return username hoặc null nếu chưa đăng nhập
     public static String getCurrentUsername() {

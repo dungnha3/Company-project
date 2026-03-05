@@ -15,20 +15,16 @@ import java.util.List;
 // Repository cho thông báo đơn giản
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    // Lấy tất cả notification của user
     List<Notification> findByUser_UserIdOrderByCreatedAtDesc(Long userId);
 
-    // Lấy notification của user với pagination (using User object)
     Page<Notification> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
-    // Lấy notification của user với pagination (using userId - CONSISTENT with
     // count method)
     Page<Notification> findByUser_UserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     // Đếm notification chưa đọc
     long countByUser_UserIdAndIsReadFalse(Long userId);
 
-    // Xóa notifications cũ hơn một ngày nhất định (cho cleanup job)
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.createdAt < :cutoffDate")
     int deleteOlderThan(LocalDateTime cutoffDate);
@@ -43,4 +39,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // [Adapter Support] Lấy notification theo priority
     List<Notification> findByUser_UserIdAndPriorityOrderByCreatedAtDesc(Long userId,
             DoAn.BE.notification.entity.NotificationPriority priority);
+    @Modifying
+    @Query("UPDATE Notification n SET n.isRead = true WHERE n.user.userId = :userId AND n.isRead = false")
+    int markAllAsReadByUserId(Long userId);
 }

@@ -17,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Service xử lý các chức năng tìm kiếm và thống kê users
-
 // - Tìm kiếm users
 
 // - Lọc theo role, trạng thái
@@ -33,17 +31,22 @@ public class UserQueryService {
     private final UserRepository userRepository;
     private final CompanyMemberRepository companyMemberRepository;
 
-    // ==================== SEARCH ====================
-    // Tìm kiếm user theo từ khóa (username hoặc email)
     public List<User> searchUsers(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return Collections.emptyList();
         }
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId != null) {
+            return companyMemberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId)
+                    .stream()
+                    .map(CompanyMember::getUser)
+                    .filter(u -> u.getUsername().toLowerCase().contains(keyword.toLowerCase())
+                            || (u.getEmail() != null && u.getEmail().toLowerCase().contains(keyword.toLowerCase())))
+                    .collect(Collectors.toList());
+        }
         return userRepository.searchByKeyword(keyword);
     }
 
-    // ==================== FILTER BY ROLE ====================
-    // Lấy users theo role trong công ty hiện tại
     public List<User> getUsersByRole(CompanyRole role) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null || role == null) {
@@ -56,8 +59,6 @@ public class UserQueryService {
                 .collect(Collectors.toList());
     }
 
-    // ==================== FILTER BY STATUS ====================
-    // Lấy tất cả users đang active
     public List<User> getActiveUsers() {
         return userRepository.findByIsActiveTrue();
     }
@@ -67,7 +68,6 @@ public class UserQueryService {
         return userRepository.findByIsOnlineTrue();
     }
 
-    // ==================== STATISTICS ====================
     // Đếm users theo role trong công ty hiện tại
     public long countUsersByRole(CompanyRole role) {
         Long companyId = TenantContext.getCompanyId();

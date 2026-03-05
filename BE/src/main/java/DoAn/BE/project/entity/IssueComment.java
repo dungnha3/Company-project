@@ -7,17 +7,19 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-// [Entity comment/thảo luận trên Issue] (Role: Data Model)
 @Entity
 @Table(name = "issue_comments")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class IssueComment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "comment_id")
+    @EqualsAndHashCode.Include
     private Long commentId;
 
     @ManyToOne
@@ -59,7 +61,6 @@ public class IssueComment {
         this.content = content;
     }
 
-    // Helper methods
     public boolean canBeEditedBy(User user) {
         return this.author.getUserId().equals(user.getUserId());
     }

@@ -11,17 +11,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 // Entity đại diện cho công ty trong hệ thống multi-tenant
 @Entity
 @Table(name = "companies")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
 public class Company extends DoAn.BE.common.entity.BaseEntity {
 
     @Id
@@ -59,4 +59,17 @@ public class Company extends DoAn.BE.common.entity.BaseEntity {
 
     @OneToOne(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     private CompanySettings settings;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof Company other))
+            return false;
+        return companyId != null && companyId.equals(other.getCompanyId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

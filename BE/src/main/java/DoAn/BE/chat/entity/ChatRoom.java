@@ -20,15 +20,17 @@ import DoAn.BE.project.entity.Project;
         // Index cho query: findByCreatedBy (User's created rooms)
         @jakarta.persistence.Index(name = "idx_cr_createdby", columnList = "created_by")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ChatRoom extends DoAn.BE.common.entity.TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "room_id")
+    @EqualsAndHashCode.Include
     private Long roomId; // Hoặc chatRoomId nếu muốn giữ tên
 
     @Column(length = 100, columnDefinition = "NVARCHAR(100)")
@@ -58,7 +60,6 @@ public class ChatRoom extends DoAn.BE.common.entity.TenantScopedEntity {
     @JsonIgnore
     private List<ChatRoomMember> members;
 
-    // Helper methods
     public boolean isDirectChat() {
         return this.type == RoomType.DIRECT;
     }

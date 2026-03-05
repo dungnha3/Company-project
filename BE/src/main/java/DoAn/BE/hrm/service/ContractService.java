@@ -41,7 +41,7 @@ public class ContractService {
             throw new BadRequestException("Request cannot be empty");
         }
 
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractCreatePermission();
 
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
@@ -74,13 +74,24 @@ public class ContractService {
         if (id == null) {
             throw new BadRequestException("Invalid Contract ID");
         }
-        return contractRepository.findById(id)
+        Contract contract = contractRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null && contract.getEmployee() != null && contract.getEmployee().getCompany() != null
+                && !companyId.equals(contract.getEmployee().getCompany().getCompanyId())) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Bạn không có quyền xem hợp đồng này");
+        }
+        return contract;
     }
 
     public List<Contract> getAllContracts() {
-        accessControlService.checkHrViewPermission();
-        return contractRepository.findAll();
+        accessControlService.checkContractViewPermission();
+        // ALL companies
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return java.util.Collections.emptyList();
+        }
+        return contractRepository.findByCompanyId(companyId);
     }
 
     public Contract updateContract(Long id, ContractRequest request) {
@@ -88,7 +99,7 @@ public class ContractService {
             throw new BadRequestException("Invalid update request");
         }
 
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractEditPermission();
 
         Contract contract = getContractById(id);
 
@@ -117,7 +128,7 @@ public class ContractService {
     }
 
     public void deleteContract(Long id) {
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractDeletePermission();
         Contract contract = getContractById(id);
         contractRepository.delete(contract);
     }
@@ -143,11 +154,14 @@ public class ContractService {
         if (status == null) {
             return List.of();
         }
-        return contractRepository.findByStatus(status);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null)
+            return java.util.Collections.emptyList();
+        return contractRepository.findByStatusAndCompanyId(status, companyId);
     }
 
     public Contract cancelContract(Long id) {
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractEditPermission();
         Contract contract = getContractById(id);
         contract.setStatus(ContractStatus.CANCELLED);
         return contractRepository.save(contract);
@@ -158,7 +172,7 @@ public class ContractService {
             throw new BadRequestException("New end date cannot be empty");
         }
 
-        accessControlService.checkHrContractsPermission();
+        accessControlService.checkContractRenewPermission();
 
         Contract contract = getContractById(id);
 
@@ -184,11 +198,26 @@ public class ContractService {
     public List<Contract> getExpiringContracts(int daysAhead) {
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusDays(daysAhead);
-        return contractRepository.findExpiringContracts(startDate, endDate);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        List<Contract> contracts = contractRepository.findExpiringContracts(startDate, endDate);
+        if (companyId != null) {
+            contracts = contracts.stream()
+                    .filter(c -> c.getEmployee() != null && c.getEmployee().getCompany() != null
+                            && companyId.equals(c.getEmployee().getCompany().getCompanyId()))
+                    .toList();
+        }
+        return contracts;
     }
 
     public int updateExpiredContracts() {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         List<Contract> expiredContracts = contractRepository.findExpiredContracts(LocalDate.now());
+        if (companyId != null) {
+            expiredContracts = expiredContracts.stream()
+                    .filter(c -> c.getEmployee() != null && c.getEmployee().getCompany() != null
+                            && companyId.equals(c.getEmployee().getCompany().getCompanyId()))
+                    .toList();
+        }
         if (expiredContracts.isEmpty()) {
             return 0;
         }

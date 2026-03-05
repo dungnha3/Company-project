@@ -23,10 +23,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
         @Index(name = "idx_emp_department", columnList = "department_id"),
         @Index(name = "idx_emp_position", columnList = "position_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @ToString(exclude = { "user", "leaveRequests", "department", "position" })
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Employee extends TenantScopedEntity {
@@ -34,17 +35,26 @@ public class Employee extends TenantScopedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "employee_id")
+    @EqualsAndHashCode.Include
     private Long employeeId;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    // Links this employee profile to the user's membership in this company
+    // Nullable for backward compatibility with existing data
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_member_id")
+    @JsonIgnore
+    private DoAn.BE.company.entity.CompanyMember companyMember;
 
     @Column(name = "full_name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")
     private String fullName;
 
     @Column(name = "id_card", unique = true, length = 200) // Increased for encrypted data
     @Convert(converter = EncryptedStringConverter.class)
+    @JsonIgnore
     private String idCard; // CCCD - Encrypted
 
     @Column(name = "date_of_birth", nullable = false)
@@ -59,6 +69,7 @@ public class Employee extends TenantScopedEntity {
 
     @Column(name = "phone", length = 200) // Increased for encrypted data
     @Convert(converter = EncryptedStringConverter.class)
+    @JsonIgnore
     private String phone; // Encrypted
 
     @Column(name = "hire_date", nullable = false)
@@ -96,77 +107,4 @@ public class Employee extends TenantScopedEntity {
         ON_LEAVE // TAM_NGHI
     }
 
-    // ========== Legacy mappings for backward compatibility ==========
-
-    public Long getNhanvienId() {
-        return employeeId;
-    }
-
-    public void setNhanvienId(Long id) {
-        this.employeeId = id;
-    }
-
-    public String getHoTen() {
-        return fullName;
-    }
-
-    public void setHoTen(String hoTen) {
-        this.fullName = hoTen;
-    }
-
-    public String getCccd() {
-        return idCard;
-    }
-
-    public void setCccd(String cccd) {
-        this.idCard = cccd;
-    }
-
-    public LocalDate getNgaySinh() {
-        return dateOfBirth;
-    }
-
-    public void setNgaySinh(LocalDate date) {
-        this.dateOfBirth = date;
-    }
-
-    public String getDiaChi() {
-        return address;
-    }
-
-    public void setDiaChi(String diaChi) {
-        this.address = diaChi;
-    }
-
-    public String getSdt() {
-        return phone;
-    }
-
-    public void setSdt(String sdt) {
-        this.phone = sdt;
-    }
-
-    public LocalDate getNgayVaoLam() {
-        return hireDate;
-    }
-
-    public void setNgayVaoLam(LocalDate date) {
-        this.hireDate = date;
-    }
-
-    public BigDecimal getLuongCoBan() {
-        return baseSalary;
-    }
-
-    public void setLuongCoBan(BigDecimal luong) {
-        this.baseSalary = luong;
-    }
-
-    public BigDecimal getPhuCap() {
-        return allowance;
-    }
-
-    public void setPhuCap(BigDecimal phuCap) {
-        this.allowance = phuCap;
-    }
 }

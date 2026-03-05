@@ -5,10 +5,9 @@ import lombok.*;
 
 import DoAn.BE.user.entity.User;
 
-/**
- * Entity lưu trữ danh sách người tham dự sự kiện
- * Hỗ trợ RSVP (response status)
- */
+// Entity lưu trữ danh sách người tham dự sự kiện
+// Hỗ trợ RSVP (response status)
+// /
 @Entity
 @Table(name = "event_attendees", indexes = {
         @Index(name = "idx_attendee_event", columnList = "event_id"),

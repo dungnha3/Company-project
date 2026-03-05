@@ -1,31 +1,29 @@
 package DoAn.BE.user.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.ToString;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * PersonalWorkspace - Không gian làm việc cá nhân của User
- * Mỗi User có đúng 1 PersonalWorkspace (1:1 relationship)
- * Tự động tạo khi User đăng ký
- */
+// PersonalWorkspace - Không gian làm việc cá nhân của User
+// Mỗi User có đúng 1 PersonalWorkspace (1:1 relationship)
+// Tự động tạo khi User đăng ký
+// /
 @Entity
 @Table(name = "personal_workspaces")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = { "user" })
 public class PersonalWorkspace {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "workspace_id")
+    @EqualsAndHashCode.Include
     private Long workspaceId;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -40,7 +38,6 @@ public class PersonalWorkspace {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // Helper method to create default workspace for a user
     public static PersonalWorkspace createFor(User user) {
         return PersonalWorkspace.builder()
                 .user(user)

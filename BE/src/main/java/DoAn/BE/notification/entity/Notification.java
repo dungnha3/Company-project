@@ -3,20 +3,9 @@ package DoAn.BE.notification.entity;
 import java.time.LocalDateTime;
 
 import DoAn.BE.user.entity.User;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 
-// [Entity thông báo đơn giản - dùng cho chat, general notifications] (Role: Data Model)
 @Entity
 @Table(name = "notifications", indexes = {
         // Index cho query: findByUser_UserId (User's notifications - CRITICAL)
@@ -28,17 +17,20 @@ import lombok.NoArgsConstructor;
         // Index cho query: findByCreatedAt (Pagination by time)
         @jakarta.persistence.Index(name = "idx_notif_created", columnList = "created_at")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "notification_id")
+    @EqualsAndHashCode.Include
     private Long notificationId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -84,12 +76,10 @@ public class Notification {
         this.priority = NotificationPriority.NORMAL;
     }
 
-    // Đánh dấu đã đọc
     public void markAsRead() {
         this.isRead = true;
     }
 
-    // Kiểm tra chưa đọc
     public boolean isUnread() {
         return !this.isRead;
     }

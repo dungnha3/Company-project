@@ -7,10 +7,9 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Entity lưu giá trị custom field cho từng issue
- * Sử dụng polymorphic storage để lưu nhiều loại dữ liệu
- */
+// Entity lưu giá trị custom field cho từng issue
+// Sử dụng polymorphic storage để lưu nhiều loại dữ liệu
+// /
 @Entity
 @Table(name = "issue_custom_field_values", indexes = {
         @Index(name = "idx_cfv_issue", columnList = "issue_id"),
@@ -18,15 +17,18 @@ import lombok.*;
 }, uniqueConstraints = {
         @UniqueConstraint(name = "uk_issue_field", columnNames = { "issue_id", "field_id" })
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 public class IssueCustomFieldValue {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "value_id")
+    @EqualsAndHashCode.Include
     private Long valueId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,40 +39,34 @@ public class IssueCustomFieldValue {
     @JoinColumn(name = "field_id", nullable = false)
     private IssueCustomField customField;
 
-    /**
-     * String value for TEXT, TEXTAREA, SELECT, MULTI_SELECT, URL fields
-     * For MULTI_SELECT, values are stored as JSON array: ["opt1", "opt2"]
-     */
+    // String value for TEXT, TEXTAREA, SELECT, MULTI_SELECT, URL fields
+    // For MULTI_SELECT, values are stored as JSON array: ["opt1", "opt2"]
+    // /
     @Column(name = "string_value", columnDefinition = "NVARCHAR(MAX)")
     private String stringValue;
 
-    /**
-     * Numeric value for NUMBER fields
-     */
+    // Numeric value for NUMBER fields
+    // /
     @Column(name = "number_value", precision = 18, scale = 4)
     private BigDecimal numberValue;
 
-    /**
-     * Date value for DATE fields
-     */
+    // Date value for DATE fields
+    // /
     @Column(name = "date_value")
     private LocalDate dateValue;
 
-    /**
-     * DateTime value for DATETIME fields
-     */
+    // DateTime value for DATETIME fields
+    // /
     @Column(name = "datetime_value")
     private LocalDateTime datetimeValue;
 
-    /**
-     * Boolean value for CHECKBOX fields
-     */
+    // Boolean value for CHECKBOX fields
+    // /
     @Column(name = "boolean_value")
     private Boolean booleanValue;
 
-    /**
-     * User ID for USER type fields
-     */
+    // User ID for USER type fields
+    // /
     @Column(name = "user_value")
     private Long userValue;
 
@@ -90,9 +86,8 @@ public class IssueCustomFieldValue {
         updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Get the value based on field type
-     */
+    // Get the value based on field type
+    // /
     public Object getValue() {
         if (customField == null)
             return null;
@@ -107,9 +102,8 @@ public class IssueCustomFieldValue {
         };
     }
 
-    /**
-     * Set value based on field type (auto-detect from input)
-     */
+    // Set value based on field type (auto-detect from input)
+    // /
     public void setValue(Object value) {
         if (value == null) {
             clearAllValues();

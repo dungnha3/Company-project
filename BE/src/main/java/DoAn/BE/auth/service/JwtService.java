@@ -16,20 +16,19 @@ import DoAn.BE.user.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
-// Service xử lý JWT token (tạo, validate, extract claims)
-//       Default key is for development only!
+@Slf4j
 @Service
 public class JwtService {
 
-    // Must override with environment variable or config file in production
     @Value("${jwt.secret}")
     private String secretKey;
 
-    @Value("${jwt.expiration:86400000}") // 24 giờ
+    @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
 
-    @Value("${jwt.refresh-expiration:604800000}") // 7 ngày
+    @Value("${jwt.refresh-expiration:604800000}")
     private long refreshExpiration;
 
     private SecretKey getSigningKey() {
@@ -38,24 +37,22 @@ public class JwtService {
 
     @javax.annotation.PostConstruct
     public void init() {
-        // Enforce strong key in production (implied by lack of "dev" profile context,
-        // but broadly a warning is good)
         if (secretKey.length() < 32) {
-            System.err.println("WARNING: JWT Secret key is too short! It should be at least 32 characters (256 bits).");
+            throw new IllegalStateException(
+                    "JWT Secret key is too short (" + secretKey.length()
+                            + " chars). Must be at least 32 characters (256 bits). "
+                            + "Set jwt.secret in application.properties.");
         }
     }
 
-    // Lấy username từ token
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // Lấy thời gian hết hạn từ token
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    // Lấy claim bất kỳ từ token
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -122,22 +119,21 @@ public class JwtService {
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
-    // Validate token (chỉ check expiration)
     public Boolean validateToken(String token) {
         try {
+            // extractAllClaims verifies the signature via verifyWith(getSigningKey())
+            extractAllClaims(token);
             return !isTokenExpired(token);
         } catch (Exception e) {
             return false;
         }
     }
 
-    // Lấy userId từ token
     public Long getUserIdFromToken(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("userId", Long.class);
     }
 
-    // Lấy companyId từ token
     public Long getCompanyIdFromToken(String token) {
         try {
             Claims claims = extractAllClaims(token);
@@ -147,7 +143,6 @@ public class JwtService {
         }
     }
 
-    // Lấy role từ token
     public String getRoleFromToken(String token) {
         try {
             Claims claims = extractAllClaims(token);
@@ -157,7 +152,6 @@ public class JwtService {
         }
     }
 
-    // Kiểm tra có phải refresh token không
     public boolean isRefreshToken(String token) {
         try {
             Claims claims = extractAllClaims(token);
@@ -165,6 +159,14 @@ public class JwtService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    // Generate short-lived temp token for 2FA verification (5 minutes)
+    public String generateTempToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getUserId());
+        claims.put("type", "2fa_temp");
+        return createToken(claims, user.getUsername(), 5 * 60 * 1000L); // 5 minutes
     }
 
     public long getJwtExpiration() {

@@ -46,10 +46,13 @@ public class ContractMapper {
 
         // Check salary visibility
         boolean canViewSalary = false;
-        if (accessControlService.isAccountingManager()) {
+        try {
+            accessControlService.checkSalaryViewPermission();
             canViewSalary = true;
-        } else if (currentUser != null && isOwner(contract, currentUser)) {
-            canViewSalary = true;
+        } catch (DoAn.BE.common.exception.ForbiddenException ignored) {
+            if (currentUser != null && isOwner(contract, currentUser)) {
+                canViewSalary = true;
+            }
         }
 
         if (canViewSalary) {

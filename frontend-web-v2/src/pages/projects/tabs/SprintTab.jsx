@@ -12,9 +12,26 @@ const SPRINT_STATUS = {
     COMPLETED: { label: 'Completed', color: 'bg-green-100 text-green-700' },
 };
 
+const ISSUE_STATUS_COLORS = {
+    TODO: 'bg-gray-100 text-gray-700',
+    IN_PROGRESS: 'bg-blue-100 text-blue-700',
+    IN_REVIEW: 'bg-yellow-100 text-yellow-700',
+    DONE: 'bg-green-100 text-green-700',
+    CANCELLED: 'bg-red-100 text-red-700',
+};
+
+const ISSUE_TYPE_ICONS = {
+    BUG: { icon: 'fa-bug', color: 'text-red-500' },
+    FEATURE: { icon: 'fa-star', color: 'text-purple-500' },
+    TASK: { icon: 'fa-check-square', color: 'text-blue-500' },
+    IMPROVEMENT: { icon: 'fa-arrow-up', color: 'text-green-500' },
+    SUB_TASK: { icon: 'fa-code-branch', color: 'text-gray-500' },
+};
+
 export default function SprintTab({ projectId }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [selectedSprint, setSelectedSprint] = useState(null);
+    const [expandedSprint, setExpandedSprint] = useState(null);
+    const [showAddIssueModal, setShowAddIssueModal] = useState(null); // sprintId or null
     const queryClient = useQueryClient();
     const toast = useToast();
 
@@ -42,6 +59,21 @@ export default function SprintTab({ projectId }) {
             queryClient.invalidateQueries(['sprints', projectId]);
         },
     });
+
+    // Remove issue from sprint
+    const removeMutation = useMutation({
+        mutationFn: ({ sprintId, issueId }) =>
+            apiClient.delete(ENDPOINTS.SPRINTS.REMOVE_ISSUE(sprintId, issueId)),
+        onSuccess: (_, { sprintId }) => {
+            toast.success('Đã gỡ issue khỏi sprint!');
+            queryClient.invalidateQueries(['sprintIssues', sprintId]);
+            queryClient.invalidateQueries(['sprints', projectId]);
+        },
+    });
+
+    const toggleExpand = (sprintId) => {
+        setExpandedSprint(expandedSprint === sprintId ? null : sprintId);
+    };
 
     // Separate active and other sprints
     const activeSprint = sprints.find(s => s.status === 'ACTIVE');
@@ -78,12 +110,18 @@ export default function SprintTab({ projectId }) {
                 <div className="space-y-4">
                     <div className="bg-gradient-to-r from-indigo-50 to-indigo-50 rounded-xl p-5 border border-indigo-200">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
+                            <div
+                                className="flex items-center gap-3 cursor-pointer select-none"
+                                onClick={() => toggleExpand(activeSprint.sprintId)}
+                            >
                                 <div className="w-10 h-10 rounded-lg bg-indigo-500 text-white flex items-center justify-center">
                                     <i className="fa-solid fa-rocket" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-900">{activeSprint.name}</h3>
+                                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                        {activeSprint.name}
+                                        <i className={`fa-solid fa-chevron-${expandedSprint === activeSprint.sprintId ? 'up' : 'down'} text-xs text-gray-400`} />
+                                    </h3>
                                     <span className="text-xs text-indigo-600 font-medium">ACTIVE SPRINT</span>
                                 </div>
                             </div>
@@ -107,17 +145,28 @@ export default function SprintTab({ projectId }) {
                             </div>
                             <div>
                                 <span className="text-gray-500">Issues</span>
-                                <div className="font-medium">{activeSprint.issueCount || 0}</div>
+                                <div className="font-medium">{activeSprint.totalIssues || 0}</div>
                             </div>
                             <div>
-                                <span className="text-gray-500">Story Points</span>
-                                <div className="font-medium">{activeSprint.totalStoryPoints || 0}</div>
+                                <span className="text-gray-500">Hoàn thành</span>
+                                <div className="font-medium">{activeSprint.completedIssues || 0}</div>
                             </div>
                         </div>
                         {activeSprint.goal && (
                             <p className="mt-3 text-sm text-gray-600 border-t border-indigo-200 pt-3">
                                 <strong>Goal:</strong> {activeSprint.goal}
                             </p>
+                        )}
+
+                        {/* Issue List for Active Sprint */}
+                        {expandedSprint === activeSprint.sprintId && (
+                            <SprintIssueList
+                                sprintId={activeSprint.sprintId}
+                                projectId={projectId}
+                                onAddIssue={() => setShowAddIssueModal(activeSprint.sprintId)}
+                                onRemoveIssue={(issueId) => removeMutation.mutate({ sprintId: activeSprint.sprintId, issueId })}
+                                removePending={removeMutation.isPending}
+                            />
                         )}
                     </div>
 
@@ -140,12 +189,23 @@ export default function SprintTab({ projectId }) {
                         {planningSprints.map(sprint => (
                             <div key={sprint.sprintId} className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 p-4 hover:border-indigo-300 transition-colors">
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-medium text-gray-900">{sprint.name}</h4>
+                                    <div
+                                        className="cursor-pointer select-none"
+                                        onClick={() => toggleExpand(sprint.sprintId)}
+                                    >
+                                        <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                                            {sprint.name}
+                                            <i className={`fa-solid fa-chevron-${expandedSprint === sprint.sprintId ? 'up' : 'down'} text-xs text-gray-400`} />
+                                        </h4>
                                         <p className="text-sm text-gray-500">
                                             {sprint.startDate ? formatDate(sprint.startDate) : 'TBD'}
                                             {' → '}
                                             {sprint.endDate ? formatDate(sprint.endDate) : 'TBD'}
+                                            {sprint.totalIssues > 0 && (
+                                                <span className="ml-3 text-indigo-600 font-medium">
+                                                    {sprint.totalIssues} issues
+                                                </span>
+                                            )}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -163,6 +223,17 @@ export default function SprintTab({ projectId }) {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Issue List for Planning Sprint */}
+                                {expandedSprint === sprint.sprintId && (
+                                    <SprintIssueList
+                                        sprintId={sprint.sprintId}
+                                        projectId={projectId}
+                                        onAddIssue={() => setShowAddIssueModal(sprint.sprintId)}
+                                        onRemoveIssue={(issueId) => removeMutation.mutate({ sprintId: sprint.sprintId, issueId })}
+                                        removePending={removeMutation.isPending}
+                                    />
+                                )}
                             </div>
                         ))}
                     </div>
@@ -178,19 +249,36 @@ export default function SprintTab({ projectId }) {
                     </h3>
                     <div className="space-y-2">
                         {completedSprints.slice(0, 5).map(sprint => (
-                            <div key={sprint.sprintId} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-100 p-3 flex items-center justify-between">
-                                <div>
-                                    <h4 className="font-medium text-gray-700">{sprint.name}</h4>
-                                    <p className="text-xs text-gray-500">
-                                        {sprint.completedAt ? formatDate(sprint.completedAt) : 'Completed'}
-                                    </p>
+                            <div key={sprint.sprintId} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-100 p-3">
+                                <div className="flex items-center justify-between">
+                                    <div
+                                        className="cursor-pointer select-none"
+                                        onClick={() => toggleExpand(sprint.sprintId)}
+                                    >
+                                        <h4 className="font-medium text-gray-700 flex items-center gap-2">
+                                            {sprint.name}
+                                            <i className={`fa-solid fa-chevron-${expandedSprint === sprint.sprintId ? 'up' : 'down'} text-xs text-gray-400`} />
+                                        </h4>
+                                        <p className="text-xs text-gray-500">
+                                            {sprint.completedAt ? formatDate(sprint.completedAt) : 'Completed'}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                        <span>{sprint.totalIssues || 0} issues</span>
+                                        <span className={`px-2 py-0.5 rounded text-xs ${SPRINT_STATUS.COMPLETED.color}`}>
+                                            Done
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
-                                    <span>{sprint.issueCount || 0} issues</span>
-                                    <span className={`px-2 py-0.5 rounded text-xs ${SPRINT_STATUS.COMPLETED.color}`}>
-                                        Done
-                                    </span>
-                                </div>
+
+                                {/* Issue List for Completed Sprint (read-only) */}
+                                {expandedSprint === sprint.sprintId && (
+                                    <SprintIssueList
+                                        sprintId={sprint.sprintId}
+                                        projectId={projectId}
+                                        readOnly={true}
+                                    />
+                                )}
                             </div>
                         ))}
                     </div>
@@ -224,10 +312,302 @@ export default function SprintTab({ projectId }) {
                     }}
                 />
             )}
+
+            {/* Add Issue Modal */}
+            {showAddIssueModal && (
+                <AddIssueToSprintModal
+                    projectId={projectId}
+                    sprintId={showAddIssueModal}
+                    onClose={() => setShowAddIssueModal(null)}
+                    onSuccess={() => {
+                        queryClient.invalidateQueries(['sprintIssues', showAddIssueModal]);
+                        queryClient.invalidateQueries(['sprints', projectId]);
+                        setShowAddIssueModal(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
 
+// ─── Sprint Issue List Component ─────────────────────────────────────
+function SprintIssueList({ sprintId, projectId, onAddIssue, onRemoveIssue, removePending, readOnly = false }) {
+    const { data: issuesData, isLoading } = useQuery({
+        queryKey: ['sprintIssues', sprintId],
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.ISSUES.BY_SPRINT(sprintId), { params: { size: 100 } })).data;
+            return res?.content || (Array.isArray(res) ? res : []);
+        },
+        enabled: !!sprintId,
+    });
+
+    const issues = issuesData || [];
+
+    return (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <i className="fa-solid fa-list-check text-indigo-500" />
+                    Issues ({issues.length})
+                </h4>
+                {!readOnly && onAddIssue && (
+                    <button
+                        onClick={onAddIssue}
+                        className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium flex items-center gap-1"
+                    >
+                        <i className="fa-solid fa-plus" />
+                        Thêm Issue
+                    </button>
+                )}
+            </div>
+
+            {isLoading ? (
+                <div className="flex items-center justify-center py-6">
+                    <i className="fa-solid fa-spinner fa-spin text-indigo-500" />
+                    <span className="ml-2 text-sm text-gray-500">Đang tải...</span>
+                </div>
+            ) : issues.length === 0 ? (
+                <div className="text-center py-6 bg-white/50 rounded-lg border border-dashed border-gray-300">
+                    <i className="fa-solid fa-inbox text-2xl text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-500">Chưa có issue nào trong sprint này</p>
+                    {!readOnly && onAddIssue && (
+                        <button
+                            onClick={onAddIssue}
+                            className="mt-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                        >
+                            + Thêm issue từ backlog
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {issues.map(issue => {
+                        const typeInfo = ISSUE_TYPE_ICONS[issue.issueType] || ISSUE_TYPE_ICONS.TASK;
+                        const statusColor = ISSUE_STATUS_COLORS[issue.status] || 'bg-gray-100 text-gray-700';
+                        return (
+                            <div
+                                key={issue.issueId}
+                                className="flex items-center justify-between py-2 px-3 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-colors group"
+                            >
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <i className={`fa-solid ${typeInfo.icon} ${typeInfo.color} text-sm`} />
+                                    <span className="text-sm text-gray-800 truncate font-medium">
+                                        {issue.title}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${statusColor}`}>
+                                        {issue.status?.replace(/_/g, ' ')}
+                                    </span>
+                                    {issue.assigneeName && (
+                                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                                            <i className="fa-solid fa-user mr-1" />
+                                            {issue.assigneeName}
+                                        </span>
+                                    )}
+                                </div>
+                                {!readOnly && onRemoveIssue && (
+                                    <button
+                                        onClick={() => onRemoveIssue(issue.issueId)}
+                                        disabled={removePending}
+                                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1 rounded"
+                                        title="Gỡ khỏi sprint"
+                                    >
+                                        <i className="fa-solid fa-times text-xs" />
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Add Issue to Sprint Modal ───────────────────────────────────────
+function AddIssueToSprintModal({ projectId, sprintId, onClose, onSuccess }) {
+    const [selectedIssues, setSelectedIssues] = useState([]);
+    const [search, setSearch] = useState('');
+    const toast = useToast();
+
+    // Fetch backlog issues (not assigned to any sprint)
+    const { data: backlogData, isLoading } = useQuery({
+        queryKey: ['backlogIssues', projectId],
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.ISSUES.BACKLOG(projectId), { params: { size: 200 } })).data;
+            return res?.content || (Array.isArray(res) ? res : []);
+        },
+        enabled: !!projectId,
+    });
+
+    const backlogIssues = backlogData || [];
+    const filteredIssues = backlogIssues.filter(issue =>
+        issue.title?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const toggleIssue = (issueId) => {
+        setSelectedIssues(prev =>
+            prev.includes(issueId) ? prev.filter(id => id !== issueId) : [...prev, issueId]
+        );
+    };
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        if (selectedIssues.length === 0) {
+            toast.error('Vui lòng chọn ít nhất 1 issue');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await Promise.all(
+                selectedIssues.map(issueId =>
+                    apiClient.post(ENDPOINTS.SPRINTS.ADD_ISSUE(sprintId, issueId))
+                )
+            );
+            toast.success(`Đã thêm ${selectedIssues.length} issue vào sprint!`);
+            onSuccess();
+        } catch (err) {
+            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                role="dialog"
+                aria-modal="true"
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900">Thêm Issue vào Sprint</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Chọn issues từ backlog để thêm vào sprint</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <i className="fa-solid fa-times" />
+                    </button>
+                </div>
+
+                {/* Search */}
+                <div className="px-6 py-3 border-b border-gray-100">
+                    <div className="relative">
+                        <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:border-gray-600 dark:text-gray-100"
+                            placeholder="Tìm issue theo tên..."
+                        />
+                    </div>
+                    {selectedIssues.length > 0 && (
+                        <div className="mt-2 text-xs text-indigo-600 font-medium">
+                            Đã chọn {selectedIssues.length} issue
+                        </div>
+                    )}
+                </div>
+
+                {/* Issue List */}
+                <div className="flex-1 overflow-y-auto px-6 py-3" style={{ maxHeight: '400px' }}>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <i className="fa-solid fa-spinner fa-spin text-indigo-500 mr-2" />
+                            <span className="text-sm text-gray-500">Đang tải backlog...</span>
+                        </div>
+                    ) : filteredIssues.length === 0 ? (
+                        <div className="text-center py-8">
+                            <i className="fa-solid fa-inbox text-3xl text-gray-300 mb-2" />
+                            <p className="text-sm text-gray-500">
+                                {search ? 'Không tìm thấy issue phù hợp' : 'Không có issue nào trong backlog'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-1">
+                            {filteredIssues.map(issue => {
+                                const isSelected = selectedIssues.includes(issue.issueId);
+                                const typeInfo = ISSUE_TYPE_ICONS[issue.issueType] || ISSUE_TYPE_ICONS.TASK;
+                                const statusColor = ISSUE_STATUS_COLORS[issue.status] || 'bg-gray-100 text-gray-700';
+                                return (
+                                    <label
+                                        key={issue.issueId}
+                                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected
+                                                ? 'bg-indigo-50 border border-indigo-200'
+                                                : 'hover:bg-gray-50 border border-transparent'
+                                            }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleIssue(issue.issueId)}
+                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        />
+                                        <i className={`fa-solid ${typeInfo.icon} ${typeInfo.color} text-sm`} />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-gray-800 truncate">
+                                                {issue.title}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor}`}>
+                                                    {issue.status?.replace(/_/g, ' ')}
+                                                </span>
+                                                {issue.assigneeName && (
+                                                    <span className="text-xs text-gray-400">
+                                                        {issue.assigneeName}
+                                                    </span>
+                                                )}
+                                                {issue.priority && (
+                                                    <span className="text-xs text-gray-400">
+                                                        {issue.priority}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                    <span className="text-xs text-gray-500">
+                        {filteredIssues.length} issues trong backlog
+                    </span>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting || selectedIssues.length === 0}
+                            className="btn-primary disabled:opacity-50 text-sm"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <i className="fa-solid fa-spinner fa-spin mr-2" />
+                                    Đang thêm...
+                                </>
+                            ) : (
+                                `Thêm ${selectedIssues.length > 0 ? selectedIssues.length + ' issue' : ''}`
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Create Sprint Modal ─────────────────────────────────────────────
 function CreateSprintModal({ projectId, onClose, onSuccess }) {
     const [form, setForm] = useState({
         name: '',

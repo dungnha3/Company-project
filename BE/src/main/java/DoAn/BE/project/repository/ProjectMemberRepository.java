@@ -30,8 +30,6 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
     // [Count queries for optimization]
     long countByProject_ProjectId(Long projectId);
-
-    // [Lấy danh sách user ID của team members mà PM quản lý] (Role: System)
     @Query("SELECT DISTINCT pm2.user.userId FROM ProjectMember pm1 " +
             "JOIN ProjectMember pm2 ON pm1.project.projectId = pm2.project.projectId " +
             "WHERE pm1.user.userId = :managerId AND pm1.role = 'MANAGER'")

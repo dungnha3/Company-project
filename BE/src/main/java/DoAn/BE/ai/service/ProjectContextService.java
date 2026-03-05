@@ -21,7 +21,6 @@ import DoAn.BE.project.repository.SprintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Service để thu thập context của project cho AI
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -33,10 +32,10 @@ public class ProjectContextService {
         private final SprintRepository sprintRepository;
         private final ProjectMemberRepository projectMemberRepository;
 
-// Lấy full context của project để cung cấp cho AI
         public ProjectContextDTO getProjectContext(Long projectId) {
                 Project project = projectRepository.findById(projectId)
-                                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+                                .orElseThrow(() -> new DoAn.BE.common.exception.ResourceNotFoundException(
+                                                "Project not found: " + projectId));
 
                 List<Issue> issues = issueRepository.findByProject_ProjectId(projectId);
                 List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
@@ -90,7 +89,6 @@ public class ProjectContextService {
                                 .build();
         }
 
-// Tạo summary text của project context cho AI prompt
         public String buildContextSummary(ProjectContextDTO context) {
                 StringBuilder sb = new StringBuilder();
 

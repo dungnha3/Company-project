@@ -15,16 +15,18 @@ import org.hibernate.annotations.Filter;
 // Tracks employee leave/time-off requests
 @Entity
 @Table(name = "leave_requests")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class LeaveRequest extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "leave_request_id")
+    @EqualsAndHashCode.Include
     private Long leaveRequestId;
 
     @ManyToOne
@@ -51,29 +53,7 @@ public class LeaveRequest extends TenantScopedEntity {
     @Column(name = "status", length = 30)
     private LeaveStatus status = LeaveStatus.PENDING;
 
-    // PM Approval (Step 1)
-    @ManyToOne
-    @JoinColumn(name = "pm_approver_id")
-    private User pmApprover;
-
-    @Column(name = "pm_approved_at")
-    private LocalDateTime pmApprovedAt;
-
-    @Column(name = "pm_note", length = 500, columnDefinition = "NVARCHAR(500)")
-    private String pmNote;
-
-    // Accounting Approval (Step 2)
-    @ManyToOne
-    @JoinColumn(name = "accounting_approver_id")
-    private User accountingApprover;
-
-    @Column(name = "accounting_approved_at")
-    private LocalDateTime accountingApprovedAt;
-
-    @Column(name = "accounting_note", length = 500, columnDefinition = "NVARCHAR(500)")
-    private String accountingNote;
-
-    // Final approver
+    // Approver (single-step approval — anyone with leaveApprove permission)
     @ManyToOne
     @JoinColumn(name = "approver_id")
     private User approver;
@@ -83,6 +63,34 @@ public class LeaveRequest extends TenantScopedEntity {
 
     @Column(name = "approval_note", length = 500, columnDefinition = "NVARCHAR(500)")
     private String approvalNote;
+
+    // Legacy PM/Accounting columns kept for backward compatibility with existing
+    // data
+    @ManyToOne
+    @JoinColumn(name = "pm_approver_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private User pmApprover;
+
+    @Column(name = "pm_approved_at")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private LocalDateTime pmApprovedAt;
+
+    @Column(name = "pm_note", length = 500, columnDefinition = "NVARCHAR(500)")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String pmNote;
+
+    @ManyToOne
+    @JoinColumn(name = "accounting_approver_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private User accountingApprover;
+
+    @Column(name = "accounting_approved_at")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private LocalDateTime accountingApprovedAt;
+
+    @Column(name = "accounting_note", length = 500, columnDefinition = "NVARCHAR(500)")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String accountingNote;
 
     @Override
     protected void onCreate() {
@@ -99,25 +107,6 @@ public class LeaveRequest extends TenantScopedEntity {
         if (startDate != null && endDate != null) {
             long days = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
             this.totalDays = (int) days;
-        }
-    }
-
-    public void approvePM(User pmUser, String note) {
-        this.pmApprover = pmUser;
-        this.pmApprovedAt = LocalDateTime.now();
-        this.pmNote = note;
-        this.status = LeaveStatus.PM_APPROVED;
-    }
-
-    public void approveAccounting(User accountingUser, String note) {
-        this.accountingApprover = accountingUser;
-        this.accountingApprovedAt = LocalDateTime.now();
-        this.accountingNote = note;
-        if (this.pmApprover != null) {
-            this.status = LeaveStatus.APPROVED;
-            this.approver = accountingUser;
-            this.approvedAt = LocalDateTime.now();
-            this.approvalNote = "PM: " + (pmNote != null ? pmNote : "OK") + " | ACC: " + note;
         }
     }
 
@@ -139,10 +128,6 @@ public class LeaveRequest extends TenantScopedEntity {
         return status == LeaveStatus.PENDING;
     }
 
-    public boolean isPMApproved() {
-        return status == LeaveStatus.PM_APPROVED;
-    }
-
     public boolean isApproved() {
         return status == LeaveStatus.APPROVED;
     }
@@ -160,7 +145,6 @@ public class LeaveRequest extends TenantScopedEntity {
 
     public enum LeaveStatus {
         PENDING, // CHO_DUYET
-        PM_APPROVED, // PM đã duyệt
         APPROVED, // DA_DUYET
         REJECTED // TU_CHOI
     }

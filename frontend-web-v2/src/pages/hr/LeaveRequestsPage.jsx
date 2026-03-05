@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatDate } from '@shared/utils/formatters';
 
 export default function LeaveRequestsPage() {
-    const { hasRole } = useWorkspaceStore();
+    const { hasPermission } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('my-requests');
     const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -21,7 +21,7 @@ export default function LeaveRequestsPage() {
                     <p className="text-gray-500 text-sm">Quản lý đơn xin nghỉ phép</p>
                 </div>
                 <div className="flex gap-2">
-                    {hasRole('MANAGER_HR', 'OWNER', 'ADMIN') && (
+                    {hasPermission('leaveViewAll') && (
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.LEAVES}
                             params={{
@@ -55,7 +55,7 @@ export default function LeaveRequestsPage() {
                         <i className="fa-solid fa-calendar-days mr-2" />
                         Lịch nghỉ
                     </button>
-                    {hasRole('MANAGER_HR', 'OWNER', 'ADMIN', 'MANAGER_PROJECT') && (
+                    {hasPermission('leaveApprove') && (
                         <button
                             onClick={() => setActiveTab('pending-approval')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending-approval' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
@@ -138,7 +138,7 @@ function PendingLeaveRequests() {
     });
 
     const approveMutation = useMutation({
-        mutationFn: (id) => apiClient.post(ENDPOINTS.LEAVE_REQUESTS.APPROVE(id)),
+        mutationFn: (id) => apiClient.patch(ENDPOINTS.LEAVE_REQUESTS.APPROVE(id), { note: '' }),
         onSuccess: () => {
             showToast('Đã duyệt đơn', 'success');
             queryClient.invalidateQueries(['pending-leave-requests']);
@@ -146,7 +146,7 @@ function PendingLeaveRequests() {
     });
 
     const rejectMutation = useMutation({
-        mutationFn: (id) => apiClient.post(ENDPOINTS.LEAVE_REQUESTS.REJECT(id)),
+        mutationFn: ({ id, reason }) => apiClient.patch(ENDPOINTS.LEAVE_REQUESTS.REJECT(id), { note: reason || '' }),
         onSuccess: () => {
             showToast('Đã từ chối đơn', 'success');
             queryClient.invalidateQueries(['pending-leave-requests']);
@@ -338,7 +338,7 @@ function CreateLeaveModal({ isOpen, onClose }) {
                                 <option value="ANNUAL">Nghỉ phép năm</option>
                                 <option value="SICK">Nghỉ ốm</option>
                                 <option value="UNPAID">Nghỉ không lương</option>
-                                <option value="MATERNITY">Thai sản</option>
+
                                 <option value="OTHER">Khác</option>
                             </select>
                         </div>
@@ -375,7 +375,6 @@ function StatusBadge({ status }) {
         PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Chờ duyệt' },
         APPROVED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đã duyệt' },
         REJECTED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Từ chối' },
-        CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã hủy' }
     };
     const s = styles[status] || styles.PENDING;
     return <span className={`badge ${s.bg} ${s.text}`}>{s.label}</span>;

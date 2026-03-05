@@ -12,7 +12,9 @@ import DoAn.BE.chat.repository.MessageRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import DoAn.BE.project.entity.Project;
+import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.repository.ProjectRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
@@ -29,7 +31,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-// [Service quản lý chat rooms - tạo, sửa, xóa, quản lý members] (Role: Chat Users)
 @Service
 @Transactional
 @Slf4j
@@ -41,8 +42,10 @@ public class ChatRoomService {
     private final WebSocketNotificationService webSocketNotificationService;
     private final ChatNotificationService chatNotificationService;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final MessageRepository messageRepository;
     private final AccessControlService accessControlService;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository,
             ChatRoomMemberRepository chatRoomMemberRepository,
@@ -50,19 +53,37 @@ public class ChatRoomService {
             WebSocketNotificationService webSocketNotificationService,
             ChatNotificationService chatNotificationService,
             ProjectRepository projectRepository,
+            ProjectMemberRepository projectMemberRepository,
             MessageRepository messageRepository,
-            AccessControlService accessControlService) {
+            AccessControlService accessControlService,
+            jakarta.persistence.EntityManager entityManager) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatRoomMemberRepository = chatRoomMemberRepository;
         this.userRepository = userRepository;
         this.webSocketNotificationService = webSocketNotificationService;
         this.chatNotificationService = chatNotificationService;
         this.projectRepository = projectRepository;
+        this.projectMemberRepository = projectMemberRepository;
         this.messageRepository = messageRepository;
         this.accessControlService = accessControlService;
+        this.entityManager = entityManager;
     }
 
-    // Tạo phòng chat mới
+    private void validateUserInCompany(Long userId) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            Long count = entityManager.createQuery(
+                    "SELECT COUNT(cm) FROM CompanyMember cm WHERE cm.company.companyId = :companyId AND cm.user.userId = :userId",
+                    Long.class)
+                    .setParameter("companyId", companyId)
+                    .setParameter("userId", userId)
+                    .getSingleResult();
+            if (count == 0) {
+                throw new ForbiddenException("User does not belong to the current workspace");
+            }
+        }
+    }
+
     public ChatRoomDTO createChatRoom(CreateChatRoomRequest request, User currentUser) {
         try {
             // [Granular Permission] Kiểm tra quyền tạo nhóm chat
@@ -103,6 +124,7 @@ public class ChatRoomService {
 
             // Thêm các thành viên khác từ memberIds
             if (request.getMemberIds() != null && !request.getMemberIds().isEmpty()) {
+                Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
                 for (Long memberId : request.getMemberIds()) {
                     // Bỏ qua người tạo (đã thêm ở trên)
                     if (memberId.equals(currentUser.getUserId())) {
@@ -110,15 +132,51 @@ public class ChatRoomService {
                     }
 
                     User memberUser = userRepository.findById(memberId).orElse(null);
-                    if (memberUser != null) {
+                    if (memberUser == null)
+                        continue;
+                    if (companyId != null) {
+                        boolean sameCompany = memberUser.getMemberships() != null
+                                && memberUser.getMemberships().stream()
+                                        .anyMatch(m -> m.getCompany() != null
+                                                && companyId.equals(m.getCompany().getCompanyId()) && m.getIsActive());
+                        if (!sameCompany) {
+                            log.warn("Skipping member {} — not in company {}", memberId, companyId);
+                            continue;
+                        }
+                    }
+
+                    ChatRoomMember member = new ChatRoomMember();
+                    member.setId(new ChatRoomMemberId(chatRoom.getRoomId(), memberUser.getUserId()));
+                    member.setChatRoom(chatRoom);
+                    member.setUser(memberUser);
+                    member.setRole(ChatRoomMember.MemberRole.MEMBER);
+                    member.setJoinedAt(LocalDateTime.now());
+                    chatRoomMemberRepository.save(member);
+                    log.info("Thêm thành viên {} vào phòng chat {}", memberUser.getUsername(), chatRoom.getName());
+                }
+            }
+
+            // Auto-add all project members when creating a PROJECT chat
+            if (chatRoom.getProject() != null) {
+                List<ProjectMember> projectMembers = projectMemberRepository
+                        .findByProject_ProjectId(chatRoom.getProject().getProjectId());
+                for (ProjectMember pm : projectMembers) {
+                    User pmUser = pm.getUser();
+                    if (pmUser == null || pmUser.getUserId().equals(currentUser.getUserId())) {
+                        continue; // Skip creator (already added as ADMIN)
+                    }
+                    boolean alreadyAdded = chatRoomMemberRepository
+                            .existsByChatRoom_RoomIdAndUser_UserId(chatRoom.getRoomId(), pmUser.getUserId());
+                    if (!alreadyAdded) {
                         ChatRoomMember member = new ChatRoomMember();
-                        member.setId(new ChatRoomMemberId(chatRoom.getRoomId(), memberUser.getUserId()));
+                        member.setId(new ChatRoomMemberId(chatRoom.getRoomId(), pmUser.getUserId()));
                         member.setChatRoom(chatRoom);
-                        member.setUser(memberUser);
+                        member.setUser(pmUser);
                         member.setRole(ChatRoomMember.MemberRole.MEMBER);
                         member.setJoinedAt(LocalDateTime.now());
                         chatRoomMemberRepository.save(member);
-                        log.info("Thêm thành viên {} vào phòng chat {}", memberUser.getUsername(), chatRoom.getName());
+                        log.info("Auto-added project member {} to project chat {}", pmUser.getUsername(),
+                                chatRoom.getName());
                     }
                 }
             }
@@ -136,7 +194,6 @@ public class ChatRoomService {
         }
     }
 
-    // Lấy danh sách phòng chat của user
     public List<ChatRoomDTO> getChatRoomsByUserId(User currentUser) {
         if (!accessControlService.canUseChat(currentUser)) {
             throw new ForbiddenException("Admin không có quyền sử dụng chat");
@@ -160,7 +217,6 @@ public class ChatRoomService {
         return chatRooms.map(this::convertToChatRoomDTO);
     }
 
-    // Lấy thông tin phòng chat
     public ChatRoomDTO getChatRoomById(Long roomId, Long userId) {
         if (roomId == null || userId == null) {
             throw new BadRequestException("Room ID và User ID không được để trống");
@@ -178,12 +234,18 @@ public class ChatRoomService {
         return convertToChatRoomDTO(chatRoom);
     }
 
-    // Tìm hoặc tạo chat 1-1
     // OPTIMIZED: Use existing repository query instead of loop
     public ChatRoomDTO findOrCreateDirectChat(Long userId1, Long userId2) {
         if (userId1 == null || userId2 == null) {
             throw new BadRequestException("User ID không được để trống");
         }
+        if (userId1.equals(userId2)) {
+            throw new BadRequestException("Không thể tạo cuộc trò chuyện với chính mình");
+        }
+
+        validateUserInCompany(userId1);
+        validateUserInCompany(userId2);
+
         User user1 = userRepository.findById(userId1)
                 .orElseThrow(() -> new ResourceNotFoundException("User 1 không tồn tại"));
         User user2 = userRepository.findById(userId2)
@@ -241,6 +303,8 @@ public class ChatRoomService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
 
+        validateUserInCompany(userId);
+
         // Kiểm tra user đã trong phòng chưa
         boolean alreadyMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
         if (alreadyMember) {
@@ -284,6 +348,9 @@ public class ChatRoomService {
         if (!isAdmin) {
             throw new BadRequestException("Bạn không có quyền xóa thành viên khỏi phòng chat này");
         }
+        if (userId.equals(adminId)) {
+            throw new BadRequestException("Admin không thể tự xóa mình khỏi phòng chat. Hãy chuyển quyền admin trước.");
+        }
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
@@ -300,11 +367,23 @@ public class ChatRoomService {
         if (roomId == null || userId == null) {
             throw new BadRequestException("Room ID và User ID không được để trống");
         }
-        chatRoomRepository.findById(roomId)
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+        if (chatRoom.getType() == ChatRoom.RoomType.DIRECT) {
+            throw new BadRequestException("Không thể rời phòng chat trực tiếp. Hãy xóa cuộc hội thoại thay vào đó.");
+        }
 
         ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User không phải thành viên của phòng chat này"));
+        if (member.getRole() == ChatRoomMember.MemberRole.ADMIN) {
+            long adminCount = chatRoomMemberRepository.findByChatRoom_RoomId(roomId).stream()
+                    .filter(m -> m.getRole() == ChatRoomMember.MemberRole.ADMIN)
+                    .count();
+            if (adminCount <= 1) {
+                throw new BadRequestException(
+                        "Bạn là admin duy nhất. Hãy chuyển quyền admin cho thành viên khác trước khi rời phòng.");
+            }
+        }
 
         User leavingUser = member.getUser();
         chatRoomMemberRepository.delete(member);
@@ -389,7 +468,30 @@ public class ChatRoomService {
         return chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
     }
 
-    // Lấy project chat room theo projectId
+    public List<ChatRoomDTO.MemberDTO> getRoomMemberDTOs(Long roomId, Long userId) {
+        if (roomId == null || userId == null) {
+            throw new BadRequestException("Room ID và User ID không được để trống");
+        }
+        chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat với ID " + roomId + " không tồn tại"));
+
+        boolean isMember = chatRoomMemberRepository.existsByChatRoom_RoomIdAndUser_UserId(roomId, userId);
+        if (!isMember) {
+            throw new BadRequestException("Bạn không có quyền xem danh sách thành viên phòng chat này");
+        }
+
+        List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom_RoomId(roomId);
+        return members.stream()
+                .filter(m -> m.getUser() != null)
+                .map(m -> new ChatRoomDTO.MemberDTO(
+                        m.getUser().getUserId(),
+                        m.getUser().getUsername(),
+                        m.getUser().getEmail(),
+                        m.getUser().getAvatarUrl(),
+                        m.getUser().getFullName()))
+                .collect(Collectors.toList());
+    }
+
     public ChatRoomDTO getProjectChatRoom(Long projectId, Long userId) {
         if (projectId == null || userId == null) {
             throw new BadRequestException("Project ID và User ID không được để trống");
@@ -417,6 +519,24 @@ public class ChatRoomService {
         return convertToChatRoomDTO(chatRoom);
     }
 
+    /**
+     * Mark all messages in a room as read for the given user
+     * by updating lastReadAt on the ChatRoomMember record.
+     */
+    public void markRoomAsRead(Long roomId, Long userId) {
+        if (roomId == null || userId == null) {
+            throw new BadRequestException("Room ID và User ID không được để trống");
+        }
+        chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
+
+        ChatRoomMember member = chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(roomId, userId)
+                .orElseThrow(() -> new BadRequestException("Bạn không phải thành viên của phòng chat này"));
+
+        member.setLastReadAt(LocalDateTime.now());
+        chatRoomMemberRepository.save(member);
+    }
+
     private ChatRoomDTO convertToChatRoomDTO(ChatRoom chatRoom) {
         if (chatRoom == null) {
             throw new IllegalArgumentException("ChatRoom không được null");
@@ -428,25 +548,49 @@ public class ChatRoomService {
         dto.setAvatarUrl(chatRoom.getAvatarUrl());
         dto.setCreatedAt(chatRoom.getCreatedAt());
 
+        // Set creator as lightweight DTO
+        if (chatRoom.getCreatedBy() != null) {
+            User creator = chatRoom.getCreatedBy();
+            dto.setCreatedBy(new ChatRoomDTO.MemberDTO(
+                    creator.getUserId(), creator.getUsername(),
+                    creator.getEmail(), creator.getAvatarUrl(),
+                    creator.getFullName()));
+        }
+
         // Set project info if this is a project chat
         if (chatRoom.getProject() != null) {
             dto.setProjectID(chatRoom.getProject().getProjectId());
             dto.setProjectName(chatRoom.getProject().getName());
         }
 
-        // Fetch members và set vào DTO (quan trọng cho DIRECT chat để hiển thị tên)
+        // Fetch members and map to lightweight DTOs (no password, no fcmToken)
         List<ChatRoomMember> memberList = chatRoomMemberRepository.findByChatRoom_RoomId(chatRoom.getRoomId());
-        List<User> members = memberList.stream()
+        List<ChatRoomDTO.MemberDTO> memberDTOs = memberList.stream()
                 .map(ChatRoomMember::getUser)
                 .filter(user -> user != null)
+                .map(user -> new ChatRoomDTO.MemberDTO(
+                        user.getUserId(), user.getUsername(),
+                        user.getEmail(), user.getAvatarUrl(),
+                        user.getFullName()))
                 .collect(Collectors.toList());
-        dto.setMembers(members);
-        dto.setMemberCount(members.size());
+        dto.setMembers(memberDTOs);
+        dto.setMemberCount(memberDTOs.size());
 
-        // Fetch and set last message
+        // Fetch and set last message as lightweight DTO
         Message lastMessage = messageRepository.findTopByChatRoom_RoomIdOrderByCreatedAtDesc(chatRoom.getRoomId());
         if (lastMessage != null) {
-            dto.setLastMessage(lastMessage);
+            ChatRoomDTO.LastMessageDTO lastMsgDTO = new ChatRoomDTO.LastMessageDTO();
+            lastMsgDTO.setMessageId(lastMessage.getMessageId());
+            lastMsgDTO.setContent(lastMessage.getContent());
+            lastMsgDTO.setCreatedAt(lastMessage.getCreatedAt());
+            lastMsgDTO.setMessageType(lastMessage.getMessageType() != null
+                    ? lastMessage.getMessageType().name()
+                    : null);
+            if (lastMessage.getSender() != null) {
+                lastMsgDTO.setSenderUsername(lastMessage.getSender().getUsername());
+                lastMsgDTO.setSenderId(lastMessage.getSender().getUserId());
+            }
+            dto.setLastMessage(lastMsgDTO);
             dto.setLastMessageAt(lastMessage.getCreatedAt());
         }
 

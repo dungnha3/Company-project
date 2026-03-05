@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,7 +24,6 @@ import org.springframework.data.domain.Pageable;
 
 import DoAn.BE.common.annotation.FeatureFlag;
 
-// [Controller quản lý dự án] (Role: Project Members)
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -34,9 +34,6 @@ public class ProjectController {
     private final ProjectMemberService projectMemberService;
     private final StorageProjectIntegrationService storageProjectIntegrationService;
 
-    // ==================== PROJECT CRUD ====================
-
-    // [Tạo dự án mới] (Role: Authenticated User)
     @PostMapping
     public ResponseEntity<ProjectDTO> createProject(
             @Valid @RequestBody CreateProjectRequest request,
@@ -45,8 +42,8 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.CREATED).body(project);
     }
 
-    // [Lấy thông tin dự án] (Role: Project Member)
     @GetMapping("/{projectId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ProjectDTO> getProject(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -54,8 +51,8 @@ public class ProjectController {
         return ResponseEntity.ok(project);
     }
 
-    // [Lấy tất cả dự án mà user có quyền truy cập] (Role: Authenticated User)
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<ProjectDTO>> getAllProjects(
             @AuthenticationPrincipal User currentUser,
             Pageable pageable) {
@@ -63,8 +60,8 @@ public class ProjectController {
         return ResponseEntity.ok(projects);
     }
 
-    // [Lấy các dự án của user] (Role: Authenticated User)
     @GetMapping("/my-projects")
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<ProjectDTO>> getMyProjects(
             @AuthenticationPrincipal User currentUser,
             Pageable pageable) {
@@ -72,7 +69,6 @@ public class ProjectController {
         return ResponseEntity.ok(projects);
     }
 
-    // [Cập nhật dự án] (Role: Project Owner/Manager)
     @PutMapping("/{projectId}")
     public ResponseEntity<ProjectDTO> updateProject(
             @PathVariable Long projectId,
@@ -82,7 +78,6 @@ public class ProjectController {
         return ResponseEntity.ok(project);
     }
 
-    // [Xóa dự án] (Role: Project Owner)
     @DeleteMapping("/{projectId}")
     public ResponseEntity<Void> deleteProject(
             @PathVariable Long projectId,
@@ -91,9 +86,6 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    // ==================== MEMBER MANAGEMENT ====================
-
-    // [Thêm thành viên vào dự án] (Role: Project Owner/Manager)
     @PostMapping("/{projectId}/members")
     public ResponseEntity<ProjectMemberDTO> addMember(
             @PathVariable Long projectId,
@@ -103,8 +95,8 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.CREATED).body(member);
     }
 
-    // [Lấy danh sách thành viên dự án] (Role: Project Member)
     @GetMapping("/{projectId}/members")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ProjectMemberDTO>> getProjectMembers(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -112,7 +104,6 @@ public class ProjectController {
         return ResponseEntity.ok(members);
     }
 
-    // [Xóa thành viên khỏi dự án] (Role: Project Owner/Manager)
     @DeleteMapping("/{projectId}/members/{memberId}")
     public ResponseEntity<Void> removeMember(
             @PathVariable Long projectId,
@@ -122,7 +113,6 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    // [Cập nhật vai trò thành viên] (Role: Project Owner)
     @PatchMapping("/{projectId}/members/{memberId}/role")
     public ResponseEntity<ProjectMemberDTO> updateMemberRole(
             @PathVariable Long projectId,
@@ -134,30 +124,32 @@ public class ProjectController {
         return ResponseEntity.ok(member);
     }
 
-    // ==================== FILE MANAGEMENT ====================
-
-    // [Lấy danh sách file của dự án] (Role: Project Member)
     @GetMapping("/{projectId}/files")
-    public ResponseEntity<List<FileDTO>> getProjectFiles(@PathVariable Long projectId) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<FileDTO>> getProjectFiles(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
+        projectMemberService.validateProjectAccess(projectId, currentUser.getUserId());
         List<File> files = storageProjectIntegrationService.getProjectFiles(projectId);
         return ResponseEntity.ok(files.stream()
                 .map(this::convertToFileDTO)
                 .collect(Collectors.toList()));
     }
 
-    // [Lấy thống kê file của dự án] (Role: Project Member)
     @GetMapping("/{projectId}/files/stats")
-    public ResponseEntity<ProjectFileStats> getProjectFileStats(@PathVariable Long projectId) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<ProjectFileStats> getProjectFileStats(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
+        projectMemberService.validateProjectAccess(projectId, currentUser.getUserId());
         return ResponseEntity.ok(storageProjectIntegrationService.getProjectFileStats(projectId));
     }
 
-    // [Chuyển đổi File entity sang DTO] (Role: Internal)
     private FileDTO convertToFileDTO(File file) {
         FileDTO dto = new FileDTO();
         dto.setFileId(file.getFileId());
         dto.setFilename(file.getFilename());
         dto.setOriginalFilename(file.getOriginalFilename());
-        dto.setFilePath(file.getFilePath());
         dto.setFileSize(file.getFileSize());
         dto.setMimeType(file.getMimeType());
         if (file.getOwner() != null) {

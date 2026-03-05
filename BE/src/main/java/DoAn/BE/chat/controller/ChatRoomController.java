@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,6 @@ import java.util.HashMap;
 
 import DoAn.BE.common.annotation.FeatureFlag;
 
-// [Controller quản lý phòng chat - CRUD, members, settings] (Role: Chat Users)
 @RestController
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
@@ -28,9 +28,6 @@ public class ChatRoomController {
 
     private final ChatRoomService chatRoomService;
 
-    // ==================== CREATE ====================
-
-    // [Tạo phòng chat mới] (Role: Authenticated User)
     @PostMapping
     public ResponseEntity<ChatRoomDTO> createChatRoom(
             @Valid @RequestBody CreateChatRoomRequest request,
@@ -39,7 +36,6 @@ public class ChatRoomController {
         return ResponseEntity.status(HttpStatus.CREATED).body(chatRoom);
     }
 
-    // [Tìm hoặc tạo chat 1-1] (Role: Authenticated User)
     @PostMapping("/direct/{userId}")
     public ResponseEntity<ChatRoomDTO> createDirectChat(
             @PathVariable Long userId,
@@ -48,10 +44,8 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRoom);
     }
 
-    // ==================== READ ====================
-
-    // [Lấy danh sách phòng chat của user] (Role: Self)
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<org.springframework.data.domain.Page<ChatRoomDTO>> getMyChatRooms(
             @AuthenticationPrincipal User currentUser,
             org.springframework.data.domain.Pageable pageable) {
@@ -60,8 +54,8 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRooms);
     }
 
-    // [Lấy thông tin phòng chat theo ID] (Role: Room Member)
     @GetMapping("/{roomId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ChatRoomDTO> getChatRoom(
             @PathVariable Long roomId,
             @AuthenticationPrincipal User currentUser) {
@@ -69,8 +63,8 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRoom);
     }
 
-    // [Lấy project chat room theo projectId] (Role: Project Member)
     @GetMapping("/project/{projectId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ChatRoomDTO> getProjectChatRoom(
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
@@ -78,18 +72,16 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRoom);
     }
 
-    // [Lấy danh sách thành viên trong phòng] (Role: Room Member)
     @GetMapping("/{roomId}/members")
-    public ResponseEntity<List<ChatRoomMember>> getRoomMembers(
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<DoAn.BE.chat.dto.ChatRoomDTO.MemberDTO>> getRoomMembers(
             @PathVariable Long roomId,
             @AuthenticationPrincipal User currentUser) {
-        List<ChatRoomMember> members = chatRoomService.getRoomMembers(roomId, currentUser.getUserId());
+        List<DoAn.BE.chat.dto.ChatRoomDTO.MemberDTO> members = chatRoomService.getRoomMemberDTOs(roomId,
+                currentUser.getUserId());
         return ResponseEntity.ok(members);
     }
 
-    // ==================== MEMBERS ====================
-
-    // [Thêm thành viên vào phòng chat] (Role: Room Admin)
     @PostMapping("/{roomId}/members/{userId}")
     public ResponseEntity<ChatRoomDTO> addMemberToRoom(
             @PathVariable Long roomId,
@@ -99,7 +91,6 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRoom);
     }
 
-    // [Xóa thành viên khỏi phòng chat] (Role: Room Admin)
     @DeleteMapping("/{roomId}/members/{userId}")
     public ResponseEntity<ChatRoomDTO> removeMemberFromRoom(
             @PathVariable Long roomId,
@@ -109,19 +100,33 @@ public class ChatRoomController {
         return ResponseEntity.ok(chatRoom);
     }
 
-    // [Thay đổi quyền thành viên] (Role: Room Admin)
     @PutMapping("/{roomId}/members/{userId}/role")
     public ResponseEntity<ChatRoomDTO> changeMemberRole(
             @PathVariable Long roomId,
             @PathVariable Long userId,
             @RequestParam String role,
             @AuthenticationPrincipal User currentUser) {
-        ChatRoomMember.MemberRole memberRole = ChatRoomMember.MemberRole.valueOf(role.toUpperCase());
+        ChatRoomMember.MemberRole memberRole;
+        try {
+            memberRole = ChatRoomMember.MemberRole.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new DoAn.BE.common.exception.BadRequestException("Role không hợp lệ: " + role);
+        }
         ChatRoomDTO chatRoom = chatRoomService.changeMemberRole(roomId, userId, memberRole, currentUser.getUserId());
         return ResponseEntity.ok(chatRoom);
     }
 
-    // [Rời khỏi phòng chat] (Role: Room Member)
+    @PutMapping("/{roomId}/read")
+    @Transactional
+    public ResponseEntity<Map<String, String>> markRoomAsRead(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal User currentUser) {
+        chatRoomService.markRoomAsRead(roomId, currentUser.getUserId());
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Đã đánh dấu đã đọc");
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{roomId}/leave")
     public ResponseEntity<Map<String, String>> leaveRoom(
             @PathVariable Long roomId,
@@ -132,9 +137,6 @@ public class ChatRoomController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== UPDATE ====================
-
-    // [Cập nhật thông tin phòng chat] (Role: Room Admin)
     @PutMapping("/{roomId}/settings")
     public ResponseEntity<ChatRoomDTO> updateRoomSettings(
             @PathVariable Long roomId,

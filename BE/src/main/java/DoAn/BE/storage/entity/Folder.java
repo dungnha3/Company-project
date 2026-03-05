@@ -12,7 +12,6 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.Filter;
 
-// [Entity quản lý folder - PERSONAL, SHARED, PROJECT với cấu trúc tree] (Role: Data Model)
 @Entity
 @Table(name = "folders", indexes = {
         // Index cho query: findByOwner (User's folders)
@@ -24,16 +23,18 @@ import org.hibernate.annotations.Filter;
         // Index cho query: findByProject (Project folders)
         @jakarta.persistence.Index(name = "idx_folder_project", columnList = "project_id")
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Folder extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "folder_id")
+    @EqualsAndHashCode.Include
     private Long folderId;
 
     @Column(name = "name", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
@@ -71,7 +72,6 @@ public class Folder extends TenantScopedEntity {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Lấy đường dẫn đầy đủ của folder
     public String getFullPath() {
         if (parentFolder != null) {
             return parentFolder.getFullPath() + "/" + name;
@@ -79,22 +79,18 @@ public class Folder extends TenantScopedEntity {
         return name;
     }
 
-    // Kiểm tra folder gốc (không có parent)
     public boolean isRoot() {
         return parentFolder == null;
     }
 
-    // Kiểm tra folder của project
     public boolean isProjectFolder() {
         return folderType == FolderType.PROJECT;
     }
 
-    // Kiểm tra folder được share
     public boolean isSharedFolder() {
         return folderType == FolderType.SHARED;
     }
 
-    // Kiểm tra folder công ty
     public boolean isCompanyFolder() {
         return folderType == FolderType.COMPANY;
     }

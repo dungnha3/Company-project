@@ -11,7 +11,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// [Request tạo Issue/task mới] (Role: Data Transfer)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,6 +31,10 @@ public class CreateIssueRequest {
     private Priority priority;
     private Long assigneeId;
     private BigDecimal estimatedHours;
+    private LocalDate startDate;
     private LocalDate dueDate;
     private Long sprintId;
+    private Integer weight; // 1-10
+    private Boolean isImportant;
+    private Boolean isUrgent;
 }

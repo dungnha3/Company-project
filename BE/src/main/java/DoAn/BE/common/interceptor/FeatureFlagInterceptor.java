@@ -15,10 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Interceptor that checks if a feature is enabled for the current company
- * before allowing access to a controller/method marked with @FeatureFlag.
- */
+// Interceptor that checks if a feature is enabled for the current company
+// before allowing access to a controller/method marked with @FeatureFlag.
+// /
 @Slf4j
 @Component
 public class FeatureFlagInterceptor implements HandlerInterceptor {
@@ -66,9 +65,8 @@ public class FeatureFlagInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    /**
-     * Check if a feature is enabled based on CompanySettings
-     */
+    // Check if a feature is enabled based on CompanySettings
+    // /
     private boolean isFeatureEnabled(CompanySettings settings, String featureCode) {
         if (settings == null) {
             // Fail-open: allow if no settings (legacy companies)

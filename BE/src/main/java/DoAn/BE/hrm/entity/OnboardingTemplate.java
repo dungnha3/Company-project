@@ -9,10 +9,11 @@ import java.util.List;
 
 @Entity
 @Table(name = "onboarding_templates")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @ToString(exclude = { "steps" })
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class OnboardingTemplate extends TenantScopedEntity {
@@ -20,6 +21,7 @@ public class OnboardingTemplate extends TenantScopedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "template_id")
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(name = "name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")

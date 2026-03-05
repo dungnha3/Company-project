@@ -7,17 +7,19 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-// [Entity trạng thái Issue - To Do, In Progress, Done] (Role: Data Model)
 @Entity
 @Table(name = "issue_statuses")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class IssueStatus {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "status_id")
+    @EqualsAndHashCode.Include
     private Integer statusId;
 
     @Column(nullable = false, unique = true, length = 50)
@@ -41,7 +43,6 @@ public class IssueStatus {
         this.color = color;
     }
 
-    // Helper methods
     public boolean isToDo() {
         return "To Do".equals(this.name);
     }

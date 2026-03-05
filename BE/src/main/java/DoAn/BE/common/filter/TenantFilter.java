@@ -19,11 +19,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TenantFilter extends OncePerRequestFilter {
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private DoAn.BE.company.repository.CompanyMemberRepository companyMemberRepository;
+    private final DoAn.BE.company.repository.CompanyMemberRepository companyMemberRepository;
+    private final DoAn.BE.company.repository.CompanyRepository companyRepository;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private DoAn.BE.company.repository.CompanyRepository companyRepository;
+    public TenantFilter(DoAn.BE.company.repository.CompanyMemberRepository companyMemberRepository,
+            DoAn.BE.company.repository.CompanyRepository companyRepository) {
+        this.companyMemberRepository = companyMemberRepository;
+        this.companyRepository = companyRepository;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -61,7 +64,6 @@ public class TenantFilter extends OncePerRequestFilter {
                             TenantContext.setCompanyId(companyId);
                             log.debug("System Admin {} accessing company {} via bypass", userId, companyId);
                         } else {
-                            // [SAAS SECURITY] Step 1: Check if Company is Active (Kill Switch)
                             boolean isCompanyActive = companyRepository.existsByCompanyIdAndIsActiveTrue(companyId);
                             if (!isCompanyActive) {
                                 log.warn("Access denied: Company {} is INACTIVE/LOCKED", companyId);
@@ -69,8 +71,6 @@ public class TenantFilter extends OncePerRequestFilter {
                                         "Công ty này đang bị khóa hoặc tạm ngưng hoạt động.");
                                 return;
                             }
-
-                            // [SAAS SECURITY] Step 2: Check if User is Active Member
                             boolean isMember = companyMemberRepository
                                     .existsByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(userId, companyId);
 
@@ -113,11 +113,9 @@ public class TenantFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // Sử dụng danh sách Public Endpoints chung
         String path = request.getRequestURI();
         for (String publicEndpoint : DoAn.BE.common.util.AppConstants.PUBLIC_ENDPOINTS) {
-            // Simple ant-style match simulation or exact match prefix
-            String prefix = publicEndpoint.replace("// ", "");
+            String prefix = publicEndpoint.replace("/**", "");
             if (path.startsWith(prefix)) {
                 return true;
             }

@@ -1,18 +1,20 @@
 package DoAn.BE.hrm.service;
 
+import DoAn.BE.hrm.dto.CreateOKRRequest;
+import DoAn.BE.hrm.dto.UpdateOKRRequest;
 import DoAn.BE.hrm.entity.OKR;
 import DoAn.BE.hrm.entity.KeyResult;
 import DoAn.BE.hrm.repository.OKRRepository;
 import DoAn.BE.hrm.repository.KeyResultRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.common.util.SecurityUtil;
+import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -20,12 +22,20 @@ public class OKRService {
 
     private final OKRRepository okrRepository;
     private final KeyResultRepository keyResultRepository;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
 
     public List<OKR> findAll(String period) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (period != null && !period.isEmpty()) {
+            if (companyId != null) {
+                return okrRepository.findByPeriodAndCompany_CompanyId(period, companyId);
+            }
             return okrRepository.findByPeriod(period);
         }
-        return okrRepository.findAll();
+        if (companyId != null) {
+            return okrRepository.findByCompany_CompanyId(companyId);
+        }
+        return java.util.Collections.emptyList();
     }
 
     public List<OKR> findByCurrentUser() {
@@ -43,30 +53,44 @@ public class OKRService {
     }
 
     @Transactional
-    public OKR create(Map<String, Object> request) {
+    public OKR create(CreateOKRRequest request) {
         User currentUser = SecurityUtil.getCurrentUser();
 
+        // Validate keyResult targets
+        if (request.getKeyResults() != null) {
+            for (CreateOKRRequest.KeyResultRequest kr : request.getKeyResults()) {
+                if (kr.getTarget() != null && kr.getTarget() < 0) {
+                    throw new BadRequestException("Key result target cannot be negative");
+                }
+            }
+        }
+
         OKR okr = new OKR();
-        okr.setTitle((String) request.get("title"));
-        okr.setDescription((String) request.get("description"));
-        okr.setPeriod((String) request.get("period"));
+        okr.setTitle(request.getTitle());
+        okr.setDescription(request.getDescription());
+        okr.setPeriod(request.getPeriod());
         okr.setOwner(currentUser);
         okr.setStatus(OKR.OKRStatus.IN_PROGRESS);
         okr.setProgress(0);
 
-        // Save OKR first
+        // Explicitly set company from TenantContext to avoid @PrePersist detached
+        // entity issue
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId != null) {
+            DoAn.BE.company.entity.Company company = new DoAn.BE.company.entity.Company();
+            company.setCompanyId(companyId);
+            okr.setCompany(company);
+        }
+
         okr = okrRepository.save(okr);
 
-        // Add key results if provided
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> keyResultsData = (List<Map<String, Object>>) request.get("keyResults");
-        if (keyResultsData != null) {
-            for (Map<String, Object> krData : keyResultsData) {
+        if (request.getKeyResults() != null) {
+            for (CreateOKRRequest.KeyResultRequest krData : request.getKeyResults()) {
                 KeyResult kr = new KeyResult();
-                kr.setTitle((String) krData.get("title"));
-                kr.setTarget(parseDouble(krData.get("target")));
+                kr.setTitle(krData.getTitle());
+                kr.setTarget(krData.getTarget() != null ? krData.getTarget() : 0.0);
                 kr.setCurrent(0.0);
-                kr.setUnit((String) krData.get("unit"));
+                kr.setUnit(krData.getUnit());
                 kr.setOkr(okr);
                 okr.getKeyResults().add(kr);
             }
@@ -77,36 +101,37 @@ public class OKRService {
     }
 
     @Transactional
-    public OKR update(Long id, Map<String, Object> request) {
+    public OKR update(Long id, UpdateOKRRequest request) {
         OKR okr = findById(id);
+        User currentUser = SecurityUtil.getCurrentUser();
+        boolean isOwner = okr.getOwner() != null && okr.getOwner().getUserId().equals(currentUser.getUserId());
+        if (!isOwner && !accessControlService.hasPermission("hr.editProfile")) {
+            throw new DoAn.BE.common.exception.ForbiddenException(
+                    "Bạn không có quyền chỉnh sửa OKR của người khác");
+        }
+        if (request.getTitle() != null) {
+            okr.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            okr.setDescription(request.getDescription());
+        }
+        if (request.getPeriod() != null) {
+            okr.setPeriod(request.getPeriod());
+        }
+        if (request.getStatus() != null) {
+            okr.setStatus(request.getStatus());
+        }
 
-        if (request.containsKey("title")) {
-            okr.setTitle((String) request.get("title"));
-        }
-        if (request.containsKey("description")) {
-            okr.setDescription((String) request.get("description"));
-        }
-        if (request.containsKey("period")) {
-            okr.setPeriod((String) request.get("period"));
-        }
-        if (request.containsKey("status")) {
-            okr.setStatus(OKR.OKRStatus.valueOf((String) request.get("status")));
-        }
-
-        // Update key results progress
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> keyResultsData = (List<Map<String, Object>>) request.get("keyResults");
-        if (keyResultsData != null) {
-            for (Map<String, Object> krData : keyResultsData) {
-                Long krId = parseLong(krData.get("id"));
-                if (krId != null) {
-                    KeyResult kr = keyResultRepository.findById(krId).orElse(null);
+        if (request.getKeyResults() != null) {
+            for (UpdateOKRRequest.KeyResultUpdateRequest krData : request.getKeyResults()) {
+                if (krData.getId() != null) {
+                    KeyResult kr = keyResultRepository.findById(krData.getId()).orElse(null);
                     if (kr != null) {
-                        if (krData.containsKey("current")) {
-                            kr.setCurrent(parseDouble(krData.get("current")));
+                        if (krData.getCurrent() != null) {
+                            kr.setCurrent(krData.getCurrent());
                         }
-                        if (krData.containsKey("title")) {
-                            kr.setTitle((String) krData.get("title"));
+                        if (krData.getTitle() != null) {
+                            kr.setTitle(krData.getTitle());
                         }
                         keyResultRepository.save(kr);
                     }
@@ -114,10 +139,8 @@ public class OKRService {
             }
         }
 
-        // Recalculate progress
         okr.calculateProgress();
 
-        // Auto-update status based on progress
         if (okr.getProgress() >= 100) {
             okr.setStatus(OKR.OKRStatus.COMPLETED);
         } else if (okr.getProgress() >= 70) {
@@ -134,30 +157,12 @@ public class OKRService {
     @Transactional
     public void delete(Long id) {
         OKR okr = findById(id);
+        User currentUser = DoAn.BE.common.util.SecurityUtil.getCurrentUser();
+        boolean isOwner = okr.getOwner() != null && okr.getOwner().getUserId().equals(currentUser.getUserId());
+        if (!isOwner && !accessControlService.hasPermission("hr.editProfile")) {
+            throw new DoAn.BE.common.exception.ForbiddenException(
+                    "Bạn không có quyền xóa OKR của người khác");
+        }
         okrRepository.delete(okr);
-    }
-
-    private Double parseDouble(Object value) {
-        if (value == null)
-            return 0.0;
-        if (value instanceof Number)
-            return ((Number) value).doubleValue();
-        try {
-            return Double.parseDouble(value.toString());
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
-    }
-
-    private Long parseLong(Object value) {
-        if (value == null)
-            return null;
-        if (value instanceof Number)
-            return ((Number) value).longValue();
-        try {
-            return Long.parseLong(value.toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

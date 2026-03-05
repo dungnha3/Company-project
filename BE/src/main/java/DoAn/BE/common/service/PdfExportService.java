@@ -21,10 +21,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * Service for generating PDF documents
- * Provides utilities for creating tables, headers, and styled content
- */
+// Service for generating PDF documents
+// Provides utilities for creating tables, headers, and styled content
+// /
 @Service
 @Slf4j
 public class PdfExportService {
@@ -36,16 +35,14 @@ public class PdfExportService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    /**
-     * Builder for creating PDF documents
-     */
+    // Builder for creating PDF documents
+    // /
     public PdfBuilder createDocument() {
         return new PdfBuilder();
     }
 
-    /**
-     * Builder class for fluent PDF creation
-     */
+    // Builder class for fluent PDF creation
+    // /
     public static class PdfBuilder {
         private final ByteArrayOutputStream outputStream;
         private final PdfDocument pdfDocument;
@@ -59,16 +56,35 @@ public class PdfExportService {
             document.setMargins(40, 40, 40, 40);
 
             try {
-                // Use built-in Helvetica font (supports basic characters)
-                this.font = PdfFontFactory.createFont();
+                // Try system fonts first; fall back to Helvetica
+                String[] unicodeFonts = {
+                        "C:/Windows/Fonts/arial.ttf", // Windows
+                        "C:/Windows/Fonts/segoeui.ttf", // Windows alt
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", // Linux
+                        "/System/Library/Fonts/Helvetica.ttc" // macOS
+                };
+                PdfFont unicodeFont = null;
+                for (String fontPath : unicodeFonts) {
+                    try {
+                        java.io.File f = new java.io.File(fontPath);
+                        if (f.exists()) {
+                            unicodeFont = PdfFontFactory.createFont(fontPath,
+                                    com.itextpdf.io.font.PdfEncodings.IDENTITY_H,
+                                    com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                            break;
+                        }
+                    } catch (Exception ignored) {
+                        // Try next font
+                    }
+                }
+                this.font = (unicodeFont != null) ? unicodeFont : PdfFontFactory.createFont();
             } catch (IOException e) {
                 log.error("Failed to create font", e);
             }
         }
 
-        /**
-         * Add title to the document
-         */
+        // Add title to the document
+        // /
         public PdfBuilder addTitle(String title) {
             Paragraph titlePara = new Paragraph(title)
                     .setFont(font)
@@ -80,9 +96,8 @@ public class PdfExportService {
             return this;
         }
 
-        /**
-         * Add subtitle
-         */
+        // Add subtitle
+        // /
         public PdfBuilder addSubtitle(String subtitle) {
             Paragraph subtitlePara = new Paragraph(subtitle)
                     .setFont(font)
@@ -94,9 +109,8 @@ public class PdfExportService {
             return this;
         }
 
-        /**
-         * Add section header
-         */
+        // Add section header
+        // /
         public PdfBuilder addSectionHeader(String header) {
             Paragraph headerPara = new Paragraph(header)
                     .setFont(font)
@@ -109,9 +123,8 @@ public class PdfExportService {
             return this;
         }
 
-        /**
-         * Add a simple table with headers and data
-         */
+        // Add a simple table with headers and data
+        // /
         public PdfBuilder addTable(List<String> headers, List<List<String>> rows) {
             Table table = new Table(UnitValue.createPercentArray(headers.size()))
                     .useAllAvailableWidth();
@@ -145,9 +158,8 @@ public class PdfExportService {
             return this;
         }
 
-        /**
-         * Add key-value pairs as a summary block
-         */
+        // Add key-value pairs as a summary block
+        // /
         public PdfBuilder addSummary(List<String[]> keyValues) {
             Table table = new Table(2);
             table.setWidth(UnitValue.createPercentValue(50));
@@ -169,25 +181,22 @@ public class PdfExportService {
             return this;
         }
 
-        /**
-         * Add paragraph text
-         */
+        // Add paragraph text
+        // /
         public PdfBuilder addParagraph(String text) {
             document.add(new Paragraph(text).setFont(font).setFontSize(10));
             return this;
         }
 
-        /**
-         * Add a line separator
-         */
+        // Add a line separator
+        // /
         public PdfBuilder addSeparator() {
             document.add(new Paragraph("\n"));
             return this;
         }
 
-        /**
-         * Add footer with page numbers
-         */
+        // Add footer with page numbers
+        // /
         public PdfBuilder addFooter(String companyName) {
             int numPages = pdfDocument.getNumberOfPages();
             for (int i = 1; i <= numPages; i++) {
@@ -213,43 +222,36 @@ public class PdfExportService {
             return this;
         }
 
-        /**
-         * Build and return the PDF as byte array
-         */
+        // Build and return the PDF as byte array
+        // /
         public byte[] build() {
             document.close();
             return outputStream.toByteArray();
         }
     }
 
-    // ==================== HELPER METHODS ====================
-
-    /**
-     * Format date for display in PDF
-     */
+    // Format date for display in PDF
+    // /
     public static String formatDate(LocalDate date) {
         return date != null ? date.format(DATE_FORMAT) : "";
     }
 
-    /**
-     * Format datetime for display in PDF
-     */
+    // Format datetime for display in PDF
+    // /
     public static String formatDateTime(LocalDateTime dateTime) {
         return dateTime != null ? dateTime.format(DATETIME_FORMAT) : "";
     }
 
-    /**
-     * Format currency (VND)
-     */
+    // Format currency (VND)
+    // /
     public static String formatCurrency(Number amount) {
         if (amount == null)
             return "";
         return String.format("%,.0f VND", amount.doubleValue());
     }
 
-    /**
-     * Format percentage
-     */
+    // Format percentage
+    // /
     public static String formatPercent(Number value) {
         if (value == null)
             return "";

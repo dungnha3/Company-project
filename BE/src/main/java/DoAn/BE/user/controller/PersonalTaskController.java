@@ -12,26 +12,26 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.service.PersonalTaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * PersonalTaskController - API cho Personal Tasks
- * 
- * Base path: /api/me/tasks
- * 
- * FREE: 10 tasks max
- * PRO: Unlimited + Labels + Recurring + Reminders
- */
+// PersonalTaskController - API cho Personal Tasks
+//
+// Base path: /api/me/tasks
+//
+// FREE: 10 tasks max
+// PRO: Unlimited + Labels + Recurring + Reminders
+// /
 @RestController
 @RequestMapping("/api/me/tasks")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PersonalTaskController {
 
     private final PersonalTaskService taskService;
 
-    /**
-     * GET /api/me/tasks
-     * Lấy danh sách personal tasks
-     */
+    // GET /api/me/tasks
+    // Lấy danh sách personal tasks
+    // /
     @GetMapping
     public ResponseEntity<List<PersonalTaskDto.Response>> getTasks(
             @RequestParam(required = false) TaskStatus status,
@@ -39,20 +39,18 @@ public class PersonalTaskController {
         return ResponseEntity.ok(taskService.getTasks(currentUser.getUserId(), status));
     }
 
-    /**
-     * GET /api/me/tasks/stats
-     * Lấy thống kê và quota info
-     */
+    // GET /api/me/tasks/stats
+    // Lấy thống kê và quota info
+    // /
     @GetMapping("/stats")
     public ResponseEntity<PersonalTaskDto.StatsResponse> getStats(
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(taskService.getStats(currentUser.getUserId()));
     }
 
-    /**
-     * POST /api/me/tasks
-     * Tạo task mới (kiểm tra quota)
-     */
+    // POST /api/me/tasks
+    // Tạo task mới (kiểm tra quota)
+    // /
     @PostMapping
     public ResponseEntity<PersonalTaskDto.Response> createTask(
             @Valid @RequestBody PersonalTaskDto.CreateRequest request,
@@ -60,10 +58,9 @@ public class PersonalTaskController {
         return ResponseEntity.ok(taskService.createTask(currentUser.getUserId(), request));
     }
 
-    /**
-     * PUT /api/me/tasks/{id}
-     * Cập nhật task
-     */
+    // PUT /api/me/tasks/{id}
+    // Cập nhật task
+    // /
     @PutMapping("/{id}")
     public ResponseEntity<PersonalTaskDto.Response> updateTask(
             @PathVariable Long id,
@@ -72,10 +69,9 @@ public class PersonalTaskController {
         return ResponseEntity.ok(taskService.updateTask(currentUser.getUserId(), id, request));
     }
 
-    /**
-     * DELETE /api/me/tasks/{id}
-     * Xóa task
-     */
+    // DELETE /api/me/tasks/{id}
+    // Xóa task
+    // /
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(
             @PathVariable Long id,

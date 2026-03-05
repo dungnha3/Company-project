@@ -95,7 +95,7 @@ export default function RoomInfoPanel({ roomId, onClose }) {
                     {/* Room Avatar & Name */}
                     <div className="p-6 text-center border-b border-gray-100">
                         <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
-                            {room?.type === 'DIRECT' ? (
+                            {room?.roomType === 'DIRECT' ? (
                                 room?.name?.charAt(0) || 'U'
                             ) : (
                                 <i className="fa-solid fa-users" />
@@ -138,8 +138,8 @@ export default function RoomInfoPanel({ roomId, onClose }) {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 transition-colors ${activeTab === tab.id
-                                        ? 'text-indigo-600 border-b-2 border-indigo-600'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'text-indigo-600 border-b-2 border-indigo-600'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 <i className={`fa-solid ${tab.icon}`} />

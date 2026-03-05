@@ -34,31 +34,29 @@ public class GeminiConfig {
 
     private static final String GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
-    // Kiểm tra API key đã được cấu hình chưa
     public boolean isConfigured() {
         return apiKey != null && !apiKey.isEmpty() && !apiKey.equals("your-gemini-api-key-here");
     }
 
-    // Tạo WebClient để gọi Gemini API
     @Bean
     public WebClient geminiWebClient() {
         if (!isConfigured()) {
-            log.warn("⚠️ Gemini API key chưa được cấu hình. AI features sẽ không hoạt động.");
+            log.warn("Gemini API key chưa được cấu hình. AI features sẽ không hoạt động.");
             log.warn("Vui lòng thiết lập GEMINI_API_KEY trong environment variables hoặc application.properties");
-            return null;
+            return WebClient.builder().build();
         }
 
-        log.info("✅ Gemini API đã được cấu hình với model: {}", model);
+        log.info("Gemini API đã được cấu hình với model: {}", model);
 
         return WebClient.builder()
                 .baseUrl(GEMINI_API_BASE_URL)
                 .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("x-goog-api-key", apiKey)
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
                 .build();
     }
 
-    // Build URL cho Gemini API
     public String buildApiUrl() {
-        return String.format("/models/%s:generateContent?key=%s", model, apiKey);
+        return String.format("/models/%s:generateContent", model);
     }
 }

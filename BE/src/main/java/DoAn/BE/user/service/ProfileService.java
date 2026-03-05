@@ -9,12 +9,12 @@ import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.user.dto.UpdatePasswordRequest;
 import DoAn.BE.user.dto.UpdateUserRequest;
+import DoAn.BE.user.entity.NotificationSettings;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
-// Service managing user profile (update, change password, online/offline status)
 @Service
 @Transactional
 @Slf4j
@@ -43,6 +43,10 @@ public class ProfileService {
         User user = getCurrentUserProfile(userId);
 
         if (request.getEmail() != null) {
+            if (!request.getEmail().equals(user.getEmail())
+                    && userRepository.findByEmail(request.getEmail()).isPresent()) {
+                throw new BadRequestException("Email đã được sử dụng bởi tài khoản khác");
+            }
             user.setEmail(request.getEmail());
         }
         if (request.getPhoneNumber() != null) {
@@ -61,21 +65,28 @@ public class ProfileService {
     }
 
     private void updateEmployeeInfo(Long userId, UpdateUserRequest request) {
-        // Find Employee by userId (if exists)
-        Employee employee = employeeRepository.findByUser_UserId(userId).orElse(null);
+        // Find Employee by userId in the current company context
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        Employee employee;
+        if (companyId != null) {
+            employee = employeeRepository.findByUser_UserIdAndCompany_CompanyId(userId, companyId).orElse(null);
+        } else {
+            log.warn("No company context. Skipping employee update for user {}", userId);
+            return;
+        }
         if (employee == null) {
             return; // User has no Employee record
         }
 
         // Update Employee fields from request
-        if (request.getHoTen() != null) {
-            employee.setFullName(request.getHoTen());
+        if (request.getFullName() != null) {
+            employee.setFullName(request.getFullName());
         }
-        if (request.getSdt() != null) {
-            employee.setPhone(request.getSdt());
+        if (request.getPhoneNumber() != null) {
+            employee.setPhone(request.getPhoneNumber());
         }
-        if (request.getDiaChi() != null) {
-            employee.setAddress(request.getDiaChi());
+        if (request.getAddress() != null) {
+            employee.setAddress(request.getAddress());
         }
 
         employeeRepository.save(employee);
@@ -83,12 +94,17 @@ public class ProfileService {
 
     public void changePassword(Long userId, UpdatePasswordRequest request) {
         User user = getCurrentUserProfile(userId);
-
+        if (request.getOldPassword() == null) {
+            throw new BadRequestException("Đầu vào mật khẩu cũ không hợp lệ");
+        }
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
             throw new BadRequestException("Old password is incorrect");
         }
 
         // Set new password
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu cũ");
+        }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
@@ -116,5 +132,45 @@ public class ProfileService {
         User user = getCurrentUserProfile(userId);
         user.setFcmToken(fcmToken);
         userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationSettings getNotificationSettings(Long userId) {
+        User user = getCurrentUserProfile(userId);
+        NotificationSettings settings = user.getNotificationSettings();
+        return settings != null ? settings : new NotificationSettings();
+    }
+
+    public NotificationSettings updateNotificationSettings(
+            Long userId, NotificationSettings settings) {
+        User user = getCurrentUserProfile(userId);
+        user.setNotificationSettings(settings);
+        userRepository.save(user);
+        log.info("User {} updated notification settings", user.getUsername());
+        return settings;
+    }
+
+    public void verifyPasswordAndDeactivate(Long userId, String password) {
+        User user = getCurrentUserProfile(userId);
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BadRequestException("Mật khẩu không đúng");
+        }
+        user.setIsActive(false);
+        user.setIsDeleted(true);
+        user.setOffline();
+        userRepository.save(user);
+        log.info("User {} deactivated their account", user.getUsername());
+    }
+
+    public void verifyPasswordAndDisable2fa(Long userId, String password) {
+        User user = getCurrentUserProfile(userId);
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BadRequestException("Mật khẩu không đúng");
+        }
+        user.setTwoFactorEnabled(false);
+        user.setTwoFactorSecret(null);
+        user.setTwoFactorBackupCodes(null);
+        userRepository.save(user);
+        log.info("User {} disabled 2FA", user.getUsername());
     }
 }

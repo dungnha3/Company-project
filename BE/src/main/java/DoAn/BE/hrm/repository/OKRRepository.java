@@ -20,4 +20,7 @@ public interface OKRRepository extends JpaRepository<OKR, Long> {
 
     @Query("SELECT o FROM OKR o WHERE (:period IS NULL OR o.period = :period)")
     List<OKR> findAllWithFilter(@Param("period") String period);
+    List<OKR> findByCompany_CompanyId(Long companyId);
+
+    List<OKR> findByPeriodAndCompany_CompanyId(String period, Long companyId);
 }

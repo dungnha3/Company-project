@@ -41,10 +41,15 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                      "m.isDeleted = false ORDER BY m.createdAt DESC")
        List<Message> searchMessagesByContent(@Param("roomId") Long roomId, @Param("keyword") String keyword);
 
-       // ==================== PAGINATED QUERIES ====================
+       @EntityGraph(attributePaths = { "sender" })
+       @Query("SELECT m FROM Message m WHERE m.chatRoom.roomId = :roomId AND " +
+                     "LOWER(m.content) LIKE LOWER(CONCAT('%', :keyword, '%')) AND " +
+                     "m.isDeleted = false ORDER BY m.createdAt DESC")
+       Page<Message> searchMessagesByContentPaged(@Param("roomId") Long roomId, @Param("keyword") String keyword,
+                     Pageable pageable);
 
        // [PAGINATED: For large chat rooms - load messages in chunks]
-       @EntityGraph(attributePaths = { "sender" })
+       @EntityGraph(attributePaths = { "sender", "replyToMessage", "replyToMessage.sender", "file" })
        @Query("SELECT m FROM Message m WHERE m.chatRoom.roomId = :roomId AND m.isDeleted = false ORDER BY m.createdAt DESC")
        Page<Message> findByRoomIdPaged(@Param("roomId") Long roomId, Pageable pageable);
 
@@ -54,4 +59,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                      "AND m.isDeleted = false ORDER BY m.createdAt DESC")
        Page<Message> findByRoomIdBeforeTime(@Param("roomId") Long roomId,
                      @Param("before") LocalDateTime before, Pageable pageable);
+
+       @Query("SELECT COUNT(m) FROM Message m WHERE m.chatRoom.roomId = :roomId AND m.isDeleted = false")
+       long countByRoomId(@Param("roomId") Long roomId);
 }

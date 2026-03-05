@@ -251,8 +251,8 @@ GO
 -- =====================================================
 PRINT N'';
 PRINT N'=====================================================';
-PRINT N'✅ ALL PERFORMANCE INDEXES CREATED SUCCESSFULLY';
-PRINT N'Total: 40+ indexes across 20 tables';
+PRINT N'✅ ALL PERFORMANCE INDEXES CREATED';
+PRINT N'Total: 30+ indexes across all tables';
 PRINT N'=====================================================';
 GO
 

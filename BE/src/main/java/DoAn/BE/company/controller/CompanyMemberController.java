@@ -6,6 +6,7 @@ import DoAn.BE.company.service.CompanyMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -13,11 +14,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/companies/{companyId}/members")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CompanyMemberController {
 
     private final CompanyMemberService memberService;
 
-    // Lấy danh sách thành viên
     @GetMapping
     public ResponseEntity<List<CompanyMemberDto>> getMembers(@PathVariable Long companyId) {
         return ResponseEntity.ok(memberService.getMembers(companyId));
@@ -43,14 +44,12 @@ public class CompanyMemberController {
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật vai trò thành công"));
     }
 
-    // Xóa thành viên (Kick)
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> removeMember(@PathVariable Long companyId, @PathVariable Long userId) {
         memberService.removeMember(companyId, userId);
         return ResponseEntity.ok().body(Map.of("message", "Đã xóa thành viên khỏi công ty"));
     }
 
-    // Cập nhật quyền hạn chi tiết (Fine-grained control)
     @PutMapping("/{userId}/permissions")
     public ResponseEntity<?> updatePermission(
             @PathVariable Long companyId,

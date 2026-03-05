@@ -1,5 +1,7 @@
 package DoAn.BE.chat.controller;
 
+import DoAn.BE.common.annotation.FeatureFlag;
+
 import DoAn.BE.chat.dto.MessDTO;
 import DoAn.BE.chat.dto.SendMessageRequest;
 import DoAn.BE.chat.service.MessageService;
@@ -13,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,16 +24,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// Controller quản lý tin nhắn - gửi, sửa, xóa, tìm kiếm, reactions
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
+@FeatureFlag("CHAT")
+@Transactional(readOnly = true)
 public class MessageController {
 
     private final MessageService messageService;
     private final ReactionService reactionService;
-
-    // ==================== SEND ====================
 
     @PostMapping("/rooms/{roomId}/messages")
     public ResponseEntity<MessDTO> sendMessage(
@@ -45,8 +47,6 @@ public class MessageController {
         return ResponseEntity.status(HttpStatus.CREATED).body(message);
     }
 
-    // ==================== READ ====================
-
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<Page<MessDTO>> getMessages(
             @PathVariable Long roomId,
@@ -58,11 +58,10 @@ public class MessageController {
         }
         Pageable pageable = PageRequest.of(page, size);
         List<MessDTO> messages = messageService.getMessagesByRoomId(roomId, currentUser.getUserId(), page, size);
-        Page<MessDTO> pageMessages = new PageImpl<>(messages, pageable, messages.size());
+        long totalMessages = messageService.countMessagesByRoomId(roomId);
+        Page<MessDTO> pageMessages = new PageImpl<>(messages, pageable, totalMessages);
         return ResponseEntity.ok(pageMessages);
     }
-
-    // ==================== UPDATE ====================
 
     @PutMapping("/messages/{messageId}/seen")
     public ResponseEntity<Map<String, String>> markMessageAsSeen(
@@ -91,8 +90,6 @@ public class MessageController {
         return ResponseEntity.ok(message);
     }
 
-    // ==================== DELETE ====================
-
     @DeleteMapping("/messages/{messageId}")
     public ResponseEntity<Map<String, String>> deleteMessage(
             @PathVariable Long messageId,
@@ -107,8 +104,6 @@ public class MessageController {
         return ResponseEntity.ok(response);
     }
 
-    // ==================== SEARCH ====================
-
     @GetMapping("/rooms/{roomId}/search")
     public ResponseEntity<List<MessDTO>> searchMessages(
             @PathVariable Long roomId,
@@ -116,12 +111,13 @@ public class MessageController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal User currentUser) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
         Pageable pageable = PageRequest.of(page, size);
         List<MessDTO> messages = messageService.searchMessages(roomId, keyword, currentUser.getUserId(), pageable);
         return ResponseEntity.ok(messages);
     }
-
-    // ==================== REACTIONS ====================
 
     // Thêm reaction (emoji) vào tin nhắn
     @PostMapping("/messages/{messageId}/reactions")
@@ -137,7 +133,6 @@ public class MessageController {
         return ResponseEntity.ok(response);
     }
 
-    // Xóa reaction khỏi tin nhắn
     @DeleteMapping("/messages/{messageId}/reactions/{emoji}")
     public ResponseEntity<Map<String, String>> removeReaction(
             @PathVariable Long messageId,
@@ -150,10 +145,10 @@ public class MessageController {
         return ResponseEntity.ok(response);
     }
 
-    // Lấy tất cả reactions của tin nhắn
     @GetMapping("/messages/{messageId}/reactions")
     public ResponseEntity<Map<String, List<String>>> getReactions(
-            @PathVariable Long messageId) {
+            @PathVariable Long messageId,
+            @AuthenticationPrincipal User currentUser) {
         Map<String, List<String>> reactions = reactionService.getReactionsByMessageId(messageId);
         return ResponseEntity.ok(reactions);
     }

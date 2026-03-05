@@ -13,7 +13,9 @@ import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.repository.IssueCustomFieldRepository;
 import DoAn.BE.project.repository.IssueCustomFieldValueRepository;
 import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.ProjectRepository;
+import DoAn.BE.common.exception.ProjectAccessDeniedException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,9 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Service for managing custom fields
- */
+// Service for managing custom fields
+// /
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -41,15 +42,13 @@ public class CustomFieldService {
     private final IssueCustomFieldValueRepository valueRepository;
     private final ProjectRepository projectRepository;
     private final IssueRepository issueRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final ObjectMapper objectMapper;
 
     private static final int MAX_CUSTOM_FIELDS_PER_PROJECT = 50;
 
-    // ==================== FIELD MANAGEMENT ====================
-
-    /**
-     * Get all custom fields for a project
-     */
+    // Get all custom fields for a project
+    // /
     public List<CustomFieldDto.Response> getFieldsByProject(Long projectId) {
         List<IssueCustomField> fields = fieldRepository
                 .findByProject_ProjectIdAndIsActiveTrueOrderByDisplayOrderAsc(projectId);
@@ -59,13 +58,13 @@ public class CustomFieldService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Create a new custom field for a project
-     */
+    // Create a new custom field for a project
+    // /
     @Transactional
-    public CustomFieldDto.Response createField(Long projectId, CustomFieldDto.CreateRequest request) {
+    public CustomFieldDto.Response createField(Long projectId, CustomFieldDto.CreateRequest request, Long userId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+        validateProjectAccess(projectId, userId);
 
         // Check limit
         long currentCount = fieldRepository.countByProject_ProjectIdAndIsActiveTrue(projectId);
@@ -106,13 +105,13 @@ public class CustomFieldService {
         return toResponse(field);
     }
 
-    /**
-     * Update an existing custom field
-     */
+    // Update an existing custom field
+    // /
     @Transactional
-    public CustomFieldDto.Response updateField(Long fieldId, CustomFieldDto.UpdateRequest request) {
+    public CustomFieldDto.Response updateField(Long fieldId, CustomFieldDto.UpdateRequest request, Long userId) {
         IssueCustomField field = fieldRepository.findById(fieldId)
                 .orElseThrow(() -> new ResourceNotFoundException("Custom field not found"));
+        validateProjectAccess(field.getProject().getProjectId(), userId);
 
         // Check duplicate name if changed
         if (request.getName() != null && !request.getName().equalsIgnoreCase(field.getName())) {
@@ -153,13 +152,13 @@ public class CustomFieldService {
         return toResponse(field);
     }
 
-    /**
-     * Delete a custom field (soft delete)
-     */
+    // Delete a custom field (soft delete)
+    // /
     @Transactional
-    public void deleteField(Long fieldId) {
+    public void deleteField(Long fieldId, Long userId) {
         IssueCustomField field = fieldRepository.findById(fieldId)
                 .orElseThrow(() -> new ResourceNotFoundException("Custom field not found"));
+        validateProjectAccess(field.getProject().getProjectId(), userId);
 
         field.setIsActive(false);
         fieldRepository.save(field);
@@ -167,24 +166,24 @@ public class CustomFieldService {
         log.info("Deleted (soft) custom field {}", fieldId);
     }
 
-    /**
-     * Reorder custom fields
-     */
+    // Reorder custom fields
+    // /
     @Transactional
-    public void reorderFields(Long projectId, List<Long> fieldIds) {
-        for (int i = 0; i < fieldIds.size(); i++) {
-            fieldRepository.findById(fieldIds.get(i)).ifPresent(field -> {
-                field.setDisplayOrder(fieldIds.indexOf(field.getFieldId()));
-                fieldRepository.save(field);
-            });
+    public void reorderFields(Long projectId, List<Long> fieldIds, Long userId) {
+        validateProjectAccess(projectId, userId);
+        List<IssueCustomField> fields = fieldRepository
+                .findByProject_ProjectIdAndIsActiveTrueOrderByDisplayOrderAsc(projectId);
+        for (IssueCustomField field : fields) {
+            int newIndex = fieldIds.indexOf(field.getFieldId());
+            if (newIndex >= 0 && !Integer.valueOf(newIndex).equals(field.getDisplayOrder())) {
+                field.setDisplayOrder(newIndex);
+            }
         }
+        fieldRepository.saveAll(fields);
     }
 
-    // ==================== VALUE MANAGEMENT ====================
-
-    /**
-     * Get all custom field values for an issue
-     */
+    // Get all custom field values for an issue
+    // /
     public List<CustomFieldDto.ValueResponse> getValuesByIssue(Long issueId) {
         List<IssueCustomFieldValue> values = valueRepository.findByIssue_IssueId(issueId);
 
@@ -193,13 +192,15 @@ public class CustomFieldService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Set custom field values for an issue (batch update)
-     */
+    // Set custom field values for an issue (batch update)
+    // /
     @Transactional
-    public void setValues(Long issueId, List<CustomFieldDto.ValueRequest> requests) {
+    public void setValues(Long issueId, List<CustomFieldDto.ValueRequest> requests, Long userId) {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found"));
+        if (issue.getProject() != null) {
+            validateProjectAccess(issue.getProject().getProjectId(), userId);
+        }
 
         for (CustomFieldDto.ValueRequest request : requests) {
             IssueCustomField field = fieldRepository.findById(request.getFieldId())
@@ -227,8 +228,6 @@ public class CustomFieldService {
 
         log.debug("Updated {} custom field values for issue {}", requests.size(), issueId);
     }
-
-    // ==================== HELPER METHODS ====================
 
     private void setTypedValue(IssueCustomFieldValue value, FieldType fieldType, Object rawValue) {
         if (rawValue == null) {
@@ -362,5 +361,9 @@ public class CustomFieldService {
         Company company = new Company();
         company.setCompanyId(companyId);
         return company;
+    }
+    private void validateProjectAccess(Long projectId, Long userId) {
+        projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
+                .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
     }
 }

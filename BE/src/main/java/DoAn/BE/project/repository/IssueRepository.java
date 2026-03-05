@@ -18,51 +18,42 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
         // ==================== FETCH WITH RELATIONS (Optimized - No N+1)
         // ====================
-
-        // [Lấy Issue theo ID với tất cả relations] (Role: Internal)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         Optional<Issue> findWithRelationsByIssueId(Long issueId);
 
-        // [Lấy Issue theo key với relations] (Role: Internal)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Optional<Issue> findByIssueKey(String issueKey);
 
-        // [Lấy Issues của Project - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectId(Long projectId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByProject_ProjectId(Long projectId, Pageable pageable);
 
-        // [Lấy Issues của User (assigned) - OPTIMIZED] (Role: Self)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByAssignee_UserId(Long userId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByAssignee_UserId(Long userId, Pageable pageable);
 
-        // [Lấy Issues của User (reported) - OPTIMIZED] (Role: Self)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByReporter_UserId(Long userId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByReporter_UserId(Long userId, Pageable pageable);
 
-        // [Lấy Issues của Sprint - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findBySprint_SprintId(Long sprintId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findBySprint_SprintId(Long sprintId, Pageable pageable);
 
-        // [Lấy Backlog (Issues không có Sprint) - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId);
 
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId, Pageable pageable);
 
-        // [Lấy Issues của Phase - OPTIMIZED] (Role: Project Member)
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         List<Issue> findByPhase_PhaseId(Long phaseId);
 
@@ -78,9 +69,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
         long countByProject_ProjectId(Long projectId);
 
-        // ==================== OPTIMIZED QUERIES WITH JOIN FETCH ====================
-
-        // [Overdue Issues với JOIN FETCH] (Role: System/Notification)
         @Query("SELECT DISTINCT i FROM Issue i " +
                         "LEFT JOIN FETCH i.project " +
                         "LEFT JOIN FETCH i.issueStatus " +
@@ -90,7 +78,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
                         "AND i.assignee IS NOT NULL")
         List<Issue> findOverdueIssuesWithRelations(@Param("date") LocalDate date);
 
-        // [Upcoming Deadlines với JOIN FETCH] (Role: System/Notification)
         @Query("SELECT DISTINCT i FROM Issue i " +
                         "LEFT JOIN FETCH i.project " +
                         "LEFT JOIN FETCH i.issueStatus " +
@@ -120,4 +107,10 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         @org.springframework.data.jpa.repository.Modifying
         @Query("UPDATE Issue i SET i.assignee = NULL WHERE i.assignee.userId = :userId")
         void unassignByGlobalUser(@Param("userId") Long userId);
+        long countBySprint_SprintId(Long sprintId);
+
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.sprint.sprintId = :sprintId AND i.issueStatus.name = 'Done'")
+        long countCompletedBySprint(@Param("sprintId") Long sprintId);
+        @Query("SELECT MAX(CAST(SUBSTRING(i.issueKey, LENGTH(i.project.keyProject) + 2) AS long)) FROM Issue i WHERE i.project.projectId = :projectId")
+        Long findMaxIssueNumberByProjectId(@Param("projectId") Long projectId);
 }

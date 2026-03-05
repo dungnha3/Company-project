@@ -32,7 +32,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.stream.Collectors;
 
-// [Service quản lý dự án - CRUD, phân quyền] (Role: Project Manager/Employee)
 // Member operations delegated to ProjectMemberService
 @Service
 @RequiredArgsConstructor
@@ -48,14 +47,11 @@ public class ProjectService {
     private final ProjectChatIntegrationService projectChatIntegrationService;
     private final DoAn.BE.storage.service.StorageProjectIntegrationService storageProjectIntegrationService;
     private final AccessControlService accessControlService;
-    private final DoAn.BE.company.service.SubscriptionService subscriptionService;
+    private final DoAn.BE.common.service.QuotaService quotaService;
     private final SprintRepository sprintRepository;
     private final IssueRepository issueRepository;
     private final IssueStatusRepository issueStatusRepository;
     private final ApplicationEventPublisher eventPublisher;
-
-    // [REFACTOR] Delegate member operations to specialized service
-    private final ProjectMemberService projectMemberService;
 
     @Transactional
     public ProjectDTO createProject(CreateProjectRequest request, User currentUser) {
@@ -63,7 +59,7 @@ public class ProjectService {
         accessControlService.checkProjectCreatePermission();
 
         // [SAAS] Kiểm tra giới hạn gói cước
-        subscriptionService.checkProjectLimit(DoAn.BE.common.context.TenantContext.getCompanyId());
+        quotaService.validateProjectQuota();
 
         log.info("User {} tạo dự án mới: {}", currentUser.getUsername(), request.getName());
 
@@ -101,7 +97,7 @@ public class ProjectService {
 
         // Auto-create project chat room
         ChatRoom projectChatRoom = new ChatRoom();
-        projectChatRoom.setName("💼 " + project.getName());
+        projectChatRoom.setName(project.getName());
         projectChatRoom.setType(ChatRoom.RoomType.PROJECT);
         projectChatRoom.setProject(project);
         projectChatRoom.setCreatedBy(currentUser);
@@ -145,6 +141,9 @@ public class ProjectService {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+        if (project.getIsActive() != null && !project.getIsActive()) {
+            throw new ResourceNotFoundException("Dự án đã bị xóa");
+        }
 
         // Kiểm tra xem user có quyền truy cập dự án này không
         validateProjectAccess(projectId, currentUser.getUserId());
@@ -210,6 +209,7 @@ public class ProjectService {
 
     @Transactional
     public ProjectDTO updateProject(Long projectId, UpdateProjectRequest request, Long userId) {
+        accessControlService.checkProjectManageAllPermission();
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
@@ -277,6 +277,7 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(Long projectId, Long userId) {
+        accessControlService.checkProjectDeletePermission();
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
 
@@ -324,39 +325,6 @@ public class ProjectService {
                 DoAn.BE.project.event.ProjectEvent.Type.DELETED, convertToDTO(project), userId));
     }
 
-    /**
-     * @deprecated Use ProjectMemberService.addMember() directly
-     */
-    @Transactional
-    public ProjectMemberDTO addMember(Long projectId, AddMemberRequest request, Long userId) {
-        return projectMemberService.addMember(projectId, request, userId);
-    }
-
-    /**
-     * @deprecated Use ProjectMemberService.removeMember() directly
-     */
-    @Transactional
-    public void removeMember(Long projectId, Long memberId, Long userId) {
-        projectMemberService.removeMember(projectId, memberId, userId);
-    }
-
-    /**
-     * @deprecated Use ProjectMemberService.getProjectMembers() directly
-     */
-    @Transactional(readOnly = true)
-    public List<ProjectMemberDTO> getProjectMembers(Long projectId, Long userId) {
-        return projectMemberService.getProjectMembers(projectId, userId);
-    }
-
-    /**
-     * @deprecated Use ProjectMemberService.updateMemberRole() directly
-     */
-    @Transactional
-    public ProjectMemberDTO updateMemberRole(Long projectId, Long memberId, ProjectRole newRole, Long userId) {
-        return projectMemberService.updateMemberRole(projectId, memberId, newRole, userId);
-    }
-
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));

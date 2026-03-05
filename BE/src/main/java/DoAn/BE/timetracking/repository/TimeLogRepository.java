@@ -15,20 +15,16 @@ import DoAn.BE.timetracking.entity.TimeLog;
 @Repository
 public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
 
-    // Find by issue
     List<TimeLog> findByIssue_IssueIdOrderByWorkDateDesc(Long issueId);
 
     Page<TimeLog> findByIssue_IssueId(Long issueId, Pageable pageable);
 
-    // Find by user (my timelogs)
     Page<TimeLog> findByUser_UserIdAndCompany_CompanyIdOrderByWorkDateDesc(
             Long userId, Long companyId, Pageable pageable);
 
-    // Find by user and date range
     List<TimeLog> findByUser_UserIdAndWorkDateBetween(
             Long userId, LocalDate startDate, LocalDate endDate);
 
-    // Find by company and date range (for reports)
     List<TimeLog> findByCompany_CompanyIdAndWorkDateBetween(
             Long companyId, LocalDate startDate, LocalDate endDate);
 

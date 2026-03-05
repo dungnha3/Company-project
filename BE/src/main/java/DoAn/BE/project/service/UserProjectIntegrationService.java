@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-
-// [Service tích hợp User với Project] (Role: System/Internal)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -20,21 +18,14 @@ public class UserProjectIntegrationService {
 
     private final IssueRepository issueRepository;
     private final ProjectMemberRepository projectMemberRepository;
-
-    // [Giới hạn số issue mở cho mức overload] (Role: Config)
     private static final int MAX_OPEN_ISSUES_THRESHOLD = 10;
     private static final BigDecimal MAX_ESTIMATED_HOURS_THRESHOLD = new BigDecimal("80");
-
-    // [Lấy workload của user trong project] (Role: Internal)
     @Transactional(readOnly = true)
     public UserProjectWorkload getUserWorkloadInProject(Long projectId, Long userId) {
-        // [Validate input] (Role: Guard)
         if (projectId == null || userId == null) {
             log.warn("projectId hoặc userId không được null");
             return new UserProjectWorkload(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO);
         }
-
-        // [Lấy tất cả issue được giao cho user trong project] (Role: Query)
         List<Issue> assignedIssues = issueRepository.findByProject_ProjectIdAndAssignee_UserId(projectId, userId);
 
         int totalIssues = assignedIssues.size();
@@ -62,17 +53,12 @@ public class UserProjectIntegrationService {
                 estimatedHours,
                 actualHours);
     }
-
-    // [Lấy tổng workload của user trên tất cả projects] (Role: Internal)
     @Transactional(readOnly = true)
     public UserTotalWorkload getUserTotalWorkload(Long userId) {
-        // [Validate input] (Role: Guard)
         if (userId == null) {
             log.warn("userId không được null");
             return new UserTotalWorkload(0, 0, 0, 0, BigDecimal.ZERO);
         }
-
-        // [Lấy tất cả projects user là thành viên] (Role: Query)
         List<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId);
 
         int totalProjects = memberships.size();
@@ -80,8 +66,6 @@ public class UserProjectIntegrationService {
         int openIssues = 0;
         int overdueIssues = 0;
         BigDecimal totalEstimatedHours = BigDecimal.ZERO;
-
-        // [Tính tổng workload từ tất cả projects] (Role: Calculation)
         for (ProjectMember membership : memberships) {
             UserProjectWorkload workload = getUserWorkloadInProject(
                     membership.getProject().getProjectId(),
@@ -99,8 +83,6 @@ public class UserProjectIntegrationService {
                 overdueIssues,
                 totalEstimatedHours);
     }
-
-    // [Kiểm tra user có bị quá tải không] (Role: Business Rule)
     public boolean isUserOverloaded(Long userId) {
         if (userId == null) {
             return false;
@@ -109,8 +91,6 @@ public class UserProjectIntegrationService {
         return workload.getOpenIssues() > MAX_OPEN_ISSUES_THRESHOLD ||
                 workload.getTotalEstimatedHours().compareTo(MAX_ESTIMATED_HOURS_THRESHOLD) > 0;
     }
-
-    // [DTO workload trong 1 project] (Role: Data Transfer)
     public static class UserProjectWorkload {
         private final int totalIssues;
         private final int openIssues;
@@ -167,8 +147,6 @@ public class UserProjectIntegrationService {
             return "OVERLOADED";
         }
     }
-
-    // [DTO tổng workload của user] (Role: Data Transfer)
     public static class UserTotalWorkload {
         private final int totalProjects;
         private final int totalIssues;

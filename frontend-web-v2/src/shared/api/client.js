@@ -34,20 +34,6 @@ apiClient.interceptors.request.use(
             } catch (e) {
                 console.warn('Failed to parse workspace storage', e);
             }
-        } else {
-            // Fallback: Legacy company-storage support
-            const companyStorage = localStorage.getItem('company-storage');
-            if (companyStorage) {
-                try {
-                    const { state } = JSON.parse(companyStorage);
-                    if (state?.currentCompany?.companyId) {
-                        config.headers['X-Company-Id'] = state.currentCompany.companyId;
-                        config.headers['X-Workspace-Type'] = 'COMPANY';
-                    }
-                } catch (e) {
-                    console.warn('Failed to parse company storage', e);
-                }
-            }
         }
 
         return config;
@@ -90,7 +76,9 @@ apiClient.interceptors.response.use(
 
         // If 401 and haven't tried refresh yet
         // SKIP if the request is for login (let the component handle the error)
-        if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/login')) {
+        if (error.response?.status === 401 && !originalRequest._retry
+            && !originalRequest.url.includes('/auth/login')
+            && !originalRequest.url.includes('/auth/me')) {
             originalRequest._retry = true;
 
             try {
@@ -107,10 +95,9 @@ apiClient.interceptors.response.use(
                 originalRequest.headers.Authorization = `Bearer ${accessToken}`;
                 return apiClient(originalRequest);
             } catch (refreshError) {
-                // Refresh failed - clear auth and redirect
+                // Refresh failed - clear tokens, let AccessControlGuard handle redirect
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('expiresAt');
-                window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
         }

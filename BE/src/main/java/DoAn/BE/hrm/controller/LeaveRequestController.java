@@ -21,21 +21,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 import DoAn.BE.common.annotation.FeatureFlag;
+import org.springframework.transaction.annotation.Transactional;
 
-// [Controller managing leave requests] (Role: HR/Employee)
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
 @Slf4j
 @FeatureFlag("LEAVE")
+@Transactional(readOnly = true)
 public class LeaveRequestController {
 
     private final LeaveRequestService leaveRequestService;
     private final LeaveRequestMapper leaveRequestMapper;
 
-    // ==================== CRUD ====================
-
-    // [Create leave request] (Role: Employee)
+    @Transactional
     @PostMapping
     public ResponseEntity<LeaveRequestDTO> createLeaveRequest(
             @Valid @RequestBody LeaveRequestRequest request,
@@ -44,7 +43,6 @@ public class LeaveRequestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(leaveRequestMapper.toDTO(leaveRequest));
     }
 
-    // [Get leave request by ID] (Role: HR/Self)
     @GetMapping("/{id}")
     public ResponseEntity<LeaveRequestDTO> getLeaveRequestById(
             @PathVariable Long id,
@@ -53,7 +51,6 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
-    // [Get all leave requests] (Role: HR)
     @GetMapping
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getAllLeaveRequests(
             @AuthenticationPrincipal User currentUser,
@@ -63,7 +60,7 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
-    // [Update leave request] (Role: Self - only if pending)
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<LeaveRequestDTO> updateLeaveRequest(
             @PathVariable Long id,
@@ -73,28 +70,27 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
-    // [Delete leave request] (Role: HR/Self - only if pending)
+    @Transactional
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> deleteLeaveRequest(@PathVariable Long id) {
-        leaveRequestService.deleteLeaveRequest(id);
+    public ResponseEntity<Map<String, String>> deleteLeaveRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        leaveRequestService.deleteLeaveRequest(id, currentUser);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Deleted leave request successfully");
         return ResponseEntity.ok(response);
     }
 
-    // ==================== QUERIES ====================
-
-    // [Get leave requests by employee] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getLeaveRequestsByEmployee(
             @PathVariable Long employeeId,
+            @AuthenticationPrincipal User currentUser,
             org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
-                .getLeaveRequestsByEmployeePaged(employeeId, pageable);
+                .getLeaveRequestsByEmployeePaged(employeeId, currentUser, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
-    // [Get leave requests in date range] (Role: HR)
     @GetMapping("/date-range")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getLeaveRequestsInDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -105,58 +101,42 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
-    // ==================== STATUS FILTERS ====================
-
-    // [Get pending leave requests] (Role: HR Manager)
     @GetMapping("/pending")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getPendingLeaveRequests(
             org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
-                .getPendingLeaveRequestsPaged(pageable);
+                .getLeaveRequestsByStatus(LeaveRequest.LeaveStatus.PENDING, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
-    // [Get approved leave requests] (Role: HR)
     @GetMapping("/approved")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getApprovedLeaveRequests(
             org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
-                .getApprovedLeaveRequestsPaged(pageable);
+                .getLeaveRequestsByStatus(LeaveRequest.LeaveStatus.APPROVED, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
-    // [Get rejected leave requests] (Role: HR)
     @GetMapping("/rejected")
     public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getRejectedLeaveRequests(
             org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<LeaveRequest> leaveRequests = leaveRequestService
-                .getRejectedLeaveRequestsPaged(pageable);
+                .getLeaveRequestsByStatus(LeaveRequest.LeaveStatus.REJECTED, pageable);
         return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
     }
 
-    // ==================== APPROVAL ACTIONS ====================
-
-    // [Approve leave request (PM)] (Role: PM)
-    @PatchMapping("/{id}/approve-pm")
-    public ResponseEntity<LeaveRequestDTO> approvePM(
+    // [Approve leave request] (Permission: leaveApprove)
+    @Transactional
+    @PatchMapping("/{id}/approve")
+    public ResponseEntity<LeaveRequestDTO> approveLeaveRequest(
             @PathVariable Long id,
             @Valid @RequestBody ApprovalRequest request,
             @AuthenticationPrincipal User currentUser) {
-        LeaveRequest leaveRequest = leaveRequestService.approvePM(id, request.getNote(), currentUser);
+        LeaveRequest leaveRequest = leaveRequestService.approveLeaveRequest(id, request.getNote(), currentUser);
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
-    // [Approve leave request (Accounting)] (Role: Accounting)
-    @PatchMapping("/{id}/approve-accounting")
-    public ResponseEntity<LeaveRequestDTO> approveAccounting(
-            @PathVariable Long id,
-            @Valid @RequestBody ApprovalRequest request,
-            @AuthenticationPrincipal User currentUser) {
-        LeaveRequest leaveRequest = leaveRequestService.approveAccounting(id, request.getNote(), currentUser);
-        return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
-    }
-
-    // [Reject leave request] (Role: HR Manager)
+    @Transactional
     @PatchMapping("/{id}/reject")
     public ResponseEntity<LeaveRequestDTO> rejectLeaveRequest(
             @PathVariable Long id,
@@ -166,9 +146,6 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
-    // ==================== STATISTICS ====================
-
-    // [Get total leave days of employee in year] (Role: HR/Self)
     @GetMapping("/employee/{employeeId}/total-days")
     public ResponseEntity<Map<String, Object>> getTotalLeaveDays(
             @PathVariable Long employeeId,
@@ -181,7 +158,6 @@ public class LeaveRequestController {
         return ResponseEntity.ok(response);
     }
 
-    // [Check if employee is on leave] (Role: System)
     @GetMapping("/employee/{employeeId}/is-on-leave")
     public ResponseEntity<Map<String, Object>> isOnLeave(
             @PathVariable Long employeeId,

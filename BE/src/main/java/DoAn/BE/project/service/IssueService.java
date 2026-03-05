@@ -15,7 +15,6 @@ import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.project.repository.IssueActivityRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
-import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
@@ -28,7 +27,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.stream.Collectors;
 
-// [Service quản lý Issue/Công việc trong dự án] (Role: Project Member)
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -36,20 +34,28 @@ import java.util.stream.Collectors;
 public class IssueService {
 
     private final IssueRepository issueRepository;
-    private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueStatusRepository issueStatusRepository;
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final IssueActivityRepository issueActivityRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final DoAn.BE.project.repository.ProjectPhaseRepository projectPhaseRepository;
+    private final jakarta.persistence.EntityManager entityManager;
 
     @Transactional
     public IssueDTO createIssue(CreateIssueRequest request, Long userId) {
         User reporter = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
-        Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+
+        // Fix race condition in issue key generation by applying a PESSIMISTIC_WRITE
+        // lock on Project
+        Project project = entityManager.find(Project.class, request.getProjectId(),
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (project == null) {
+            throw new ResourceNotFoundException("Không tìm thấy dự án");
+        }
+
         validateProjectAccess(request.getProjectId(), userId);
 
         // Nếu không có statusId, mặc định là To Do (id: 1)
@@ -75,7 +81,11 @@ public class IssueService {
         issue.setReporter(reporter);
         issue.setAssignee(assignee);
         issue.setEstimatedHours(request.getEstimatedHours());
+        issue.setStartDate(request.getStartDate());
         issue.setDueDate(request.getDueDate());
+        issue.setWeight(request.getWeight());
+        issue.setIsImportant(request.getIsImportant() != null ? request.getIsImportant() : false);
+        issue.setIsUrgent(request.getIsUrgent() != null ? request.getIsUrgent() : false);
 
         if (request.getSprintId() != null) {
             Sprint sprint = sprintRepository.findById(request.getSprintId())
@@ -92,7 +102,11 @@ public class IssueService {
 
         issue = issueRepository.save(issue);
 
-        // 🔗 Dispatch webhook event
+        // Log activity for issue creation
+        IssueActivity createdActivity = new IssueActivity(issue, reporter, ActivityType.CREATED,
+                reporter.getUsername() + " đã tạo issue '" + issue.getTitle() + "'");
+        issueActivityRepository.save(createdActivity);
+
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
 
         return convertToDTO(issue);
@@ -203,6 +217,12 @@ public class IssueService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public Page<IssueDTO> getMyReportedIssuesPaginated(Long userId, Pageable pageable) {
+        Page<Issue> reportedIssues = issueRepository.findByReporter_UserId(userId, pageable);
+        return reportedIssues.map(this::convertToDTO);
+    }
+
     @Transactional
     public IssueDTO updateIssue(Long issueId, UpdateIssueRequest request, Long userId) {
         Issue issue = issueRepository.findById(issueId)
@@ -214,11 +234,15 @@ public class IssueService {
 
         validateProjectAccess(issue.getProject().getProjectId(), userId);
 
-        // User updater = userRepository.findById(userId)
-        // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người
-        // dùng"));
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        StringBuilder changes = new StringBuilder();
+        // Track old values for activity logging
+        String oldTitle = issue.getTitle();
+        String oldPriority = issue.getPriority() != null ? issue.getPriority().name() : null;
+        String oldAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+        String oldDueDate = issue.getDueDate() != null ? issue.getDueDate().toString() : null;
+        String oldStatusName = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : null;
 
         // Update fields if provided
         if (request.getTitle() != null) {
@@ -233,11 +257,7 @@ public class IssueService {
             issue.setIssueStatus(status);
         }
         if (request.getPriority() != null) {
-            Issue.Priority oldPriority = issue.getPriority();
             issue.setPriority(request.getPriority());
-            if (oldPriority != request.getPriority()) {
-                changes.append("Độ ưu tiên: ").append(oldPriority).append(" → ").append(request.getPriority());
-            }
         }
         if (request.getAssigneeId() != null) {
             User assignee = userRepository.findById(request.getAssigneeId())
@@ -252,17 +272,55 @@ public class IssueService {
             issue.setActualHours(request.getActualHours());
         }
         if (request.getDueDate() != null) {
-            if (changes.length() > 0)
-                changes.append(", ");
-            changes.append("Deadline: ").append(request.getDueDate());
             issue.setDueDate(request.getDueDate());
+        }
+        if (request.getStartDate() != null) {
+            issue.setStartDate(request.getStartDate());
+        }
+        if (request.getWeight() != null) {
+            issue.setWeight(request.getWeight());
+        }
+        if (request.getIsImportant() != null) {
+            issue.setIsImportant(request.getIsImportant());
+        }
+        if (request.getIsUrgent() != null) {
+            issue.setIsUrgent(request.getIsUrgent());
         }
 
         issue = issueRepository.save(issue);
 
-        if (changes.length() > 0) {
-            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
+        // Log activity for meaningful field changes
+        if (request.getTitle() != null && !request.getTitle().equals(oldTitle)) {
+            issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.TITLE_CHANGED,
+                    "Title", oldTitle, request.getTitle()));
         }
+        if (request.getPriority() != null && !request.getPriority().name().equals(oldPriority)) {
+            issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.PRIORITY_CHANGED,
+                    "Priority", oldPriority, request.getPriority().name()));
+        }
+        if (request.getAssigneeId() != null) {
+            String newAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+            if (newAssigneeName != null && !newAssigneeName.equals(oldAssigneeName)) {
+                issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.ASSIGNEE_CHANGED,
+                        "Assignee", oldAssigneeName, newAssigneeName));
+            }
+        }
+        if (request.getStatusId() != null) {
+            String newStatusName = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : null;
+            if (newStatusName != null && !newStatusName.equals(oldStatusName)) {
+                issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.STATUS_CHANGED,
+                        "Status", oldStatusName, newStatusName));
+            }
+        }
+        if (request.getDueDate() != null) {
+            String newDueDate = request.getDueDate().toString();
+            if (!newDueDate.equals(oldDueDate)) {
+                issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.DUE_DATE_CHANGED,
+                        "DueDate", oldDueDate, newDueDate));
+            }
+        }
+
+        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
 
         return convertToDTO(issue);
     }
@@ -282,7 +340,6 @@ public class IssueService {
             throw new ForbiddenException("Bạn không có quyền xóa issue này");
         }
 
-        // 🔗 Dispatch webhook event
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.DELETED, issue, userId);
 
         issueRepository.delete(issue);
@@ -299,6 +356,11 @@ public class IssueService {
 
         validateProjectManagement(issue.getProject().getProjectId(), userId);
 
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        String oldAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+
         User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
         validateProjectAccess(issue.getProject().getProjectId(), assigneeId);
@@ -306,7 +368,10 @@ public class IssueService {
         issue.assignTo(assignee);
         issue = issueRepository.save(issue);
 
-        // 🔗 Dispatch webhook event
+        // Log activity for assignment change
+        issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.ASSIGNEE_CHANGED,
+                "Assignee", oldAssigneeName, assignee.getUsername()));
+
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
 
         return convertToDTO(issue);
@@ -348,20 +413,18 @@ public class IssueService {
                     "Status",
                     oldStatus,
                     newStatus);
-            activity.setDescription(user.getUsername() + " đã thay đổi trạng thái");
+            activity.setDescription(
+                    user.getUsername() + " đã chuyển '" + issue.getTitle() + "' từ " + oldStatus + " → " + newStatus);
             issueActivityRepository.save(activity);
         }
 
-        // 🤖 Auto Phase Status Update
         updatePhaseStatusIfNeeded(issue);
 
-        // 🔗 Dispatch webhook event
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
 
         return convertToDTO(issue);
     }
 
-    // [Tự động cập nhật trạng thái Phase dựa trên Issues] (Role: Internal)
     private void updatePhaseStatusIfNeeded(Issue issue) {
         if (issue.getPhase() == null) {
             return;
@@ -379,11 +442,10 @@ public class IssueService {
 
         for (Issue i : phaseIssues) {
             if (i.getIssueStatus() != null) {
-                String statusName = i.getIssueStatus().getName().toLowerCase();
-                if (!statusName.contains("done") && !statusName.contains("hoàn thành")
-                        && !statusName.contains("closed")) {
+                if (!i.isDone()) {
                     allDone = false;
                 }
+                String statusName = i.getIssueStatus().getName().toLowerCase();
                 if (statusName.contains("progress") || statusName.contains("đang thực hiện")) {
                     anyInProgress = true;
                 }
@@ -391,18 +453,15 @@ public class IssueService {
                 allDone = false;
             }
         }
-
-        // Update phase status if needed
         if (allDone && phase.getStatus() != DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED) {
             phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.COMPLETED);
-            // directly.
-            // In production, inject ProjectPhaseRepository and save.
+            projectPhaseRepository.save(phase);
         } else if (anyInProgress && phase.getStatus() == DoAn.BE.project.entity.ProjectPhase.PhaseStatus.PLANNING) {
             phase.setStatus(DoAn.BE.project.entity.ProjectPhase.PhaseStatus.IN_PROGRESS);
+            projectPhaseRepository.save(phase);
         }
     }
 
-    // Helper methods
     private void validateProjectAccess(Long projectId, Long userId) {
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
@@ -418,12 +477,16 @@ public class IssueService {
     }
 
     private String generateIssueKey(Project project) {
-        // [Optimized] Count existing issues directly from DB
-        long count = issueRepository.countByProject_ProjectId(project.getProjectId());
-        long nextNumber = count + 1;
+        Long maxNumber = issueRepository.findMaxIssueNumberByProjectId(project.getProjectId());
+        long nextNumber = (maxNumber != null ? maxNumber : 0) + 1;
+        String key = String.format("%s-%d", project.getKeyProject(), nextNumber);
 
-        // Generate key: PROJECT_KEY-NUMBER (e.g., PROJ-1, PROJ-2)
-        return String.format("%s-%d", project.getKeyProject(), nextNumber);
+        // Safety check: If key already exists (edge case), increment
+        while (issueRepository.findByIssueKey(key).isPresent()) {
+            nextNumber++;
+            key = String.format("%s-%d", project.getKeyProject(), nextNumber);
+        }
+        return key;
     }
 
     private IssueDTO convertToDTO(Issue issue) {
@@ -464,7 +527,13 @@ public class IssueService {
 
         dto.setEstimatedHours(issue.getEstimatedHours());
         dto.setActualHours(issue.getActualHours());
+        dto.setStartDate(issue.getStartDate());
         dto.setDueDate(issue.getDueDate());
+        dto.setWeight(issue.getWeight());
+        dto.setIsImportant(issue.getIsImportant());
+        dto.setIsUrgent(issue.getIsUrgent());
+        dto.setEisenhowerQuadrant(issue.getEisenhowerQuadrant());
+        dto.setCompletedAt(issue.getCompletedAt());
         dto.setCreatedAt(issue.getCreatedAt());
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setIsOverdue(issue.isOverdue());
@@ -472,12 +541,10 @@ public class IssueService {
         return dto;
     }
 
-    /**
-     * Dispatch webhook event for issue changes
-     */
-    /**
-     * Publish async event for issue changes
-     */
+    // Dispatch webhook event for issue changes
+    // /
+    // Publish async event for issue changes
+    // /
     private void publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType eventType, Issue issue, Long actorId) {
         try {
             eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, issue, eventType, actorId));
@@ -485,8 +552,6 @@ public class IssueService {
             log.warn("Failed to publish issue event {}: {}", eventType, e.getMessage());
         }
     }
-
-    // ==================== EDGE CASE HANDLERS ====================
 
     // [Global Ghost Cleanup] Khi User bị xóa khỏi hệ thống => Unassign tất cả
     // issues của user này

@@ -20,6 +20,7 @@ export const useWorkspaceStore = create(
             personalWorkspace: null,  // User's personal workspace info
             loading: false,
             error: null,
+            isHydrated: false,
 
             // Actions
             setWorkspaces: (workspaces) => set({ workspaces }),
@@ -27,6 +28,10 @@ export const useWorkspaceStore = create(
             setPersonalWorkspace: (personalWorkspace) => set({ personalWorkspace }),
 
             fetchWorkspaces: async () => {
+                // Guard: skip if not authenticated
+                const token = localStorage.getItem('accessToken');
+                if (!token) return [];
+
                 set({ loading: true, error: null });
                 try {
                     const response = await apiClient.get(ENDPOINTS.WORKSPACES.LIST);
@@ -77,26 +82,37 @@ export const useWorkspaceStore = create(
                     w => w.type === 'COMPANY' && w.id === companyId
                 );
                 if (company) {
-                    // Fetch company settings
-                    let settings = null;
-                    try {
-                        const res = await apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId));
-                        settings = res.data;
-                    } catch (error) {
-                        console.warn('Failed to fetch company settings:', error);
-                    }
-
                     // Convert single role to array if needed (backward compatibility)
                     const roles = company.roles || (company.role ? [company.role] : []);
 
+                    // Set workspace state FIRST so localStorage is updated for future requests
                     set({
                         currentWorkspace: {
                             ...company,
-                            settings, // Attach settings to workspace
+                            settings: null,
                             roles: roles,
                         },
                         workspaceType: 'COMPANY',
                     });
+
+                    // Fetch company settings with explicit header
+                    // (localStorage may not be flushed yet, so pass header directly)
+                    try {
+                        const res = await apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId), {
+                            headers: {
+                                'X-Company-Id': companyId,
+                                'X-Workspace-Type': 'COMPANY',
+                            }
+                        });
+                        set((prev) => ({
+                            currentWorkspace: {
+                                ...prev.currentWorkspace,
+                                settings: res.data,
+                            },
+                        }));
+                    } catch (error) {
+                        console.warn('Failed to fetch company settings:', error);
+                    }
                 }
             },
 
@@ -129,19 +145,20 @@ export const useWorkspaceStore = create(
             // Permission check helper
             hasPermission: (permissionKey) => {
                 const { currentWorkspace } = get();
-                if (!currentWorkspace || get().workspaceType === 'PERSONAL') return true; // Safe default for Personal
+                if (!currentWorkspace) return false;
+
+                // Personal workspace: only personal-scoped operations allowed
+                // Company-specific permissions (HR, Salary, Project module perms) are denied
+                if (get().workspaceType === 'PERSONAL') return false;
 
                 // Owner/Admin bypass
                 const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : []);
-                if (userRoles.includes('OWNER') || userRoles.includes('ADMIN')) return true;
+                if (userRoles.includes('OWNER') || userRoles.includes('COMPANY_ADMIN')) return true;
 
                 // Check user permissions object
                 const perms = currentWorkspace.permissions;
                 if (!perms) return false; // No perms object = no access (unless owner/admin)
 
-                // Simple mapping for now, can be expanded or delegated to featureHelper
-                // But featureHelper needs access to perms.
-                // We will return the RAW logic here for direct usage, but featureHelper is preferred for "Chain of Logic"
                 return !!perms[permissionKey];
             },
 
@@ -159,14 +176,26 @@ export const useWorkspaceStore = create(
                 workspaceType: state.workspaceType,
                 personalWorkspace: state.personalWorkspace,
             }),
+            // [FIX] Don't merge persisted state if user is not authenticated
+            merge: (persistedState, currentState) => {
+                const token = localStorage.getItem('accessToken');
+                if (!token) {
+                    // Discard stale workspace data — use clean defaults
+                    return currentState;
+                }
+                return { ...currentState, ...persistedState };
+            },
             // [FIX] Re-fetch settings AND roles when store is rehydrated from localStorage
             onRehydrateStorage: () => (state, error) => {
+                // Always mark as hydrated, even on error
+                useWorkspaceStore.setState({ isHydrated: true });
+
                 if (error) {
                     console.error('Failed to rehydrate workspace store:', error);
                     return;
                 }
                 // Skip rehydration if user is not authenticated (e.g., after logout)
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('accessToken');
                 if (!token) return;
 
                 if (state?.currentWorkspace?.type === 'COMPANY' && state?.currentWorkspace?.id) {
@@ -175,7 +204,12 @@ export const useWorkspaceStore = create(
                         import('@shared/api/endpoints').then(({ ENDPOINTS }) => {
                             // Fetch BOTH settings and workspaces to get fresh roles
                             Promise.all([
-                                apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId)),
+                                apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId), {
+                                    headers: {
+                                        'X-Company-Id': companyId,
+                                        'X-Workspace-Type': 'COMPANY',
+                                    }
+                                }),
                                 apiClient.get(ENDPOINTS.WORKSPACES.LIST)
                             ])
                                 .then(([settingsRes, workspacesRes]) => {
@@ -183,6 +217,7 @@ export const useWorkspaceStore = create(
                                         w => w.type === 'COMPANY' && w.id === companyId
                                     );
                                     const freshRoles = freshCompany?.roles || state.currentWorkspace.roles || ['EMPLOYEE'];
+                                    const freshPermissions = freshCompany?.permissions || state.currentWorkspace.permissions || null;
 
                                     useWorkspaceStore.setState((prev) => ({
                                         workspaces: workspacesRes.data,
@@ -190,6 +225,7 @@ export const useWorkspaceStore = create(
                                             ...prev.currentWorkspace,
                                             settings: settingsRes.data,
                                             roles: freshRoles,
+                                            permissions: freshPermissions,
                                         }
                                     }));
                                     console.log('✅ Re-fetched company settings and roles on rehydrate:', freshRoles);

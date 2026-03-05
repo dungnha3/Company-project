@@ -17,7 +17,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
 
     const addReactionMutation = useMutation({
         mutationFn: async (emoji) => {
-            await apiClient.post(ENDPOINTS.CHAT.ADD_REACTION(message.id), { emoji });
+            await apiClient.post(ENDPOINTS.CHAT.ADD_REACTION(message.messageId), { emoji });
         },
         onSuccess: () => {
             queryClient.invalidateQueries(['chat-messages', message.roomId]);
@@ -26,8 +26,8 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
     });
 
     const removeReactionMutation = useMutation({
-        mutationFn: async (reactionId) => {
-            await apiClient.delete(ENDPOINTS.CHAT.REMOVE_REACTION(message.id, reactionId));
+        mutationFn: async (emoji) => {
+            await apiClient.delete(ENDPOINTS.CHAT.REMOVE_REACTION(message.messageId, emoji));
         },
         onSuccess: () => {
             queryClient.invalidateQueries(['chat-messages', message.roomId]);
@@ -35,23 +35,25 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
     });
 
     const handleReaction = (emoji) => {
-        // Check if user already reacted with this emoji
-        const existingReaction = message.reactions?.find(
-            r => r.emoji === emoji && r.userId === user?.userId
-        );
-        if (existingReaction) {
-            removeReactionMutation.mutate(existingReaction.id);
+        // Reactions from backend is Map<emoji, List<username>>
+        const reactionsMap = message.reactions || {};
+        const usersForEmoji = reactionsMap[emoji] || [];
+        const hasMyReaction = usersForEmoji.includes(user?.username);
+        if (hasMyReaction) {
+            removeReactionMutation.mutate(emoji);
         } else {
             addReactionMutation.mutate(emoji);
         }
     };
 
-    // Group reactions by emoji
-    const groupedReactions = (message.reactions || []).reduce((acc, r) => {
-        if (!acc[r.emoji]) acc[r.emoji] = { count: 0, users: [], hasMe: false };
-        acc[r.emoji].count++;
-        acc[r.emoji].users.push(r.userName);
-        if (r.userId === user?.userId) acc[r.emoji].hasMe = true;
+    // Build grouped reactions from backend Map<emoji, List<username>>
+    const reactionsMap = message.reactions || {};
+    const groupedReactions = Object.entries(reactionsMap).reduce((acc, [emoji, usernames]) => {
+        acc[emoji] = {
+            count: usernames.length,
+            users: usernames,
+            hasMe: usernames.includes(user?.username)
+        };
         return acc;
     }, {});
 
@@ -67,9 +69,9 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
                     {showAvatar ? (
                         <div
                             className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white flex items-center justify-center text-xs font-bold"
-                            title={message.senderName}
+                            title={message.sender?.username}
                         >
-                            {message.senderName?.charAt(0)?.toUpperCase()}
+                            {message.sender?.username?.charAt(0)?.toUpperCase()}
                         </div>
                     ) : <div className="w-8" />}
                 </div>
@@ -79,7 +81,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
             <div className={`max-w-[70%] ${isMe ? 'items-end flex flex-col' : ''}`}>
                 {/* Sender Name */}
                 {!isMe && showAvatar && (
-                    <div className="text-xs text-gray-500 ml-1 mb-1">{message.senderName}</div>
+                    <div className="text-xs text-gray-500 ml-1 mb-1">{message.sender?.username}</div>
                 )}
 
                 {/* Reply Reference */}
@@ -99,22 +101,22 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
                                 ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm'
                                 : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
                             }
-                            ${message.deleted ? 'italic opacity-60' : ''}
+                            ${message.isDeleted ? 'italic opacity-60' : ''}
                         `}
                     >
-                        {message.deleted ? (
+                        {message.isDeleted ? (
                             <span className="text-gray-400">Tin nhắn đã xóa</span>
                         ) : (
                             <>
                                 {message.content}
-                                {message.edited && (
+                                {message.isEdited && (
                                     <span className="text-[10px] opacity-60 ml-1">(đã sửa)</span>
                                 )}
                             </>
                         )}
 
                         {/* File Attachment */}
-                        {message.fileUrl && !message.deleted && (
+                        {message.fileUrl && !message.isDeleted && (
                             <div className="mt-2">
                                 {message.fileType?.startsWith('image/') ? (
                                     <img
@@ -139,7 +141,7 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
                     </div>
 
                     {/* Actions Menu */}
-                    {showActions && !message.deleted && (
+                    {showActions && !message.isDeleted && (
                         <div className={`absolute top-0 ${isMe ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} flex items-center gap-1 px-2`}>
                             <button
                                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -217,8 +219,8 @@ export default function MessageItem({ message, isMe, showAvatar, onReply, onEdit
 
                 {/* Timestamp & Read Status */}
                 <div className={`flex items-center gap-1 text-[10px] text-gray-400 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                    {formatTime(message.createdAt || Date.now())}
-                    {isMe && message.readBy?.length > 0 && (
+                    {formatTime(message.sentAt || Date.now())}
+                    {isMe && message.seenBy?.length > 0 && (
                         <i className="fa-solid fa-check-double text-indigo-500" title="Đã xem" />
                     )}
                 </div>

@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
-// [Scheduled jobs service for Attendance - remind checkout, check missing] (Role: System)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,11 +30,10 @@ public class AttendanceScheduledService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // [Remind checkout at end of day - 5:30 PM] (Role: Scheduled)
     @Scheduled(cron = "0 30 17 * * MON-FRI")
     @Transactional(readOnly = true)
     public void remindCheckout() {
-        log.info("🔔 Starting checkout reminder...");
+        log.info("Starting checkout reminder...");
 
         LocalDate today = LocalDate.now();
 
@@ -59,14 +57,14 @@ public class AttendanceScheduledService {
                                     this, HrmEvent.Type.CHECKOUT_REMINDER, null,
                                     employee.getUser().getUserId(), "Checkout Reminder"));
 
-                            // 📱 Push FCM notification
+                            // Push FCM notification
                             if (employee.getUser().getFcmToken() != null) {
                                 Map<String, String> data = new HashMap<>();
                                 data.put("type", "ATTENDANCE_CHECKOUT_REMINDER");
                                 data.put("link", "/attendance");
                                 fcmService.sendToDevice(
                                         employee.getUser().getFcmToken(),
-                                        "⏰ Checkout Reminder",
+                                        "Checkout Reminder",
                                         "You haven't checked out today. Please check out before leaving!",
                                         data);
                             }
@@ -81,14 +79,13 @@ public class AttendanceScheduledService {
             }
         }
 
-        log.info("✅ Finished checkout reminders. Sent {} reminders", reminderCount);
+        log.info("Finished checkout reminders. Sent {} reminders", reminderCount);
     }
 
-    // [Check missing attendance - 8:00 PM] (Role: Scheduled)
     @Scheduled(cron = "0 0 20 * * MON-FRI")
     @Transactional(readOnly = true)
     public void checkMissingAttendance() {
-        log.info("🔍 Starting missing attendance check...");
+        log.info("Starting missing attendance check...");
 
         LocalDate today = LocalDate.now();
         String dateStr = today.format(DATE_FORMATTER);
@@ -110,7 +107,7 @@ public class AttendanceScheduledService {
                                 this, HrmEvent.Type.MISSING_ATTENDANCE, dateStr,
                                 employee.getUser().getUserId(), "Missing Attendance"));
                         missingCount++;
-                        log.debug("⚠️ Sent missing attendance notification for: {}", employee.getFullName());
+                        log.debug("Sent missing attendance notification for: {}", employee.getFullName());
                     }
                 } else {
                     Attendance attendance = todayAttendance.get(0);
@@ -122,14 +119,14 @@ public class AttendanceScheduledService {
                                     this, HrmEvent.Type.MISSING_ATTENDANCE, dateStr + " (Missing Checkout)",
                                     employee.getUser().getUserId(), "Missing Checkout"));
 
-                            // 📱 Push FCM notification
+                            // Push FCM notification
                             if (employee.getUser().getFcmToken() != null) {
                                 Map<String, String> data = new HashMap<>();
                                 data.put("type", "ATTENDANCE_MISSING_CHECKOUT");
                                 data.put("link", "/attendance");
                                 fcmService.sendToDevice(
                                         employee.getUser().getFcmToken(),
-                                        "⚠️ Missing Checkout",
+                                        "Missing Checkout",
                                         "You haven't checked out on " + dateStr,
                                         data);
                             }
@@ -144,14 +141,13 @@ public class AttendanceScheduledService {
             }
         }
 
-        log.info("✅ Finished missing attendance check. Sent {} notifications", missingCount);
+        log.info("Finished missing attendance check. Sent {} notifications", missingCount);
     }
 
-    // [Send monthly summary - 1st of month 9:00 AM] (Role: Scheduled)
     @Scheduled(cron = "0 0 9 1 * *")
     @Transactional(readOnly = true)
     public void sendMonthlySummary() {
-        log.info("📊 Starting monthly summary...");
+        log.info("Starting monthly summary...");
 
         LocalDate lastMonth = LocalDate.now().minusMonths(1);
         LocalDate firstDayOfLastMonth = lastMonth.withDayOfMonth(1);
@@ -178,7 +174,7 @@ public class AttendanceScheduledService {
                         .count();
 
                 // Calculate absent days (working days - attendance days)
-                int workingDays = lastMonth.lengthOfMonth(); // Simplified
+                int workingDays = 22; // Estimated working days per month (excludes weekends)
                 int absentDays = Math.max(0, workingDays - totalDays);
 
                 if (employee.getUser() != null) {
@@ -193,6 +189,6 @@ public class AttendanceScheduledService {
             }
         }
 
-        log.info("✅ Finished monthly summary. Sent {} summaries", summaryCount);
+        log.info("Finished monthly summary. Sent {} summaries", summaryCount);
     }
 }

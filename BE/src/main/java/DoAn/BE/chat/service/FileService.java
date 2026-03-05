@@ -35,6 +35,7 @@ public class FileService {
     private final MessageStatusRepository messageStatusRepository;
     private final UserRepository userRepository;
     private final DoAn.BE.chat.websocket.service.WebSocketNotificationService webSocketNotificationService;
+    private final DoAn.BE.common.service.QuotaService quotaService;
 
     public FileService(FileRepository fileRepository,
             ChatRoomRepository chatRoomRepository,
@@ -42,7 +43,8 @@ public class FileService {
             MessageRepository messageRepository,
             MessageStatusRepository messageStatusRepository,
             UserRepository userRepository,
-            DoAn.BE.chat.websocket.service.WebSocketNotificationService webSocketNotificationService) {
+            DoAn.BE.chat.websocket.service.WebSocketNotificationService webSocketNotificationService,
+            DoAn.BE.common.service.QuotaService quotaService) {
         this.fileRepository = fileRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatRoomMemberRepository = chatRoomMemberRepository;
@@ -50,9 +52,9 @@ public class FileService {
         this.messageStatusRepository = messageStatusRepository;
         this.userRepository = userRepository;
         this.webSocketNotificationService = webSocketNotificationService;
+        this.quotaService = quotaService;
     }
 
-    // Gửi tin nhắn có file đính kèm
     public MessDTO sendMessageWithFile(SendMessageRequest request, Long senderId) {
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Người gửi không tồn tại"));
@@ -115,9 +117,8 @@ public class FileService {
             throw new BadRequestException("File không được để trống");
         }
 
-        if (file.getSize() > 10 * 1024 * 1024) { // Max 10MB
-            throw new BadRequestException("File không được vượt quá 10MB");
-        }
+        quotaService.validateFileSize(file.getSize());
+        quotaService.validateStorageQuota(file.getSize());
 
         String contentType = file.getContentType();
         if (contentType == null || (!contentType.startsWith("image/") && !contentType.startsWith("application/"))) {
@@ -150,9 +151,8 @@ public class FileService {
             throw new BadRequestException("Hình ảnh không được để trống");
         }
 
-        if (imageFile.getSize() > 5 * 1024 * 1024) { // Max 5MB cho ảnh
-            throw new BadRequestException("Hình ảnh không được vượt quá 5MB");
-        }
+        quotaService.validateFileSize(imageFile.getSize());
+        quotaService.validateStorageQuota(imageFile.getSize());
 
         String contentType = imageFile.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
@@ -185,7 +185,6 @@ public class FileService {
         return sendMessageWithFile(request, senderId);
     }
 
-    // Lấy danh sách file trong phòng chat
     public List<MessDTO> getFilesByRoomId(Long roomId, Long userId) {
         chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
@@ -203,7 +202,6 @@ public class FileService {
                 .collect(Collectors.toList());
     }
 
-    // Lấy danh sách hình ảnh trong phòng chat
     public List<MessDTO> getImagesByRoomId(Long roomId, Long userId) {
         chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Phòng chat không tồn tại"));
@@ -221,13 +219,11 @@ public class FileService {
                 .collect(Collectors.toList());
     }
 
-    // Kiểm tra định dạng ảnh hợp lệ
     private boolean isValidImageFormat(String fileName) {
         String extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
         return List.of("jpg", "jpeg", "png", "gif", "webp", "bmp").contains(extension);
     }
 
-    // Tự động xác định loại tin nhắn
     private Message.MessageType detectMessageType(SendMessageRequest request) {
         if (request.getFileId() != null) {
             String fileName = request.getFileName();
@@ -242,7 +238,6 @@ public class FileService {
         return Message.MessageType.TEXT;
     }
 
-    // Chuyển đổi Message entity sang DTO
     private MessDTO convertToMessageDTO(Message message) {
         MessDTO dto = new MessDTO();
         dto.setMessageId(message.getMessageId());
@@ -266,4 +261,3 @@ public class FileService {
         return dto;
     }
 }
-
