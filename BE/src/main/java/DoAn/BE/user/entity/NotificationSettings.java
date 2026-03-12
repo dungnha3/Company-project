@@ -31,4 +31,7 @@ public class NotificationSettings {
 
     @Column(name = "notif_sound_enabled")
     private Boolean soundEnabled = true;
+
+    @Column(name = "notif_email_project_updates")
+    private Boolean emailProjectUpdates = true;
 }

@@ -41,7 +41,7 @@ public class CompanyMemberService {
         // [Kiểm tra quyền: Employee trở lên]
         accessControlService.checkPermission(companyId, CompanyRole.EMPLOYEE);
 
-        return memberRepository.findByCompany_CompanyId(companyId)
+        return memberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId)
                 .stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -112,7 +112,11 @@ public class CompanyMemberService {
 
         accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
 
-        CompanyMember targetMember = findActiveMember(targetUserId, companyId);
+        // Tìm member bất kể trạng thái active (bao gồm cả pending invite)
+        CompanyMember targetMember = memberRepository
+                .findByUser_UserIdAndCompany_CompanyId(targetUserId, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thành viên"));
+
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException("Không thể xóa Chủ sở hữu khỏi công ty");
         }

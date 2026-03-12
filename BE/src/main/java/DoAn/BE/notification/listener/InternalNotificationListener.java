@@ -2,11 +2,13 @@ package DoAn.BE.notification.listener;
 
 import DoAn.BE.hrm.event.HrmEvent;
 import DoAn.BE.notification.service.HRNotificationService;
+import DoAn.BE.notification.service.EmailNotificationService;
 import DoAn.BE.project.event.ProjectEvent;
-// import DoAn.BE.project.event.ProjectEvent.Type;
 import DoAn.BE.auth.event.AuthEvent;
 import DoAn.BE.notification.service.AuthNotificationService;
 import DoAn.BE.notification.service.AttendanceNotificationService;
+import DoAn.BE.user.entity.User;
+import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -26,6 +28,8 @@ public class InternalNotificationListener {
     private final DoAn.BE.notification.service.ProjectNotificationService projectNotificationService;
     private final DoAn.BE.project.repository.ProjectMemberRepository projectMemberRepository;
     private final DoAn.BE.project.service.ProjectChatIntegrationService projectChatIntegrationService;
+    private final EmailNotificationService emailNotificationService;
+    private final UserRepository userRepository;
 
     // entities
     @Async("notificationExecutor")
@@ -48,6 +52,10 @@ public class InternalNotificationListener {
                         // 2. Bell Notification
                         projectNotificationService.createProjectMemberAddedNotification(
                                 member.getUserId(), project.getName(), project.getProjectId());
+
+                        // 3. Email Notification
+                        sendProjectMemberAddedEmail(member.getUserId(), member.getEmail(),
+                                member.getUsername(), project.getName(), project.getProjectId());
                     }
                 }
                 break;
@@ -255,6 +263,10 @@ public class InternalNotificationListener {
                             issue.getAssignee().getUserId(),
                             issue.getTitle(),
                             issue.getProject().getName());
+
+                    // Email Notification
+                    sendIssueAssignedEmail(issue.getAssignee(), issue.getTitle(),
+                            issue.getProject().getName(), issue.getIssueKey());
                 }
                 break;
             case STATUS_CHANGED:
@@ -425,6 +437,64 @@ public class InternalNotificationListener {
             if (member.getUser() != null) {
                 notificationAction.accept(member.getUser().getUserId());
             }
+        }
+    }
+
+    /**
+     * Gửi email khi thêm thành viên vào dự án.
+     * Kiểm tra user preferences trước khi gửi.
+     */
+    private void sendProjectMemberAddedEmail(Long userId, String emailFromDTO, String username,
+            String projectName, Long projectId) {
+        try {
+            String email = emailFromDTO;
+            // Nếu DTO không có email, lấy từ UserRepository
+            if (email == null || email.trim().isEmpty()) {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user == null || user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+                    return;
+                }
+                email = user.getEmail();
+                // Kiểm tra user notification preferences
+                if (user.getNotificationSettings() != null
+                        && Boolean.FALSE.equals(user.getNotificationSettings().getEmailProjectUpdates())) {
+                    log.debug("User {} đã tắt email thông báo dự án, bỏ qua", userId);
+                    return;
+                }
+            } else {
+                // Kiểm tra notification preferences khi đã có email từ DTO
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null && user.getNotificationSettings() != null
+                        && Boolean.FALSE.equals(user.getNotificationSettings().getEmailProjectUpdates())) {
+                    log.debug("User {} đã tắt email thông báo dự án, bỏ qua", userId);
+                    return;
+                }
+            }
+            emailNotificationService.sendProjectMemberAddedEmail(email, username, projectName, projectId);
+        } catch (Exception e) {
+            log.error("Lỗi gửi email thêm vào dự án cho user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email khi giao công việc.
+     * Kiểm tra user preferences trước khi gửi.
+     */
+    private void sendIssueAssignedEmail(User assignee, String issueTitle, String projectName, String issueKey) {
+        try {
+            if (assignee.getEmail() == null || assignee.getEmail().trim().isEmpty()) {
+                return;
+            }
+            // Kiểm tra notification preferences
+            if (assignee.getNotificationSettings() != null
+                    && Boolean.FALSE.equals(assignee.getNotificationSettings().getEmailProjectUpdates())) {
+                log.debug("User {} đã tắt email thông báo dự án, bỏ qua", assignee.getUserId());
+                return;
+            }
+            emailNotificationService.sendIssueAssignedEmail(
+                    assignee.getEmail(), assignee.getUsername(), issueTitle, projectName, issueKey);
+        } catch (Exception e) {
+            log.error("Lỗi gửi email giao công việc cho user {}: {}", assignee.getUserId(), e.getMessage());
         }
     }
 }

@@ -194,7 +194,7 @@ function PersonalDashboard({ user, greeting }) {
                     {invites.length > 0 ? (
                         <div className="space-y-3">
                             {invites.slice(0, 4).map((invite) => (
-                                <InviteItem key={invite.id} invite={invite} />
+                                <InviteItem key={invite.inviteId} invite={invite} />
                             ))}
                         </div>
                     ) : (
@@ -647,6 +647,8 @@ function InviteItem({ invite }) {
         onSuccess: () => queryClient.invalidateQueries(['pending-invites'])
     });
 
+    const primaryRole = invite.roles?.[0] || 'EMPLOYEE';
+
     return (
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
@@ -654,11 +656,11 @@ function InviteItem({ invite }) {
             </div>
             <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-800 truncate">{invite.companyName}</p>
-                <p className="text-xs text-gray-500">{invite.role === 'OWNER' ? 'Chủ sở hữu' : invite.role === 'COMPANY_ADMIN' ? 'Quản trị viên' : 'Thành viên'}</p>
+                <p className="text-xs text-gray-500">{primaryRole === 'OWNER' ? 'Chủ sở hữu' : primaryRole === 'COMPANY_ADMIN' ? 'Quản trị viên' : 'Thành viên'}</p>
             </div>
             <div className="flex gap-1">
                 <button
-                    onClick={() => acceptMutation.mutate(invite.id)}
+                    onClick={() => acceptMutation.mutate(invite.inviteId)}
                     disabled={acceptMutation.isPending}
                     className="p-2 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
                     title="Chấp nhận"
@@ -667,7 +669,7 @@ function InviteItem({ invite }) {
                     <i className="fa-solid fa-check" />
                 </button>
                 <button
-                    onClick={() => declineMutation.mutate(invite.id)}
+                    onClick={() => declineMutation.mutate(invite.inviteId)}
                     disabled={declineMutation.isPending}
                     className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
                     title="Từ chối"

@@ -406,8 +406,26 @@ public class AuthService {
         return txTemplate.execute(status -> {
             User user = userService.findByEmail(email).orElseGet(() -> createGoogleUser(email, picture));
 
+            // Shadow user (PENDING_ACTIVATION) đăng nhập Google lần đầu → kích hoạt
             if (!user.getIsActive()) {
-                throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+                if (user.getStatus() == User.UserStatus.PENDING_ACTIVATION) {
+                    user.setIsActive(true);
+                    user.setStatus(User.UserStatus.ACTIVE);
+                    if (picture != null && (user.getAvatarUrl() == null || user.getAvatarUrl().isBlank())) {
+                        user.setAvatarUrl(picture);
+                    }
+                    userService.save(user);
+                    // Tạo Personal Workspace nếu chưa có
+                    if (!personalWorkspaceRepository.existsByUser_UserId(user.getUserId())) {
+                        DoAn.BE.user.entity.PersonalWorkspace pw = DoAn.BE.user.entity.PersonalWorkspace
+                                .createFor(user);
+                        personalWorkspaceRepository.save(pw);
+                        log.info("Đã tạo Personal Workspace cho shadow user kích hoạt qua Google: {}", user.getEmail());
+                    }
+                    log.info("Đã kích hoạt shadow user {} qua Google Login", user.getEmail());
+                } else {
+                    throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+                }
             }
             updateUserLoginStatus(user);
             sessionService.createSession(user, ipAddress, userAgent);

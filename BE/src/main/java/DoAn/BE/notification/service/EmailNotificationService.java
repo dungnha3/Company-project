@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.time.format.DateTimeFormatter;
+
 @Service
 @Slf4j
 public class EmailNotificationService {
@@ -65,6 +66,7 @@ public class EmailNotificationService {
             throw new RuntimeException("Không thể gửi email", e);
         }
     }
+
     public void sendSimpleEmail(String to, String subject, String content) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật hoặc chưa config, bỏ qua gửi email đến {}", to);
@@ -86,6 +88,7 @@ public class EmailNotificationService {
             throw new RuntimeException("Không thể gửi email", e);
         }
     }
+
     public void sendContractExpiryEmail(String email, String employeeName, String contractType, String expiryDate) {
         String subject = "Thông báo: Hợp đồng sắp hết hạn";
         String content = String.format(
@@ -98,6 +101,7 @@ public class EmailNotificationService {
 
         sendSimpleEmail(email, subject, content);
     }
+
     public void sendLeaveApprovedEmail(String email, String employeeName, String leaveType, String startDate,
             String endDate) {
         String subject = "Đơn nghỉ phép đã được duyệt";
@@ -110,6 +114,7 @@ public class EmailNotificationService {
 
         sendSimpleEmail(email, subject, content);
     }
+
     public void sendSalaryApprovedEmail(String email, String employeeName, String period, String amount) {
         String subject = "Lương đã được duyệt";
         String content = String.format(
@@ -122,6 +127,7 @@ public class EmailNotificationService {
 
         sendSimpleEmail(email, subject, content);
     }
+
     public void sendWelcomeEmail(String email, String employeeName, String username, String tempPassword) {
         String subject = "Chào mừng bạn đến với công ty";
         String content = String.format(
@@ -138,6 +144,114 @@ public class EmailNotificationService {
 
         sendSimpleEmail(email, subject, content);
     }
+
+    public void sendProjectMemberAddedEmail(String email, String memberName, String projectName, Long projectId) {
+        if (!emailEnabled || mailSender == null) {
+            log.info("Email không được bật, bỏ qua gửi email thêm thành viên dự án đến {}", email);
+            return;
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Bạn đã được thêm vào dự án: " + projectName);
+
+            String projectUrl = baseUrl + "/projects/" + projectId;
+
+            StringBuilder html = new StringBuilder();
+            html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
+            html.append("<style>");
+            html.append(
+                    "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background-color: #007bff; color: white; padding: 20px; text-align: center; }");
+            html.append(".content { padding: 20px; }");
+            html.append(
+                    ".footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666; }");
+            html.append(
+                    ".btn { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }");
+            html.append("</style></head><body>");
+
+            html.append("<div class='header'><h2>🎉 Bạn đã được thêm vào dự án mới!</h2></div>");
+            html.append("<div class='content'>");
+            html.append("<p>Kính gửi <strong>").append(memberName).append("</strong>,</p>");
+            html.append("<p>Bạn đã được thêm vào dự án <strong>\"").append(projectName).append("\"</strong>.</p>");
+            html.append("<p>Hãy truy cập dự án để xem thông tin chi tiết và bắt đầu làm việc.</p>");
+            html.append("<p><a href='").append(projectUrl).append("' class='btn'>Xem dự án</a></p>");
+            html.append("</div>");
+
+            html.append("<div class='footer'>");
+            html.append("<p>Email này được gửi tự động từ hệ thống DACN. Vui lòng không trả lời email này.</p>");
+            html.append("</div></body></html>");
+
+            helper.setText(html.toString(), true);
+            mailSender.send(message);
+            log.info("Đã gửi email thông báo thêm vào dự án '{}' đến {}", projectName, email);
+
+        } catch (MessagingException e) {
+            log.error("Lỗi gửi email thêm vào dự án đến {}: {}", email, e.getMessage());
+        }
+    }
+
+    public void sendIssueAssignedEmail(String email, String assigneeName, String issueTitle, String projectName,
+            String issueKey) {
+        if (!emailEnabled || mailSender == null) {
+            log.info("Email không được bật, bỏ qua gửi email giao công việc đến {}", email);
+            return;
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Công việc mới được giao: " + issueTitle);
+
+            String issueUrl = baseUrl + "/projects/issues/" + issueKey;
+
+            StringBuilder html = new StringBuilder();
+            html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
+            html.append("<style>");
+            html.append(
+                    "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background-color: #28a745; color: white; padding: 20px; text-align: center; }");
+            html.append(".content { padding: 20px; }");
+            html.append(
+                    ".footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666; }");
+            html.append(
+                    ".btn { display: inline-block; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }");
+            html.append(
+                    ".info-box { background-color: #f0f8ff; border-left: 4px solid #007bff; padding: 12px; margin: 10px 0; }");
+            html.append("</style></head><body>");
+
+            html.append("<div class='header'><h2>📋 Bạn được giao công việc mới!</h2></div>");
+            html.append("<div class='content'>");
+            html.append("<p>Kính gửi <strong>").append(assigneeName).append("</strong>,</p>");
+            html.append("<p>Bạn đã được giao một công việc mới trong dự án <strong>\"").append(projectName)
+                    .append("\"</strong>.</p>");
+            html.append("<div class='info-box'>");
+            html.append("<p><strong>Mã công việc:</strong> ").append(issueKey).append("</p>");
+            html.append("<p><strong>Tiêu đề:</strong> ").append(issueTitle).append("</p>");
+            html.append("<p><strong>Dự án:</strong> ").append(projectName).append("</p>");
+            html.append("</div>");
+            html.append("<p>Hãy truy cập để xem chi tiết và bắt đầu làm việc.</p>");
+            html.append("<p><a href='").append(issueUrl).append("' class='btn'>Xem công việc</a></p>");
+            html.append("</div>");
+
+            html.append("<div class='footer'>");
+            html.append("<p>Email này được gửi tự động từ hệ thống DACN. Vui lòng không trả lời email này.</p>");
+            html.append("</div></body></html>");
+
+            helper.setText(html.toString(), true);
+            mailSender.send(message);
+            log.info("Đã gửi email thông báo giao công việc '{}' đến {}", issueTitle, email);
+
+        } catch (MessagingException e) {
+            log.error("Lỗi gửi email giao công việc đến {}: {}", email, e.getMessage());
+        }
+    }
+
     public void sendPasswordResetEmail(String email, String username, String newPassword) {
         String subject = "Thông báo: Mật khẩu tài khoản đã được đặt lại";
         String content = String.format(
