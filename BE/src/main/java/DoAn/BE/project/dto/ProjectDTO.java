@@ -20,4 +20,5 @@ public class ProjectDTO {
     private String phongbanName;
     private Long createdBy;
     private String createdByName;
+    private Integer progress; // Tiến độ dự án (%)
 }

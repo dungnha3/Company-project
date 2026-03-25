@@ -210,6 +210,8 @@ function OverviewTab({ project }) {
     const now = new Date();
     const [goalMonth, setGoalMonth] = useState(now.getMonth() + 1);
     const [goalYear, setGoalYear] = useState(now.getFullYear());
+    const [activityPage, setActivityPage] = useState(1);
+    const ACTIVITIES_PER_PAGE = 5;
 
     const { data: activitiesData, isLoading } = useQuery({
         queryKey: ['project-activities', project.projectId],
@@ -258,23 +260,53 @@ function OverviewTab({ project }) {
     });
 
     const activities = Array.isArray(activitiesData) ? activitiesData : (activitiesData?.content || []);
+    const totalActivityPages = Math.max(1, Math.ceil(activities.length / ACTIVITIES_PER_PAGE));
+    const paginatedActivities = activities.slice((activityPage - 1) * ACTIVITIES_PER_PAGE, activityPage * ACTIVITIES_PER_PAGE);
     const completedGoals = goals.filter(g => g.isCompleted).length;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <div className="card p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Hoạt động gần đây</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900">Hoạt động gần đây</h3>
+                        {activities.length > 0 && (
+                            <span className="text-xs text-gray-400">{activities.length} hoạt động</span>
+                        )}
+                    </div>
                     {isLoading ? (
                         <div className="text-center py-4"><i className="fa-solid fa-spinner fa-spin text-gray-400" /></div>
                     ) : activities.length === 0 ? (
                         <p className="text-gray-500 italic">Chưa có hoạt động nào.</p>
                     ) : (
-                        <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                            {activities.slice(0, 20).map(act => (
-                                <ActivityItem key={act.activityId || act.id} act={act} />
-                            ))}
-                        </div>
+                        <>
+                            <div className="space-y-3">
+                                {paginatedActivities.map(act => (
+                                    <ActivityItem key={act.activityId || act.id} act={act} />
+                                ))}
+                            </div>
+                            {totalActivityPages > 1 && (
+                                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                    <button
+                                        onClick={() => setActivityPage(p => Math.max(1, p - 1))}
+                                        disabled={activityPage === 1}
+                                        className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <i className="fa-solid fa-chevron-left mr-1" />Trước
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                        Trang {activityPage}/{totalActivityPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setActivityPage(p => Math.min(totalActivityPages, p + 1))}
+                                        disabled={activityPage === totalActivityPages}
+                                        className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Sau<i className="fa-solid fa-chevron-right ml-1" />
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
@@ -354,7 +386,7 @@ function OverviewTab({ project }) {
                 </div>
                 <div className="card p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Thành viên ({members.length})</h3>
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 max-h-[280px] overflow-y-auto">
                         {members.map(m => (
                             <div key={m.userId} className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
