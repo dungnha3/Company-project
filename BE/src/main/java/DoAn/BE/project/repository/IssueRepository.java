@@ -69,6 +69,9 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
         long countByProject_ProjectId(Long projectId);
 
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId AND i.issueStatus.name = 'Done'")
+        long countCompletedByProject(@Param("projectId") Long projectId);
+
         @Query("SELECT DISTINCT i FROM Issue i " +
                         "LEFT JOIN FETCH i.project " +
                         "LEFT JOIN FETCH i.issueStatus " +

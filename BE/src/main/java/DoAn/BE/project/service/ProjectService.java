@@ -359,6 +359,17 @@ public class ProjectService {
             dto.setPhongbanName(project.getDepartment().getName());
         }
 
+        // Tính tiến độ dự án dựa trên số issue đã hoàn thành
+        if (project.getProjectId() != null) {
+            long totalIssues = issueRepository.countByProject_ProjectId(project.getProjectId());
+            if (totalIssues > 0) {
+                long completedIssues = issueRepository.countCompletedByProject(project.getProjectId());
+                dto.setProgress((int) ((completedIssues * 100) / totalIssues));
+            } else {
+                dto.setProgress(0);
+            }
+        }
+
         return dto;
     }
 }

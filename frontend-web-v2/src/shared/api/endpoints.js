@@ -347,6 +347,15 @@ export const ENDPOINTS = {
         ASSIGN: (id) => `/api/issues/${id}/assign`,
     },
 
+    // Issue Statuses (Kanban columns)
+    ISSUE_STATUSES: {
+        LIST: '/api/issue-statuses',
+        CREATE: '/api/issue-statuses',
+        UPDATE: (id) => `/api/issue-statuses/${id}`,
+        DELETE: (id) => `/api/issue-statuses/${id}`,
+        REORDER: '/api/issue-statuses/reorder',
+    },
+
     // Comments
     COMMENTS: {
         BY_ISSUE: (issueId) => `/api/comments/issue/${issueId}`,
