@@ -202,6 +202,11 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             cell: (row) => (
                 <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-sm font-medium">
                     {row.reviewPeriod}
+                    {row.projectName && (
+                        <span className="ml-1 text-xs text-gray-400" title={row.projectName}>
+                            · {row.projectName}
+                        </span>
+                    )}
                 </span>
             )
         },
@@ -465,11 +470,11 @@ function StatusBadge({ status }) {
 
 function ReviewTypeBadge({ type }) {
     const styles = {
-        QUARTERLY: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'Hàng quý' },
-        ANNUAL: { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Cuối năm' },
-        PROBATION: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Thử việc' },
-        PROMOTION: { bg: 'bg-green-50', text: 'text-green-700', label: 'Thăng chức' },
-        SALARY_REVIEW: { bg: 'bg-orange-50', text: 'text-orange-700', label: 'Xét tăng lương' },
+        SPRINT_REVIEW:      { bg: 'bg-indigo-50',  text: 'text-indigo-700',  label: 'Sprint Review' },
+        PROJECT_COMPLETION: { bg: 'bg-purple-50',  text: 'text-purple-700', label: 'Khết thúc dự án' },
+        PERIODIC:           { bg: 'bg-cyan-50',    text: 'text-cyan-700',   label: 'Định kỳ' },
+        PROJECT:            { bg: 'bg-teal-50',    text: 'text-teal-700',   label: 'Dự án' },
+        PROMOTION:          { bg: 'bg-green-50',   text: 'text-green-700',  label: 'Thăng chức' },
     };
     const s = styles[type] || { bg: 'bg-gray-50', text: 'text-gray-700', label: type };
     return <span className={`${s.bg} ${s.text} text-xs px-2 py-1 rounded font-medium`}>{s.label}</span>;

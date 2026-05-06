@@ -16,8 +16,7 @@ public class ProjectDTO {
     private Project.ProjectStatus status;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Long phongbanId;
-    private String phongbanName;
+
     private Long createdBy;
     private String createdByName;
     private Integer progress; // Tiến độ dự án (%)

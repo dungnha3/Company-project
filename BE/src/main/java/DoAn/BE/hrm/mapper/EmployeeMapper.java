@@ -40,15 +40,7 @@ public class EmployeeMapper {
         dto.setHireDate(employee.getHireDate());
         dto.setStatus(employee.getStatus());
 
-        if (employee.getDepartment() != null) {
-            dto.setDepartmentId(employee.getDepartment().getDepartmentId());
-            dto.setDepartmentName(employee.getDepartment().getName());
-        }
 
-        if (employee.getPosition() != null) {
-            dto.setPositionId(employee.getPosition().getPositionId());
-            dto.setPositionName(employee.getPosition().getName());
-        }
 
         // ===== PII PROTECTION =====
         // Only HR, Accounting, Owner/Admin, or Self can see PII (Phone, Address, ID
@@ -73,24 +65,6 @@ public class EmployeeMapper {
             dto.setPhone(null);
             dto.setAddress(null);
             dto.setIdCard(null);
-        }
-
-        // ===== SALARY VISIBILITY =====
-        // HR, Accounting, Owner/Admin, or Self can view Salary
-        boolean canViewSalary;
-        try {
-            accessControlService.checkSalaryViewPermission();
-            canViewSalary = true;
-        } catch (ForbiddenException e) {
-            canViewSalary = isSelf;
-        }
-
-        if (canViewSalary) {
-            dto.setBaseSalary(employee.getBaseSalary());
-            dto.setAllowance(employee.getAllowance());
-        } else {
-            dto.setBaseSalary(null);
-            dto.setAllowance(null);
         }
 
         dto.setCreatedAt(employee.getCreatedAt());

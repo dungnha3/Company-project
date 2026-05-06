@@ -1,377 +1,302 @@
-import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
-import { formatDate } from '@shared/utils/formatters';
-import { useToast } from '@app/providers/ToastProvider';
 
 export default function ResourcePlanningPage() {
-    const { showToast } = useToast();
-    const queryClient = useQueryClient();
-    const [viewMode, setViewMode] = useState('timeline');
-    const [showAllocationModal, setShowAllocationModal] = useState(false);
+    const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState('all'); // all | overloaded | available
 
-    // Fetch employees
-    const { data: employees, isLoading: loadingEmployees } = useQuery({
-        queryKey: ['employees-resources'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
-    });
-
-    // Fetch Allocations (Real Data)
-    const { data: allocations = [] } = useQuery({
-        queryKey: ['resource-allocations'],
+    const { data: resources = [], isLoading } = useQuery({
+        queryKey: ['resource-overview'],
         queryFn: async () => {
-            try {
-                return (await apiClient.get(ENDPOINTS.RESOURCE_PLANNING.ALLOCATIONS)).data;
-            } catch (e) {
-                return [];
-            }
-        }
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.RESOURCE_OVERVIEW);
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        staleTime: 30_000,
     });
 
-    const empList = Array.isArray(employees) ? employees : employees?.content || [];
+    const filtered = resources.filter(r => {
+        const matchSearch = !search ||
+            r.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+            r.email?.toLowerCase().includes(search.toLowerCase());
+        const matchFilter =
+            filter === 'all' ||
+            (filter === 'overloaded' && r.overloaded) ||
+            (filter === 'available' && !r.overloaded && (r.totalAllocation || 0) < 80);
+        return matchSearch && matchFilter;
+    });
 
-    // Generate week headers
-    const weeks = useMemo(() => {
-        const result = [];
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - startDate.getDay()); // Start of current week
-
-        for (let i = 0; i < 12; i++) {
-            const weekStart = new Date(startDate);
-            weekStart.setDate(weekStart.getDate() + (i * 7));
-            result.push({
-                label: `W${i + 1}`,
-                date: formatDate(weekStart, { day: '2-digit', month: '2-digit' }),
-                fullDate: weekStart,
-            });
-        }
-        return result;
-    }, []);
-
-    // Calculate workload for an employee in a given week
-    const getWorkload = (empId, weekIndex) => {
-        const weekDate = weeks[weekIndex]?.fullDate;
-        if (!weekDate || !allocations.length) return 0;
-
-        return allocations
-            .filter(a => {
-                if ((a.employeeId || a.employee?.id) !== empId) return false;
-                const start = new Date(a.startDate);
-                const end = new Date(a.endDate);
-                return weekDate >= start && weekDate <= end;
-            })
-            .reduce((sum, a) => sum + (a.allocation || 0), 0);
-    };
-
-    // Calculate stats
-    const stats = useMemo(() => {
-        if (!empList.length) return { total: 0, overloaded: 0, underutilized: 0, optimal: 0 };
-
-        const overloaded = empList.filter(emp => {
-            const id = emp.employeeId || emp.id;
-            return weeks.some((_, i) => getWorkload(id, i) > 100);
-        }).length;
-
-        const underutilized = empList.filter(emp => {
-            const id = emp.employeeId || emp.id;
-            const avgLoad = weeks.reduce((sum, _, i) => sum + getWorkload(id, i), 0) / weeks.length;
-            return avgLoad < 50;
-        }).length;
-
-        return {
-            total: empList.length,
-            overloaded,
-            underutilized,
-            optimal: empList.length - overloaded - underutilized,
-        };
-    }, [empList, weeks, allocations]);
+    const totalUsers = resources.length;
+    const overloadedCount = resources.filter(r => r.overloaded).length;
+    const availableCount = resources.filter(r => !r.overloaded && (r.totalAllocation || 0) < 80).length;
+    const avgAllocation = totalUsers > 0
+        ? Math.round(resources.reduce((s, r) => s + (r.totalAllocation || 0), 0) / totalUsers)
+        : 0;
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Quản lý nguồn lực</h1>
-                    <p className="text-gray-500 text-sm">Phân bổ và theo dõi khối lượng công việc đội nhóm</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="flex bg-gray-100 rounded-lg p-1">
-                        <button
-                            onClick={() => setViewMode('timeline')}
-                            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${viewMode === 'timeline' ? 'bg-white shadow-sm' : 'text-gray-500'
-                                }`}
-                        >
-                            <i className="fa-solid fa-timeline mr-1" /> Timeline
-                        </button>
-                        <button
-                            onClick={() => setViewMode('heatmap')}
-                            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${viewMode === 'heatmap' ? 'bg-white shadow-sm' : 'text-gray-500'
-                                }`}
-                        >
-                            <i className="fa-solid fa-fire mr-1" /> Heatmap
-                        </button>
-                    </div>
-                    <button onClick={() => setShowAllocationModal(true)} className="btn-primary">
-                        <i className="fa-solid fa-plus mr-2" /> Phân bổ mới
-                    </button>
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900">Nguồn lực dự án</h1>
+                <p className="text-gray-500 text-sm mt-1">
+                    Tổng quan phân bổ nhân sự — phát hiện quá tải và tối ưu nguồn lực
+                </p>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
-                <StatCard label="Tổng nhân sự" value={stats.total} icon="fa-users" color="bg-indigo-500" />
-                <StatCard label="Tối ưu (70-100%)" value={stats.optimal} icon="fa-check-circle" color="bg-green-500" />
-                <StatCard label="Quá tải (>100%)" value={stats.overloaded} icon="fa-exclamation-triangle" color="bg-red-500" />
-                <StatCard label="Chưa đủ việc (<50%)" value={stats.underutilized} icon="fa-hourglass-half" color="bg-yellow-500" />
-            </div>
-
-            {/* Timeline/Heatmap View */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-gray-50">
-                                <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left font-semibold text-gray-700 min-w-[200px]">
-                                    Nhân viên
-                                </th>
-                                {weeks.map((week, i) => (
-                                    <th key={i} className="px-2 py-3 text-center font-medium text-gray-600 min-w-[60px]">
-                                        <div className="text-xs">{week.label}</div>
-                                        <div className="text-[10px] text-gray-400">{week.date}</div>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loadingEmployees ? (
-                                <tr>
-                                    <td colSpan={weeks.length + 1} className="px-4 py-8 text-center">
-                                        <div className="loading-spinner mx-auto" />
-                                    </td>
-                                </tr>
-                            ) : empList.length === 0 ? (
-                                <tr>
-                                    <td colSpan={weeks.length + 1} className="px-4 py-8 text-center text-gray-400">
-                                        Không có dữ liệu
-                                    </td>
-                                </tr>
-                            ) : (
-                                empList.slice(0, 10).map(emp => (
-                                    <tr key={emp.employeeId || emp.id} className="hover:bg-gray-50/50">
-                                        <td className="sticky left-0 z-10 bg-white px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                                    {(emp.fullName || 'U').charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium text-gray-900">{emp.fullName}</div>
-                                                    <div className="text-xs text-gray-500">{emp.position?.name}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        {weeks.map((_, weekIndex) => {
-                                            const workload = getWorkload(emp.employeeId || emp.id, weekIndex);
-                                            return (
-                                                <td key={weekIndex} className="px-1 py-2">
-                                                    <WorkloadCell workload={workload} viewMode={viewMode} />
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-6 text-sm">
-                <LegendItem color="bg-gray-200" label="0%" />
-                <LegendItem color="bg-green-400" label="50-99%" />
-                <LegendItem color="bg-indigo-500" label="100%" />
-                <LegendItem color="bg-red-500" label=">100%" />
-            </div>
-
-            {showAllocationModal && (
-                <AllocationModal
-                    onClose={() => setShowAllocationModal(false)}
-                    employees={empList}
-                    showToast={showToast}
-                    queryClient={queryClient}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Tổng nhân sự" value={totalUsers} icon="fa-users" color="bg-indigo-100 text-indigo-600" />
+                <StatCard
+                    label="Quá tải (>100%)"
+                    value={overloadedCount}
+                    icon="fa-triangle-exclamation"
+                    color="bg-red-100 text-red-600"
+                    highlight={overloadedCount > 0}
                 />
+                <StatCard label="Còn khả dụng" value={availableCount} icon="fa-circle-check" color="bg-green-100 text-green-600" />
+                <StatCard label="Phân bổ TB" value={`${avgAllocation}%`} icon="fa-chart-pie" color="bg-purple-100 text-purple-600" />
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Tìm kiếm nhân sự..."
+                        className="input w-full pl-10"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    {[
+                        { key: 'all', label: 'Tất cả' },
+                        { key: 'overloaded', label: '⚠ Quá tải' },
+                        { key: 'available', label: '✓ Khả dụng' },
+                    ].map(f => (
+                        <button
+                            key={f.key}
+                            onClick={() => setFilter(f.key)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                filter === f.key
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Resource List */}
+            {isLoading ? (
+                <div className="flex justify-center items-center py-20">
+                    <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-400" />
+                </div>
+            ) : filtered.length === 0 ? (
+                <EmptyState search={search} filter={filter} />
+            ) : (
+                <div className="space-y-3">
+                    {filtered.map(resource => (
+                        <ResourceCard key={resource.userId} resource={resource} />
+                    ))}
+                </div>
             )}
         </div>
     );
 }
 
-function StatCard({ label, value, icon, color }) {
+function StatCard({ label, value, icon, color, highlight }) {
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white`}>
-                    <i className={`fa-solid ${icon} text-lg`} />
-                </div>
+        <div className={`bg-white rounded-xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
+            highlight ? 'border-red-200 ring-1 ring-red-200' : 'border-gray-100'
+        }`}>
+            <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-2xl font-bold text-gray-900">{value}</p>
-                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+                    <p className={`text-2xl font-bold mt-1 ${highlight ? 'text-red-600' : 'text-gray-900'}`}>{value}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
+                    <i className={`fa-solid ${icon}`} />
                 </div>
             </div>
         </div>
     );
 }
 
-function WorkloadCell({ workload, viewMode }) {
-    let bgColor = 'bg-gray-100';
-    let textColor = 'text-gray-400';
+function ResourceCard({ resource }) {
+    const [expanded, setExpanded] = useState(false);
+    const allocation = resource.totalAllocation || 0;
 
-    if (workload > 100) {
-        bgColor = 'bg-red-500';
-        textColor = 'text-white';
-    } else if (workload >= 80) {
-        bgColor = 'bg-indigo-500';
-        textColor = 'text-white';
-    } else if (workload >= 50) {
-        bgColor = 'bg-green-400';
-        textColor = 'text-white';
-    } else if (workload > 0) {
-        bgColor = 'bg-yellow-300';
-        textColor = 'text-gray-700';
-    }
+    const allocationBarColor =
+        allocation > 100 ? 'bg-red-500' :
+        allocation >= 80  ? 'bg-orange-400' :
+        allocation >= 50  ? 'bg-indigo-500' : 'bg-green-500';
 
-    if (viewMode === 'heatmap') {
-        return (
-            <div
-                className={`w-full h-8 rounded ${bgColor} flex items-center justify-center`}
-                title={`${workload}%`}
-            >
-                <span className={`text-xs font-medium ${textColor}`}>{workload || '-'}</span>
-            </div>
-        );
-    }
+    const allocationTextColor =
+        allocation > 100 ? 'text-red-600' :
+        allocation >= 80  ? 'text-orange-600' :
+        allocation >= 50  ? 'text-indigo-600' : 'text-green-600';
 
-    // Timeline view - show as bar
+    const totalHours = (resource.projects || []).reduce((s, p) => s + (p.totalLoggedHours || 0), 0);
+
     return (
-        <div className="h-8 bg-gray-100 rounded overflow-hidden">
-            {workload > 0 && (
-                <div
-                    className={`h-full ${bgColor} flex items-center justify-center`}
-                    style={{ width: `${Math.min(100, workload)}%` }}
-                >
-                    <span className={`text-xs font-medium ${textColor}`}>{workload}%</span>
+        <div className={`bg-white rounded-xl border shadow-sm transition-all ${
+            resource.overloaded ? 'border-red-200 ring-1 ring-red-200' : 'border-gray-100'
+        }`}>
+            <div
+                className="p-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50/50 rounded-xl"
+                onClick={() => setExpanded(v => !v)}
+            >
+                {/* Avatar */}
+                <div className="relative flex-shrink-0">
+                    {resource.avatarUrl ? (
+                        <img src={resource.avatarUrl} alt={resource.fullName} className="w-11 h-11 rounded-full object-cover" />
+                    ) : (
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                            {resource.fullName?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                    )}
+                    {resource.overloaded && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                            <i className="fa-solid fa-exclamation text-white" style={{ fontSize: 8 }} />
+                        </div>
+                    )}
+                </div>
+
+                {/* Name */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900">{resource.fullName || resource.email}</span>
+                        {resource.overloaded && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                                <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: 10 }} /> Quá tải
+                            </span>
+                        )}
+                        {!resource.overloaded && allocation < 50 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                <i className="fa-solid fa-circle-check" style={{ fontSize: 10 }} /> Khả dụng
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">{resource.email}</div>
+                </div>
+
+                {/* Allocation Bar */}
+                <div className="w-44 hidden sm:block">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-500">Phân bổ tổng</span>
+                        <span className={`text-sm font-bold ${allocationTextColor}`}>{allocation}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all duration-500 ${allocationBarColor}`}
+                            style={{ width: `${Math.min(allocation, 100)}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Summary */}
+                <div className="hidden md:flex gap-5 text-center">
+                    <div>
+                        <div className="text-xs text-gray-400">Dự án</div>
+                        <div className="font-bold text-gray-800">{resource.projects?.length || 0}</div>
+                    </div>
+                    <div>
+                        <div className="text-xs text-gray-400">Giờ log</div>
+                        <div className="font-bold text-gray-800">{totalHours.toFixed(0)}h</div>
+                    </div>
+                </div>
+
+                <i className={`fa-solid fa-chevron-down text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+            </div>
+
+            {/* Project details */}
+            {expanded && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                    <div className="pt-3 space-y-2">
+                        {(resource.projects || []).length === 0 ? (
+                            <p className="text-xs text-gray-400 text-center py-3">Không có dự án nào</p>
+                        ) : (
+                            resource.projects.map(proj => (
+                                <ProjectSlotRow key={proj.projectId} slot={proj} />
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
         </div>
     );
 }
 
-function LegendItem({ color, label }) {
+function ProjectSlotRow({ slot }) {
+    const alloc = slot.allocationRate || 0;
+    const barColor = alloc > 80 ? 'bg-orange-400' : alloc >= 50 ? 'bg-indigo-400' : 'bg-green-400';
+
+    const statusStyles = {
+        ACTIVE:    'bg-green-100 text-green-700',
+        ON_LEAVE:  'bg-yellow-100 text-yellow-700',
+        PART_TIME: 'bg-blue-100 text-blue-700',
+        INACTIVE:  'bg-gray-100 text-gray-500',
+    };
+    const statusLabel = {
+        ACTIVE: 'Đang làm', ON_LEAVE: 'Nghỉ phép',
+        PART_TIME: 'Bán thời gian', INACTIVE: 'Không hoạt động',
+    };
+    const roleLabel = { OWNER: 'Chủ dự án', MANAGER: 'Quản lý', MEMBER: 'Thành viên' };
+
     return (
-        <div className="flex items-center gap-2">
-            <div className={`w-4 h-4 rounded ${color}`} />
-            <span className="text-gray-600 dark:text-gray-400">{label}</span>
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg">
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm text-gray-800 truncate">{slot.projectName}</span>
+                    {slot.position && <span className="text-xs text-gray-400">· {slot.position}</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-400">{roleLabel[slot.role] || slot.role}</span>
+                    {slot.memberStatus && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusStyles[slot.memberStatus] || statusStyles.ACTIVE}`}>
+                            {statusLabel[slot.memberStatus] || slot.memberStatus}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="w-24 hidden sm:block">
+                <div className="flex justify-between mb-0.5">
+                    <span className="text-[10px] text-gray-400">Phân bổ</span>
+                    <span className="text-[10px] font-semibold text-gray-600">{alloc}%</span>
+                </div>
+                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(alloc, 100)}%` }} />
+                </div>
+            </div>
+
+            <div className="text-right min-w-[52px]">
+                <div className="text-xs text-gray-400">Giờ</div>
+                <div className="text-sm font-semibold text-gray-700">{(slot.totalLoggedHours || 0).toFixed(0)}h</div>
+            </div>
         </div>
     );
 }
 
-function AllocationModal({ onClose, employees, showToast, queryClient }) {
-    const [form, setForm] = useState({
-        employeeId: '',
-        projectId: '',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: '',
-        allocation: 50,
-        note: '',
-    });
-
-    const { data: projects = [] } = useQuery({
-        queryKey: ['projects-for-allocation'],
-        queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
-            return res.data?.content || res.data || [];
-        },
-    });
-
-    const createMutation = useMutation({
-        mutationFn: (data) => apiClient.post(ENDPOINTS.RESOURCE_PLANNING.ALLOCATIONS, data),
-        onSuccess: () => {
-            showToast('Phân bổ nguồn lực thành công', 'success');
-            queryClient.invalidateQueries(['resource-allocations']);
-            onClose();
-        },
-        onError: (err) => showToast(err.response?.data?.message || 'Lỗi phân bổ', 'error'),
-    });
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!form.employeeId || !form.startDate || !form.endDate) {
-            showToast('Vui lòng điền đầy đủ thông tin', 'error');
-            return;
-        }
-        createMutation.mutate({
-            employeeId: Number(form.employeeId),
-            projectId: form.projectId ? Number(form.projectId) : null,
-            startDate: form.startDate,
-            endDate: form.endDate,
-            allocation: Number(form.allocation),
-            note: form.note,
-        });
-    };
-
+function EmptyState({ search, filter }) {
     return (
-        <div className="modal-overlay">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fade-in">
-                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-indigo-600">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-white">Phân bổ nguồn lực mới</h2>
-                        <button onClick={onClose} className="text-white/80 hover:text-white">
-                            <i className="fa-solid fa-xmark" />
-                        </button>
-                    </div>
-                </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên *</label>
-                        <select value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" required>
-                            <option value="">Chọn nhân viên</option>
-                            {(employees || []).map(emp => <option key={emp.id} value={emp.id}>{emp.fullName}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Dự án</label>
-                        <select value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl">
-                            <option value="">Không gắn dự án</option>
-                            {projects.map(p => <option key={p.projectId || p.id} value={p.projectId || p.id}>{p.name}</option>)}
-                        </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu *</label>
-                            <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc *</label>
-                            <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" required />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tỷ lệ phân bổ ({form.allocation}%)</label>
-                        <input type="range" min="0" max="100" value={form.allocation} onChange={e => setForm({ ...form, allocation: e.target.value })} className="w-full" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                        <textarea value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl" rows={2} placeholder="Ghi chú tùy chọn..." />
-                    </div>
-                    <div className="flex justify-end gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl">Hủy</button>
-                        <button type="submit" disabled={createMutation.isPending} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium disabled:opacity-50">
-                            {createMutation.isPending ? <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang lưu...</> : 'Tạo phân bổ'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+        <div className="text-center py-16 text-gray-400">
+            <i className="fa-solid fa-users-slash text-4xl mb-3 block opacity-40" />
+            <p className="font-medium text-gray-500">
+                {search
+                    ? `Không tìm thấy nhân sự phù hợp với "${search}"`
+                    : filter === 'overloaded' ? 'Không có nhân sự nào đang quá tải 🎉'
+                    : filter === 'available'  ? 'Tất cả nhân sự đang được phân bổ đầy đủ'
+                    : 'Chưa có dữ liệu phân bổ nguồn lực'}
+            </p>
+            <p className="text-sm mt-1">
+                Hãy thêm thành viên vào dự án và cập nhật tỉ lệ phân bổ trong tab Nhóm của dự án
+            </p>
         </div>
     );
 }

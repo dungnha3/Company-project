@@ -23,9 +23,6 @@ export function useFeatureEnabled(featureKey) {
     const featureMap = {
         hr: settings.hrModuleEnabled,
         project: settings.projectModuleEnabled,
-        chat: settings.chatModuleEnabled,
-        storage: settings.storageModuleEnabled,
-        ai: settings.aiModuleEnabled,
         attendance: settings.hrModuleEnabled && settings.attendanceEnabled,
         leave: settings.hrModuleEnabled && settings.leaveEnabled,
         salary: settings.hrModuleEnabled && settings.salaryEnabled,

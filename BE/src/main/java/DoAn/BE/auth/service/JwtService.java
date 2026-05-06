@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import jakarta.annotation.PostConstruct;
 
 import javax.crypto.SecretKey;
 
@@ -35,7 +36,7 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    @javax.annotation.PostConstruct
+    @PostConstruct
     public void init() {
         if (secretKey.length() < 32) {
             throw new IllegalStateException(

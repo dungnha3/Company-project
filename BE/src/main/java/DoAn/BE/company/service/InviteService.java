@@ -32,7 +32,7 @@ public class InviteService {
     private final CompanyMemberRepository memberRepository;
     private final CompanyRepository companyRepository;
     private final EmailNotificationService emailService;
-    private final DoAn.BE.common.service.QuotaService quotaService;
+
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Value("${app.client.url:http://localhost:3000}")
@@ -46,7 +46,7 @@ public class InviteService {
         }
 
         // [QUOTA CHECK] Kiểm tra giới hạn nhân viên trước khi mời
-        quotaService.validateEmployeeQuota();
+
         validateInviteRequest(request);
 
         Company company = companyRepository.findById(companyId)

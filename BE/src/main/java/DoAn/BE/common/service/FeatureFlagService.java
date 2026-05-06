@@ -48,35 +48,11 @@ public class FeatureFlagService {
         }
     }
 
-    public void requireSalaryFeature() {
-        requireHRModule();
-        CompanySettings settings = getSettings();
-        if (settings == null || !settings.isSalaryEnabled()) {
-            throw new ForbiddenException("Tính năng Quản lý lương đã bị vô hiệu hóa");
-        }
-    }
-
     public void requireLeaveFeature() {
         requireHRModule();
         CompanySettings settings = getSettings();
         if (settings == null || !settings.isLeaveEnabled()) {
             throw new ForbiddenException("Tính năng Quản lý nghỉ phép đã bị vô hiệu hóa");
-        }
-    }
-
-    public void requireContractFeature() {
-        requireHRModule();
-        CompanySettings settings = getSettings();
-        if (settings == null || !settings.isContractEnabled()) {
-            throw new ForbiddenException("Tính năng Quản lý hợp đồng đã bị vô hiệu hóa");
-        }
-    }
-
-    public void requireAttendanceFeature() {
-        requireHRModule();
-        CompanySettings settings = getSettings();
-        if (settings == null || !settings.isAttendanceEnabled()) {
-            throw new ForbiddenException("Tính năng Chấm công đã bị vô hiệu hóa");
         }
     }
 
@@ -89,17 +65,11 @@ public class FeatureFlagService {
     }
 
     public void requireChatModule() {
-        CompanySettings settings = getSettings();
-        if (settings == null || !settings.isChatModuleEnabled()) {
-            throw new ForbiddenException("Module Chat đã bị vô hiệu hóa cho công ty này");
-        }
+        // Always enabled
     }
 
     public void requireAIModule() {
-        CompanySettings settings = getSettings();
-        if (settings == null || !settings.isAiModuleEnabled()) {
-            throw new ForbiddenException("Module AI đã bị vô hiệu hóa cho công ty này");
-        }
+        // Always enabled
     }
 
     public void requireProjectModule() {
@@ -110,35 +80,6 @@ public class FeatureFlagService {
     }
 
     public void requireStorageModule() {
-        CompanySettings settings = getSettings();
-        if (settings != null && !settings.isStorageModuleEnabled()) {
-            throw new ForbiddenException("Module Lưu trữ đã bị vô hiệu hóa cho công ty này");
-        }
-    }
-
-    public int getMaxLeaveDaysPerYear() {
-        CompanySettings settings = getSettings();
-        if (settings != null && settings.getMaxLeaveDaysPerYear() != null) {
-            return settings.getMaxLeaveDaysPerYear();
-        }
-        return 12; // Mặc định 12 ngày
-    }
-
-    public double getAllowedRadius() {
-        CompanySettings settings = getSettings();
-        if (settings != null && settings.getAllowedRadius() != null) {
-            return settings.getAllowedRadius();
-        }
-        return 100.0; // Mặc định 100m
-    }
-
-    public Double getOfficeLatitude() {
-        CompanySettings settings = getSettings();
-        return settings != null ? settings.getOfficeLatitude() : null;
-    }
-
-    public Double getOfficeLongitude() {
-        CompanySettings settings = getSettings();
-        return settings != null ? settings.getOfficeLongitude() : null;
+        // Always enabled
     }
 }

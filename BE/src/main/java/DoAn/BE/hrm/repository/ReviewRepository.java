@@ -41,8 +41,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                         @Param("reviewPeriod") String reviewPeriod,
                         @Param("reviewType") ReviewType reviewType);
 
-        @Query("SELECT r FROM Review r WHERE r.employee.department.departmentId = :departmentId ORDER BY r.createdAt DESC")
-        List<Review> findByDepartment(@Param("departmentId") Long departmentId);
 
         @EntityGraph(attributePaths = { "employee", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.status = 'PENDING' ORDER BY r.createdAt ASC")
@@ -72,4 +70,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         List<Review> findByCompanyId(@Param("companyId") Long companyId);
         @Query("SELECT r FROM Review r WHERE r.employee.company.companyId = :companyId ORDER BY r.createdAt DESC")
         Page<Review> findByCompanyId(@Param("companyId") Long companyId, Pageable pageable);
+
+        // Lấy review theo dự án (Module 4)
+        @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
+        @Query("SELECT r FROM Review r WHERE r.projectId = :projectId ORDER BY r.createdAt DESC")
+        List<Review> findByProjectId(@Param("projectId") Long projectId);
 }

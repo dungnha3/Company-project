@@ -12,21 +12,6 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 
     const isEditMode = !!employeeId;
 
-    // --- QUERIES ---
-    const { data: departments } = useQuery({
-        queryKey: ['departments'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.DEPARTMENTS.LIST)).data,
-        initialData: [],
-        enabled: isOpen
-    });
-
-    const { data: positions } = useQuery({
-        queryKey: ['positions'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.POSITIONS.LIST)).data,
-        initialData: [],
-        enabled: isOpen
-    });
-
     // Fetch users for dropdown (only needed in Create mode)
     const { data: users } = useQuery({
         queryKey: ['users-available'],
@@ -50,8 +35,6 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                 email: emp.email || '', // Read only
                 phone: emp.phone || '',
                 address: emp.address || '',
-                departmentId: emp.departmentId || '',
-                positionId: emp.positionId || '',
                 startDate: emp.hireDate || '',
                 baseSalary: emp.baseSalary || '',
                 status: emp.status || 'ACTIVE',
@@ -72,8 +55,6 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                 idCard: data.idCard,
                 phone: data.phone,
                 address: data.address,
-                departmentId: Number(data.departmentId),
-                positionId: Number(data.positionId),
                 hireDate: data.startDate,
                 baseSalary: Number(data.baseSalary),
                 status: data.status
@@ -108,7 +89,6 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
         if (!formData.userId && !isEditMode) newErrors.userId = 'Vui lòng chọn tài khoản User';
         if (!formData.fullName) newErrors.fullName = 'Vui lòng nhập họ tên';
         if (!formData.startDate) newErrors.startDate = 'Vui lòng chọn ngày vào làm';
-        if (!formData.departmentId) newErrors.departmentId = 'Vui lòng chọn phòng ban';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -214,27 +194,6 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                         <div className="md:col-span-2 mt-4 mb-2 border-b border-gray-100 pb-2 font-semibold text-gray-500 text-sm uppercase">Thông tin công việc</div>
 
                         <div>
-                            <label className="label-required">Phòng ban</label>
-                            <select name="departmentId" className="input w-full" value={formData.departmentId} onChange={handleChange}>
-                                <option value="">-- Chọn phòng ban --</option>
-                                {departments.map(d => (
-                                    <option key={d.departmentId} value={d.departmentId}>{d.name}</option>
-                                ))}
-                            </select>
-                            {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId}</p>}
-                        </div>
-
-                        <div>
-                            <label className="label">Chức vụ</label>
-                            <select name="positionId" className="input w-full" value={formData.positionId} onChange={handleChange}>
-                                <option value="">-- Chọn chức vụ --</option>
-                                {positions.map(p => (
-                                    <option key={p.positionId} value={p.positionId}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
                             <label className="label-required">Ngày vào làm</label>
                             <input type="date" name="startDate" className="input w-full" value={formData.startDate} onChange={handleChange} />
                             {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
@@ -292,8 +251,6 @@ const INITIAL_STATE = {
     idCard: '',
     phone: '',
     address: '',
-    departmentId: '',
-    positionId: '',
     startDate: new Date().toISOString().split('T')[0],
     baseSalary: '',
     status: 'ACTIVE'

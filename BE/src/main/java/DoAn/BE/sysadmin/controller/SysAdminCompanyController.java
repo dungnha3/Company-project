@@ -60,16 +60,7 @@ public class SysAdminCompanyController {
         return ResponseEntity.ok(Map.of("message", "Company updated successfully"));
     }
 
-    // [ACTION] Change Plan
-    @PutMapping("/{companyId}/plan")
-    public ResponseEntity<?> changePlan(
-            @PathVariable Long companyId,
-            @RequestParam String plan,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.changePlan(companyId, plan);
-        return ResponseEntity.ok(Map.of("message", "Plan changed successfully"));
-    }
+
 
     // [ACTION] Toggle Status (Active/Suspend)
     @PutMapping("/{companyId}/status")
@@ -93,16 +84,7 @@ public class SysAdminCompanyController {
         return ResponseEntity.ok(Map.of("message", "Company deleted successfully"));
     }
 
-    // [GOD MODE] Update Quota
-    @PutMapping("/{companyId}/quota")
-    public ResponseEntity<?> updateQuota(
-            @PathVariable Long companyId,
-            @RequestBody SysAdminCompanyDto.QuotaUpdateRequest request,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.updateCompanyQuota(companyId, request);
-        return ResponseEntity.ok(Map.of("message", "Company quota updated (Plan overrides applied)"));
-    }
+
 
     // [GOD MODE] Update Features
     @PutMapping("/{companyId}/features")

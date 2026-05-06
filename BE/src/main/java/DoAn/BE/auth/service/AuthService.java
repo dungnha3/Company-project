@@ -38,8 +38,8 @@ public class AuthService {
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final CompanyMemberRepository companyMemberRepository;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
-    private final org.springframework.web.reactive.function.client.WebClient webClient;
-    private final DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository;
+    private final org.springframework.web.client.RestTemplate restTemplate;
+
     private final TwoFactorService twoFactorService;
     private final int maxLoginAttempts;
     private final int lockoutDurationMinutes;
@@ -55,8 +55,7 @@ public class AuthService {
             org.springframework.context.ApplicationEventPublisher eventPublisher,
             CompanyMemberRepository companyMemberRepository,
             DoAn.BE.audit.service.AuditLogService auditLogService,
-            org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder,
-            DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository,
+            org.springframework.boot.web.client.RestTemplateBuilder restTemplateBuilder,
             TwoFactorService twoFactorService,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.max-attempts:5}") int maxLoginAttempts,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.lockout-minutes:15}") int lockoutDurationMinutes,
@@ -73,8 +72,7 @@ public class AuthService {
         this.eventPublisher = eventPublisher;
         this.companyMemberRepository = companyMemberRepository;
         this.auditLogService = auditLogService;
-        this.webClient = webClientBuilder.build();
-        this.personalWorkspaceRepository = personalWorkspaceRepository;
+        this.restTemplate = restTemplateBuilder.build();
         this.twoFactorService = twoFactorService;
         this.maxLoginAttempts = maxLoginAttempts;
         this.lockoutDurationMinutes = lockoutDurationMinutes;
@@ -111,11 +109,6 @@ public class AuthService {
         clearFailedAttempts(request.getUsername(), ipAddress);
         updateUserLoginStatus(user);
 
-        if (!personalWorkspaceRepository.existsByUser_UserId(user.getUserId())) {
-            DoAn.BE.user.entity.PersonalWorkspace pw = DoAn.BE.user.entity.PersonalWorkspace.createFor(user);
-            personalWorkspaceRepository.save(pw);
-            log.info("Đã tạo Personal Workspace cho user cũ: {}", user.getUsername());
-        }
         sessionService.createSession(user, ipAddress, userAgent);
         List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
 
@@ -386,10 +379,6 @@ public class AuthService {
 
         newUser = userService.save(newUser);
         log.info("Đã tạo tài khoản mới: {}", newUser.getUsername());
-        DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
-                .createFor(newUser);
-        personalWorkspaceRepository.save(personalWorkspace);
-        log.info("Đã tạo Personal Workspace cho user: {}", newUser.getUsername());
         updateUserLoginStatus(newUser);
         sessionService.createSession(newUser, ipAddress, userAgent);
         List<CompanyMember> memberships = List.of();
@@ -415,13 +404,6 @@ public class AuthService {
                         user.setAvatarUrl(picture);
                     }
                     userService.save(user);
-                    // Tạo Personal Workspace nếu chưa có
-                    if (!personalWorkspaceRepository.existsByUser_UserId(user.getUserId())) {
-                        DoAn.BE.user.entity.PersonalWorkspace pw = DoAn.BE.user.entity.PersonalWorkspace
-                                .createFor(user);
-                        personalWorkspaceRepository.save(pw);
-                        log.info("Đã tạo Personal Workspace cho shadow user kích hoạt qua Google: {}", user.getEmail());
-                    }
                     log.info("Đã kích hoạt shadow user {} qua Google Login", user.getEmail());
                 } else {
                     throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
@@ -457,10 +439,6 @@ public class AuthService {
         newUser.setStatus(User.UserStatus.ACTIVE);
         newUser.setAvatarUrl(picture);
         newUser = userService.save(newUser);
-        DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
-                .createFor(newUser);
-        personalWorkspaceRepository.save(personalWorkspace);
-        log.info("Đã tạo Personal Workspace cho Google user: {}", newUser.getEmail());
 
         return newUser;
     }
@@ -479,17 +457,9 @@ public class AuthService {
         userInfo.setEmail(user.getEmail());
         userInfo.setIsActive(user.getIsActive());
         userInfo.setIsSystemAdmin(user.isSystemAdminAccount()); // [SAAS] System Admin flag
-        userInfo.setPersonalPlan(user.getPersonalPlan()); // [NEW] Personal plan
+        // Personal plan check is removed
         userInfo.setTwoFactorEnabled(Boolean.TRUE.equals(user.getTwoFactorEnabled()));
         response.setUser(userInfo);
-        personalWorkspaceRepository.findByUser_UserId(user.getUserId())
-                .ifPresent(pw -> {
-                    AuthResponse.PersonalWorkspaceInfo pwInfo = new AuthResponse.PersonalWorkspaceInfo();
-                    pwInfo.setWorkspaceId(pw.getWorkspaceId());
-                    pwInfo.setName(pw.getName());
-                    pwInfo.setPlan(user.getPersonalPlan());
-                    response.setPersonalWorkspace(pwInfo);
-                });
         List<AuthResponse.CompanyDTO> companies = memberships.stream()
                 .map(m -> new AuthResponse.CompanyDTO(
                         m.getCompany().getCompanyId(),
@@ -650,12 +620,12 @@ public class AuthService {
     }
 
     private java.util.Map<String, Object> verifyGoogleToken(String idToken) {
-        java.util.Map<String, Object> googleUser = webClient.get()
-                .uri(this.googleTokenInfoUrl + "?id_token=" + idToken)
-                .retrieve()
-                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<java.util.Map<String, Object>>() {
-                })
-                .block();
+        java.util.Map<String, Object> googleUser = restTemplate.exchange(
+                this.googleTokenInfoUrl + "?id_token=" + idToken,
+                org.springframework.http.HttpMethod.GET,
+                null,
+                new org.springframework.core.ParameterizedTypeReference<java.util.Map<String, Object>>() {}
+        ).getBody();
 
         if (googleUser == null || googleUser.get("email") == null) {
             throw new BadRequestException("Google token không hợp lệ");

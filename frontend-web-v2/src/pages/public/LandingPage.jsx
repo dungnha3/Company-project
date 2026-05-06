@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
-import PricingTable from './components/PricingTable';
 
 export default function LandingPage() {
     const { isAuthenticated } = useAuthStore();
@@ -22,9 +21,6 @@ export default function LandingPage() {
                         {/* Navigation */}
                         <nav className="hidden md:flex items-center gap-8">
                             <a href="#features" className="text-gray-500 hover:text-gray-900 font-medium transition-colors">Tính năng</a>
-                            <a href="#solutions" className="text-gray-500 hover:text-gray-900 font-medium transition-colors">Giải pháp</a>
-                            <a href="#pricing" className="text-gray-500 hover:text-gray-900 font-medium transition-colors">Bảng giá</a>
-                            <a href="#testimonials" className="text-gray-500 hover:text-gray-900 font-medium transition-colors">Khách hàng</a>
                         </nav>
 
                         {/* Auth Buttons */}
@@ -36,8 +32,7 @@ export default function LandingPage() {
                                 </Link>
                             ) : (
                                 <>
-                                    <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Đăng nhập</Link>
-                                    <Link to="/register" className="btn-primary">Dùng miễn phí</Link>
+                                    <Link to="/login" className="btn-primary">Đăng nhập</Link>
                                 </>
                             )}
                         </div>
@@ -50,18 +45,17 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 
                     <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 tracking-tight">
-                        Quản trị Doanh nghiệp <br />
+                        Cổng Thông Tin <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
-                            Thông minh & Hiệu quả
+                            Nội Bộ Doanh Nghiệp
                         </span>
                     </h1>
                     <p className="text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
-                        Nền tảng quản lý doanh nghiệp: Nhân sự, Dự án, Chấm công, Tính lương,
-                        Chat và Calendar.
+                        Hệ thống quản trị tập trung: Nhân sự, Dự án, Tài liệu và Quy trình làm việc.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link to="/register" className="btn-primary px-8 py-4 text-lg w-full sm:w-auto shadow-lg hover:shadow-xl transition-shadow">
-                            Bắt đầu miễn phí <i className="fa-solid fa-arrow-right ml-2" />
+                        <Link to="/login" className="btn-primary px-8 py-4 text-lg w-full sm:w-auto shadow-lg hover:shadow-xl transition-shadow">
+                            Đăng nhập hệ thống <i className="fa-solid fa-arrow-right ml-2" />
                         </Link>
                         <a href="#features" className="px-8 py-4 text-lg font-medium text-gray-600 hover:text-gray-900 w-full sm:w-auto flex items-center justify-center gap-2 group">
                             <i className="fa-solid fa-arrow-down text-2xl text-indigo-600 group-hover:scale-110 transition-transform" />
@@ -139,9 +133,9 @@ export default function LandingPage() {
                             { icon: 'fa-clock', color: 'bg-purple-500', title: 'Chấm công & Nghỉ phép', desc: 'GPS check-in, quản lý đơn nghỉ phép, tính công tự động.' },
                             { icon: 'fa-stopwatch', color: 'bg-cyan-500', title: 'Time Tracking', desc: 'Log thời gian làm việc cho từng task.' },
                             { icon: 'fa-chart-line', color: 'bg-emerald-500', title: 'Analytics', desc: 'Thống kê dự án và công việc.' },
+                            { icon: 'fa-folder-open', color: 'bg-yellow-500', title: 'Lưu trữ Tài liệu', desc: 'Lưu trữ file tập trung an toàn trên Google Drive.', new: true },
                             { icon: 'fa-calendar-days', color: 'bg-rose-500', title: 'Calendar', desc: 'Quản lý sự kiện và deadline.' },
                             { icon: 'fa-comments', color: 'bg-green-500', title: 'Chat', desc: 'Trò chuyện thời gian thực.' },
-                            { icon: 'fa-money-bill-wave', color: 'bg-teal-500', title: 'Bảng lương tự động', desc: 'Tính lương dựa trên công, nghỉ phép. Xuất payslip PDF.' },
                         ].map((feature, idx) => (
                             <div key={idx} className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all group relative">
                                 {feature.new && (
@@ -160,83 +154,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Solutions Section */}
-            <section id="solutions" className="py-20 bg-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <span className="text-indigo-600 font-semibold uppercase tracking-wider text-sm">Giải pháp</span>
-                        <h2 className="text-4xl font-bold text-gray-900 mt-2 mb-4">Phù hợp mọi ngành nghề</h2>
-                    </div>
 
-                    <div className="grid md:grid-cols-4 gap-6">
-                        {[
-                            { icon: 'fa-laptop-code', title: 'Startup IT', desc: 'Sprint, Kanban, Code review workflow' },
-                            { icon: 'fa-building-columns', title: 'Ngân hàng & Tài chính', desc: 'Bảo mật cao, audit logs' },
-                            { icon: 'fa-shopping-cart', title: 'Retail & E-commerce', desc: 'Quản lý shift, nhân viên part-time' },
-                            { icon: 'fa-graduation-cap', title: 'Giáo dục', desc: 'Quản lý giáo viên, lịch dạy' },
-                        ].map((solution, idx) => (
-                            <div key={idx} className="text-center p-6 rounded-2xl border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all">
-                                <div className="w-16 h-16 mx-auto rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-2xl mb-4">
-                                    <i className={`fa-solid ${solution.icon}`} />
-                                </div>
-                                <h3 className="font-bold text-gray-900 mb-2">{solution.title}</h3>
-                                <p className="text-sm text-gray-500">{solution.desc}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Pricing Section */}
-            <PricingTable />
-
-            {/* FAQ Section - Real, verifiable info */}
-            <section id="testimonials" className="py-20 bg-gray-50">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <span className="text-indigo-600 font-semibold uppercase tracking-wider text-sm">FAQ</span>
-                        <h2 className="text-4xl font-bold text-gray-900 mt-2 mb-4">Câu hỏi thường gặp</h2>
-                    </div>
-
-                    <div className="space-y-4">
-                        {[
-                            { q: 'Đây là sản phẩm gì?', a: 'Đây là nền tảng quản lý doanh nghiệp tích hợp các module: Nhân sự, Dự án, Chấm công, Tính lương, Chat và Calendar.' },
-                            { q: 'Có những tính năng nào?', a: 'Quản lý nhân viên, phòng ban, dự án Kanban/Sprint, chấm công GPS, đơn nghỉ phép, bảng lương, chat realtime, và calendar.' },
-                            { q: 'Công nghệ sử dụng?', a: 'Backend: Spring Boot, SQL Server. Frontend: React, Vite, TailwindCSS. Realtime: WebSocket.' },
-                        ].map((faq, idx) => (
-                            <details key={idx} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 overflow-hidden group">
-                                <summary className="p-6 cursor-pointer font-semibold text-gray-900 flex justify-between items-center hover:bg-gray-50">
-                                    {faq.q}
-                                    <i className="fa-solid fa-chevron-down text-gray-400 group-open:rotate-180 transition-transform" />
-                                </summary>
-                                <div className="px-6 pb-6 text-gray-600">
-                                    {faq.a}
-                                </div>
-                            </details>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="py-20 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
-                <div className="max-w-4xl mx-auto px-4 text-center">
-                    <h2 className="text-4xl font-bold text-white mb-6">
-                        Sẵn sàng nâng cấp quy trình làm việc?
-                    </h2>
-                    <p className="text-xl text-indigo-100 mb-10">
-                        Bắt đầu miễn phí ngay hôm nay. Không cần thẻ tín dụng.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link to="/register" className="bg-white text-indigo-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-indigo-50 transition-colors shadow-lg">
-                            Tạo tài khoản miễn phí
-                        </Link>
-                        <a href="#demo" className="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-colors">
-                            Xem demo
-                        </a>
-                    </div>
-                </div>
-            </section>
 
             {/* Footer */}
             <footer className="bg-gray-900 text-white pt-16 pb-8">
@@ -260,18 +178,14 @@ export default function LandingPage() {
                             <h4 className="font-bold mb-4">Sản phẩm</h4>
                             <ul className="space-y-2 text-gray-400 text-sm">
                                 <li><a href="#features" className="hover:text-white transition-colors">Tính năng</a></li>
-                                <li><a href="#pricing" className="hover:text-white transition-colors">Bảng giá</a></li>
-                                <li><a href="#testimonials" className="hover:text-white transition-colors">Khách hàng</a></li>
                             </ul>
                         </div>
 
                         {/* Company */}
                         <div>
-                            <h4 className="font-bold mb-4">Doanh nghiệp</h4>
+                            <h4 className="font-bold mb-4">Hệ thống</h4>
                             <ul className="space-y-2 text-gray-400 text-sm">
-                                <li><a href="#testimonials" className="hover:text-white transition-colors">Về chúng tôi</a></li>
-                                <li><a href="/register" className="hover:text-white transition-colors">Đăng ký dùng thử</a></li>
-                                <li><a href="mailto:support@saas-enterprise.vn" className="hover:text-white transition-colors">Liên hệ</a></li>
+                                <li><a href="/login" className="hover:text-white transition-colors">Đăng nhập</a></li>
                             </ul>
                         </div>
 
@@ -279,8 +193,7 @@ export default function LandingPage() {
                         <div>
                             <h4 className="font-bold mb-4">Hỗ trợ</h4>
                             <ul className="space-y-2 text-gray-400 text-sm">
-                                <li><a href="mailto:support@saas-enterprise.vn" className="hover:text-white transition-colors">Trung tâm trợ giúp</a></li>
-                                <li><a href="/login" className="hover:text-white transition-colors">Đăng nhập</a></li>
+                                <li><a href="mailto:it@saas-enterprise.vn" className="hover:text-white transition-colors">Liên hệ IT Support</a></li>
                             </ul>
                         </div>
                     </div>

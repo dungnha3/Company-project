@@ -27,29 +27,17 @@ const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
 
 // HR pages
 const EmployeesPage = lazy(() => import('@pages/hr/EmployeesPage'));
-const EmployeeDetailPage = lazy(() => import('@pages/hr/EmployeeDetailPage'));
-const DepartmentsPage = lazy(() => import('@pages/hr/DepartmentsPage'));
-const PositionsPage = lazy(() => import('@pages/hr/PositionsPage'));
+
 const ProjectsPage = lazy(() => import('@pages/projects/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('@pages/projects/ProjectDetailPage'));
-const AttendancePage = lazy(() => import('@pages/hr/AttendancePage'));
 const LeaveRequestsPage = lazy(() => import('@pages/hr/LeaveRequestsPage'));
-const SalariesPage = lazy(() => import('@pages/hr/SalariesPage'));
-const ContractsPage = lazy(() => import('@pages/hr/ContractsPage'));
 const ReviewsPage = lazy(() => import('@pages/hr/ReviewsPage'));
-const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
-const OrgChartPage = lazy(() => import('@pages/hr/OrgChartPage'));
-const OKRPage = lazy(() => import('@pages/hr/OKRPage'));
-const HROnboardingPage = lazy(() => import('@pages/hr/OnboardingPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
 
 // Project pages
 const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
 
-// Personal Workspace pages
-const PersonalTasksPage = lazy(() => import('@pages/personal/PersonalTasksPage'));
-const PersonalStoragePage = lazy(() => import('@pages/personal/PersonalStoragePage'));
-const PersonalCalendarPage = lazy(() => import('@pages/personal/PersonalCalendarPage'));
+
 const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
 const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
 
@@ -58,24 +46,12 @@ const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
 const MyTimelogsPage = lazy(() => import('@pages/timelogs/MyTimelogsPage'));
 
 
-const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPage'));
-const CompanyDashboardPage = lazy(() => import('@pages/company/CompanyDashboardPage'));
 const ActivityLogPage = lazy(() => import('@pages/company/ActivityLogPage'));
-const BillingPage = lazy(() => import('@pages/company/BillingPage'));
+const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPage'));
 
 // Other pages
 const ProfilePage = lazy(() => import('@pages/profile/ProfilePage'));
-const ChatPage = lazy(() => import('@pages/chat/ChatPage'));
 const NotificationsPage = lazy(() => import('@pages/notifications/NotificationsPage'));
-const StoragePage = lazy(() => import('@pages/storage/StoragePage'));
-
-// System Admin
-const SystemAdminLayout = lazy(() => import('@layouts/SystemAdminLayout'));
-const AdminCompaniesPage = lazy(() => import('@pages/admin/AdminCompaniesPage'));
-const AdminCompanyDetailPage = lazy(() => import('@pages/admin/AdminCompanyDetailPage'));
-const AdminUsersPage = lazy(() => import('@pages/admin/AdminUsersPage'));
-const AdminAnalyticsPage = lazy(() => import('@pages/admin/AdminAnalyticsPage'));
-const AdminSettingsPage = lazy(() => import('@pages/admin/AdminSettingsPage'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -103,66 +79,6 @@ const router = createBrowserRouter([
         ],
     },
 
-
-    // System Admin Routes
-    {
-        path: '/admin',
-        element: (
-            <AccessControlGuard requireAuth={true}>
-                <SystemAdminGuard>
-                    <Suspense fallback={<PageLoader />}>
-                        <SystemAdminLayout />
-                    </Suspense>
-                </SystemAdminGuard>
-            </AccessControlGuard>
-        ),
-        children: [
-            {
-                path: 'companies',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AdminCompaniesPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'companies/:id',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AdminCompanyDetailPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'users',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AdminUsersPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'analytics',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AdminAnalyticsPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'settings',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AdminSettingsPage />
-                    </Suspense>
-                ),
-            },
-            {
-                index: true,
-                element: <Navigate to="companies" replace />,
-            }
-        ],
-    },
 
     // Onboarding (New Company Setup)
     {
@@ -193,18 +109,10 @@ const router = createBrowserRouter([
                 ),
             },
 
-            // Personal Workspace (/app/me)
+            // Personal Settings (/app/me)
             {
                 path: 'me',
                 children: [
-                    {
-                        path: 'tasks',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <PersonalTasksPage />
-                            </Suspense>
-                        ),
-                    },
                     {
                         path: 'issues',
                         element: (
@@ -236,22 +144,6 @@ const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'personal-calendar',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <PersonalCalendarPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'storage',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <PersonalStoragePage />
-                            </Suspense>
-                        ),
-                    },
-                    {
                         path: 'profile',
                         element: (
                             <Suspense fallback={<PageLoader />}>
@@ -279,16 +171,6 @@ const router = createBrowserRouter([
                 ),
                 children: [
                     {
-                        path: 'dashboard',
-                        element: (
-                            <AccessControlGuard requiredPermission="hrViewList">
-                                <Suspense fallback={<PageLoader />}>
-                                    <HRDashboardPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
                         path: 'employees',
                         element: (
                             <AccessControlGuard
@@ -301,82 +183,14 @@ const router = createBrowserRouter([
                             </AccessControlGuard>
                         ),
                     },
-                    {
-                        path: 'employees/:id',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <EmployeeDetailPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'departments',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="hr"
-                                requiredPermission="hrViewDepartments"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <DepartmentsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'positions',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="hr"
-                                requiredPermission="hrViewPositions"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <PositionsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'attendance',
-                        element: (
-                            <AccessControlGuard requiredFeature="attendance">
-                                <Suspense fallback={<PageLoader />}>
-                                    <AttendancePage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
+
+
                     {
                         path: 'leave-requests',
                         element: (
                             <AccessControlGuard requiredFeature="leave">
                                 <Suspense fallback={<PageLoader />}>
                                     <LeaveRequestsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'salaries',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="salary"
-                                requiredPermission="salaryView"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <SalariesPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'contracts',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="contract"
-                                requiredPermission="contractView"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <ContractsPage />
                                 </Suspense>
                             </AccessControlGuard>
                         ),
@@ -390,45 +204,6 @@ const router = createBrowserRouter([
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ReviewsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'org-chart',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="orgChart"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <OrgChartPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'okr',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="okr"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <OKRPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'onboarding',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="onboarding"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <OnboardingPage />
                                 </Suspense>
                             </AccessControlGuard>
                         ),
@@ -506,16 +281,6 @@ const router = createBrowserRouter([
                 ),
                 children: [
                     {
-                        path: 'dashboard',
-                        element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
-                                <Suspense fallback={<PageLoader />}>
-                                    <CompanyDashboardPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
                         path: 'activity',
                         element: (
                             <AccessControlGuard
@@ -530,19 +295,13 @@ const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'billing',
-                        element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
-                                <Suspense fallback={<PageLoader />}>
-                                    <BillingPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
                         path: 'settings',
                         element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
+                            <AccessControlGuard
+                                requireAuth={true}
+                                requireCompany={true}
+                                allowedRoles={['OWNER', 'COMPANY_ADMIN']}
+                            >
                                 <Suspense fallback={<PageLoader />}>
                                     <CompanySettingsPage />
                                 </Suspense>
@@ -553,16 +312,7 @@ const router = createBrowserRouter([
             },
 
             // Common pages
-            {
-                path: 'chat',
-                element: (
-                    <AccessControlGuard requiredFeature="chat">
-                        <Suspense fallback={<PageLoader />}>
-                            <ChatPage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
+
             {
                 path: 'notifications',
                 element: (
@@ -570,29 +320,6 @@ const router = createBrowserRouter([
                         <NotificationsPage />
                     </Suspense>
                 ),
-            },
-            {
-                path: 'billing',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <BillingPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'storage',
-                element: (
-                    <AccessControlGuard requiredFeature="storage">
-                        <Suspense fallback={<PageLoader />}>
-                            <StoragePage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-            // Settings Redirect (Legacy/Cleanup)
-            {
-                path: 'settings/workspace',
-                element: <Navigate to="/app/company/settings" replace />
             },
         ],
     },

@@ -20,6 +20,10 @@ const ProjectSettingsTab = lazy(() => import('./tabs/ProjectSettingsTab'));
 const ProjectCalendarTab = lazy(() => import('./tabs/ProjectCalendarTab'));
 const EisenhowerMatrixTab = lazy(() => import('./tabs/EisenhowerMatrixTab'));
 const TimelineTab = lazy(() => import('./tabs/TimelineTab'));
+const TeamTab = lazy(() => import('./tabs/TeamTab'));
+const ProjectCostTab = lazy(() => import('./tabs/ProjectCostTab'));
+const ProjectPerformanceTab = lazy(() => import('./tabs/ProjectPerformanceTab'));
+const ProjectStorageTab = lazy(() => import('./tabs/ProjectStorageTab'));
 
 const PageLoader = () => <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-2xl text-primary" /></div>;
 
@@ -47,7 +51,11 @@ export default function ProjectDetailPage() {
             { id: 'gantt', label: 'Gantt Chart', icon: 'fa-timeline' },
             { id: 'timeline', label: 'Timeline', icon: 'fa-bars-progress' },
             { id: 'eisenhower', label: 'Eisenhower', icon: 'fa-grid-2' },
-            { id: 'calendar', label: 'Lịch công việc', icon: 'fa-calendar-days' },
+        { id: 'calendar', label: 'Lịch công việc', icon: 'fa-calendar-days' },
+            { id: 'files', label: 'Tài liệu', icon: 'fa-folder-open' },
+            { id: 'team', label: 'Nhân sự', icon: 'fa-users-gear' },
+            { id: 'costs', label: 'Chi phí', icon: 'fa-money-bill-wave' },
+            { id: 'performance', label: 'Hiệu suất', icon: 'fa-ranking-star' },
         ];
 
         if (isProjectFeatureEnabled(settings, 'analytics')) {
@@ -185,9 +193,29 @@ export default function ProjectDetailPage() {
                         <p className="text-gray-500">Cài đặt webhook trong Company Settings để kết nối với hệ thống bên ngoài.</p>
                     </div>
                 )}
+                { activeTab === 'files' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <ProjectStorageTab projectId={project.projectId} />
+                    </Suspense>
+                )}
+                {activeTab === 'team' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <TeamTab projectId={id} />
+                    </Suspense>
+                )}
                 {activeTab === 'settings' && (
                     <Suspense fallback={<PageLoader />}>
                         <ProjectSettingsTab project={project} />
+                    </Suspense>
+                )}
+                {activeTab === 'costs' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <ProjectCostTab projectId={project.projectId} />
+                    </Suspense>
+                )}
+                {activeTab === 'performance' && (
+                    <Suspense fallback={<PageLoader />}>
+                        <ProjectPerformanceTab projectId={project.projectId} />
                     </Suspense>
                 )}
             </div>

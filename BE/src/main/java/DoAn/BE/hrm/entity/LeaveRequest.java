@@ -92,6 +92,13 @@ public class LeaveRequest extends TenantScopedEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String accountingNote;
 
+    // Optional: gắn với dự án để biết nghỉ phép ảnh hưởng dự án nào
+    @Column(name = "project_id")
+    private Long projectId;
+
+    @Column(name = "project_name", length = 200)
+    private String projectName;
+
     @Override
     protected void onCreate() {
         super.onCreate();

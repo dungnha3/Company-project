@@ -18,6 +18,7 @@ import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
+import DoAn.BE.hrm.repository.LeaveRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class IssueService {
     private final IssueActivityRepository issueActivityRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final DoAn.BE.project.repository.ProjectPhaseRepository projectPhaseRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
     private final jakarta.persistence.EntityManager entityManager;
 
     @Transactional
@@ -67,6 +69,9 @@ public class IssueService {
             assignee = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
             validateProjectAccess(request.getProjectId(), request.getAssigneeId());
+            
+            // Check leave status
+            validateAssigneeLeaveStatus(assignee.getUserId(), request.getStartDate(), request.getDueDate());
         }
         String issueKey = generateIssueKey(project);
 
@@ -263,6 +268,13 @@ public class IssueService {
             User assignee = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
             validateProjectAccess(issue.getProject().getProjectId(), request.getAssigneeId());
+            
+            // Check leave status if assignee is changed or dates are changed
+            if (!request.getAssigneeId().equals(issue.getAssignee() != null ? issue.getAssignee().getUserId() : null) || request.getStartDate() != null || request.getDueDate() != null) {
+                java.time.LocalDate checkStart = request.getStartDate() != null ? request.getStartDate() : issue.getStartDate();
+                java.time.LocalDate checkEnd = request.getDueDate() != null ? request.getDueDate() : issue.getDueDate();
+                validateAssigneeLeaveStatus(assignee.getUserId(), checkStart, checkEnd);
+            }
             issue.setAssignee(assignee);
         }
         if (request.getEstimatedHours() != null) {
@@ -364,6 +376,8 @@ public class IssueService {
         User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
         validateProjectAccess(issue.getProject().getProjectId(), assigneeId);
+        
+        validateAssigneeLeaveStatus(assignee.getUserId(), issue.getStartDate(), issue.getDueDate());
 
         issue.assignTo(assignee);
         issue = issueRepository.save(issue);
@@ -401,6 +415,17 @@ public class IssueService {
         String newStatus = status.getName();
 
         // Change status
+        String oldNameLower = oldStatus.toLowerCase();
+        String newNameLower = newStatus.toLowerCase();
+
+        // Check for Rework (moving backwards from Review/Testing/Done to ToDo/InProgress)
+        boolean isOldForward = oldNameLower.contains("review") || oldNameLower.contains("test") || oldNameLower.contains("done") || oldNameLower.contains("kiểm tra") || oldNameLower.contains("đánh giá") || oldNameLower.contains("hoàn thành");
+        boolean isNewBackward = newNameLower.contains("progress") || newNameLower.contains("to do") || newNameLower.contains("đang thực hiện") || newNameLower.contains("chưa bắt đầu") || newNameLower.contains("mở");
+
+        if (isOldForward && isNewBackward) {
+            issue.setReworkCount((issue.getReworkCount() == null ? 0 : issue.getReworkCount()) + 1);
+        }
+
         issue.changeStatus(status);
         issue = issueRepository.save(issue);
 
@@ -489,6 +514,23 @@ public class IssueService {
         return key;
     }
 
+    private void validateAssigneeLeaveStatus(Long assigneeId, java.time.LocalDate startDate, java.time.LocalDate dueDate) {
+        if (startDate != null && dueDate != null) {
+            if (leaveRequestRepository.hasOverlappingLeaveByUser(assigneeId, startDate, dueDate)) {
+                throw new BadRequestException("Nhân viên này đang trong thời gian nghỉ phép. Vui lòng chọn người khác hoặc đổi ngày.");
+            }
+        } else if (dueDate != null) {
+            if (leaveRequestRepository.isUserOnLeave(assigneeId, dueDate)) {
+                throw new BadRequestException("Nhân viên này đang nghỉ phép vào ngày đến hạn. Vui lòng chọn người khác hoặc đổi ngày.");
+            }
+        } else {
+            // Check today
+            if (leaveRequestRepository.isUserOnLeave(assigneeId, java.time.LocalDate.now())) {
+                throw new BadRequestException("Nhân viên này hôm nay đang nghỉ phép. Vui lòng chọn người khác.");
+            }
+        }
+    }
+
     private IssueDTO convertToDTO(Issue issue) {
         IssueDTO dto = new IssueDTO();
         dto.setIssueId(issue.getIssueId());
@@ -534,6 +576,7 @@ public class IssueService {
         dto.setIsUrgent(issue.getIsUrgent());
         dto.setEisenhowerQuadrant(issue.getEisenhowerQuadrant());
         dto.setCompletedAt(issue.getCompletedAt());
+        dto.setReworkCount(issue.getReworkCount());
         dto.setCreatedAt(issue.getCreatedAt());
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setIsOverdue(issue.isOverdue());

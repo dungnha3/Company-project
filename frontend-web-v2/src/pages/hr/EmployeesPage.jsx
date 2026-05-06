@@ -26,7 +26,6 @@ export default function EmployeesPage() {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(10);
     const [keyword, setKeyword] = useState('');
-    const [deptId, setDeptId] = useState('ALL');
     const [status, setStatus] = useState('ALL');
 
     const debouncedKeyword = useDebounce(keyword, 500);
@@ -39,7 +38,6 @@ export default function EmployeesPage() {
                 page: page,
                 size: pageSize,
                 search: debouncedKeyword || undefined,
-                departmentId: deptId !== 'ALL' ? deptId : undefined,
                 status: status !== 'ALL' ? status : undefined,
             };
 
@@ -102,15 +100,6 @@ export default function EmployeesPage() {
         }
     };
 
-    const { data: departments } = useQuery({
-        queryKey: ['departments'],
-        queryFn: async () => {
-            const response = await apiClient.get(ENDPOINTS.DEPARTMENTS.LIST);
-            return response.data;
-        },
-        initialData: []
-    });
-
     // Columns Configuration
     const columns = [
         // Checkbox column for bulk select
@@ -157,16 +146,7 @@ export default function EmployeesPage() {
                 </div>
             )
         },
-        {
-            header: 'Vị trí',
-            accessorKey: 'departmentName',
-            cell: (row) => (
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-800">{row.departmentName || '---'}</span>
-                    <span className="text-xs text-gray-500">{row.positionName || '---'}</span>
-                </div>
-            )
-        },
+        // Removed department/position column
         // Salary column - Only for users with salaryView permission
         ...(hasPermission('salaryView') ? [{
             header: 'Mức lương',
@@ -192,13 +172,6 @@ export default function EmployeesPage() {
             accessorKey: 'actions',
             cell: (row) => (
                 <div className="flex justify-end gap-2">
-                    <button
-                        onClick={() => navigate(`/app/hr/employees/${row.employeeId}`)}
-                        className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-all"
-                        title="Xem chi tiết"
-                    >
-                        <i className="fa-solid fa-eye" />
-                    </button>
                     {hasPermission('hrEditProfile') && (
                         <>
                             <button
@@ -245,8 +218,8 @@ export default function EmployeesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Danh sách nhân viên</h1>
-                    <p className="text-gray-500 text-sm">Quản lý hồ sơ và thông tin nhân sự</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Danh sách thành viên</h1>
+                    <p className="text-gray-500 text-sm">Danh sách các thành viên trong công ty</p>
                 </div>
                 <div className="flex gap-3">
                     {hasPermission('hrEditProfile') && (
@@ -261,7 +234,7 @@ export default function EmployeesPage() {
                             onClick={() => setShowCreateModal(true)}
                             className="btn-primary shadow-lg shadow-primary/20"
                         >
-                            <i className="fa-solid fa-plus" /> Tạo hồ sơ
+                            <i className="fa-solid fa-plus" /> Thêm thành viên
                         </button>
                     )}
                 </div>
@@ -284,7 +257,7 @@ export default function EmployeesPage() {
                 <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <span className="text-indigo-700 font-medium">
-                            Đã chọn {selectedIds.size} nhân viên
+                            Đã chọn {selectedIds.size} thành viên
                         </span>
                     </div>
                     <div className="flex gap-2">
@@ -328,17 +301,6 @@ export default function EmployeesPage() {
                     </div>
 
                     <div className="flex gap-3 w-full md:w-auto">
-                        <select
-                            className="input w-full md:w-48"
-                            value={deptId}
-                            onChange={(e) => setDeptId(e.target.value)}
-                        >
-                            <option value="ALL">Tất cả phòng ban</option>
-                            {departments.map(d => (
-                                <option key={d.departmentId} value={d.departmentId}>{d.name}</option>
-                            ))}
-                        </select>
-
                         <div className="relative w-full md:w-64">
                             <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                             <input

@@ -10,18 +10,8 @@ public class HrmEvent extends ApplicationEvent {
         LEAVE_REQUESTED,
         LEAVE_APPROVED,
         LEAVE_REJECTED,
-        CONTRACT_CREATED,
-        CONTRACT_RENEWED,
-        CONTRACT_EXPIRING,
-        ATTENDANCE_LATE,
-        ATTENDANCE_FORGOT_CHECKOUT,
         REVIEW_CREATED,
-        REVIEW_APPROVED,
-        SALARY_CALCULATED,
-        SALARY_PAID,
-        CHECKOUT_REMINDER,
-        MISSING_ATTENDANCE,
-        MONTHLY_SUMMARY
+        REVIEW_APPROVED
     }
 
     private final Type type;

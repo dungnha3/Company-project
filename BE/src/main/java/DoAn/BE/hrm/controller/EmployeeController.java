@@ -119,23 +119,7 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
-    @GetMapping("/department/{departmentId}")
-    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByDepartment(
-            @PathVariable Long departmentId,
-            Pageable pageable,
-            @AuthenticationPrincipal User currentUser) {
-        Page<Employee> employeePage = employeeService.getEmployeesByDepartment(departmentId, pageable);
-        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
-    }
 
-    @GetMapping("/position/{positionId}")
-    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByPosition(
-            @PathVariable Long positionId,
-            Pageable pageable,
-            @AuthenticationPrincipal User currentUser) {
-        Page<Employee> employeePage = employeeService.getEmployeesByPosition(positionId, pageable);
-        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
-    }
 
     @GetMapping("/search")
     public ResponseEntity<Page<EmployeeDTO>> searchEmployees(

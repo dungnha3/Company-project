@@ -165,15 +165,6 @@ export default function CompanySwitcher({ collapsed }) {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <span className="font-medium truncate">{workspace.name}</span>
-                                    {workspace.plan && (
-                                        <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${workspace.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-600' :
-                                            workspace.plan === 'PROFESSIONAL' ? 'bg-indigo-100 text-indigo-600' :
-                                                workspace.plan === 'STARTER' ? 'bg-amber-100 text-amber-600' :
-                                                    'bg-gray-100 text-gray-500'
-                                            }`}>
-                                            {workspace.plan === 'FREE' ? 'Free' : workspace.plan?.charAt(0)}
-                                        </span>
-                                    )}
                                 </div>
                                 <div className="text-xs text-gray-500">{getRoleLabel(workspace.roles?.[0] || workspace.role)}</div>
                             </div>

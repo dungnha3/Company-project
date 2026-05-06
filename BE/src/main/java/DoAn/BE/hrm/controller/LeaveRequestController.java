@@ -169,4 +169,18 @@ public class LeaveRequestController {
         response.put("isOnLeave", onLeave);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * GET /api/leave-requests/team-calendar?startDate=&endDate=
+     * Trả về danh sách nghỉ phép đã duyệt trong khoảng thời gian.
+     * Dùng cho CalendarPage — hiển thị availability của team members.
+     */
+    @GetMapping("/team-calendar")
+    public ResponseEntity<java.util.List<LeaveRequestDTO>> getTeamCalendar(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        java.util.List<DoAn.BE.hrm.entity.LeaveRequest> leaves =
+                leaveRequestService.getTeamCalendarLeaves(startDate, endDate);
+        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaves));
+    }
 }

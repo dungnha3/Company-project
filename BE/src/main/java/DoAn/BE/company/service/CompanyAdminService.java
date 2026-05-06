@@ -10,7 +10,7 @@ import DoAn.BE.company.dto.CompanyDto;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanySettings;
-import DoAn.BE.company.entity.Plan;
+
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.company.repository.CompanySettingsRepository;
@@ -36,8 +36,7 @@ public class CompanyAdminService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySettingsRepository companySettingsRepository;
-    private final DoAn.BE.project.repository.ProjectRepository projectRepository;
-    private final DoAn.BE.hrm.repository.EmployeeRepository employeeRepository;
+
 
     @Transactional(readOnly = true)
     public List<CompanyDto.CompanyResponse> getAllCompanies() {
@@ -83,42 +82,7 @@ public class CompanyAdminService {
         return companyRepository.save(company);
     }
 
-    @Transactional
-    @CacheEvict(value = "companySettings", key = "#companyId")
-    public Company changePlan(Long companyId, String planName) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
 
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
-
-        try {
-            Plan newPlan = Plan.valueOf(planName.toUpperCase());
-            Plan oldPlan = company.getPlan();
-
-            if (newPlan.isLowerThan(oldPlan)) {
-                validateDowngrade(companyId, newPlan);
-            }
-
-            company.setPlan(newPlan);
-            companyRepository.save(company);
-
-            CompanySettings settings = companySettingsRepository.findById(companyId).orElse(null);
-            if (settings != null) {
-                settings.initFromPlan(newPlan);
-                settings.applyDependencies();
-                companySettingsRepository.save(settings);
-            }
-
-            log.info("[System Admin] Đã đổi plan công ty {} từ {} sang {}",
-                    company.getName(), oldPlan, newPlan);
-            return company;
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Plan không hợp lệ: " + planName +
-                    ". Các plan hợp lệ: FREE, STARTER, PROFESSIONAL, ENTERPRISE");
-        }
-    }
 
     @Transactional
     public boolean toggleCompanyStatus(Long companyId) {
@@ -169,30 +133,12 @@ public class CompanyAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));
 
         updateModuleSettings(settings, req);
-        updateGpsSettings(settings, req);
 
         log.info("[System Admin] Đã cập nhật cài đặt cho công ty: {}", companyId);
         return companySettingsRepository.save(settings);
     }
 
-    @Transactional
-    @CacheEvict(value = "companySettings", key = "#companyId")
-    public CompanySettings updateCompanyQuota(Long companyId, SysAdminCompanyDto.QuotaUpdateRequest req) {
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
 
-        if (req.getMaxEmployees() != null)
-            settings.setMaxEmployees(req.getMaxEmployees());
-        if (req.getMaxProjects() != null)
-            settings.setMaxProjects(req.getMaxProjects());
-        if (req.getMaxStorageBytes() != null)
-            settings.setMaxStorageBytes(req.getMaxStorageBytes());
-        if (req.getUserStorageQuotaBytes() != null)
-            settings.setUserStorageQuotaBytes(req.getUserStorageQuotaBytes());
-
-        log.info("[System Admin] Đã override Quota cho công ty {}", companyId);
-        return companySettingsRepository.save(settings);
-    }
 
     @Transactional
     @CacheEvict(value = "companySettings", key = "#companyId")
@@ -204,34 +150,15 @@ public class CompanyAdminService {
             settings.setHrModuleEnabled(req.getHrModuleEnabled());
         if (req.getProjectModuleEnabled() != null)
             settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-        if (req.getChatModuleEnabled() != null)
-            settings.setChatModuleEnabled(req.getChatModuleEnabled());
-        if (req.getAiModuleEnabled() != null)
-            settings.setAiModuleEnabled(req.getAiModuleEnabled());
-        if (req.getStorageModuleEnabled() != null)
-            settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
 
-        if (req.getAttendanceEnabled() != null)
-            settings.setAttendanceEnabled(req.getAttendanceEnabled());
+
         if (req.getLeaveEnabled() != null)
             settings.setLeaveEnabled(req.getLeaveEnabled());
-        if (req.getSalaryEnabled() != null)
-            settings.setSalaryEnabled(req.getSalaryEnabled());
-        if (req.getContractEnabled() != null)
-            settings.setContractEnabled(req.getContractEnabled());
         if (req.getReviewEnabled() != null)
             settings.setReviewEnabled(req.getReviewEnabled());
 
-        if (req.getOkrEnabled() != null)
-            settings.setOkrEnabled(req.getOkrEnabled());
-        if (req.getSkillsMatrixEnabled() != null)
-            settings.setSkillsMatrixEnabled(req.getSkillsMatrixEnabled());
-        if (req.getOnboardingEnabled() != null)
-            settings.setOnboardingEnabled(req.getOnboardingEnabled());
         if (req.getResourcePlanningEnabled() != null)
             settings.setResourcePlanningEnabled(req.getResourcePlanningEnabled());
-        if (req.getOrgChartEnabled() != null)
-            settings.setOrgChartEnabled(req.getOrgChartEnabled());
 
         if (req.getTimeTrackingEnabled() != null)
             settings.setTimeTrackingEnabled(req.getTimeTrackingEnabled());
@@ -252,9 +179,6 @@ public class CompanyAdminService {
         resp.setName(company.getName());
         resp.setLogoUrl(company.getLogoUrl());
         resp.setAddress(company.getAddress());
-        resp.setPlan(company.getPlan());
-        resp.setRole(null);
-        resp.setOwner(false);
         resp.setIsActive(company.getIsActive());
         return resp;
     }
@@ -272,52 +196,11 @@ public class CompanyAdminService {
     }
 
     private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
-        if (req.getHrModuleEnabled() != null)
-            settings.setHrModuleEnabled(req.getHrModuleEnabled());
         if (req.getProjectModuleEnabled() != null)
             settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-        if (req.getChatModuleEnabled() != null)
-            settings.setChatModuleEnabled(req.getChatModuleEnabled());
-        if (req.getStorageModuleEnabled() != null)
-            settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
-        if (req.getAiModuleEnabled() != null) {
-            Plan plan = settings.getCompany().getPlan();
-            if (req.getAiModuleEnabled() && !plan.isApiAccessEnabled()) {
-                throw new DoAn.BE.common.exception.ForbiddenException(
-                        "Gói " + plan.name() + " không hỗ trợ tính năng AI");
-            }
-            settings.setAiModuleEnabled(req.getAiModuleEnabled());
-        }
+
+
     }
 
-    private void updateGpsSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
-        if (req.getOfficeLatitude() != null)
-            settings.setOfficeLatitude(req.getOfficeLatitude());
-        if (req.getOfficeLongitude() != null)
-            settings.setOfficeLongitude(req.getOfficeLongitude());
-        if (req.getAllowedRadius() != null)
-            settings.setAllowedRadius(req.getAllowedRadius());
-    }
 
-    private void validateDowngrade(Long companyId, Plan newPlan) {
-        long employeeCount = employeeRepository.countByCompanyId(companyId);
-        long projectCount = projectRepository.countByCompany_CompanyId(companyId);
-
-        StringBuilder errors = new StringBuilder();
-
-        if (!newPlan.isUnlimitedUsers() && employeeCount > newPlan.getMaxUsers()) {
-            errors.append(String.format("Nhân viên: %d/%d (vượt %d). ",
-                    employeeCount, newPlan.getMaxUsers(), employeeCount - newPlan.getMaxUsers()));
-        }
-
-        if (!newPlan.isUnlimitedProjects() && projectCount > newPlan.getMaxProjects()) {
-            errors.append(String.format("Dự án: %d/%d (vượt %d). ",
-                    projectCount, newPlan.getMaxProjects(), projectCount - newPlan.getMaxProjects()));
-        }
-
-        if (errors.length() > 0) {
-            throw new BadRequestException("Không thể hạ gói. " + errors.toString() +
-                    "Vui lòng giảm số lượng trước khi hạ gói.");
-        }
-    }
 }

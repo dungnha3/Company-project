@@ -7,15 +7,14 @@ import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.company.dto.CompanyDto;
-import DoAn.BE.company.dto.PlanLimitDto;
-import DoAn.BE.company.entity.Company;
-import DoAn.BE.company.entity.CompanyMember;
-import DoAn.BE.company.entity.CompanyRole;
-import DoAn.BE.company.entity.CompanySettings;
-import DoAn.BE.company.entity.Plan;
+
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.company.repository.CompanySettingsRepository;
+import DoAn.BE.company.entity.Company;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanySettings;
+import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +36,6 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySettingsRepository companySettingsRepository;
-    private final DoAn.BE.project.repository.ProjectRepository projectRepository;
 
     @Transactional(readOnly = true)
     public List<CompanyDto.CompanyResponse> getMyCompanies(User currentUser) {
@@ -88,7 +86,7 @@ public class CompanyService {
         company.setAddress(req.getAddress());
         company.setPhone(req.getPhone());
         company.setEmail(req.getEmail());
-        company.setPlan(Plan.FREE);
+
         company.setIsActive(true);
         String normalized = java.text.Normalizer.normalize(req.getName(), java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
@@ -111,10 +109,9 @@ public class CompanyService {
         company = companyRepository.save(company);
         CompanySettings settings = new CompanySettings();
         settings.setCompany(company);
-        settings.initFromPlan(company.getPlan());
+
         settings.setProjectModuleEnabled(true);
-        settings.setChatModuleEnabled(true);
-        settings.setStorageModuleEnabled(true);
+
         companySettingsRepository.save(settings);
         CompanyMember owner = new CompanyMember();
         owner.setCompany(company);
@@ -160,36 +157,7 @@ public class CompanyService {
         return companySettingsRepository.save(settings);
     }
 
-    @Transactional(readOnly = true)
-    public PlanLimitDto getPlanLimits(Long companyId) {
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công ty"));
 
-        Plan plan = company.getPlan();
-        long currentMembers = companyMemberRepository.countByCompany_CompanyIdAndIsActiveTrue(companyId);
-        long currentProjects = projectRepository.countByCompany_CompanyId(companyId);
-
-        int remainingUsers = plan.isUnlimitedUsers() ? -1 : Math.max(0, plan.getMaxUsers() - (int) currentMembers);
-        int remainingProjects = plan.isUnlimitedProjects() ? -1
-                : Math.max(0, plan.getMaxProjects() - (int) currentProjects);
-
-        return PlanLimitDto.builder()
-                .currentPlan(plan)
-                .planName(plan.name())
-                .maxUsers(plan.getMaxUsers())
-                .currentUsers(currentMembers)
-                .remainingUsers(remainingUsers)
-                .maxProjects(plan.getMaxProjects())
-                .currentProjects(currentProjects)
-                .remainingProjects(remainingProjects)
-                .maxStorageBytes(plan.getMaxStorageBytes())
-                .maxStorageDisplay(plan.getMaxStorageDisplay())
-                .hrEnabled(plan.isHrModuleEnabled())
-                .apiEnabled(plan.isApiAccessEnabled())
-                .canAddMember(remainingUsers != 0)
-                .canCreateProject(remainingProjects != 0)
-                .build();
-    }
 
     private CompanyDto.CompanyResponse mapToResponse(CompanyMember member) {
         CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
@@ -198,7 +166,7 @@ public class CompanyService {
         resp.setName(company.getName());
         resp.setLogoUrl(company.getLogoUrl());
         resp.setAddress(company.getAddress());
-        resp.setPlan(company.getPlan());
+
         resp.setRole(member.getRoles().stream().findFirst().map(Enum::name).orElse(null));
         resp.setPermissions(member.getPermissions());
         resp.setOwner(member.hasAnyRole(CompanyRole.OWNER));
@@ -219,28 +187,10 @@ public class CompanyService {
     }
 
     private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
-        Plan plan = settings.getCompany().getPlan();
 
-        if (req.getHrModuleEnabled() != null) {
-            if (req.getHrModuleEnabled() && !plan.isHrModuleEnabled()) {
-                throw new ForbiddenException("Gói " + plan.name() + " không hỗ trợ tính năng HRM");
-            }
-            settings.setHrModuleEnabled(req.getHrModuleEnabled());
-        }
         if (req.getProjectModuleEnabled() != null) {
             settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
         }
-        if (req.getChatModuleEnabled() != null) {
-            settings.setChatModuleEnabled(req.getChatModuleEnabled());
-        }
-        if (req.getAiModuleEnabled() != null) {
-            if (req.getAiModuleEnabled() && !plan.isApiAccessEnabled()) {
-                throw new ForbiddenException("Gói " + plan.name() + " không hỗ trợ tính năng AI");
-            }
-            settings.setAiModuleEnabled(req.getAiModuleEnabled());
-        }
-        if (req.getStorageModuleEnabled() != null) {
-            settings.setStorageModuleEnabled(req.getStorageModuleEnabled());
-        }
+
     }
 }

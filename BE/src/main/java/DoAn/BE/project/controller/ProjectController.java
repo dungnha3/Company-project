@@ -4,10 +4,7 @@ import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.ProjectMember.ProjectRole;
 import DoAn.BE.project.service.ProjectService;
 import DoAn.BE.project.service.ProjectMemberService;
-import DoAn.BE.storage.service.StorageProjectIntegrationService;
-import DoAn.BE.storage.service.StorageProjectIntegrationService.ProjectFileStats;
-import DoAn.BE.storage.entity.File;
-import DoAn.BE.storage.dto.FileDTO;
+
 import DoAn.BE.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -32,7 +28,7 @@ public class ProjectController {
 
     private final ProjectService projectService;
     private final ProjectMemberService projectMemberService;
-    private final StorageProjectIntegrationService storageProjectIntegrationService;
+
 
     @PostMapping
     public ResponseEntity<ProjectDTO> createProject(
@@ -124,40 +120,28 @@ public class ProjectController {
         return ResponseEntity.ok(member);
     }
 
-    @GetMapping("/{projectId}/files")
-    @Transactional(readOnly = true)
-    public ResponseEntity<List<FileDTO>> getProjectFiles(
+    @PatchMapping("/{projectId}/members/{memberId}/info")
+    public ResponseEntity<ProjectMemberDTO> updateMemberInfo(
             @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @RequestBody DoAn.BE.project.dto.UpdateProjectMemberRequest request,
             @AuthenticationPrincipal User currentUser) {
-        projectMemberService.validateProjectAccess(projectId, currentUser.getUserId());
-        List<File> files = storageProjectIntegrationService.getProjectFiles(projectId);
-        return ResponseEntity.ok(files.stream()
-                .map(this::convertToFileDTO)
-                .collect(Collectors.toList()));
+        ProjectMemberDTO member = projectMemberService.updateMemberInfo(
+                projectId, memberId, request, currentUser.getUserId());
+        return ResponseEntity.ok(member);
     }
 
-    @GetMapping("/{projectId}/files/stats")
-    @Transactional(readOnly = true)
-    public ResponseEntity<ProjectFileStats> getProjectFileStats(
-            @PathVariable Long projectId,
-            @AuthenticationPrincipal User currentUser) {
-        projectMemberService.validateProjectAccess(projectId, currentUser.getUserId());
-        return ResponseEntity.ok(storageProjectIntegrationService.getProjectFileStats(projectId));
-    }
 
-    private FileDTO convertToFileDTO(File file) {
-        FileDTO dto = new FileDTO();
-        dto.setFileId(file.getFileId());
-        dto.setFilename(file.getFilename());
-        dto.setOriginalFilename(file.getOriginalFilename());
-        dto.setFileSize(file.getFileSize());
-        dto.setMimeType(file.getMimeType());
-        if (file.getOwner() != null) {
-            dto.setOwnerId(file.getOwner().getUserId());
-            dto.setOwnerName(file.getOwner().getUsername());
-        }
-        dto.setCreatedAt(file.getCreatedAt());
-        dto.setUpdatedAt(file.getUpdatedAt());
-        return dto;
+
+    /**
+     * GET /api/projects/resource-overview
+     * Resource Planning dashboard — trả về toàn bộ nhân sự + allocation của họ
+     * trong tất cả dự án đang hoạt động. Hiển thị cảnh báo overload (>100%).
+     */
+    @GetMapping("/resource-overview")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<DoAn.BE.project.dto.ResourceOverviewDTO>> getResourceOverview(
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(projectMemberService.getResourceOverview());
     }
 }

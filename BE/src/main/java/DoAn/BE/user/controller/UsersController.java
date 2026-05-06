@@ -51,7 +51,7 @@ public class UsersController {
     private final DoAn.BE.company.repository.CompanyMemberRepository companyMemberRepository;
     private final DoAn.BE.company.repository.CompanyRepository companyRepository;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
-    private final DoAn.BE.company.service.SubscriptionService subscriptionService;
+
 
     @PostMapping
     public ResponseEntity<?> createUser(
@@ -67,15 +67,9 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        // [SAAS] Kiểm tra giới hạn user của gói cước
+
+
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
-        if (companyId != null) {
-            try {
-                subscriptionService.checkUserLimit(companyId);
-            } catch (DoAn.BE.common.exception.BadRequestException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
-            }
-        }
 
         try {
             String ipAddress = httpRequest.getRemoteAddr();

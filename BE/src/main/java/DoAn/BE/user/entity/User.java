@@ -30,7 +30,7 @@ import org.hibernate.annotations.SQLRestriction;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = { "memberships", "personalWorkspace", "employees" })
+@ToString(exclude = { "memberships", "employees" })
 @Table(name = "users", indexes = {
         // Index cho query: findByIsOnlineTrue (Presence check)
         @jakarta.persistence.Index(name = "idx_user_online", columnList = "is_online"),
@@ -111,14 +111,9 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @JsonIgnore
     private List<CompanyMember> memberships = new ArrayList<>();
 
-    @jakarta.persistence.OneToOne(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY, cascade = jakarta.persistence.CascadeType.ALL)
-    @JsonIgnore
-    private PersonalWorkspace personalWorkspace;
 
-    @Column(name = "personal_plan", length = 20)
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private DoAn.BE.company.entity.Plan personalPlan = DoAn.BE.company.entity.Plan.FREE;
+
+
 
     @OneToMany(mappedBy = "user", fetch = jakarta.persistence.FetchType.LAZY)
     @JsonIgnore

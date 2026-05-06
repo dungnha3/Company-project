@@ -38,6 +38,7 @@ public class IssueDTO {
     private Boolean isUrgent;
     private Integer eisenhowerQuadrant;
     private LocalDateTime completedAt;
+    private Integer reworkCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isOverdue;

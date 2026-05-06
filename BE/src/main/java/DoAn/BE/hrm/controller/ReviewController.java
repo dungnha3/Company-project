@@ -122,4 +122,16 @@ public class ReviewController {
         Review review = reviewService.rejectReview(id, reason, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
     }
+
+    /**
+     * GET /api/reviews/project/{projectId}
+     * Lấy tất cả đánh giá gắn với một dự án cụ thể.
+     */
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<ReviewDTO>> getReviewsByProject(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
+        List<Review> reviews = reviewService.getReviewsByProject(projectId);
+        return ResponseEntity.ok(reviewMapper.toDTOList(reviews));
+    }
 }

@@ -35,8 +35,6 @@ public class EmployeeRequest {
     @NotNull(message = "Hire date cannot be null")
     private LocalDate hireDate;
 
-    private Long departmentId;
-    private Long positionId;
 
     @Min(value = 0, message = "Base salary must be >= 0")
     private BigDecimal baseSalary;

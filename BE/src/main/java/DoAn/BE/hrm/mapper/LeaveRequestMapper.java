@@ -45,8 +45,11 @@ public class LeaveRequestMapper {
         dto.setApprovedAt(leaveRequest.getApprovedAt());
         dto.setApprovalNote(leaveRequest.getApprovalNote());
 
-        dto.setCreatedAt(leaveRequest.getCreatedAt());
+        // Project link
+        dto.setProjectId(leaveRequest.getProjectId());
+        dto.setProjectName(leaveRequest.getProjectName());
 
+        dto.setCreatedAt(leaveRequest.getCreatedAt());
         return dto;
     }
 

@@ -61,18 +61,7 @@ apiClient.interceptors.response.use(
             }
         }
 
-        // Handle Quota Exceeded (400 with quota info)
-        if (error.response?.status === 400) {
-            const message = error.response?.data?.message || '';
-            if (message.includes('quota') || message.includes('limit') || message.includes('exceeded')) {
-                console.warn('[Quota Exceeded]', message);
-                // Dispatch custom event for UI to show toast
-                window.dispatchEvent(new CustomEvent('quota-exceeded', {
-                    detail: { message }
-                }));
-                return Promise.reject(error);
-            }
-        }
+
 
         // If 401 and haven't tried refresh yet
         // SKIP if the request is for login (let the component handle the error)

@@ -30,5 +30,9 @@ public class LeaveRequestDTO {
     private LocalDateTime approvedAt;
     private String approvalNote;
 
+    // Project link (optional)
+    private Long projectId;
+    private String projectName;
+
     private LocalDateTime createdAt;
 }

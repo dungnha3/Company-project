@@ -80,6 +80,10 @@ public class ReviewService {
         review.setStartDate(request.getStartDate());
         review.setEndDate(request.getEndDate());
 
+        // Optional project link
+        review.setProjectId(request.getProjectId());
+        review.setProjectName(request.getProjectName());
+
         review = reviewRepository.save(review);
 
         // Publish Event
@@ -267,5 +271,14 @@ public class ReviewService {
 
         log.info("HR Manager {} deleting review ID: {}", currentUser.getUsername(), id);
         reviewRepository.delete(review);
+    }
+
+    /**
+     * Lấy tất cả review liên quan đến một dự án cụ thể.
+     * Project member có thể xem review của dự án mình tham gia.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<Review> getReviewsByProject(Long projectId) {
+        return reviewRepository.findByProjectId(projectId);
     }
 }

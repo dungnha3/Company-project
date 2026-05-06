@@ -32,22 +32,7 @@ public class TenantFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            // [DUAL WORKSPACE] Check workspace type header first
-            String workspaceType = request.getHeader("X-Workspace-Type");
 
-            if ("PERSONAL".equals(workspaceType)) {
-                // Personal workspace mode - no company context needed
-                if (DoAn.BE.common.util.SecurityUtil.isAuthenticated()) {
-                    Long userId = DoAn.BE.common.util.SecurityUtil.getCurrentUserId();
-                    TenantContext.setPersonalMode(true);
-                    TenantContext.setCurrentUserId(userId);
-                    log.debug("Personal mode set for user {}", userId);
-                }
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // [COMPANY MODE] Lấy companyId từ header
             String companyIdHeader = request.getHeader(DoAn.BE.common.util.AppConstants.HEADER_COMPANY_ID);
 
             if (companyIdHeader != null && !companyIdHeader.isEmpty()) {

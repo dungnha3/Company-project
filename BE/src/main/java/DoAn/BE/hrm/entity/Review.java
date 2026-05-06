@@ -79,6 +79,13 @@ public class Review extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "completed_date")
     private LocalDate completedDate;
 
+    // Optional: gắn đánh giá với dự án cụ thể (review theo dự án)
+    @Column(name = "project_id")
+    private Long projectId;
+
+    @Column(name = "project_name", length = 200)
+    private String projectName;
+
     @Override
     protected void onCreate() {
         super.onCreate();
@@ -121,11 +128,11 @@ public class Review extends DoAn.BE.common.entity.BaseEntity {
     }
 
     public enum ReviewType {
-        QUARTERLY, // HANG_QUY
-        ANNUAL, // HANG_NAM
-        PROBATION, // THU_VIEC
-        PROMOTION, // THANG_CHUC
-        SALARY_REVIEW // DANG_KY_TANG_LUONG
+        SPRINT_REVIEW,       // Đánh giá sau sprint
+        PROJECT_COMPLETION,  // Đánh giá khi kết thúc dự án
+        PERIODIC,            // Định kỳ (tháng/quý)
+        PROJECT,             // Gắn với dự án cụ thể
+        PROMOTION            // Thăng chức (không liên quan lương)
     }
 
     public enum Rating {

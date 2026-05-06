@@ -58,4 +58,8 @@ public class ReviewRequest {
 
     @NotNull(message = "End date cannot be null")
     private LocalDate endDate;
+
+    // Optional: gắn review với dự án (khi reviewType = PROJECT)
+    private Long projectId;
+    private String projectName;
 }

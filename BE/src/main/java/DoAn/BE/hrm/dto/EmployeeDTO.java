@@ -27,10 +27,7 @@ public class EmployeeDTO {
     private String address;
     private LocalDate hireDate;
     private EmployeeStatus status;
-    private Long departmentId;
-    private String departmentName;
-    private Long positionId;
-    private String positionName;
+
     private BigDecimal baseSalary;
     private BigDecimal allowance;
     private LocalDateTime createdAt;

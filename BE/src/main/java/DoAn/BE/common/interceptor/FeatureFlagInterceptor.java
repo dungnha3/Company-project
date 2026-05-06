@@ -80,33 +80,17 @@ public class FeatureFlagInterceptor implements HandlerInterceptor {
             case "PROJECT":
                 return settings.isProjectModuleEnabled();
             case "CHAT":
-                return settings.isChatModuleEnabled();
             case "STORAGE":
-                return settings.isStorageModuleEnabled();
             case "AI":
-                return settings.isAiModuleEnabled();
+                return true;
 
             // HR sub-features (require HR + specific flag)
-            case "ATTENDANCE":
-                return settings.isHrModuleEnabled() && settings.isAttendanceEnabled();
             case "LEAVE":
                 return settings.isHrModuleEnabled() && settings.isLeaveEnabled();
-            case "SALARY":
-                return settings.isHrModuleEnabled() && settings.isSalaryEnabled();
-            case "CONTRACT":
-                return settings.isHrModuleEnabled() && settings.isContractEnabled();
             case "REVIEW":
                 return settings.isHrModuleEnabled() && settings.isReviewEnabled();
-            case "OKR":
-                return settings.isHrModuleEnabled() && settings.isOkrEnabled();
-            case "SKILLS_MATRIX":
-                return settings.isHrModuleEnabled() && settings.isSkillsMatrixEnabled();
-            case "ONBOARDING":
-                return settings.isHrModuleEnabled() && settings.isOnboardingEnabled();
             case "RESOURCE_PLANNING":
                 return settings.isHrModuleEnabled() && settings.isResourcePlanningEnabled();
-            case "ORG_CHART":
-                return settings.isHrModuleEnabled() && settings.isOrgChartEnabled();
 
             // Project sub-features (require PROJECT + specific flag)
             case "TIME_TRACKING":
@@ -116,17 +100,14 @@ public class FeatureFlagInterceptor implements HandlerInterceptor {
             case "CALENDAR":
                 return settings.isCalendarEnabled();
             case "WEBHOOK":
-                return settings.isWebhookEnabled();
+                return true;
 
             // Chat sub-features
             case "CHAT_REACTIONS":
-                return settings.isChatModuleEnabled() && settings.isChatReactionsEnabled();
             case "CHAT_THREADS":
-                return settings.isChatModuleEnabled() && settings.isChatThreadsEnabled();
             case "CHAT_SEARCH":
-                return settings.isChatModuleEnabled() && settings.isChatSearchEnabled();
             case "CHAT_FILE_SHARE":
-                return settings.isChatModuleEnabled() && settings.isChatFileShareEnabled();
+                return true;
 
             default:
                 log.warn("Unknown feature code: {}, allowing by default", featureCode);

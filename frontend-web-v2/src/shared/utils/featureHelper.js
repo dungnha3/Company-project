@@ -5,7 +5,7 @@
  * 2. CompanySettings (Admin bật/tắt)
  */
 
-import { hasFeature as planHasFeature } from './planHelper';
+
 
 /**
  * Mapping từ feature key sang CompanySettings field
@@ -14,9 +14,6 @@ const FEATURE_SETTINGS_MAP = {
     // Modules
     'hr': 'hrModuleEnabled',
     'project': 'projectModuleEnabled',
-    'chat': 'chatModuleEnabled',
-    'storage': 'storageModuleEnabled',
-    'ai': 'aiModuleEnabled',
 
     // HR Sub-features
     'attendance': 'attendanceEnabled',
@@ -110,15 +107,7 @@ export function hasUserPermission(permissions, feature) {
 
 // ... existing isFeatureEnabled signature updated
 
-export function isFeatureEnabled(plan, settings, feature, permissions = null) {
-    // 1. Plan Check
-    let planFeature = feature;
-    if (HR_DEPENDENT_FEATURES.includes(feature)) planFeature = 'hr';
-    if (PROJECT_DEPENDENT_FEATURES.includes(feature)) planFeature = 'project';
-
-    if (!planHasFeature(plan, planFeature)) {
-        return false;
-    }
+export function isFeatureEnabled(settings, feature, permissions = null) {
 
     // 2. No settings (Personal or loading) → deny
     if (!settings) {
@@ -152,14 +141,14 @@ export function isFeatureEnabled(plan, settings, feature, permissions = null) {
  * @param {object|null} settings 
  * @returns {boolean}
  */
-export function isSectionEnabled(sectionKey, plan, settings) {
+export function isSectionEnabled(sectionKey, settings) {
     switch (sectionKey) {
         case 'hr':
         case 'time':
         case 'finance':
-            return isFeatureEnabled(plan, settings, 'hr');
+            return isFeatureEnabled(settings, 'hr');
         case 'project':
-            return isFeatureEnabled(plan, settings, 'project');
+            return isFeatureEnabled(settings, 'project');
         case 'other':
             return true; // Luôn hiển thị
         default:
@@ -174,15 +163,13 @@ export function isSectionEnabled(sectionKey, plan, settings) {
  * @param {object|null} settings 
  * @returns {boolean}
  */
-export function isMenuItemEnabled(itemPath, plan, settings, permissions = null) {
+export function isMenuItemEnabled(itemPath, settings, permissions = null) {
     const pathFeatureMap = {
         '/app/hr/attendance': 'attendance',
         '/app/hr/leave-requests': 'leave',
         '/app/hr/salaries': 'salary',
         '/app/hr/contracts': 'contract',
         '/app/hr/employees': 'hr',
-        '/app/hr/departments': 'hr',
-        '/app/hr/positions': 'hr',
         '/app/reviews': 'review',
         '/app/projects': 'project',
         '/app/chat': 'chat',
@@ -200,7 +187,7 @@ export function isMenuItemEnabled(itemPath, plan, settings, permissions = null) 
     const feature = pathFeatureMap[itemPath];
     if (!feature) return true;
 
-    return isFeatureEnabled(plan, settings, feature, permissions);
+    return isFeatureEnabled(settings, feature, permissions);
 }
 
 /**

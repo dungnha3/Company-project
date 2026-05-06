@@ -34,4 +34,12 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             "JOIN ProjectMember pm2 ON pm1.project.projectId = pm2.project.projectId " +
             "WHERE pm1.user.userId = :managerId AND pm1.role = 'MANAGER'")
     List<Long> findTeamMemberUserIdsByManager(@Param("managerId") Long managerId);
+
+    // Resource Planning: lấy tất cả members trong công ty (theo companyId của project)
+    @EntityGraph(attributePaths = { "user", "project" })
+    @Query("SELECT pm FROM ProjectMember pm " +
+           "WHERE pm.project.company.companyId = :companyId " +
+           "AND pm.memberStatus <> 'INACTIVE' " +
+           "ORDER BY pm.user.userId ASC")
+    List<ProjectMember> findActiveByCompany(@Param("companyId") Long companyId);
 }

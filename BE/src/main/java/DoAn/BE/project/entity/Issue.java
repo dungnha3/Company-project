@@ -101,6 +101,10 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    // Đếm số lần bị trả lại (từ Review/Done về In Progress)
+    @Column(name = "rework_count")
+    private Integer reworkCount = 0;
+
     // Custom field values for this issue
     // /
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)

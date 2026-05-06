@@ -59,7 +59,7 @@ export const ENDPOINTS = {
         COMPANY_PLAN: (id) => `/api/sysadmin/companies/${id}/plan`,
         COMPANY_STATUS: (id) => `/api/sysadmin/companies/${id}/status`,
         COMPANY_DELETE: (id) => `/api/sysadmin/companies/${id}`,
-        COMPANY_QUOTA: (id) => `/api/sysadmin/companies/${id}/quota`,
+
         COMPANY_FEATURES: (id) => `/api/sysadmin/companies/${id}/features`,
         COMPANY_SETTINGS: (id) => `/api/sysadmin/companies/${id}/settings`,
 
@@ -90,27 +90,13 @@ export const ENDPOINTS = {
         UPDATE: (id) => `/api/companies/${id}`,
         DELETE: (id) => `/api/companies/${id}`,
         SETTINGS: (id) => `/api/companies/${id}/settings`,
-        QUOTA: '/api/companies/quota', // GET - current quota usage
+
         // Members
         MEMBERS: (companyId) => `/api/companies/${companyId}/members`,
         MEMBER_PERMISSIONS: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/permissions`,
     },
 
-    // Workspaces (NEW - Dual Workspace Model)
-    WORKSPACES: {
-        LIST: '/api/workspaces',
-        PERSONAL: '/api/workspaces/personal',
-        ENSURE_PERSONAL: '/api/workspaces/personal/ensure',
-    },
 
-    // Personal Tasks (Personal Workspace only)
-    PERSONAL_TASKS: {
-        LIST: '/api/me/tasks',
-        STATS: '/api/me/tasks/stats',
-        CREATE: '/api/me/tasks',
-        UPDATE: (id) => `/api/me/tasks/${id}`,
-        DELETE: (id) => `/api/me/tasks/${id}`,
-    },
 
     // Invites
     INVITES: {
@@ -154,27 +140,7 @@ export const ENDPOINTS = {
         UPDATE: (id) => `/api/employees/${id}`,
         DELETE: (id) => `/api/employees/${id}`,
         SEARCH: '/api/employees/search',
-        BY_DEPARTMENT: (deptId) => `/api/employees/department/${deptId}`,
-        BY_POSITION: (posId) => `/api/employees/position/${posId}`,
         BY_STATUS: (status) => `/api/employees/status/${status}`,
-    },
-
-    // Departments
-    DEPARTMENTS: {
-        LIST: '/api/departments',
-        CREATE: '/api/departments',
-        BY_ID: (id) => `/api/departments/${id}`,
-        UPDATE: (id) => `/api/departments/${id}`,
-        DELETE: (id) => `/api/departments/${id}`,
-    },
-
-    // Positions
-    POSITIONS: {
-        LIST: '/api/positions',
-        CREATE: '/api/positions',
-        BY_ID: (id) => `/api/positions/${id}`,
-        UPDATE: (id) => `/api/positions/${id}`,
-        DELETE: (id) => `/api/positions/${id}`,
     },
 
     // Attendance
@@ -200,6 +166,7 @@ export const ENDPOINTS = {
     // Leave Requests
     LEAVE_REQUESTS: {
         LIST: '/api/leave-requests',
+        MY_REQUESTS: '/api/leave-requests',
         BY_ID: (id) => `/api/leave-requests/${id}`,
         BY_EMPLOYEE: (empId) => `/api/leave-requests/employee/${empId}`,
         DATE_RANGE: '/api/leave-requests/date-range',
@@ -208,6 +175,8 @@ export const ENDPOINTS = {
         REJECTED: '/api/leave-requests/rejected',
         APPROVE: (id) => `/api/leave-requests/${id}/approve`,
         REJECT: (id) => `/api/leave-requests/${id}/reject`,
+        TEAM_CALENDAR: '/api/leave-requests/team-calendar',
+        CREATE: '/api/leave-requests',
     },
 
     // Salaries
@@ -240,6 +209,7 @@ export const ENDPOINTS = {
         UPDATE: (id) => `/api/reviews/${id}`,
         DELETE: (id) => `/api/reviews/${id}`,
         BY_EMPLOYEE: (empId) => `/api/reviews/employee/${empId}`,
+        BY_PROJECT: (projectId) => `/api/reviews/project/${projectId}`,
         PENDING: '/api/reviews/pending',
         SUBMIT: (id) => `/api/reviews/${id}/submit`,
         APPROVE: (id) => `/api/reviews/${id}/approve`,
@@ -303,6 +273,8 @@ export const ENDPOINTS = {
         GOALS: (id) => `/api/projects/${id}/goals`,
         GOAL_TOGGLE: (id, goalId) => `/api/projects/${id}/goals/${goalId}/toggle`,
         GOAL_DELETE: (id, goalId) => `/api/projects/${id}/goals/${goalId}`,
+        RESOURCE_OVERVIEW: '/api/projects/resource-overview',
+        UPDATE_MEMBER_INFO: (projectId, memberId) => `/api/projects/${projectId}/members/${memberId}/info`,
     },
     // Project Dashboard & Export
     PROJECT_DASHBOARD: {
@@ -373,29 +345,7 @@ export const ENDPOINTS = {
     },
 
 
-    // Storage
-    STORAGE: {
-        LIST: '/api/storage/files',
-        FILES: '/api/storage/files',
-        FILES_IN_FOLDER: (folderId) => `/api/storage/folders/${folderId}/files`, // Added
-        FILE_BY_ID: (id) => `/api/storage/files/${id}`,
-        DOWNLOAD: (id) => `/api/storage/files/${id}/download`,
-        MY_FILES: '/api/storage/files/my-files',
-        UPLOAD: '/api/storage/files/upload',
-        DELETE: (id) => `/api/storage/files/${id}`,
-        // Folders
-        FOLDERS: '/api/storage/folders',
-        FOLDER_BY_ID: (id) => `/api/storage/folders/${id}`,
-        SUBFOLDERS: (folderId) => `/api/storage/folders/${folderId}/subfolders`, // Added
-        CREATE_FOLDER: '/api/storage/folders',
-        MY_FOLDERS: '/api/storage/folders/my-folders',
-        // Sharing
-        SHARE: (id) => `/api/storage/files/${id}/share`,
-        SHARED_WITH_ME: '/api/storage/shared-with-me',
-        GENERATE_LINK: (id) => `/api/storage/files/${id}/public-link`,
-        // Stats
-        STATS: '/api/storage/stats',
-    },
+
 
     // Notifications (matches BE NotificationController at /api/notifications)
     NOTIFICATIONS: {
@@ -439,25 +389,7 @@ export const ENDPOINTS = {
         RESPOND: (id) => `/api/calendar/events/${id}/respond`,
     },
 
-    // AI Assistant
-    AI: {
-        STATUS: '/api/ai/status',
-        CHAT: '/api/ai/chat',
-        // Conversations
-        CONVERSATIONS: '/api/ai/conversations',
-        CONVERSATION_BY_ID: (id) => `/api/ai/conversations/${id}`,
-        DELETE_CONVERSATION: (id) => `/api/ai/conversations/${id}`,
-        // Project Analysis
-        SUMMARIZE_PROJECT: (projectId) => `/api/ai/projects/${projectId}/summary`,
-        SPRINT_SUMMARY: (projectId) => `/api/ai/projects/${projectId}/sprint/summary`,
-        SUGGEST_TASKS: (projectId) => `/api/ai/projects/${projectId}/suggest-tasks`,
-        ANALYZE_PROGRESS: (projectId) => `/api/ai/projects/${projectId}/analyze-progress`,
-        GENERATE_REPORT: (projectId) => `/api/ai/projects/${projectId}/report`,
-        // Actions
-        HELP: '/api/ai/help',
-        ACTIONS: '/api/ai/actions',
-        BATCH_ACTIONS: '/api/ai/actions/batch',
-    },
+
 
     // Custom Fields
     CUSTOM_FIELDS: {
@@ -469,46 +401,13 @@ export const ENDPOINTS = {
         ISSUE_VALUES: (issueId) => `/api/issues/${issueId}/custom-fields`,
     },
 
-    // Notifications
-
-
-
-
-    // Chat (merged from duplicates)
-    CHAT: {
-        // Rooms
-        ROOMS: '/api/chat/rooms',
-        CREATE_ROOM: '/api/chat/rooms',
-        ROOM_BY_ID: (roomId) => `/api/chat/rooms/${roomId}`,
-        DIRECT: (userId) => `/api/chat/rooms/direct/${userId}`,
-        ROOM_MEMBERS: (roomId) => `/api/chat/rooms/${roomId}/members`,
-        ADD_MEMBER: (roomId) => `/api/chat/rooms/${roomId}/members`,
-        REMOVE_MEMBER: (roomId, userId) => `/api/chat/rooms/${roomId}/members/${userId}`,
-        LEAVE_ROOM: (roomId) => `/api/chat/rooms/${roomId}/leave`,
-
-        // Messages
-        MESSAGES: (roomId) => `/api/chat/rooms/${roomId}/messages`,
-        MESSAGE_BY_ID: (msgId) => `/api/chat/messages/${msgId}`,
-        EDIT_MESSAGE: (msgId) => `/api/chat/messages/${msgId}`,
-        DELETE_MESSAGE: (msgId) => `/api/chat/messages/${msgId}`,
-        PIN_MESSAGE: (msgId) => `/api/chat/messages/${msgId}/pin`,
-        PINNED_MESSAGES: (roomId) => `/api/chat/rooms/${roomId}/pinned`,
-
-        // Reactions
-        ADD_REACTION: (msgId) => `/api/chat/messages/${msgId}/reactions`,
-        REMOVE_REACTION: (msgId, reactionId) => `/api/chat/messages/${msgId}/reactions/${reactionId}`,
-
-        // Read Status
-        MARK_READ: (roomId) => `/api/chat/rooms/${roomId}/read`,
-
-        // Search
-        SEARCH: (roomId) => `/api/chat/rooms/${roomId}/search`,
-
-        // Files
-        UPLOAD_FILE: (roomId) => `/api/chat/rooms/${roomId}/files`,
-
-        // Typing
-        TYPING: (roomId) => `/api/chat/rooms/${roomId}/typing`,
-    },
-
-};
+    // Storage (Google Drive Integration)
+    STORAGE: {
+        OAUTH_AUTHORIZE: '/api/storage/oauth2/authorize',
+        STATUS: '/api/storage/status',
+        DISCONNECT: '/api/storage/disconnect',
+        UPLOAD_PROJECT_FILE: (projectId) => `/api/storage/projects/${projectId}/upload`,
+        PROJECT_FILES: (projectId) => `/api/storage/projects/${projectId}/files`,
+        DOWNLOAD_FILE: (fileId) => `/api/storage/files/${fileId}/download`,
+        DELETE_FILE: (fileId) => `/api/storage/files/${fileId}`,
+    },};

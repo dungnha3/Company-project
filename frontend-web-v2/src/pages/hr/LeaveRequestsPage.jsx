@@ -315,6 +315,7 @@ function CreateLeaveModal({ isOpen, onClose }) {
             startDate: formData.get('startDate'),
             endDate: formData.get('endDate'),
             reason: formData.get('reason'),
+            projectName: formData.get('projectName') || null,
         };
         mutation.mutate(data);
     };
@@ -356,6 +357,10 @@ function CreateLeaveModal({ isOpen, onClose }) {
                             <label className="label-required">Lý do</label>
                             <textarea name="reason" className="input w-full" rows="3" required placeholder="Nhập lý do nghỉ..."></textarea>
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Dự án liên quan (tùy chọn)</label>
+                            <input type="text" name="projectName" className="input w-full" placeholder="Tên dự án sẽ bị ảnh hưởng..." />
+                        </div>
                     </div>
 
                     <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-xl">
@@ -383,12 +388,26 @@ function StatusBadge({ status }) {
 function LeaveCalendar() {
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
-    // Fetch all approved leave requests
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Fetch approved leaves via team-calendar endpoint with date range
     const { data: leaveRequests = [] } = useQuery({
-        queryKey: ['leave-calendar', currentMonth.getMonth(), currentMonth.getFullYear()],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'APPROVED' } })).data?.content || [],
+        queryKey: ['leave-calendar', month, year],
+        queryFn: async () => {
+            const startDate = firstDay.toISOString().split('T')[0];
+            const endDate = lastDay.toISOString().split('T')[0];
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.TEAM_CALENDAR, {
+                params: { startDate, endDate },
+            });
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        staleTime: 60_000,
     });
 
+    const days = [];
     // Build leave map by date range
     const leaveDays = {};
     leaveRequests.forEach(req => {
@@ -401,15 +420,9 @@ function LeaveCalendar() {
         }
     });
 
-    // Calendar grid
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startPadding = firstDay.getDay();
     const daysInMonth = lastDay.getDate();
 
-    const days = [];
     for (let i = 0; i < startPadding; i++) {
         days.push({ day: null });
     }

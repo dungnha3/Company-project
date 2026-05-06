@@ -26,4 +26,8 @@ public class LeaveRequestRequest {
     private LocalDate endDate;
 
     private String reason;
+
+    // Optional: gắn nghỉ phép với dự án
+    private Long projectId;
+    private String projectName;
 }
