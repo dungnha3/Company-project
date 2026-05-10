@@ -24,16 +24,15 @@ const PERSONAL_NOTIFICATION_TYPES = [
 ];
 
 export default function NotificationsPage() {
+    const isPersonal = false; // Legacy fallback
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const navigate = useNavigate();
-    const { workspaceType } = useWorkspaceStore();
-    const isPersonal = workspaceType === 'PERSONAL';
-
+    
     const [activeTab, setActiveTab] = useState('all');
     const [showPreferences, setShowPreferences] = useState(false);
 
-    const notificationTypes = isPersonal ? PERSONAL_NOTIFICATION_TYPES : COMPANY_NOTIFICATION_TYPES;
+    const notificationTypes = COMPANY_NOTIFICATION_TYPES;
 
     // Fetch notifications
     const { data: notifications = [], isLoading } = useQuery({

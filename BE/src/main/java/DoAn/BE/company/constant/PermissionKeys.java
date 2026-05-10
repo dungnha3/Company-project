@@ -41,4 +41,8 @@ public class PermissionKeys {
     // CALENDAR GROUP
     public static final String CALENDAR_VIEW = "CALENDAR.VIEW";
     public static final String CALENDAR_MANAGE = "CALENDAR.MANAGE";
+
+    // WORKSPACE GROUP
+    public static final String WORKSPACE_MANAGE_MEMBERS = "WORKSPACE.MANAGE_MEMBERS"; // Mời, xóa thành viên
+    public static final String WORKSPACE_MANAGE_REQUESTS = "WORKSPACE.MANAGE_REQUESTS"; // Duyệt yêu cầu gia nhập
 }

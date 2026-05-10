@@ -2,6 +2,7 @@ package DoAn.BE.storage.entity;
 
 import DoAn.BE.common.entity.BaseEntity;
 import DoAn.BE.company.entity.Company;
+import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
@@ -34,8 +35,12 @@ public class FileEntity extends BaseEntity {
     private String contentType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = true)
+    @JoinColumn(name = "project_id")
     private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "issue_id")
+    private Issue issue;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by", nullable = false)

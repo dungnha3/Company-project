@@ -86,19 +86,5 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.getSettingsCached(companyId));
     }
 
-    @PutMapping("/{companyId}/settings")
-    public ResponseEntity<?> updateSettings(@PathVariable Long companyId,
-            @RequestBody CompanyDto.SettingsUpdateRequest request) {
-        companyService.updateSettings(companyId, request);
-        return ResponseEntity.ok().body(Map.of("message", "Cập nhật cài đặt thành công"));
-    }
-    // MOVED TO SysAdminCompanyController
-    /*
-     * The following endpoints have been moved to /api/sysadmin/companies/*
-     * - updateCompanyByAdmin
-     * - changePlan
-     * - toggleCompanyStatus
-     * - deleteCompany
-     * - updateSettingsByAdmin
-     */
+
 }

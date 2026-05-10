@@ -33,6 +33,18 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const [activeTab, setActiveTab] = useState('details'); // details | comments | timelogs
     const [newComment, setNewComment] = useState('');
 
+    // Auto-switch to timelogs tab when timer starts for this issue
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail.issueId === issue?.issueId) {
+                setActiveTab('timelogs');
+                toast.info('Timer đã bắt đầu! Chuyển sang tab Time Logs');
+            }
+        };
+        window.addEventListener('auto-start-timer', handler);
+        return () => window.removeEventListener('auto-start-timer', handler);
+    }, [issue?.issueId]);
+
     // Fetch full issue details
     const { data: fullIssue, isLoading } = useQuery({
         queryKey: ['issue', issue?.issueId],

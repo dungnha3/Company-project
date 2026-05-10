@@ -14,7 +14,6 @@ import DoAn.BE.company.entity.CompanySettings;
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.company.repository.CompanySettingsRepository;
-import DoAn.BE.sysadmin.dto.SysAdminCompanyDto;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -122,57 +121,6 @@ public class CompanyAdminService {
         log.info("[System Admin] Đã xóa công ty: {}", companyName);
     }
 
-    @Transactional
-    @CacheEvict(value = "companySettings", key = "#companyId")
-    public CompanySettings updateSettingsBySystemAdmin(Long companyId, CompanyDto.SettingsUpdateRequest req) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));
-
-        updateModuleSettings(settings, req);
-
-        log.info("[System Admin] Đã cập nhật cài đặt cho công ty: {}", companyId);
-        return companySettingsRepository.save(settings);
-    }
-
-
-
-    @Transactional
-    @CacheEvict(value = "companySettings", key = "#companyId")
-    public CompanySettings updateCompanyFeatures(Long companyId, SysAdminCompanyDto.FeatureOverrideRequest req) {
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
-
-        if (req.getHrModuleEnabled() != null)
-            settings.setHrModuleEnabled(req.getHrModuleEnabled());
-        if (req.getProjectModuleEnabled() != null)
-            settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-
-
-        if (req.getLeaveEnabled() != null)
-            settings.setLeaveEnabled(req.getLeaveEnabled());
-        if (req.getReviewEnabled() != null)
-            settings.setReviewEnabled(req.getReviewEnabled());
-
-        if (req.getResourcePlanningEnabled() != null)
-            settings.setResourcePlanningEnabled(req.getResourcePlanningEnabled());
-
-        if (req.getTimeTrackingEnabled() != null)
-            settings.setTimeTrackingEnabled(req.getTimeTrackingEnabled());
-        if (req.getAnalyticsEnabled() != null)
-            settings.setAnalyticsEnabled(req.getAnalyticsEnabled());
-        if (req.getCalendarEnabled() != null)
-            settings.setCalendarEnabled(req.getCalendarEnabled());
-
-        log.info("[System Admin] Đã override Features cho công ty {}", companyId);
-        return companySettingsRepository.save(settings);
-    }
-
-    // --- Private helpers ---
-
     private CompanyDto.CompanyResponse mapCompanyToResponse(Company company) {
         CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
         resp.setCompanyId(company.getCompanyId());
@@ -195,12 +143,4 @@ public class CompanyAdminService {
         }
     }
 
-    private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
-        if (req.getProjectModuleEnabled() != null)
-            settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-
-
     }
-
-
-}

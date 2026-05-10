@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import DoAn.BE.project.dto.CreateIssueRequest;
 import DoAn.BE.project.dto.IssueDTO;
@@ -23,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 @RequestMapping("/api/issues")
 @RequiredArgsConstructor
 @Slf4j
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class IssueController {
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@shared/stores/authStore';
 import apiClient from '@shared/api/client';
@@ -7,11 +7,13 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDate } from '@shared/utils/formatters';
 import { Avatar } from '@shared/components/OptimizedImage';
+import useThemeStore from '@shared/stores/themeStore';
 
 const TABS = [
     { id: 'info', icon: 'fa-user', label: 'Thông tin' },
     { id: 'security', icon: 'fa-shield-alt', label: 'Bảo mật' },
     { id: 'notifications', icon: 'fa-bell', label: 'Thông báo' },
+    { id: 'preferences', icon: 'fa-sliders', label: 'Tùy chỉnh' },
     { id: 'sessions', icon: 'fa-laptop', label: 'Phiên đăng nhập' },
 ];
 
@@ -120,6 +122,7 @@ export default function ProfilePage() {
                 {activeTab === 'info' && <ProfileInfoTab user={user} />}
                 {activeTab === 'security' && <SecurityTab />}
                 {activeTab === 'notifications' && <NotificationsTab />}
+                {activeTab === 'preferences' && <PreferencesTab />}
                 {/* SessionsTab disabled — BE has no /api/profile/sessions endpoint yet */}
             </div>
         </div>
@@ -618,6 +621,72 @@ function NotificationsTab() {
                         enabled={settings?.soundEnabled}
                         onToggle={() => toggleSetting('soundEnabled')}
                     />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function PreferencesTab() {
+    const { theme, setTheme } = useThemeStore();
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-lg font-bold text-gray-800">Tùy chỉnh cá nhân</h3>
+
+            <div className="border border-gray-200 rounded-xl p-5">
+                <h4 className="font-semibold text-gray-800 mb-1">Giao diện</h4>
+                <p className="text-sm text-gray-500 mb-4">Chọn chế độ hiển thị cho tài khoản của bạn</p>
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setTheme('light')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                            theme === 'light' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300'
+                        }`}
+                    >
+                        Sáng
+                    </button>
+                    <button
+                        onClick={() => setTheme('dark')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                            theme === 'dark' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300'
+                        }`}
+                    >
+                        Tối
+                    </button>
+                    <button
+                        onClick={() => setTheme('system')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                            theme === 'system' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300'
+                        }`}
+                    >
+                        Theo hệ thống
+                    </button>
+                </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-5">
+                <h4 className="font-semibold text-gray-800 mb-1">Lối tắt nhanh</h4>
+                <p className="text-sm text-gray-500 mb-4">Đi đến các màn cài đặt và thông báo của cá nhân</p>
+                <div className="flex flex-wrap gap-2">
+                    <Link
+                        to="/app/me/profile"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                    >
+                        Hồ sơ
+                    </Link>
+                    <Link
+                        to="/app/me/profile?tab=security"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                    >
+                        Bảo mật
+                    </Link>
+                    <Link
+                        to="/app/me/profile?tab=notifications"
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                    >
+                        Thông báo
+                    </Link>
                 </div>
             </div>
         </div>

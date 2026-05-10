@@ -236,8 +236,9 @@ public class CompanyMemberService {
             // Calendar
             case PermissionKeys.CALENDAR_VIEW -> p.setCalendarView(value);
             case PermissionKeys.CALENDAR_MANAGE -> p.setCalendarManage(value);
-
-
+            // Workspace
+            case PermissionKeys.WORKSPACE_MANAGE_MEMBERS -> p.setWorkspaceManageMembers(value);
+            case PermissionKeys.WORKSPACE_MANAGE_REQUESTS -> p.setWorkspaceManageRequests(value);
 
             default -> throw new BadRequestException("Mã quyền không tồn tại: " + key);
         }
@@ -269,8 +270,7 @@ public class CompanyMemberService {
             case "TIMETRACKING" -> perms.applyTimetrackingTemplate(enabled);
             case "ANALYTICS" -> perms.applyAnalyticsTemplate(enabled);
             case "CALENDAR" -> perms.applyCalendarTemplate(enabled);
-
-
+            case "WORKSPACE" -> perms.applyWorkspaceTemplate(enabled);
 
             default -> throw new BadRequestException("Module không tồn tại: " + module);
         }

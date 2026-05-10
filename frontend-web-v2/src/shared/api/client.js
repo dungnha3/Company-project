@@ -28,8 +28,9 @@ apiClient.interceptors.request.use(
                     config.headers['X-Workspace-Type'] = state.workspaceType;
                 }
                 // If in company context, also add company ID
-                if (state?.workspaceType === 'COMPANY' && state?.currentWorkspace?.id) {
-                    config.headers['X-Company-Id'] = state.currentWorkspace.id;
+                const compId = state?.currentWorkspace?.companyId || state?.currentWorkspace?.id;
+                if (state?.workspaceType === 'COMPANY' && compId) {
+                    config.headers['X-Company-Id'] = compId;
                 }
             } catch (e) {
                 console.warn('Failed to parse workspace storage', e);

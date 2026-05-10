@@ -20,14 +20,12 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
 @Slf4j
-@FeatureFlag("LEAVE")
 @Transactional(readOnly = true)
 public class LeaveRequestController {
 

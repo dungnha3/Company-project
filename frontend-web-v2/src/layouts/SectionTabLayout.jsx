@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { isMenuItemEnabled } from '@shared/utils/featureHelper';
+
 
 
 /**
@@ -21,6 +21,7 @@ export const HR_TAB_CONFIG = [
         tabLabel: 'Đánh giá',
         tabIcon: 'fa-star',
         items: [
+            { path: '/app/hr/performance', icon: 'fa-chart-column', label: 'Hiệu suất tổng thể', permission: 'HR.MANAGE_REVIEWS' },
             { path: '/app/hr/reviews', icon: 'fa-star', label: 'Đánh giá', feature: 'review' },
         ],
     },
@@ -74,12 +75,7 @@ export default function SectionTabLayout({ tabConfig }) {
             }
             return true;
         }).map(item => {
-            if (!item.feature) return { ...item, enabled: true };
-
-            const isEnabled = isMenuItemEnabled(item.path, settings, permissions);
-            if (isEnabled) return { ...item, enabled: true };
-
-            return null;
+            return { ...item, enabled: true };
         }).filter(Boolean);
     };
 
@@ -110,8 +106,8 @@ export default function SectionTabLayout({ tabConfig }) {
                 </div>
             </div>
 
-            {/* Sub-navigation pills for active tab */}
-            {activeTab && (
+            {/* Sub-navigation pills for active tab (show only when multiple items) */}
+            {activeTab && getVisibleItems(activeTab.items).length > 1 && (
                 <div className="section-sub-nav">
                     {getVisibleItems(activeTab.items).map(item => (
                         item.enabled ? (

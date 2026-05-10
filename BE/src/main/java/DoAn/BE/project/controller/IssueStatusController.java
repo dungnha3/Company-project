@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import DoAn.BE.project.entity.IssueStatus;
 import DoAn.BE.project.repository.IssueStatusRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,6 @@ import java.util.Map;
 @RequestMapping("/api/issue-statuses")
 @RequiredArgsConstructor
 @Slf4j
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class IssueStatusController {
 

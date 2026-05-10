@@ -36,60 +36,10 @@ SELECT @s_review = status_id FROM issue_statuses WHERE name = 'Review';
 SELECT @s_done = status_id FROM issue_statuses WHERE name = 'Done';
 
 -- =====================================================
--- 1. DEPARTMENTS (Company A)
--- =====================================================
-IF NOT EXISTS (SELECT 1 FROM departments WHERE company_id = 1)
-BEGIN
-    INSERT INTO departments (name, description, company_id, created_at, updated_at) VALUES
-        (N'Phòng Công nghệ',   N'Software Development & IT',       1, GETDATE(), GETDATE()),
-        (N'Phòng Nhân sự',     N'Human Resources Management',      1, GETDATE(), GETDATE()),
-        (N'Phòng Kinh doanh',  N'Sales & Business Development',    1, GETDATE(), GETDATE()),
-        (N'Phòng Tài chính',   N'Finance & Accounting',            1, GETDATE(), GETDATE()),
-        (N'Phòng Marketing',   N'Marketing & Communications',      1, GETDATE(), GETDATE());
-    PRINT N'✅ Departments created';
-END
-
--- =====================================================
--- 2. POSITIONS
--- =====================================================
-IF NOT EXISTS (SELECT 1 FROM positions)
-BEGIN
-    INSERT INTO positions (name, salary_coefficient, [level], created_at, updated_at) VALUES
-        (N'Giám đốc',          4.0, 5, GETDATE(), GETDATE()),
-        (N'Trưởng phòng',      3.0, 4, GETDATE(), GETDATE()),
-        (N'Team Lead',          2.5, 3, GETDATE(), GETDATE()),
-        (N'Senior Developer',   2.0, 3, GETDATE(), GETDATE()),
-        (N'Developer',          1.5, 2, GETDATE(), GETDATE()),
-        (N'Junior Developer',   1.2, 1, GETDATE(), GETDATE()),
-        (N'Thực tập sinh',     0.8, 1, GETDATE(), GETDATE());
-    PRINT N'✅ Positions created';
-END
-GO
-
--- =====================================================
 -- 3. EMPLOYEES (Company A)
 -- =====================================================
-DECLARE @dept_it BIGINT, @dept_hr BIGINT, @dept_fin BIGINT;
-DECLARE @pos_lead BIGINT, @pos_senior BIGINT, @pos_dev BIGINT;
-SELECT TOP 1 @dept_it = department_id FROM departments WHERE name LIKE N'%Công nghệ%' AND company_id = 1;
-SELECT TOP 1 @dept_hr = department_id FROM departments WHERE name LIKE N'%Nhân sự%' AND company_id = 1;
-SELECT TOP 1 @dept_fin = department_id FROM departments WHERE name LIKE N'%Tài chính%' AND company_id = 1;
-SELECT TOP 1 @pos_lead = position_id FROM positions WHERE name = N'Team Lead';
-SELECT TOP 1 @pos_senior = position_id FROM positions WHERE name = N'Senior Developer';
-SELECT TOP 1 @pos_dev = position_id FROM positions WHERE name = N'Developer';
-
-INSERT INTO employees (user_id, company_id, department_id, position_id, full_name, id_card, date_of_birth, gender, hire_date, [status], base_salary, allowance, created_at, updated_at)
+INSERT INTO employees (user_id, company_id, full_name, id_card, date_of_birth, gender, hire_date, [status], base_salary, allowance, created_at, updated_at)
 SELECT u.user_id, 1,
-    CASE
-        WHEN u.username LIKE 'hr%' THEN @dept_hr
-        WHEN u.username LIKE 'acc%' THEN @dept_fin
-        ELSE @dept_it
-    END,
-    CASE
-        WHEN u.username LIKE 'owner%' OR u.username LIKE 'pm%' THEN @pos_lead
-        WHEN u.username LIKE 'dev%' THEN @pos_senior
-        ELSE @pos_dev
-    END,
     N'NV ' + u.username,
     '0' + CAST(u.user_id + 123456780 AS VARCHAR),
     DATEADD(year, -25 - (u.user_id % 10), GETDATE()),
@@ -106,35 +56,6 @@ WHERE u.is_system_admin = 0
 PRINT N'✅ Employees created';
 GO
 
--- =====================================================
--- 4. ATTENDANCES (30 ngày gần nhất - richdata cho biểu đồ)
--- =====================================================
-DECLARE @i INT = 0, @date DATE;
-WHILE @i < 30
-BEGIN
-    SET @date = DATEADD(day, -@i, CAST(GETDATE() AS DATE));
-    IF DATEPART(dw, @date) BETWEEN 2 AND 6
-    BEGIN
-        INSERT INTO attendances (employee_id, company_id, attendance_date, check_in_time, check_out_time, working_hours, [status], check_in_method, shift_type, created_at, updated_at)
-        SELECT
-            e.employee_id, 1, @date,
-            DATEADD(minute, (e.employee_id % 30) - 15, CAST('08:00:00' AS TIME)),
-            DATEADD(minute, (e.employee_id % 20), CAST('17:30:00' AS TIME)),
-            8.0,
-            CASE
-                WHEN @i % 7 = 0 AND e.employee_id % 3 = 0 THEN 'LATE'
-                WHEN @i % 10 = 0 AND e.employee_id % 5 = 0 THEN 'EARLY_LEAVE'
-                ELSE 'FULL_DAY'
-            END,
-            'MANUAL', 'FULL',
-            GETDATE(), GETDATE()
-        FROM employees e WHERE e.company_id = 1
-          AND NOT EXISTS (SELECT 1 FROM attendances a WHERE a.employee_id = e.employee_id AND a.attendance_date = @date);
-    END
-    SET @i = @i + 1;
-END
-PRINT N'✅ 30 days of attendance data created';
-GO
 
 -- =====================================================
 -- 5. LEAVE REQUESTS
@@ -157,32 +78,6 @@ BEGIN
 END
 GO
 
--- =====================================================
--- 6. SALARIES (3 tháng gần nhất - cho biểu đồ lương)
--- =====================================================
-DECLARE @month_offset INT = 0;
-WHILE @month_offset < 3
-BEGIN
-    DECLARE @sal_month INT = MONTH(DATEADD(month, -@month_offset, GETDATE()));
-    DECLARE @sal_year INT = YEAR(DATEADD(month, -@month_offset, GETDATE()));
-
-    INSERT INTO salaries (employee_id, company_id, [month], [year], base_salary, allowance, working_days, standard_working_days, gross_salary, net_salary, payment_status, created_at, updated_at)
-    SELECT
-        e.employee_id, 1, @sal_month, @sal_year,
-        e.base_salary, ISNULL(e.allowance, 0),
-        CASE WHEN @month_offset = 0 THEN 18 ELSE 22 END,
-        26,
-        e.base_salary + ISNULL(e.allowance, 0),
-        (e.base_salary + ISNULL(e.allowance, 0)) * 0.895,
-        CASE WHEN @month_offset > 0 THEN 'PAID' ELSE 'UNPAID' END,
-        GETDATE(), GETDATE()
-    FROM employees e WHERE e.company_id = 1
-      AND NOT EXISTS (SELECT 1 FROM salaries s WHERE s.employee_id = e.employee_id AND s.[year] = @sal_year AND s.[month] = @sal_month);
-
-    SET @month_offset = @month_offset + 1;
-END
-PRINT N'✅ 3 months salary data created';
-GO
 
 -- =====================================================
 -- 7. PROJECTS (Company A: 3 projects, Company B: 1 project)
@@ -414,47 +309,94 @@ BEGIN
 END
 GO
 
--- =====================================================
--- 14. CHAT ROOMS + MEMBERS
--- =====================================================
-DECLARE @ch_own BIGINT, @ch_pm BIGINT, @ch_d1 BIGINT, @ch_d2 BIGINT;
-SELECT @ch_own = user_id FROM users WHERE username = 'owner_a';
-SELECT @ch_pm = user_id FROM users WHERE username = 'pm_a';
-SELECT @ch_d1 = user_id FROM users WHERE username = 'dev_a1';
-SELECT @ch_d2 = user_id FROM users WHERE username = 'dev_a2';
 
-IF NOT EXISTS (SELECT 1 FROM chat_rooms WHERE company_id = 1)
+-- =====================================================
+-- 15. PROJECT PHASES & GOALS
+-- =====================================================
+DECLARE @p_hrms BIGINT;
+SELECT @p_hrms = project_id FROM projects WHERE key_project = 'HRMS';
+DECLARE @ow_a BIGINT;
+SELECT @ow_a = user_id FROM users WHERE username = 'owner_a';
+
+IF @p_hrms IS NOT NULL AND NOT EXISTS (SELECT 1 FROM project_phases WHERE project_id = @p_hrms)
 BEGIN
-    INSERT INTO chat_rooms (name, [type], company_id, created_by, created_at, updated_at) VALUES
-        (N'General',    'GROUP', 1, @ch_own, GETDATE(), GETDATE()),
-        (N'Dev Team',   'GROUP', 1, @ch_pm,  GETDATE(), GETDATE());
-    PRINT N'✅ Chat rooms created';
+    INSERT INTO project_phases (project_id, name, description, start_date, end_date, [status], order_index, created_by) VALUES
+        (@p_hrms, N'Khởi tạo', N'Lập kế hoạch và thiết kế', DATEADD(month, -3, GETDATE()), DATEADD(month, -2, GETDATE()), 'COMPLETED', 1, @ow_a),
+        (@p_hrms, N'Phát triển', N'Lập trình tính năng', DATEADD(month, -2, GETDATE()), DATEADD(day, 10, GETDATE()), 'IN_PROGRESS', 2, @ow_a),
+        (@p_hrms, N'Kiểm thử', N'Test và fix bug', DATEADD(day, 11, GETDATE()), DATEADD(month, 1, GETDATE()), 'PLANNING', 3, @ow_a),
+        (@p_hrms, N'Triển khai', N'Release version 1.0', DATEADD(month, 1, GETDATE()), DATEADD(month, 2, GETDATE()), 'PLANNING', 4, @ow_a);
+
+    INSERT INTO project_goals (project_id, title, month_value, year_value, is_completed, created_at, updated_at) VALUES
+        (@p_hrms, N'Hoàn thành API Đăng nhập', MONTH(DATEADD(month, -2, GETDATE())), YEAR(DATEADD(month, -2, GETDATE())), 1, GETDATE(), GETDATE()),
+        (@p_hrms, N'Hoàn thành Module Nhân sự', MONTH(DATEADD(month, -1, GETDATE())), YEAR(DATEADD(month, -1, GETDATE())), 1, GETDATE(), GETDATE()),
+        (@p_hrms, N'Tích hợp Chat Realtime', MONTH(GETDATE()), YEAR(GETDATE()), 0, GETDATE(), GETDATE());
+    PRINT N'✅ Project phases and goals created';
 END
 GO
 
 -- =====================================================
--- 15. PERSONAL WORKSPACES + TASKS
+-- 16. RESOURCE ALLOCATIONS (Cho biểu đồ nhân sự)
 -- =====================================================
-IF NOT EXISTS (SELECT 1 FROM personal_workspaces)
+DECLARE @proj_hrms BIGINT;
+SELECT @proj_hrms = project_id FROM projects WHERE key_project = 'HRMS';
+
+IF @proj_hrms IS NOT NULL AND NOT EXISTS (SELECT 1 FROM resource_allocations WHERE project_id = @proj_hrms)
 BEGIN
-    INSERT INTO personal_workspaces (user_id, name, created_at)
-    SELECT user_id, username + '_workspace', GETDATE()
-    FROM users WHERE is_deleted = 0
-      AND NOT EXISTS (SELECT 1 FROM personal_workspaces pw WHERE pw.user_id = users.user_id);
-    PRINT N'✅ Personal workspaces created';
+    INSERT INTO resource_allocations (employee_id, project_id, start_date, end_date, allocation, note, company_id)
+    SELECT e.employee_id, @proj_hrms, DATEADD(month, -2, GETDATE()), DATEADD(month, 1, GETDATE()), 
+           CASE WHEN u.username = 'dev_a1' THEN 100 WHEN u.username = 'dev_a2' THEN 80 ELSE 50 END,
+           N'Phân bổ cho dự án HRMS', 1
+    FROM employees e JOIN users u ON e.user_id = u.user_id
+    WHERE u.username IN ('dev_a1', 'dev_a2', 'dev_a3') AND e.company_id = 1;
+    PRINT N'✅ Resource allocations created';
 END
 GO
 
-DECLARE @ws_own BIGINT;
-SELECT TOP 1 @ws_own = workspace_id FROM personal_workspaces pw JOIN users u ON pw.user_id = u.user_id WHERE u.username = 'owner_a';
+-- =====================================================
+-- 17. PROJECT EXPENSES (Cho biểu đồ chi phí)
+-- =====================================================
+DECLARE @proj_hrms BIGINT;
+SELECT @proj_hrms = project_id FROM projects WHERE key_project = 'HRMS';
+DECLARE @ow_a BIGINT;
+SELECT @ow_a = user_id FROM users WHERE username = 'owner_a';
 
-IF @ws_own IS NOT NULL AND NOT EXISTS (SELECT 1 FROM personal_tasks WHERE workspace_id = @ws_own)
+IF @proj_hrms IS NOT NULL AND NOT EXISTS (SELECT 1 FROM project_expenses WHERE project_id = @proj_hrms)
 BEGIN
-    INSERT INTO personal_tasks (workspace_id, title, description, due_date, status, priority, reminder_sent, created_at, updated_at) VALUES
-        (@ws_own, N'Review PRs',           N'Review merge requests từ team',  DATEADD(day,1,GETDATE()), 'TODO',        'HIGH',   0, GETDATE(), GETDATE()),
-        (@ws_own, N'Chuẩn bị demo',       N'Slides cho sprint review',       DATEADD(day,3,GETDATE()), 'TODO',        'MEDIUM', 0, GETDATE(), GETDATE()),
-        (@ws_own, N'Cập nhật docs',        N'Update API documentation',       DATEADD(day,7,GETDATE()), 'IN_PROGRESS', 'LOW',    0, GETDATE(), GETDATE());
-    PRINT N'✅ Personal tasks created';
+    INSERT INTO project_expenses (project_id, expense_name, amount, expense_date, description, created_by) VALUES
+        (@proj_hrms, N'Chi phí Server AWS', 5000000, DATEADD(month, -2, GETDATE()), N'Thanh toán EC2 và RDS', @ow_a),
+        (@proj_hrms, N'Bản quyền phần mềm', 2500000, DATEADD(month, -1, GETDATE()), N'Github Copilot và IDE', @ow_a),
+        (@proj_hrms, N'Marketing Demo', 10000000, DATEADD(day, -5, GETDATE()), N'Chạy quảng cáo chiến dịch', @ow_a),
+        (@proj_hrms, N'Thiết bị kiểm thử', 8000000, GETDATE(), N'Mua iPhone 15 để test app', @ow_a);
+    PRINT N'✅ Project expenses created';
+END
+GO
+
+-- =====================================================
+-- 18. PERFORMANCE REVIEWS (Cho biểu đồ đánh giá)
+-- =====================================================
+DECLARE @proj_hrms BIGINT;
+SELECT @proj_hrms = project_id FROM projects WHERE key_project = 'HRMS';
+DECLARE @pm_a_emp BIGINT;
+SELECT @pm_a_emp = employee_id FROM employees e JOIN users u ON e.user_id = u.user_id WHERE u.username = 'pm_a' AND e.company_id = 1;
+
+IF @proj_hrms IS NOT NULL AND NOT EXISTS (SELECT 1 FROM reviews WHERE project_id = @proj_hrms)
+BEGIN
+    -- Review cho dev_a1 (Excellent)
+    INSERT INTO reviews (employee_id, reviewer_id, project_id, project_name, review_period, review_type, technical_score, attitude_score, soft_skills_score, teamwork_score, total_score, rating, comments, status, completed_date)
+    SELECT e.employee_id, @pm_a_emp, @proj_hrms, N'HR Management System', 'Q1-2026', 'PROJECT', 9.5, 9.0, 8.5, 9.5, 9.1, 'EXCELLENT', N'Hoàn thành xuất sắc nhiệm vụ', 'APPROVED', GETDATE()
+    FROM employees e JOIN users u ON e.user_id = u.user_id WHERE u.username = 'dev_a1';
+
+    -- Review cho dev_a2 (Good)
+    INSERT INTO reviews (employee_id, reviewer_id, project_id, project_name, review_period, review_type, technical_score, attitude_score, soft_skills_score, teamwork_score, total_score, rating, comments, status, completed_date)
+    SELECT e.employee_id, @pm_a_emp, @proj_hrms, N'HR Management System', 'Q1-2026', 'PROJECT', 8.0, 8.5, 8.0, 8.5, 8.2, 'GOOD', N'Kỹ năng tốt, cần cải thiện tiếng Anh', 'APPROVED', GETDATE()
+    FROM employees e JOIN users u ON e.user_id = u.user_id WHERE u.username = 'dev_a2';
+
+    -- Review cho dev_a3 (Average)
+    INSERT INTO reviews (employee_id, reviewer_id, project_id, project_name, review_period, review_type, technical_score, attitude_score, soft_skills_score, teamwork_score, total_score, rating, comments, status, completed_date)
+    SELECT e.employee_id, @pm_a_emp, @proj_hrms, N'HR Management System', 'Q1-2026', 'PROJECT', 7.0, 7.5, 7.0, 7.5, 7.2, 'AVERAGE', N'Cần nỗ lực hơn trong việc giữ deadline', 'APPROVED', GETDATE()
+    FROM employees e JOIN users u ON e.user_id = u.user_id WHERE u.username = 'dev_a3';
+
+    PRINT N'✅ Performance reviews created';
 END
 GO
 
@@ -467,14 +409,45 @@ PRINT N'✅ SEED DATA COMPLETE!';
 PRINT N'=====================================================';
 PRINT N'';
 PRINT N'📊 Data summary:';
-PRINT N'  • 5 departments, 7 positions';
-PRINT N'  • 30 days attendance data';
-PRINT N'  • 3 months salary data';
 PRINT N'  • 6 leave requests (approved/pending/rejected)';
 PRINT N'  • 4 projects (3 Company A + 1 Company B)';
 PRINT N'  • 5 sprints (3 completed + 1 active + 1 planning)';
 PRINT N'  • 30 issues (velocity: S1=48h, S2=56h, S3=68h)';
-PRINT N'  • Time logs, calendar, notifications, chat';
+PRINT N'  • Time logs, calendar, notifications';
+PRINT N'  • Project phases, goals, resource allocations, expenses, reviews';
 PRINT N'';
 PRINT N'▶️ Tiếp theo: Chạy 03_indexes.sql';
+GO
+
+-- =====================================================
+-- BỔ SUNG: GÁN DỮ LIỆU CHO full_emp ĐỂ TEST
+-- =====================================================
+DECLARE @uid_full BIGINT;
+SELECT @uid_full = user_id FROM users WHERE username = 'full_emp';
+
+IF @uid_full IS NOT NULL
+BEGIN
+    -- 1. Thêm full_emp vào Dự án HRMS (Dự án có nhiều dữ liệu nhất)
+    IF NOT EXISTS (SELECT 1 FROM project_members WHERE project_id = 1 AND user_id = @uid_full)
+    BEGIN
+        INSERT INTO project_members (project_id, user_id, role, join_date, member_status, created_at, updated_at)
+        VALUES (1, @uid_full, 'MANAGER', GETDATE(), 'ACTIVE', GETDATE(), GETDATE());
+        PRINT N'✅ Đã thêm full_emp vào dự án HRMS (project_id = 1)';
+    END
+
+    -- 2. Giao 3 task ngẫu nhiên cho full_emp để test tab "Công việc của tôi"
+    -- Cố gắng tìm task chưa có assignee
+    UPDATE TOP (3) issues
+    SET assignee_id = @uid_full, updated_at = GETDATE()
+    WHERE project_id = 1 AND status_id IN (1, 2) AND assignee_id IS NULL;
+
+    -- Nếu không có task nào trống thì lấy 3 task bất kỳ đang To Do / In Progress
+    IF @@ROWCOUNT = 0
+    BEGIN
+        UPDATE TOP (3) issues
+        SET assignee_id = @uid_full, updated_at = GETDATE()
+        WHERE project_id = 1 AND status_id IN (1, 2);
+    END
+    PRINT N'✅ Đã giao 3 tasks trong HRMS cho full_emp';
+END
 GO

@@ -3,52 +3,97 @@ import { persist } from 'zustand/middleware';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
-/**
- * Workspace Store - Quản lý context Personal/Company Workspace
- * 
- * Dual Workspace Model:
- * - Personal Workspace: Không gian cá nhân, plan riêng
- * - Company Workspace: Không gian công ty, plan và quyền do công ty quyết định
- */
+
+
 export const useWorkspaceStore = create(
     persist(
         (set, get) => ({
             // State
-            workspaces: [],           // All workspaces (personal + companies)
-            currentWorkspace: null,   // Currently active workspace
-            workspaceType: 'PERSONAL', // 'PERSONAL' | 'COMPANY'
-            personalWorkspace: null,  // User's personal workspace info
+            workspaces: [],           // All companies user belongs to
+            currentWorkspace: null,   // Currently active company
+            workspaceType: 'COMPANY', // Always 'COMPANY' now
             loading: false,
+            hasFetched: false,
             error: null,
             isHydrated: false,
 
             // Actions
             setWorkspaces: (workspaces) => set({ workspaces }),
 
-            setPersonalWorkspace: (personalWorkspace) => set({ personalWorkspace }),
-
             fetchWorkspaces: async () => {
                 // Guard: skip if not authenticated
                 const token = localStorage.getItem('accessToken');
                 if (!token) return [];
 
-                set({ loading: true, error: null });
+                set({ loading: true, error: null, hasFetched: false });
                 try {
-                    const response = await apiClient.get(ENDPOINTS.WORKSPACES.LIST);
-                    set({ workspaces: response.data, loading: false });
+                    const response = await apiClient.get(ENDPOINTS.COMPANIES.LIST);
+                    const companies = response.data;
 
-                    // Auto-select personal workspace if none selected
-                    const { currentWorkspace } = get();
-                    if (!currentWorkspace && response.data.length > 0) {
-                        const personal = response.data.find(w => w.type === 'PERSONAL');
-                        if (personal) {
-                            get().selectWorkspace(personal);
-                        }
+                    if (!Array.isArray(companies)) {
+                        console.warn('[workspaceStore] /api/companies/my returned non-array:', companies);
+                        set({ loading: false, hasFetched: true, workspaces: [] });
+                        return [];
                     }
-                    return response.data;
+
+                    // Force type to 'COMPANY' for all items
+                    const normalizedCompanies = companies.map(c => ({...c, type: 'COMPANY'}));
+
+                    // Set workspaces first so switchToCompany can find it
+                    set({ workspaces: normalizedCompanies });
+
+                    if (normalizedCompanies.length === 0) {
+                        // No companies → redirect to onboarding
+                        console.debug('[workspaceStore] No companies found');
+                        set({ loading: false, hasFetched: true });
+                        return [];
+                    }
+
+                    // Auto-select first company directly (avoid ID mismatch issues)
+                    const firstCompany = normalizedCompanies[0];
+                    const targetId = firstCompany.companyId || firstCompany.id;
+                    const roles = firstCompany.roles || (firstCompany.role ? [firstCompany.role] : ['EMPLOYEE']);
+
+                    set({
+                        currentWorkspace: {
+                            ...firstCompany,
+                            settings: null,
+                            roles: roles,
+                        },
+                        workspaceType: 'COMPANY',
+                    });
+
+                    // Fetch company settings in background
+                    apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(targetId), {
+                        headers: {
+                            'X-Company-Id': targetId,
+                            'X-Workspace-Type': 'COMPANY',
+                        }
+                    }).then(res => {
+                        set((prev) => ({
+                            currentWorkspace: {
+                                ...prev.currentWorkspace,
+                                settings: res.data,
+                            },
+                        }));
+                    }).catch(err => {
+                        console.warn('[workspaceStore] Failed to fetch settings:', err);
+                    });
+
+                    set({ loading: false, hasFetched: true });
+                    console.debug('[workspaceStore] fetchWorkspaces complete', {
+                        count: normalizedCompanies.length,
+                        selected: get().currentWorkspace?.companyId || get().currentWorkspace?.id,
+                    });
+                    return normalizedCompanies;
                 } catch (error) {
-                    console.error('Failed to fetch workspaces:', error);
-                    set({ loading: false, error: error.message });
+                    console.error('[workspaceStore] fetchWorkspaces failed:', error);
+                    if (error.response?.status === 401 || error.response?.status === 403) {
+                        localStorage.removeItem('accessToken');
+                        window.location.assign('/login');
+                        return [];
+                    }
+                    set({ loading: false, error: error.message, hasFetched: true });
                     return [];
                 }
             },
@@ -56,31 +101,12 @@ export const useWorkspaceStore = create(
             selectWorkspace: (workspace) => {
                 set({
                     currentWorkspace: workspace,
-                    workspaceType: workspace.type,
+                    workspaceType: 'COMPANY',
                 });
             },
 
-            switchToPersonal: () => {
-                const { personalWorkspace } = get();
-                if (personalWorkspace) {
-                    set({
-                        currentWorkspace: {
-                            id: personalWorkspace.workspaceId,
-                            name: personalWorkspace.name,
-                            type: 'PERSONAL',
-                            plan: personalWorkspace.plan,
-                            roles: ['OWNER'], // Personal workspace always OWNER
-                            permissions: null, // Full access (implicit)
-                        },
-                        workspaceType: 'PERSONAL',
-                    });
-                }
-            },
-
             switchToCompany: async (companyId) => {
-                const company = get().workspaces.find(
-                    w => w.type === 'COMPANY' && w.id === companyId
-                );
+                const company = get().workspaces.find(w => (w.companyId || w.id) === companyId);
                 if (company) {
                     // Convert single role to array if needed (backward compatibility)
                     const roles = company.roles || (company.role ? [company.role] : []);
@@ -96,7 +122,6 @@ export const useWorkspaceStore = create(
                     });
 
                     // Fetch company settings with explicit header
-                    // (localStorage may not be flushed yet, so pass header directly)
                     try {
                         const res = await apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId), {
                             headers: {
@@ -111,8 +136,13 @@ export const useWorkspaceStore = create(
                             },
                         }));
                     } catch (error) {
-                        console.warn('Failed to fetch company settings:', error);
+                        console.warn('[workspaceStore] Failed to fetch company settings:', error);
                     }
+                } else {
+                    console.warn('[workspaceStore] switchToCompany: company not found in workspaces', {
+                        companyId,
+                        availableWorkspaces: get().workspaces,
+                    });
                 }
             },
 
@@ -120,24 +150,22 @@ export const useWorkspaceStore = create(
                 set({
                     workspaces: [],
                     currentWorkspace: null,
-                    workspaceType: 'PERSONAL',
-                    personalWorkspace: null,
+                    workspaceType: 'COMPANY',
                     error: null
                 });
             },
 
             // Computed helpers
-            isPersonalContext: () => get().workspaceType === 'PERSONAL',
-            isCompanyContext: () => get().workspaceType === 'COMPANY',
+            isPersonalContext: () => false, // Deprecated, always false
+            isCompanyContext: () => true, // Always true now
             getCurrentCompanyId: () => {
-                const { currentWorkspace, workspaceType } = get();
-                return workspaceType === 'COMPANY' ? currentWorkspace?.id : null;
+                const { currentWorkspace } = get();
+                return currentWorkspace?.id || null;
             },
 
             // Role check helper
             hasRole: (...allowedRoles) => {
                 const { currentWorkspace } = get();
-                // Check against roles array
                 const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
                 return allowedRoles.some(role => userRoles.includes(role));
             },
@@ -147,17 +175,13 @@ export const useWorkspaceStore = create(
                 const { currentWorkspace } = get();
                 if (!currentWorkspace) return false;
 
-                // Personal workspace: only personal-scoped operations allowed
-                // Company-specific permissions (HR, Salary, Project module perms) are denied
-                if (get().workspaceType === 'PERSONAL') return false;
-
                 // Owner/Admin bypass
                 const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : []);
                 if (userRoles.includes('OWNER') || userRoles.includes('COMPANY_ADMIN')) return true;
 
                 // Check user permissions object
                 const perms = currentWorkspace.permissions;
-                if (!perms) return false; // No perms object = no access (unless owner/admin)
+                if (!perms) return false;
 
                 return !!perms[permissionKey];
             },
@@ -171,38 +195,45 @@ export const useWorkspaceStore = create(
         }),
         {
             name: 'workspace-storage',
+            // Persist both currentWorkspace AND workspaces so F5 works
             partialize: (state) => ({
                 currentWorkspace: state.currentWorkspace,
-                workspaceType: state.workspaceType,
-                personalWorkspace: state.personalWorkspace,
+                workspaces: state.workspaces,
+                workspaceType: 'COMPANY',
             }),
-            // [FIX] Don't merge persisted state if user is not authenticated
             merge: (persistedState, currentState) => {
                 const token = localStorage.getItem('accessToken');
-                if (!token) {
-                    // Discard stale workspace data — use clean defaults
-                    return currentState;
+                if (!token) return currentState;
+                // If we have a persisted workspace, immediately mark hasFetched=true so
+                // the AccessControlGuard doesn't redirect to /onboarding before the
+                // store is rehydrated from localStorage.
+                if (persistedState?.currentWorkspace) {
+                    return {
+                        ...currentState,
+                        ...persistedState,
+                        workspaceType: 'COMPANY',
+                        hasFetched: true,
+                        // workspaces may be empty if not persisted; that's OK — hasFetched:true
+                        // tells the guard we've already authenticated and have a workspace.
+                    };
                 }
                 return { ...currentState, ...persistedState };
             },
-            // [FIX] Re-fetch settings AND roles when store is rehydrated from localStorage
             onRehydrateStorage: () => (state, error) => {
-                // Always mark as hydrated, even on error
                 useWorkspaceStore.setState({ isHydrated: true });
 
                 if (error) {
                     console.error('Failed to rehydrate workspace store:', error);
                     return;
                 }
-                // Skip rehydration if user is not authenticated (e.g., after logout)
+
                 const token = localStorage.getItem('accessToken');
                 if (!token) return;
 
-                if (state?.currentWorkspace?.type === 'COMPANY' && state?.currentWorkspace?.id) {
+                if (state?.currentWorkspace?.id) {
                     const companyId = state.currentWorkspace.id;
                     import('@shared/api/client').then(({ default: apiClient }) => {
                         import('@shared/api/endpoints').then(({ ENDPOINTS }) => {
-                            // Fetch BOTH settings and workspaces to get fresh roles
                             Promise.all([
                                 apiClient.get(ENDPOINTS.COMPANIES.SETTINGS(companyId), {
                                     headers: {
@@ -210,27 +241,33 @@ export const useWorkspaceStore = create(
                                         'X-Workspace-Type': 'COMPANY',
                                     }
                                 }),
-                                apiClient.get(ENDPOINTS.WORKSPACES.LIST)
+                                apiClient.get(ENDPOINTS.COMPANIES.LIST)
                             ])
                                 .then(([settingsRes, workspacesRes]) => {
-                                    const freshCompany = workspacesRes.data.find(
-                                        w => w.type === 'COMPANY' && w.id === companyId
-                                    );
+                                    const companies = (workspacesRes.data || []).map(c => ({...c, type: 'COMPANY'}));
+                                    const freshCompany = companies.find(w => w.id === companyId);
                                     const freshRoles = freshCompany?.roles || state.currentWorkspace.roles || ['EMPLOYEE'];
                                     const freshPermissions = freshCompany?.permissions || state.currentWorkspace.permissions || null;
 
                                     useWorkspaceStore.setState((prev) => ({
-                                        workspaces: workspacesRes.data,
+                                        workspaces: companies,
                                         currentWorkspace: {
                                             ...prev.currentWorkspace,
                                             settings: settingsRes.data,
                                             roles: freshRoles,
                                             permissions: freshPermissions,
-                                        }
+                                            type: 'COMPANY'
+                                        },
+                                        workspaceType: 'COMPANY',
+                                        hasFetched: true,
                                     }));
-                                    console.log('✅ Re-fetched company settings and roles on rehydrate:', freshRoles);
+                                    console.log('[workspaceStore] Rehydrated + refreshed settings');
                                 })
-                                .catch(err => console.warn('Failed to re-fetch on rehydrate:', err));
+                                .catch(err => {
+                                    console.warn('[workspaceStore] Background refresh failed:', err);
+                                    // Mark as fetched even if refresh fails — we have persisted data
+                                    useWorkspaceStore.setState({ hasFetched: true });
+                                });
                         });
                     });
                 }

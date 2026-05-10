@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.service.SprintService;
@@ -17,7 +16,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sprints")
 @RequiredArgsConstructor
-@FeatureFlag("PROJECT")
 public class SprintController {
 
     private final SprintService sprintService;

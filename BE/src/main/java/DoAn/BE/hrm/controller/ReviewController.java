@@ -22,10 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 @RestController
 @RequestMapping("/api/reviews")
-@FeatureFlag("REVIEW")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReviewController {

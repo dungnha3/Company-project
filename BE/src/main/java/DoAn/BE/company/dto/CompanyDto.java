@@ -35,8 +35,5 @@ public class CompanyDto {
         private String address;
     }
 
-    @Data
-    public static class SettingsUpdateRequest {
-        private Boolean projectModuleEnabled;
-    }
+    
 }

@@ -13,8 +13,6 @@ export default function CompanySwitcher({ collapsed }) {
     const {
         workspaces,
         currentWorkspace,
-        workspaceType,
-        personalWorkspace,
         selectWorkspace,
         fetchWorkspaces
     } = useWorkspaceStore();
@@ -61,7 +59,7 @@ export default function CompanySwitcher({ collapsed }) {
 
     const getDisplayName = () => {
         if (!currentWorkspace) {
-            return personalWorkspace?.name || 'My Workspace';
+            return 'My Workspace';
         }
         return currentWorkspace.name;
     };
@@ -101,20 +99,15 @@ export default function CompanySwitcher({ collapsed }) {
                 className="company-switcher-trigger"
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold ${workspaceType === 'PERSONAL' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-primary'
-                    }`}>
-                    {workspaceType === 'PERSONAL' ? (
-                        <i className="fa-solid fa-user text-sm" />
-                    ) : (
-                        getInitial()
-                    )}
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold bg-primary">
+                    {getInitial()}
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-800 truncate">
                         {getDisplayName()}
                     </div>
                     <div className="text-xs text-gray-500">
-                        {workspaceType === 'PERSONAL' ? 'Personal Workspace' : getDisplayRole()}
+                        {getDisplayRole()}
                     </div>
                 </div>
                 {workspaces.length >= 1 && (
@@ -124,39 +117,14 @@ export default function CompanySwitcher({ collapsed }) {
 
             {isOpen && (
                 <div className="company-switcher-dropdown z-50">
-                    {/* Personal Workspace Section */}
                     <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Cá nhân
-                    </div>
-                    {workspaces.filter(w => w.type === 'PERSONAL').map(workspace => (
-                        <div
-                            key={`personal-${workspace.id}`}
-                            className={`company-item ${workspace.id === currentWorkspace?.id ? 'active' : ''}`}
-                            onClick={() => handleSelect(workspace)}
-                        >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
-                                <i className="fa-solid fa-user text-xs" />
-                            </div>
-                            <div className="flex-1">
-                                <div className="font-medium">{workspace.name}</div>
-                                <div className="text-xs text-gray-500">Personal</div>
-                            </div>
-                            {workspace.id === currentWorkspace?.id && workspaceType === 'PERSONAL' && (
-                                <i className="fa-solid fa-check text-primary" />
-                            )}
-                        </div>
-                    ))}
-
-                    {/* Company Workspaces Section */}
-                    <div className="border-t my-2" />
-                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Workspaces
+                        Workspace
                     </div>
 
-                    {workspaces.filter(w => w.type === 'COMPANY').map(workspace => (
+                    {workspaces.map(workspace => (
                         <div
                             key={`company-${workspace.id}`}
-                            className={`company-item ${workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' ? 'active' : ''}`}
+                            className={`company-item ${workspace.id === currentWorkspace?.id ? 'active' : ''}`}
                             onClick={() => handleSelect(workspace)}
                         >
                             <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-semibold text-sm">
@@ -168,7 +136,7 @@ export default function CompanySwitcher({ collapsed }) {
                                 </div>
                                 <div className="text-xs text-gray-500">{getRoleLabel(workspace.roles?.[0] || workspace.role)}</div>
                             </div>
-                            {workspace.id === currentWorkspace?.id && workspaceType === 'COMPANY' && (
+                            {workspace.id === currentWorkspace?.id && (
                                 <i className="fa-solid fa-check text-primary" />
                             )}
                         </div>

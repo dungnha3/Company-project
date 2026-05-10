@@ -84,21 +84,21 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
-        if (request == null || request.getUsername() == null || request.getPassword() == null) {
+        if (request == null || request.getEmail() == null || request.getPassword() == null) {
             throw new BadRequestException("Thông tin đăng nhập không được để trống");
         }
-        checkLoginAttempts(request.getUsername(), ipAddress);
-        User user = userService.findByUsername(request.getUsername())
+        checkLoginAttempts(request.getEmail(), ipAddress);
+        User user = userService.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Thông tin đăng nhập không chính xác"));
-        validateUserActive(user, request.getUsername(), ipAddress);
+        validateUserActive(user, request.getEmail(), ipAddress);
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            recordFailedLogin(request.getUsername(), ipAddress, "Mật khẩu không chính xác");
+            recordFailedLogin(request.getEmail(), ipAddress, "Mật khẩu không chính xác");
             throw new UnauthorizedException("Thông tin đăng nhập không chính xác");
         }
 
         // 2FA check — if enabled, return partial response requiring TOTP code
         if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
-            clearFailedAttempts(request.getUsername(), ipAddress);
+            clearFailedAttempts(request.getEmail(), ipAddress);
             String tempToken = jwtService.generateTempToken(user);
             AuthResponse twoFactorResponse = new AuthResponse();
             twoFactorResponse.setRequiresTwoFactor(true);
@@ -106,7 +106,7 @@ public class AuthService {
             return twoFactorResponse;
         }
 
-        clearFailedAttempts(request.getUsername(), ipAddress);
+        clearFailedAttempts(request.getEmail(), ipAddress);
         updateUserLoginStatus(user);
 
         sessionService.createSession(user, ipAddress, userAgent);
@@ -362,19 +362,17 @@ public class AuthService {
         if (userService.findByEmail(request.getEmail()).isPresent()) {
             throw new BadRequestException("Email đã được sử dụng");
         }
-        if (userService.findByUsername(request.getUsername()).isPresent()) {
-            throw new BadRequestException("Username đã tồn tại");
-        }
+        
         User newUser = new User();
         newUser.setEmail(request.getEmail());
-        newUser.setUsername(request.getUsername());
+        newUser.setUsername(request.getEmail());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         newUser.setPhoneNumber(request.getPhoneNumber());
         newUser.setIsActive(true);
         newUser.setStatus(User.UserStatus.ACTIVE);
 
         // Set avatar mặc định (Configurable)
-        String avatarUrl = String.format(defaultAvatarUrlPattern, request.getUsername().replace(" ", "+"));
+        String avatarUrl = String.format(defaultAvatarUrlPattern, request.getEmail().replace(" ", "+"));
         newUser.setAvatarUrl(avatarUrl);
 
         newUser = userService.save(newUser);

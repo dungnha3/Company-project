@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import DoAn.BE.project.dto.CustomFieldDto;
 import DoAn.BE.project.service.CustomFieldService;
@@ -26,7 +25,6 @@ import java.util.Map;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Custom Fields", description = "Manage custom fields for issues")
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class CustomFieldController {
 

@@ -84,7 +84,7 @@ export const ENDPOINTS = {
 
     // Companies
     COMPANIES: {
-        LIST: '/api/companies',
+        LIST: '/api/companies/my',
         BY_ID: (id) => `/api/companies/${id}`,
         CREATE: '/api/companies',
         UPDATE: (id) => `/api/companies/${id}`,
@@ -105,6 +105,16 @@ export const ENDPOINTS = {
         ACCEPT: '/api/invites/accept',
         CANCEL: (id) => `/api/invites/${id}`,
     },
+
+    // Workspace Join Requests
+    WORKSPACE_JOIN: {
+        REQUEST: '/api/workspaces/join',                                          // POST - xin gia nhập
+        MY_REQUESTS: '/api/workspaces/join/my-requests',                          // GET - trạng thái yêu cầu của mình
+        PENDING: (companyId) => `/api/workspaces/${companyId}/join-requests`,     // GET - admin xem
+        APPROVE: (requestId) => `/api/workspaces/join-requests/${requestId}/approve`, // POST
+        REJECT: (requestId) => `/api/workspaces/join-requests/${requestId}/reject`,   // POST
+    },
+
 
     // Users
     USERS: {
@@ -135,6 +145,7 @@ export const ENDPOINTS = {
     // Employees
     EMPLOYEES: {
         LIST: '/api/employees',
+        PAGE: '/api/employees/page',
         CREATE: '/api/employees',
         BY_ID: (id) => `/api/employees/${id}`,
         UPDATE: (id) => `/api/employees/${id}`,
@@ -316,6 +327,7 @@ export const ENDPOINTS = {
         MY_ISSUES: '/api/issues/my-issues',
         MY_REPORTED: '/api/issues/my-reported',
         UPDATE_STATUS: (id) => `/api/issues/${id}/status`,
+        UPDATE_STATUS_TO: (id, statusId) => `/api/issues/${id}/status/${statusId}`,
         ASSIGN: (id) => `/api/issues/${id}/assign`,
     },
 
@@ -408,6 +420,10 @@ export const ENDPOINTS = {
         DISCONNECT: '/api/storage/disconnect',
         UPLOAD_PROJECT_FILE: (projectId) => `/api/storage/projects/${projectId}/upload`,
         PROJECT_FILES: (projectId) => `/api/storage/projects/${projectId}/files`,
+        UPLOAD_ISSUE_FILE: (issueId) => `/api/storage/issues/${issueId}/upload`,
+        ISSUE_FILES: (issueId) => `/api/storage/issues/${issueId}/files`,
         DOWNLOAD_FILE: (fileId) => `/api/storage/files/${fileId}/download`,
+        FILE_METADATA: (fileId) => `/api/storage/files/${fileId}/metadata`,
         DELETE_FILE: (fileId) => `/api/storage/files/${fileId}`,
-    },};
+    },
+};

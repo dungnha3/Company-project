@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -17,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/project-export")
 @RequiredArgsConstructor
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class ProjectExportController {
 

@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import DoAn.BE.project.dto.ResourceAllocationDTO;
 import DoAn.BE.project.dto.ResourceAllocationRequest;
 import DoAn.BE.project.dto.ResourceOverviewDTO;
@@ -20,7 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/resources")
-@FeatureFlag("RESOURCE_PLANNING")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ResourcePlanningController {

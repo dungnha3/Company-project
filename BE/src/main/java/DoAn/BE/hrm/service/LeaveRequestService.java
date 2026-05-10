@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
-import DoAn.BE.common.service.FeatureFlagService;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.hrm.dto.LeaveRequestRequest;
 import DoAn.BE.hrm.entity.LeaveRequest;
@@ -31,28 +30,23 @@ public class LeaveRequestService {
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final EmployeeRepository employeeRepository;
-    private final FeatureFlagService featureFlagService;
-    private final AccessControlService accessControlService;
+        private final AccessControlService accessControlService;
     private final ApplicationEventPublisher eventPublisher;
     private final IssueRepository issueRepository;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
             EmployeeRepository employeeRepository,
-            FeatureFlagService featureFlagService,
             AccessControlService accessControlService,
             ApplicationEventPublisher eventPublisher,
             IssueRepository issueRepository) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
-        this.featureFlagService = featureFlagService;
         this.accessControlService = accessControlService;
         this.eventPublisher = eventPublisher;
         this.issueRepository = issueRepository;
     }
 
     public LeaveRequest createLeaveRequest(LeaveRequestRequest request, User currentUser) {
-        featureFlagService.requireLeaveFeature();
-
         log.info("User {} creating leave request for employee ID: {}", currentUser.getUsername(),
                 request.getEmployeeId());
         Employee employee = employeeRepository.findById(request.getEmployeeId())

@@ -55,6 +55,10 @@ public class UserPermissions implements Serializable {
     private boolean calendarView = false;
     private boolean calendarManage = false;
 
+    // ===== NHÓM WORKSPACE =====
+    private boolean workspaceManageMembers = false; // Mời/xóa thành viên
+    private boolean workspaceManageRequests = false; // Duyệt yêu cầu gia nhập
+
 
     public static UserPermissions defaultFor(CompanyRole role) {
         UserPermissions p = new UserPermissions();
@@ -94,6 +98,9 @@ public class UserPermissions implements Serializable {
             // Calendar
             p.setCalendarView(true);
             p.setCalendarManage(true);
+            // Workspace
+            p.setWorkspaceManageMembers(true);
+            p.setWorkspaceManageRequests(true);
 
             // EMPLOYEE — quyền cơ bản
             p.setTimetrackingLog(true);
@@ -139,6 +146,9 @@ public class UserPermissions implements Serializable {
         // Calendar
         copy.calendarView = this.calendarView;
         copy.calendarManage = this.calendarManage;
+        // Workspace
+        copy.workspaceManageMembers = this.workspaceManageMembers;
+        copy.workspaceManageRequests = this.workspaceManageRequests;
         return copy;
     }
 
@@ -192,5 +202,10 @@ public class UserPermissions implements Serializable {
 
     public void applyAnalyticsTemplate(boolean enabled) {
         this.analyticsView = enabled;
+    }
+
+    public void applyWorkspaceTemplate(boolean enabled) {
+        this.workspaceManageMembers = enabled;
+        this.workspaceManageRequests = enabled;
     }
 }

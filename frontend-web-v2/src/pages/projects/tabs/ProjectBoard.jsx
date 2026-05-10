@@ -14,9 +14,11 @@ import {
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
-import { useAuthStore } from '@shared/stores/authStore';
+import { useTimerStore } from '@shared/stores/timerStore';
 import IssueDetailModal from '../components/IssueDetailModal';
 import CreateIssueModal from '../components/CreateIssueModal';
+import TimeLogSection from '../components/TimeLogSection';
+import BoardTimeLogPanel from '../components/BoardTimeLogPanel';
 
 // ─── Fallback columns (used when API unavailable) ─────────────────────
 const FALLBACK_STATUSES = [
@@ -85,7 +87,6 @@ function saveWipLimits(projectId, limits) {
 export default function ProjectBoard({ project }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
-    const currentUser = useAuthStore(s => s.user);
 
     // ── Drag state
     const [activeId, setActiveId] = useState(null);
@@ -108,6 +109,10 @@ export default function ProjectBoard({ project }) {
     // ── Backlog panel
     const [showBacklog, setShowBacklog] = useState(false);
 
+    // ── Time Log panel
+    const [showTimeLog, setShowTimeLog] = useState(false);
+    const [activeTimeLogIssueId, setActiveTimeLogIssueId] = useState(null);
+
     // ── Add column state
     const [showAddColumn, setShowAddColumn] = useState(false);
     const [newColName, setNewColName] = useState('');
@@ -117,6 +122,16 @@ export default function ProjectBoard({ project }) {
     useEffect(() => {
         saveWipLimits(project.projectId, wipLimits);
     }, [wipLimits, project.projectId]);
+
+    // Auto-open time log panel when timer starts from Kanban drag
+    useEffect(() => {
+        const handler = (e) => {
+            setShowTimeLog(true);
+            setActiveTimeLogIssueId(e.detail.issueId);
+        };
+        window.addEventListener('auto-start-timer', handler);
+        return () => window.removeEventListener('auto-start-timer', handler);
+    }, []);
 
     // ── Fetch statuses (columns) from API
     const { data: statuses = FALLBACK_STATUSES } = useQuery({
@@ -147,8 +162,8 @@ export default function ProjectBoard({ project }) {
         return map;
     }, [statuses]);
 
-    // ── Fetch issues
-    const { data: issues = [], isLoading } = useQuery({
+    // ── Fetch issues — switches to /my-issues when "Của tôi" filter is active
+    const { data: projectIssues = [], isLoading: isLoadingProject } = useQuery({
         queryKey: ['issues', project.projectId],
         queryFn: async () => {
             try {
@@ -158,7 +173,26 @@ export default function ProjectBoard({ project }) {
                 return response?.content || response || [];
             } catch { return []; }
         },
+        enabled: !filterMyIssues,
     });
+
+    // When "Của tôi" is active, fetch from /my-issues instead
+    const { data: myIssues = [], isLoading: isLoadingMy } = useQuery({
+        queryKey: ['myIssues', 'filtered'],
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES, {
+                    params: { size: 500, sort: 'createdAt,desc' }
+                })).data;
+                return response?.content || response || [];
+            } catch { return []; }
+        },
+        enabled: filterMyIssues,
+    });
+
+    // ── All issues (union of project + my-issues based on filter)
+    const issues = filterMyIssues ? myIssues : projectIssues;
+    const isLoading = filterMyIssues ? isLoadingMy : isLoadingProject;
 
     // ── Fetch backlog issues (no sprint)
     const { data: backlogIssues = [] } = useQuery({
@@ -171,7 +205,7 @@ export default function ProjectBoard({ project }) {
                 return response?.content || response || [];
             } catch { return []; }
         },
-        enabled: showBacklog,
+        enabled: !filterMyIssues && showBacklog,
     });
 
     const sensors = useSensors(
@@ -192,10 +226,8 @@ export default function ProjectBoard({ project }) {
     // ── Filter issues
     const filteredIssues = useMemo(() => {
         let result = issues;
-        if (filterMyIssues && currentUser) {
-            const uid = currentUser.userId || currentUser.id;
-            result = result.filter(i => i.assignee?.userId === uid || i.assignee?.id === uid);
-        }
+        // Note: filterMyIssues is handled server-side via /my-issues API
+        // Only apply remaining client-side filters here
         if (filterPriority) {
             result = result.filter(i => i.priority === filterPriority);
         }
@@ -208,7 +240,7 @@ export default function ProjectBoard({ project }) {
             );
         }
         return result;
-    }, [issues, filterMyIssues, filterPriority, searchText, currentUser]);
+    }, [issues, filterPriority, searchText]);
 
     // ── Group issues by status column
     const boardData = useMemo(() => {
@@ -267,11 +299,13 @@ export default function ProjectBoard({ project }) {
         mutationFn: ({ id, statusId }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`),
         onSuccess: () => {
             queryClient.invalidateQueries(['issues', project.projectId]);
+            queryClient.invalidateQueries(['myIssues', 'filtered']);
             showToast('Đã cập nhật trạng thái', 'success');
         },
         onError: () => {
             showToast('Không thể cập nhật trạng thái', 'error');
             queryClient.invalidateQueries(['issues', project.projectId]);
+            queryClient.invalidateQueries(['myIssues', 'filtered']);
         }
     });
 
@@ -326,10 +360,20 @@ export default function ProjectBoard({ project }) {
         if (activeIssue && newStatusName && activeIssue.statusName !== newStatusName) {
             const statusId = statusNameToId[newStatusName];
             if (statusId) {
+                // Auto-start timer when moving to In Progress
+                if (newStatusName === 'In Progress') {
+                    window.dispatchEvent(new CustomEvent('auto-start-timer', {
+                        detail: {
+                            issueId: activeIssueId,
+                            issueKey: activeIssue.issueKey,
+                            issueTitle: activeIssue.title,
+                        }
+                    }));
+                }
                 moveIssueMutation.mutate({ id: activeIssueId, statusId });
             }
         }
-    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns]);
+    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast]);
 
     // ── Reorder columns mutation
     const reorderColumnsMutation = useMutation({
@@ -351,6 +395,7 @@ export default function ProjectBoard({ project }) {
         onSuccess: () => {
             queryClient.invalidateQueries(['issue-statuses']);
             queryClient.invalidateQueries(['issues', project.projectId]);
+            queryClient.invalidateQueries(['myIssues', 'filtered']);
             showToast('Đã đổi tên cột', 'success');
         },
         onError: (err) => {
@@ -438,6 +483,17 @@ export default function ProjectBoard({ project }) {
                         <i className="fa-solid fa-inbox mr-1.5" />Backlog
                     </button>
 
+                    {/* Time Log toggle */}
+                    <button
+                        onClick={() => setShowTimeLog(p => !p)}
+                        className={`px-3 py-1.5 text-xs rounded-lg border transition-all font-medium ${showTimeLog
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <i className="fa-solid fa-clock mr-1.5" />Nhật ký
+                    </button>
+
                     <div className="w-px h-6 bg-gray-200" />
 
                     {/* My Issues */}
@@ -523,6 +579,24 @@ export default function ProjectBoard({ project }) {
             </div>
 
             {/* ═══ Board ═══════════════════════════════════════════════════ */}
+            {showTimeLog && (
+                <div className="mb-4 bg-slate-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <i className="fa-solid fa-clock text-emerald-400" />
+                            <span className="text-white font-semibold text-sm">Nhật ký giờ làm</span>
+                        </div>
+                        <button
+                            onClick={() => setShowTimeLog(false)}
+                            className="text-slate-400 hover:text-white transition-colors"
+                        >
+                            <i className="fa-solid fa-times" />
+                        </button>
+                    </div>
+                    <BoardTimeLogPanel issueId={activeTimeLogIssueId} />
+                </div>
+            )}
+
             <DndContext
                 sensors={sensors}
                 collisionDetection={kanbanCollisionDetection}
@@ -630,7 +704,10 @@ export default function ProjectBoard({ project }) {
                 <IssueDetailModal
                     issue={selectedIssue}
                     onClose={() => setSelectedIssue(null)}
-                    onUpdate={() => queryClient.invalidateQueries(['issues', project.projectId])}
+                    onUpdate={() => {
+                        queryClient.invalidateQueries(['issues', project.projectId]);
+                        queryClient.invalidateQueries(['myIssues', 'filtered']);
+                    }}
                 />
             )}
 
@@ -641,6 +718,7 @@ export default function ProjectBoard({ project }) {
                 onSuccess={() => {
                     setShowCreateModal(false);
                     queryClient.invalidateQueries(['issues', project.projectId]);
+                    queryClient.invalidateQueries(['myIssues', 'filtered']);
                 }}
                 defaultProjectId={project.projectId}
             />
@@ -965,7 +1043,7 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-indigo-500 ring-opacity-50 scale-105' : ''}
                 ${!isOverlay ? highlightClasses : ''}
             `}
-            onDoubleClick={onClick}
+            onClick={onClick}
         >
             {/* Top row: priority + badges */}
             <div className="flex justify-between items-start mb-2">

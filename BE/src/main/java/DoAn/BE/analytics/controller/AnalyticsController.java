@@ -8,7 +8,6 @@ import DoAn.BE.user.entity.User;
 
 import DoAn.BE.analytics.dto.*;
 import DoAn.BE.analytics.service.ProjectAnalyticsService;
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
-@FeatureFlag("ANALYTICS")
 @Transactional(readOnly = true)
 public class AnalyticsController {
 

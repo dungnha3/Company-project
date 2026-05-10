@@ -32,8 +32,21 @@ export default function ProjectPerformanceTab({ projectId }) {
     if (isLoading) return <div className="p-8 text-center"><i className="fa-solid fa-spinner fa-spin text-3xl text-primary" /></div>;
     if (!rankings || rankings.length === 0) return <div className="p-8 text-center text-gray-500">Chưa có dữ liệu hiệu suất cho dự án này.</div>;
 
+    const safeNumber = (value) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    };
+    const toOne = (value) => safeNumber(value).toFixed(1);
+
     // Prepare data for charts
     const top3 = rankings.slice(0, 3);
+    const avgScore = rankings.reduce((sum, r) => sum + safeNumber(r.totalPerformanceScore), 0) / Math.max(rankings.length, 1);
+    const avgSpeed = rankings.reduce((sum, r) => sum + safeNumber(r.speedScore), 0) / Math.max(rankings.length, 1);
+    const totalLate = rankings.reduce((sum, r) => sum + safeNumber(r.lateTasks), 0);
+    const totalOverdue = rankings.reduce((sum, r) => sum + safeNumber(r.overdueTasks), 0);
+    const totalRework = rankings.reduce((sum, r) => sum + safeNumber(r.reworks), 0);
+    const totalCompleted = rankings.reduce((sum, r) => sum + safeNumber(r.completedTasks), 0);
+    const totalStoryPoints = rankings.reduce((sum, r) => sum + safeNumber(r.totalStoryPoints), 0);
     
     // Radar Data
     const radarData = [
@@ -42,18 +55,18 @@ export default function ProjectPerformanceTab({ projectId }) {
         { metric: 'Chất lượng', fullMark: 10 }
     ];
     top3.forEach((emp, index) => {
-        radarData[0][`emp${index}`] = emp.volumeScore || 0;
-        radarData[1][`emp${index}`] = emp.speedScore || 0;
-        radarData[2][`emp${index}`] = emp.qualityScore || 0;
+        radarData[0][`emp${index}`] = safeNumber(emp.volumeScore);
+        radarData[1][`emp${index}`] = safeNumber(emp.speedScore);
+        radarData[2][`emp${index}`] = safeNumber(emp.qualityScore);
     });
 
     // Bar Data for everyone
     const barData = rankings.map(emp => ({
         name: emp.employeeName,
-        'Khối lượng': emp.volumeScore || 0,
-        'Tốc độ': emp.speedScore || 0,
-        'Chất lượng': emp.qualityScore || 0,
-        'Tổng điểm': emp.totalPerformanceScore || 0
+        'Khối lượng': safeNumber(emp.volumeScore),
+        'Tốc độ': safeNumber(emp.speedScore),
+        'Chất lượng': safeNumber(emp.qualityScore),
+        'Tổng điểm': safeNumber(emp.totalPerformanceScore)
     }));
 
     const COLORS = ['#8884d8', '#82ca9d', '#ffc658'];
@@ -69,12 +82,31 @@ export default function ProjectPerformanceTab({ projectId }) {
 
     return (
         <div className="space-y-6 animate-fade-in">
+            {/* KPI Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                <MetricCard title="Điểm TB" value={toOne(avgScore)} tone="indigo" />
+                <MetricCard title="Tốc độ TB" value={toOne(avgSpeed)} tone="teal" />
+                <MetricCard title="Task hoàn thành" value={String(totalCompleted)} tone="green" />
+                <MetricCard title="Story points" value={String(totalStoryPoints)} tone="purple" />
+                <MetricCard title="Trễ hạn" value={String(totalLate)} tone="red" />
+                <MetricCard title="Quá hạn đang mở" value={String(totalOverdue)} tone="orange" />
+                <MetricCard title="Bị trả lại" value={String(totalRework)} tone="amber" />
+                <MetricCard title="Nhân sự" value={String(rankings.length)} tone="slate" />
+            </div>
+
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-900">
+                <p className="font-semibold mb-1">Giải thích nhanh điểm số</p>
+                <p>- Hiệu suất hệ thống: trung bình giữa <strong>Khối lượng</strong> và <strong>Tốc độ</strong>.</p>
+                <p>- Tổng điểm: trung bình giữa <strong>Hiệu suất hệ thống</strong> và <strong>Chất lượng review</strong>.</p>
+                <p>- Trễ hạn/Rework ảnh hưởng trực tiếp đến điểm khối lượng và tổng điểm.</p>
+            </div>
+
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Radar Chart for Top 3 */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-1">
-                    <h3 className="text-lg font-bold text-gray-800 mb-2">So sánh sức mạnh Top 3</h3>
-                    <p className="text-xs text-gray-500 mb-4">Chỉ số Khối lượng, Tốc độ, Chất lượng</p>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">So sánh Top 3</h3>
+                    <p className="text-xs text-gray-500 mb-4">Ba trục chính: Khối lượng - Tốc độ - Chất lượng</p>
                     <div className="h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
@@ -100,7 +132,8 @@ export default function ProjectPerformanceTab({ projectId }) {
 
                 {/* Bar Chart for Overall Score */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
-                    <h3 className="text-lg font-bold text-gray-800 mb-2">Điểm Hiệu suất Toàn Đội</h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Hiệu suất toàn đội</h3>
+                    <p className="text-xs text-gray-500 mb-4">Mỗi cột gồm Khối lượng + Tốc độ + Chất lượng (thang 10)</p>
                     <div className="h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -122,8 +155,8 @@ export default function ProjectPerformanceTab({ projectId }) {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900">Bảng Xếp Hạng (Leaderboard)</h3>
-                        <p className="text-sm text-gray-500">Dựa trên kết quả tự động & đánh giá PM</p>
+                        <h3 className="text-lg font-bold text-gray-900">Bảng xếp hạng chi tiết</h3>
+                        <p className="text-sm text-gray-500">Tách rõ nhóm chỉ số hiệu suất và nhóm chỉ số thời gian</p>
                     </div>
                     <i className="fa-solid fa-trophy text-4xl text-yellow-400 opacity-20" />
                 </div>
@@ -136,6 +169,7 @@ export default function ProjectPerformanceTab({ projectId }) {
                                 <th className="p-4 font-semibold text-center" title="Khối lượng (Giờ * Ưu tiên * Độ khó * Thưởng/Phạt Deadline * Phạt Rework)">Khối lượng <i className="fa-solid fa-circle-info text-xs text-gray-400" /></th>
                                 <th className="p-4 font-semibold text-center">Tốc độ</th>
                                 <th className="p-4 font-semibold text-center" title="Số task hoàn thành trễ hạn">Trễ hạn</th>
+                                <th className="p-4 font-semibold text-center" title="Số task đã quá hạn nhưng chưa hoàn thành">Quá hạn</th>
                                 <th className="p-4 font-semibold text-center" title="Số lần task bị trả lại (Rework)">Bị trả lại</th>
                                 <th className="p-4 font-semibold text-center">Chất lượng</th>
                                 <th className="p-4 font-semibold text-center">Tổng điểm</th>
@@ -160,14 +194,15 @@ export default function ProjectPerformanceTab({ projectId }) {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-center font-medium text-indigo-600">{emp.volumeScore?.toFixed(1)}</td>
-                                    <td className="p-4 text-center font-medium text-teal-600">{emp.speedScore?.toFixed(1)}</td>
-                                    <td className="p-4 text-center font-medium text-red-500">{emp.lateTasks > 0 ? emp.lateTasks : '-'}</td>
-                                    <td className="p-4 text-center font-medium text-orange-500">{emp.reworks > 0 ? emp.reworks : '-'}</td>
-                                    <td className="p-4 text-center font-medium text-amber-600">{emp.qualityScore?.toFixed(1) || '-'}</td>
+                                    <td className="p-4 text-center font-medium text-indigo-600">{toOne(emp.volumeScore)}</td>
+                                    <td className="p-4 text-center font-medium text-teal-600">{toOne(emp.speedScore)}</td>
+                                    <td className="p-4 text-center font-medium text-red-500">{safeNumber(emp.lateTasks) > 0 ? safeNumber(emp.lateTasks) : '-'}</td>
+                                    <td className="p-4 text-center font-medium text-rose-500">{safeNumber(emp.overdueTasks) > 0 ? safeNumber(emp.overdueTasks) : '-'}</td>
+                                    <td className="p-4 text-center font-medium text-orange-500">{safeNumber(emp.reworks) > 0 ? safeNumber(emp.reworks) : '-'}</td>
+                                    <td className="p-4 text-center font-medium text-amber-600">{toOne(emp.qualityScore)}</td>
                                     <td className="p-4 text-center">
                                         <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 font-bold text-indigo-700">
-                                            {emp.totalPerformanceScore?.toFixed(1)}
+                                            {toOne(emp.totalPerformanceScore)}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
@@ -200,7 +235,7 @@ export default function ProjectPerformanceTab({ projectId }) {
                                 <i className="fa-solid fa-user-check text-xl" />
                                 <div>
                                     <p className="text-sm font-medium">Nhân sự: {selectedEmployee.employeeName}</p>
-                                    <p className="text-xs opacity-80">Hạng: #{rankings.findIndex(r => r.employeeId === selectedEmployee.employeeId) + 1} - Điểm: {selectedEmployee.totalPerformanceScore?.toFixed(1)}</p>
+                                    <p className="text-xs opacity-80">Hạng: #{rankings.findIndex(r => r.employeeId === selectedEmployee.employeeId) + 1} - Điểm: {toOne(selectedEmployee.totalPerformanceScore)}</p>
                                 </div>
                             </div>
                             
@@ -240,6 +275,26 @@ export default function ProjectPerformanceTab({ projectId }) {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+function MetricCard({ title, value, tone = 'slate' }) {
+    const styles = {
+        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+        teal: 'bg-teal-50 text-teal-700 border-teal-100',
+        green: 'bg-green-50 text-green-700 border-green-100',
+        purple: 'bg-purple-50 text-purple-700 border-purple-100',
+        red: 'bg-red-50 text-red-700 border-red-100',
+        orange: 'bg-orange-50 text-orange-700 border-orange-100',
+        amber: 'bg-amber-50 text-amber-700 border-amber-100',
+        slate: 'bg-slate-50 text-slate-700 border-slate-100',
+    };
+
+    return (
+        <div className={`rounded-xl border px-3 py-2 ${styles[tone] || styles.slate}`}>
+            <p className="text-[11px] uppercase tracking-wide opacity-80">{title}</p>
+            <p className="text-lg font-bold leading-tight">{value}</p>
         </div>
     );
 }

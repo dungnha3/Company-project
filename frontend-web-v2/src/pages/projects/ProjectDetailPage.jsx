@@ -7,7 +7,7 @@ import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import ProjectBoard from './tabs/ProjectBoard';
 import ProjectGantt from './tabs/ProjectGantt';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { isProjectFeatureEnabled } from '@shared/utils/featureHelper';
+
 import EditProjectModal from './components/EditProjectModal';
 import ExportDropdown from './components/ExportDropdown';
 
@@ -40,57 +40,86 @@ export default function ProjectDetailPage() {
         queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.BY_ID(id))).data,
     });
 
-    // Filter tabs based on feature settings
-    const tabs = useMemo(() => {
-        const baseTabs = [
-            { id: 'overview', label: 'Tổng quan', icon: 'fa-chart-simple' },
-            { id: 'board', label: 'Bảng (Kanban)', icon: 'fa-columns' },
-            { id: 'sprints', label: 'Sprints', icon: 'fa-layer-group' },
-            { id: 'phases', label: 'Giai đoạn', icon: 'fa-diagram-project' },
-            { id: 'list', label: 'Danh sách việc', icon: 'fa-list-check' },
-            { id: 'gantt', label: 'Gantt Chart', icon: 'fa-timeline' },
-            { id: 'timeline', label: 'Timeline', icon: 'fa-bars-progress' },
-            { id: 'eisenhower', label: 'Eisenhower', icon: 'fa-grid-2' },
-        { id: 'calendar', label: 'Lịch công việc', icon: 'fa-calendar-days' },
-            { id: 'files', label: 'Tài liệu', icon: 'fa-folder-open' },
-            { id: 'team', label: 'Nhân sự', icon: 'fa-users-gear' },
-            { id: 'costs', label: 'Chi phí', icon: 'fa-money-bill-wave' },
-            { id: 'performance', label: 'Hiệu suất', icon: 'fa-ranking-star' },
+    // Organize tabs into logical groups (2-tier navigation)
+    const VIEW_GROUPS = useMemo(() => {
+        return [
+            {
+                id: 'overview_group',
+                label: 'Tổng quan',
+                icon: 'fa-chart-simple',
+                tabs: [{ id: 'overview', label: 'Tổng quan' }]
+            },
+            {
+                id: 'work_group',
+                label: 'Quản lý Công việc',
+                icon: 'fa-layer-group',
+                tabs: [
+                    { id: 'board', label: 'Bảng (Kanban)' },
+                    { id: 'list', label: 'Danh sách' },
+                    { id: 'sprints', label: 'Sprints' },
+                    { id: 'phases', label: 'Giai đoạn' }
+                ]
+            },
+            {
+                id: 'planning_group',
+                label: 'Lập kế hoạch',
+                icon: 'fa-timeline',
+                tabs: [
+                    { id: 'gantt', label: 'Gantt Chart' },
+                    { id: 'timeline', label: 'Timeline' },
+                    { id: 'eisenhower', label: 'Eisenhower' },
+                    { id: 'calendar', label: 'Lịch công việc' }
+                ]
+            },
+            {
+                id: 'hr_group',
+                label: 'Nhân sự & Nguồn lực',
+                icon: 'fa-users-gear',
+                tabs: [
+                    { id: 'team', label: 'Thành viên' },
+                    { id: 'performance', label: 'Đánh giá hiệu suất' },
+                    { id: 'costs', label: 'Chi phí dự án' }
+                ]
+            },
+            {
+                id: 'more_group',
+                label: 'Mở rộng',
+                icon: 'fa-ellipsis',
+                tabs: [
+                    { id: 'analytics', label: 'Thống kê nâng cao' },
+                    { id: 'files', label: 'Tài liệu' },
+                    { id: 'webhook', label: 'Webhooks' },
+                    { id: 'settings', label: 'Cài đặt' }
+                ]
+            }
         ];
-
-        if (isProjectFeatureEnabled(settings, 'analytics')) {
-            baseTabs.push({ id: 'analytics', label: 'Thống kê', icon: 'fa-chart-line' });
-        }
-        // Webhook integration replaces removed Automation module
-        if (isProjectFeatureEnabled(settings, 'webhook')) {
-            baseTabs.push({ id: 'webhook', label: 'Webhooks', icon: 'fa-link' });
-        }
-        baseTabs.push({ id: 'settings', label: 'Cài đặt', icon: 'fa-gear' });
-
-        return baseTabs;
     }, [settings]);
+
+    const activeGroup = useMemo(() => {
+        return VIEW_GROUPS.find(g => g.tabs.some(t => t.id === activeTab)) || VIEW_GROUPS[0];
+    }, [activeTab, VIEW_GROUPS]);
 
     if (isLoading) return <div className="p-8 text-center"><i className="fa-solid fa-spinner fa-spin text-3xl text-primary" /></div>;
     if (!project) return <div className="p-8 text-center text-red-500">Không tìm thấy dự án</div>;
 
     // Check if calendar/timelogs are enabled for quick links
-    const showCalendar = isProjectFeatureEnabled(settings, 'calendar');
-    const showTimelogs = isProjectFeatureEnabled(settings, 'timeTracking');
+    const showCalendar = true;
+    const showTimelogs = true;
 
     return (
         <div className="space-y-6">
             {/* Header with Breadcrumb and Actions */}
             <div className="flex flex-col gap-4">
-                <button onClick={() => navigate('/app/projects')} className="text-gray-500 hover:text-gray-900 w-fit flex items-center gap-1">
+                <button onClick={() => navigate('/app/projects')} className="text-gray-500 hover:text-gray-900 w-fit flex items-center gap-1 transition-colors">
                     <i className="fa-solid fa-arrow-left" /> Quay lại danh sách
                 </button>
 
                 <div className="flex justify-between items-start">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                        <p className="text-gray-500 mt-1 max-w-2xl">{project.description}</p>
+                        <p className="text-gray-500 mt-1 max-w-2xl line-clamp-2">{project.description}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                         {showCalendar && (
                             <Link to="/app/me/calendar" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                                 <i className="fa-solid fa-calendar mr-2" />Lịch
@@ -98,12 +127,12 @@ export default function ProjectDetailPage() {
                         )}
                         {showTimelogs && (
                             <Link to="/app/me/timelogs" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                                <i className="fa-solid fa-clock mr-2" />Nhật ký giờ
+                                <i className="fa-solid fa-clock mr-2" />Nhật ký
                             </Link>
                         )}
                         <ExportDropdown projectId={project.projectId} projectName={project.name} />
-                        <button onClick={() => setShowEditModal(true)} className="btn-primary">
-                            <i className="fa-solid fa-pen mr-2" />Chỉnh sửa
+                        <button onClick={() => setShowEditModal(true)} className="btn-primary px-4 py-2 rounded-lg flex items-center">
+                            <i className="fa-solid fa-pen mr-2" />Sửa
                         </button>
                     </div>
                 </div>
@@ -112,38 +141,61 @@ export default function ProjectDetailPage() {
                 <div className="flex gap-6 text-sm text-gray-600 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-2">
                         <i className="fa-regular fa-calendar text-primary" />
-                        <span>Start: {project.startDate ? formatDate(project.startDate) : 'N/A'}</span>
+                        <span>Bắt đầu: <span className="font-medium text-gray-900">{project.startDate ? formatDate(project.startDate) : 'N/A'}</span></span>
                     </div>
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-flag-checkered text-red-500" />
-                        <span>End: {project.endDate ? formatDate(project.endDate) : 'N/A'}</span>
+                        <span>Kết thúc: <span className="font-medium text-gray-900">{project.endDate ? formatDate(project.endDate) : 'N/A'}</span></span>
                     </div>
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-chart-pie text-indigo-500" />
-                        <span>Status: {project.status}</span>
+                        <span>Trạng thái: <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold">{project.status}</span></span>
                     </div>
                 </div>
             </div>
 
-            {/* Tabs Navigation */}
-            <div className="border-b border-gray-200 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                <nav className="flex space-x-4 min-w-max" aria-label="Tabs">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`
-                                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2
-                                ${activeTab === tab.id
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
-                            `}
-                        >
-                            <i className={`fa-solid ${tab.icon}`} />
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
+            {/* Two-tier Tabs Navigation */}
+            <div className="flex flex-col gap-3">
+                {/* Tier 1: Main Groups */}
+                <div className="border-b border-gray-200 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                    <nav className="flex space-x-6 min-w-max px-2" aria-label="Tab Groups">
+                        {VIEW_GROUPS.map((group) => (
+                            <button
+                                key={group.id}
+                                onClick={() => setActiveTab(group.tabs[0].id)}
+                                className={`
+                                    whitespace-nowrap py-3 border-b-2 font-bold text-[15px] flex items-center gap-2 transition-all
+                                    ${activeGroup.id === group.id
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'}
+                                `}
+                            >
+                                <i className={`fa-solid ${group.icon}`} />
+                                {group.label}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+
+                {/* Tier 2: Sub-tabs */}
+                {activeGroup.tabs.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                        {activeGroup.tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`
+                                    whitespace-nowrap px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                                    ${activeTab === tab.id
+                                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm'
+                                        : 'text-gray-600 bg-white hover:bg-gray-100 border border-gray-200'}
+                                `}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Tab Content */}

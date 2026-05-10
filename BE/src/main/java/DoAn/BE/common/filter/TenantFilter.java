@@ -72,12 +72,7 @@ public class TenantFilter extends OncePerRequestFilter {
                             }
                         }
                     } else {
-                        // Case: Unauthenticated request (Public API) but has Company Header?
-                        // Usually Public APIs don't need tenant context unless strictly required.
-                        // For safety, we can allow proceed but WITHOUT context, or set context if we
-                        // trust (Risky).
-                        // Here we choose to NOT set context if not authenticated to prevent data leak,
-                        // unless it's a specific public tenant endpoint (rare).
+                        
                         log.debug("Unauthenticated request with Company ID header. Context not set.");
                     }
 
@@ -91,7 +86,6 @@ public class TenantFilter extends OncePerRequestFilter {
             // Xóa TenantContext sau khi xử lý xong
             TenantContext.clear();
             // Xóa cache của các services để tránh memory leak
-            DoAn.BE.common.service.FeatureFlagService.clearCache();
             DoAn.BE.common.service.AccessControlService.clearCache();
         }
     }

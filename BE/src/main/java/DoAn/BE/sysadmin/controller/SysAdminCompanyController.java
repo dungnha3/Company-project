@@ -2,7 +2,6 @@ package DoAn.BE.sysadmin.controller;
 
 import DoAn.BE.company.dto.CompanyDto;
 import DoAn.BE.company.service.CompanyAdminService;
-import DoAn.BE.sysadmin.dto.SysAdminCompanyDto;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -85,28 +84,6 @@ public class SysAdminCompanyController {
     }
 
 
-
-    // [GOD MODE] Update Features
-    @PutMapping("/{companyId}/features")
-    public ResponseEntity<?> updateFeatures(
-            @PathVariable Long companyId,
-            @RequestBody SysAdminCompanyDto.FeatureOverrideRequest request,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.updateCompanyFeatures(companyId, request);
-        return ResponseEntity.ok(Map.of("message", "Company features updated (Plan overrides applied)"));
-    }
-
-    // [SETTINGS] Update Settings (Legacy support + generic settings)
-    @PutMapping("/{companyId}/settings")
-    public ResponseEntity<?> updateSettings(
-            @PathVariable Long companyId,
-            @RequestBody CompanyDto.SettingsUpdateRequest request,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.updateSettingsBySystemAdmin(companyId, request);
-        return ResponseEntity.ok(Map.of("message", "Settings updated successfully"));
-    }
 
     private void checkSysAdmin(Authentication authentication) {
         User user = (User) authentication.getPrincipal();

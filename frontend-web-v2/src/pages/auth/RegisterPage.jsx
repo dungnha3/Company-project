@@ -8,15 +8,14 @@ export default function RegisterPage() {
     const planFromUrl = searchParams.get('plan');
 
     const [form, setForm] = useState({
-        username: '',
         email: '',
         password: '',
-        fullName: ''
+        fullName: '',
+        agreeTerms: false
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [acceptTerms, setAcceptTerms] = useState(false);
 
     const navigate = useNavigate();
     const { register } = useAuthStore();
@@ -25,13 +24,14 @@ export default function RegisterPage() {
         e.preventDefault();
         if (loading) return; // Guard against double submit
 
-        if (!acceptTerms) {
+        if (!form.agreeTerms) {
             setError('Vui lòng đồng ý với điều khoản sử dụng');
             return;
         }
 
         // Client-side password validation (matches BE policy)
-        if (!PASSWORD_REGEX.test(form.password)) {
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(form.password)) {
             setError('Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)');
             return;
         }
@@ -94,28 +94,28 @@ export default function RegisterPage() {
                     <div className="mb-8">
                         <Link to="/" className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-                                S
+                                W
                             </div>
-                            <span className="text-2xl font-bold">SaaS Enterprise</span>
+                            <span className="text-2xl font-bold">Workspace Hub</span>
                         </Link>
                     </div>
 
                     <h1 className="text-4xl font-bold mb-6 leading-tight">
                         Bắt đầu hành trình <br />
-                        <span className="text-emerald-200">quản trị doanh nghiệp!</span>
+                        <span className="text-emerald-200">quản lý dự án của bạn!</span>
                     </h1>
 
                     <p className="text-lg text-emerald-100 mb-8 max-w-md">
-                        Tạo tài khoản miễn phí và khám phá nền tảng quản lý all-in-one cho doanh nghiệp của bạn.
+                        Tạo tài khoản miễn phí và khám phá nền tảng Workspace all-in-one cho team của bạn.
                     </p>
 
                     {/* Features List */}
                     <div className="space-y-4">
                         {[
-                            'Quản lý nhân sự toàn diện',
-                            'Theo dõi dự án với Kanban & Gantt',
-                            'Time Tracking & Analytics',
-                            'Chat realtime & File sharing',
+                            'Quản lý Không gian làm việc',
+                            'Quản lý Dự án & Bảng Kanban',
+                            'Đánh giá hiệu suất theo dự án',
+                            'Hoạch định nguồn lực đội ngũ',
                         ].map((feature, idx) => (
                             <div key={idx} className="flex items-center gap-3">
                                 <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
@@ -143,9 +143,9 @@ export default function RegisterPage() {
                     <div className="lg:hidden text-center mb-8">
                         <Link to="/" className="inline-flex items-center gap-2">
                             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white font-bold">
-                                S
+                                W
                             </div>
-                            <span className="text-xl font-bold text-gray-900">SaaS Enterprise</span>
+                            <span className="text-xl font-bold text-gray-900">Workspace Hub</span>
                         </Link>
                     </div>
 
@@ -183,22 +183,6 @@ export default function RegisterPage() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tên đăng nhập
-                                </label>
-                                <div className="relative">
-                                    <i className="fa-solid fa-at absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                        placeholder="username123"
-                                        value={form.username}
-                                        onChange={(e) => setForm({ ...form, username: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -226,11 +210,13 @@ export default function RegisterPage() {
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                        placeholder="Tối thiểu 6 ký tự"
+                                        placeholder="Tối thiểu 8 ký tự, hoa, thường, số, đặc biệt"
                                         value={form.password}
                                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                                         required
-                                        minLength={6}
+                                        minLength={8}
+                                        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                                        title="Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&)"
                                     />
                                     <button
                                         type="button"
@@ -261,12 +247,12 @@ export default function RegisterPage() {
                                 <input
                                     type="checkbox"
                                     id="terms"
-                                    checked={acceptTerms}
-                                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                                    checked={form.agreeTerms}
+                                    onChange={(e) => setForm({ ...form, agreeTerms: e.target.checked })}
                                     className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mt-0.5"
                                 />
                                 <label htmlFor="terms" className="text-sm text-gray-600">
-                                    Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của SaaS Enterprise
+                                    Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của Workspace Hub
                                 </label>
                             </div>
 

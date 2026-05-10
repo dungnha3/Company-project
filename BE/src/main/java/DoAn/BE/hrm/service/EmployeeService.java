@@ -75,14 +75,13 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Employee> getAllEmployeesPage(Pageable pageable) {
+    public Page<Employee> getAllEmployeesPage(String keyword, EmployeeStatus status, Pageable pageable) {
         accessControlService.checkHrViewPermission();
-        // ALL companies
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (companyId == null) {
             return Page.empty(pageable);
         }
-        return employeeRepository.findByCompanyId(companyId, pageable);
+        return employeeRepository.findByCompanyIdWithFilters(companyId, keyword, status, pageable);
     }
 
     public Employee createEmployee(EmployeeRequest request, User currentUser) {

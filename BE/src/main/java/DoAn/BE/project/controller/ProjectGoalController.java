@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import DoAn.BE.project.dto.ProjectGoalDTO;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.entity.ProjectGoal;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/projects/{projectId}/goals")
 @RequiredArgsConstructor
-@FeatureFlag("PROJECT")
 public class ProjectGoalController {
 
     private final ProjectGoalRepository goalRepository;

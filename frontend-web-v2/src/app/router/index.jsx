@@ -33,6 +33,7 @@ const ProjectDetailPage = lazy(() => import('@pages/projects/ProjectDetailPage')
 const LeaveRequestsPage = lazy(() => import('@pages/hr/LeaveRequestsPage'));
 const ReviewsPage = lazy(() => import('@pages/hr/ReviewsPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
+const PerformanceOverviewPage = lazy(() => import('@pages/hr/PerformanceOverviewPage'));
 
 // Project pages
 const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
@@ -44,6 +45,7 @@ const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
 // New feature pages
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
 const MyTimelogsPage = lazy(() => import('@pages/timelogs/MyTimelogsPage'));
+const MyPerformancePage = lazy(() => import('@pages/hr/MyPerformancePage'));
 
 
 const ActivityLogPage = lazy(() => import('@pages/company/ActivityLogPage'));
@@ -94,19 +96,15 @@ const router = createBrowserRouter([
     {
         path: '/app',
         element: (
-            <AccessControlGuard requireAuth={true}>
+            <AccessControlGuard requireAuth={true} requireCompany={true}>
                 <DashboardLayout />
             </AccessControlGuard>
         ),
         children: [
-            // Dashboard
+            // Redirect root /app to Projects (or My Issues if preferred)
             {
                 index: true,
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <DashboardPage />
-                    </Suspense>
-                ),
+                element: <Navigate to="/app/projects" replace />,
             },
 
             // Personal Settings (/app/me)
@@ -116,7 +114,7 @@ const router = createBrowserRouter([
                     {
                         path: 'issues',
                         element: (
-                            <AccessControlGuard requiredFeature="project">
+                            <AccessControlGuard>
                                 <Suspense fallback={<PageLoader />}>
                                     <MyIssuesPage />
                                 </Suspense>
@@ -126,7 +124,7 @@ const router = createBrowserRouter([
                     {
                         path: 'timelogs',
                         element: (
-                            <AccessControlGuard requiredFeature="timeTracking">
+                            <AccessControlGuard>
                                 <Suspense fallback={<PageLoader />}>
                                     <MyTimelogsPage />
                                 </Suspense>
@@ -136,7 +134,7 @@ const router = createBrowserRouter([
                     {
                         path: 'calendar',
                         element: (
-                            <AccessControlGuard requiredFeature="calendar">
+                            <AccessControlGuard>
                                 <Suspense fallback={<PageLoader />}>
                                     <CalendarPage />
                                 </Suspense>
@@ -149,6 +147,16 @@ const router = createBrowserRouter([
                             <Suspense fallback={<PageLoader />}>
                                 <ProfilePage />
                             </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'performance',
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyPerformancePage />
+                                </Suspense>
+                            </AccessControlGuard>
                         ),
                     },
                 ]
@@ -174,8 +182,7 @@ const router = createBrowserRouter([
                         path: 'employees',
                         element: (
                             <AccessControlGuard
-                                requiredFeature="hr"
-                                requiredPermission="hrViewList"
+                                requiredPermission="HR.VIEW_LIST"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <EmployeesPage />
@@ -188,7 +195,7 @@ const router = createBrowserRouter([
                     {
                         path: 'leave-requests',
                         element: (
-                            <AccessControlGuard requiredFeature="leave">
+                            <AccessControlGuard>
                                 <Suspense fallback={<PageLoader />}>
                                     <LeaveRequestsPage />
                                 </Suspense>
@@ -199,8 +206,7 @@ const router = createBrowserRouter([
                         path: 'reviews',
                         element: (
                             <AccessControlGuard
-                                requiredFeature="review"
-                                requiredPermission="hrManageReviews"
+                                requiredPermission="HR.MANAGE_REVIEWS"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ReviewsPage />
@@ -209,11 +215,22 @@ const router = createBrowserRouter([
                         ),
                     },
                     {
+                        path: 'performance',
+                        element: (
+                            <AccessControlGuard
+                                requiredPermission="HR.MANAGE_REVIEWS"
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <PerformanceOverviewPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
                         path: 'resource-planning',
                         element: (
                             <AccessControlGuard
-                                requiredFeature="resourcePlanning"
-                                requiredPermission="projectManageAll"
+                                requiredPermission="PROJECT.MANAGE_ALL"
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ResourcePlanningPage />
@@ -228,7 +245,7 @@ const router = createBrowserRouter([
             {
                 path: 'projects',
                 element: (
-                    <AccessControlGuard requiredFeature="project">
+                    <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
                             <ProjectsPage />
                         </Suspense>
@@ -238,7 +255,7 @@ const router = createBrowserRouter([
             {
                 path: 'projects/:id',
                 element: (
-                    <AccessControlGuard requiredFeature="project">
+                    <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
                             <ProjectDetailPage />
                         </Suspense>
@@ -248,7 +265,7 @@ const router = createBrowserRouter([
             {
                 path: 'projects/:projectId/analytics',
                 element: (
-                    <AccessControlGuard requiredFeature="analytics">
+                    <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
                             <AnalyticsPage />
                         </Suspense>
@@ -260,7 +277,7 @@ const router = createBrowserRouter([
             {
                 path: 'reports',
                 element: (
-                    <AccessControlGuard requiredFeature="project">
+                    <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
                             <ReportsPage />
                         </Suspense>

@@ -55,9 +55,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
         @EntityGraph(attributePaths = { "user" })
         @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId")
         List<Employee> findByCompanyId(@Param("companyId") Long companyId);
+        
         @EntityGraph(attributePaths = { "user" })
-        @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId")
-        Page<Employee> findByCompanyId(@Param("companyId") Long companyId, Pageable pageable);
+        @Query("SELECT e FROM Employee e WHERE e.company.companyId = :companyId " +
+               "AND (:status IS NULL OR e.status = :status) " +
+               "AND (:keyword IS NULL OR LOWER(e.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(e.user.email) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+        Page<Employee> findByCompanyIdWithFilters(
+            @Param("companyId") Long companyId, 
+            @Param("keyword") String keyword, 
+            @Param("status") EmployeeStatus status, 
+            Pageable pageable);
 
         @Query("SELECT COUNT(e) FROM Employee e WHERE e.company.companyId = :companyId")
         long countByCompanyId(@Param("companyId") Long companyId);

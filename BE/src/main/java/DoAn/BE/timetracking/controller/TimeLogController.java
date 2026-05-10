@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.timetracking.dto.CreateTimeLogRequest;
 import DoAn.BE.timetracking.dto.TimeLogDTO;
@@ -23,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RestController
 @RequestMapping("/api/timelogs")
 @RequiredArgsConstructor
-@FeatureFlag("TIME_TRACKING")
 @Transactional(readOnly = true)
 public class TimeLogController {
 

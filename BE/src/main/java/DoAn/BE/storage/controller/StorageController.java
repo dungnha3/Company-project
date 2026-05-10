@@ -7,11 +7,14 @@ import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.project.entity.Project;
+import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.repository.ProjectRepository;
+import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.storage.entity.FileEntity;
 import DoAn.BE.storage.repository.FileRepository;
 import DoAn.BE.storage.service.GoogleDriveIntegrationService;
 import DoAn.BE.user.entity.User;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,26 +28,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/api/storage")
+@Slf4j
 public class StorageController {
 
     private final GoogleDriveIntegrationService driveService;
     private final FileRepository fileRepository;
     private final ProjectRepository projectRepository;
+    private final IssueRepository issueRepository;
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final PermissionService permissionService;
+    private final String frontendUrl;
 
-    public StorageController(GoogleDriveIntegrationService driveService, FileRepository fileRepository,
-                             ProjectRepository projectRepository, CompanyRepository companyRepository,
-                             CompanyMemberRepository companyMemberRepository, PermissionService permissionService) {
+    public StorageController(
+            GoogleDriveIntegrationService driveService,
+            FileRepository fileRepository,
+            ProjectRepository projectRepository,
+            IssueRepository issueRepository,
+            CompanyRepository companyRepository,
+            CompanyMemberRepository companyMemberRepository,
+            PermissionService permissionService,
+            @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl) {
         this.driveService = driveService;
         this.fileRepository = fileRepository;
         this.projectRepository = projectRepository;
+        this.issueRepository = issueRepository;
         this.companyRepository = companyRepository;
         this.companyMemberRepository = companyMemberRepository;
         this.permissionService = permissionService;
+        this.frontendUrl = frontendUrl;
     }
 
     // ==========================================
@@ -68,10 +84,10 @@ public class StorageController {
     public RedirectView oauthCallback(@RequestParam("code") String code, @RequestParam("state") String state) {
         try {
             driveService.handleCallback(code, state);
-            // Redirect back to the frontend settings page after successful connect
-            return new RedirectView("http://localhost:5173/app/company/settings?drive_connected=true");
+            return new RedirectView(frontendUrl + "/app/company/settings?drive_connected=true");
         } catch (Exception e) {
-            return new RedirectView("http://localhost:5173/app/company/settings?drive_error=true");
+            log.error("Drive OAuth callback failed", e);
+            return new RedirectView(frontendUrl + "/app/company/settings?drive_error=true");
         }
     }
     
@@ -135,6 +151,7 @@ public class StorageController {
 
             return ResponseEntity.ok(fileRepository.save(fileEntity));
         } catch (Exception e) {
+            log.error("Error uploading project file for projectId={}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -143,6 +160,11 @@ public class StorageController {
     public ResponseEntity<List<FileEntity>> getProjectFiles(@PathVariable Long projectId, @AuthenticationPrincipal User user) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        Project project = projectRepository.findById(projectId).orElse(null);
+        if (project == null || !project.getCompany().getCompanyId().equals(companyId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
         return ResponseEntity.ok(fileRepository.findByProject_ProjectId(projectId));
     }
@@ -166,6 +188,7 @@ public class StorageController {
 
             return new ResponseEntity<>(data, headers, HttpStatus.OK);
         } catch (Exception e) {
+            log.error("Error downloading file fileId={}: {}", fileId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -192,7 +215,75 @@ public class StorageController {
 
             return ResponseEntity.ok().build();
         } catch (Exception e) {
+            log.error("Error deleting file fileId={}: {}", fileId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    // ==========================================
+    // ISSUE FILE MANAGEMENT API
+    // ==========================================
+
+    @PostMapping("/issues/{issueId}/upload")
+    public ResponseEntity<?> uploadIssueFile(
+            @PathVariable Long issueId,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal User user) {
+        try {
+            Long companyId = TenantContext.getCompanyId();
+            if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+            CompanyMember member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+                    .orElse(null);
+            if (member == null || !permissionService.hasPermission(member, "STORAGE", "UPLOAD")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            Issue issue = issueRepository.findById(issueId).orElse(null);
+            if (issue == null || !issue.getProject().getCompany().getCompanyId().equals(companyId)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            String driveFileId = driveService.uploadFile(companyId, file);
+
+            FileEntity fileEntity = new FileEntity();
+            fileEntity.setFileName(file.getOriginalFilename());
+            fileEntity.setGoogleDriveFileId(driveFileId);
+            fileEntity.setFileSize(file.getSize());
+            fileEntity.setContentType(file.getContentType());
+            fileEntity.setIssue(issue);
+            fileEntity.setUploadedBy(user);
+            fileEntity.setCompany(companyRepository.findById(companyId).orElseThrow());
+
+            return ResponseEntity.ok(fileRepository.save(fileEntity));
+        } catch (Exception e) {
+            log.error("Error uploading issue file issueId={}: {}", issueId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Không thể upload file: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/issues/{issueId}/files")
+    public ResponseEntity<List<FileEntity>> getIssueFiles(@PathVariable Long issueId, @AuthenticationPrincipal User user) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        Issue issue = issueRepository.findById(issueId).orElse(null);
+        if (issue == null || !issue.getProject().getCompany().getCompanyId().equals(companyId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        return ResponseEntity.ok(fileRepository.findByIssue_IssueIdOrderByCreatedAtDesc(issueId));
+    }
+
+    @GetMapping("/files/{fileId}/metadata")
+    public ResponseEntity<FileEntity> getFileMetadata(@PathVariable Long fileId) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        FileEntity file = fileRepository.findById(fileId).orElse(null);
+        if (file == null || !file.getCompany().getCompanyId().equals(companyId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(file);
     }
 }

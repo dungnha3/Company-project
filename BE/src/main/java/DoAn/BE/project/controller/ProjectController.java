@@ -18,12 +18,10 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
-@FeatureFlag("PROJECT")
 public class ProjectController {
 
     private final ProjectService projectService;

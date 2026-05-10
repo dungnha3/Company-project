@@ -32,7 +32,7 @@ export default function EmployeesPage() {
 
     // Queries
     const { data: employeesData, isLoading: isLoadingEmployees } = useQuery({
-        queryKey: ['employees', page, pageSize, debouncedKeyword, deptId, status],
+        queryKey: ['employees', page, pageSize, debouncedKeyword, status],
         queryFn: async () => {
             const params = {
                 page: page,
@@ -41,11 +41,25 @@ export default function EmployeesPage() {
                 status: status !== 'ALL' ? status : undefined,
             };
 
-            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.LIST, { params });
+            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.PAGE, { params });
             return response.data;
         },
         placeholderData: (prev) => prev,
     });
+
+    const employeeRows = Array.isArray(employeesData?.content)
+        ? employeesData.content
+        : (Array.isArray(employeesData) ? employeesData : []);
+    const totalEmployees = typeof employeesData?.totalElements === 'number'
+        ? employeesData.totalElements
+        : employeeRows.length;
+    const statusCounts = employeeRows.reduce((acc, e) => {
+        acc.total += 1;
+        if (e.status === 'ACTIVE') acc.active += 1;
+        if (e.status === 'ON_LEAVE') acc.onLeave += 1;
+        if (e.status === 'RESIGNED') acc.resigned += 1;
+        return acc;
+    }, { total: 0, active: 0, onLeave: 0, resigned: 0 });
 
     const deleteMutation = useMutation({
         mutationFn: async (id) => apiClient.delete(ENDPOINTS.EMPLOYEES.DELETE(id)),
@@ -66,10 +80,10 @@ export default function EmployeesPage() {
 
     // Bulk actions
     const handleSelectAll = () => {
-        if (selectedIds.size === employeesData?.content?.length) {
+        if (selectedIds.size === employeeRows.length) {
             setSelectedIds(new Set());
         } else {
-            setSelectedIds(new Set(employeesData?.content?.map(e => e.employeeId) || []));
+            setSelectedIds(new Set(employeeRows.map(e => e.employeeId)));
         }
     };
 
@@ -107,7 +121,7 @@ export default function EmployeesPage() {
             header: () => (
                 <input
                     type="checkbox"
-                    checked={selectedIds.size > 0 && selectedIds.size === employeesData?.content?.length}
+                    checked={selectedIds.size > 0 && selectedIds.size === employeeRows.length}
                     onChange={handleSelectAll}
                     className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
@@ -177,6 +191,20 @@ export default function EmployeesPage() {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    if (!row.userId) {
+                                        showToast('Không tìm thấy userId để phân quyền', 'error');
+                                        return;
+                                    }
+                                    navigate(`/app/company/settings?tab=members&memberUserId=${row.userId}`);
+                                }}
+                                className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                title="Phân quyền"
+                            >
+                                <i className="fa-solid fa-sliders" />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     setSelectedEmployeeId(row.employeeId);
                                 }}
                                 className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
@@ -201,27 +229,27 @@ export default function EmployeesPage() {
         }
     ];
 
-    // Stats Calculation (Client-side approximation for now since API might paginate)
-    // Ideally, backend should return stats in a separate endpoint or meta
-    const stats = {
-        active: employeesData?.content?.filter(e => e.status === 'ACTIVE').length || 0,
-        // For now let's use placeholders or if we want real stats we call another API. 
-        // Let's use hardcoded 0 for safety or remove stats cards until we have API.
-        // Actually the old code did client side filtering on ALL employees. 
-        // Since this is paginated, we can't do that.
-        // Let's hide stats or use a `dashboard/stats` endpoint if available.
-        // For now, I will keep layout simple without stats cards or static.
-    };
-
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Danh sách thành viên</h1>
-                    <p className="text-gray-500 text-sm">Danh sách các thành viên trong công ty</p>
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/60 p-5">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-3">
+                            <i className="fa-solid fa-users" />
+                            Nhân sự
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-900">Danh sách thành viên</h1>
+                        <p className="text-gray-600 text-sm mt-1">Quản lý nhân sự theo trạng thái, liên hệ và thông tin cơ bản</p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:min-w-[360px]">
+                        <MiniStat label="Trên trang" value={statusCounts.total} tone="slate" />
+                        <MiniStat label="Đang làm" value={statusCounts.active} tone="green" />
+                        <MiniStat label="Tạm nghỉ" value={statusCounts.onLeave} tone="amber" />
+                        <MiniStat label="Nghỉ việc" value={statusCounts.resigned} tone="red" />
+                    </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3 mt-4">
                     {hasPermission('hrEditProfile') && (
                         <ExportButton
                             endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
@@ -232,7 +260,7 @@ export default function EmployeesPage() {
                     {hasPermission('hrCreateEmployee') && (
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="btn-primary shadow-lg shadow-primary/20"
+                            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm transition-colors"
                         >
                             <i className="fa-solid fa-plus" /> Thêm thành viên
                         </button>
@@ -254,7 +282,7 @@ export default function EmployeesPage() {
 
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <span className="text-indigo-700 font-medium">
                             Đã chọn {selectedIds.size} thành viên
@@ -285,15 +313,15 @@ export default function EmployeesPage() {
             )}
 
             {/* Filters */}
-            <div className="card p-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     {/* Status Tabs */}
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
                         {['ALL', 'ACTIVE', 'ON_LEAVE', 'RESIGNED'].map(s => (
                             <button
                                 key={s}
                                 onClick={() => setStatus(s)}
-                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${status === s ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${status === s ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
                             >
                                 {s === 'ALL' ? 'Tất cả' : s === 'ACTIVE' ? 'Đang làm' : s === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Nghỉ việc'}
                             </button>
@@ -305,25 +333,55 @@ export default function EmployeesPage() {
                             <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                             <input
                                 type="text"
-                                className="input pl-10"
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
                                 placeholder="Tìm tên, email..."
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
                             />
                         </div>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => {
+                                setPageSize(Number(e.target.value));
+                                setPage(0);
+                            }}
+                            className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white"
+                        >
+                            <option value={10}>10 / trang</option>
+                            <option value={20}>20 / trang</option>
+                            <option value={50}>50 / trang</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
             {/* Table */}
-            <DataTable
-                loading={isLoadingEmployees}
-                columns={columns}
-                data={employeesData?.content || []}
-                totalCount={employeesData?.totalElements || 0}
-                pagination={{ pageIndex: page, pageSize }}
-                onPaginationChange={({ pageIndex }) => setPage(pageIndex)}
-            />
+            <div className="rounded-2xl overflow-hidden">
+                <DataTable
+                    loading={isLoadingEmployees}
+                    columns={columns}
+                    data={employeeRows}
+                    totalCount={totalEmployees}
+                    pagination={{ pageIndex: page, pageSize }}
+                    onPaginationChange={({ pageIndex }) => setPage(pageIndex)}
+                />
+            </div>
+        </div>
+    );
+}
+
+function MiniStat({ label, value, tone }) {
+    const toneClass = {
+        slate: 'bg-slate-50 text-slate-700 border-slate-200',
+        green: 'bg-green-50 text-green-700 border-green-200',
+        amber: 'bg-amber-50 text-amber-700 border-amber-200',
+        red: 'bg-red-50 text-red-700 border-red-200',
+    }[tone] || 'bg-slate-50 text-slate-700 border-slate-200';
+
+    return (
+        <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
+            <p className="text-[11px] uppercase tracking-wide opacity-80">{label}</p>
+            <p className="text-lg font-bold leading-tight">{value}</p>
         </div>
     );
 }

@@ -47,7 +47,7 @@ export default function LogoutPage() {
                             Đã đăng xuất!
                         </h1>
                         <p className="text-gray-500 mb-6">
-                            Cảm ơn bạn đã sử dụng SaaS Enterprise.<br />
+                            Cảm ơn bạn đã sử dụng Workspace Hub.<br />
                             Đang chuyển hướng...
                         </p>
                         <div className="w-8 h-8 mx-auto border-3 border-gray-200 border-t-indigo-600 rounded-full animate-spin" />

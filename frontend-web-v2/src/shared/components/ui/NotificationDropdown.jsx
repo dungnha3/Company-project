@@ -31,6 +31,7 @@ export default function NotificationDropdown() {
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const workspaceType = useWorkspaceStore((state) => state.workspaceType);
     const isCompanyWorkspace = workspaceType === 'COMPANY';
 
     // Close on click outside

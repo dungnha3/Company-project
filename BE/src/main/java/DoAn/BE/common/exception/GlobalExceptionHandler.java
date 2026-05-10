@@ -43,13 +43,6 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ExceptionHandler(FeatureDisabledException.class)
-    public ResponseEntity<ErrorResponse> handleFeatureDisabled(FeatureDisabledException ex) {
-        log.warn("Feature disabled access attempt: {}", ex.getFeatureCode());
-        ErrorResponse error = new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-    }
-
     @ExceptionHandler(ProjectAccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleProjectAccessDenied(ProjectAccessDeniedException ex) {
         ErrorResponse error = new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value());

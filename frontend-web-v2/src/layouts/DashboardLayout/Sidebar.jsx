@@ -1,207 +1,223 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '@shared/stores/uiStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useAuthStore } from '@shared/stores/authStore';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
+import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import CompanySwitcher from './CompanySwitcher';
-import { isMenuItemEnabled } from '@shared/utils/featureHelper';
 
-
-/**
- * Hybrid NAV_CONFIG
- * - HR: single link → body tabs (SectionTabLayout handles sub-items)
- * - All other sections: inline items in sidebar
- */
 export const NAV_CONFIG = [
-    {
-        key: 'overview',
-        title: 'Tổng quan',
-        roles: ['*'],
-        items: [
-            { path: '/app', icon: 'fa-house', label: 'Dashboard', exact: true },
-        ],
-    },
-
     {
         key: 'personal',
         title: 'Cá nhân',
-        roles: ['*'],
         items: [
-            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi', companyOnly: true },
-            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân', feature: 'calendar', companyOnly: true },
-            { path: '/app/me/timelogs', icon: 'fa-stopwatch', label: 'Chấm công (Logs)', feature: 'timeTracking', companyOnly: true },
+            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi', exact: true },
+            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân' },
+            { path: '/app/me/timelogs', icon: 'fa-clock', label: 'Nhật ký giờ làm' },
+            { path: '/app/me/performance', icon: 'fa-chart-line', label: 'Hiệu suất của tôi' },
+        ],
+    },
+    {
+        key: 'project',
+        title: 'Quản lý Dự án',
+        items: [
+            { path: '/app/projects', icon: 'fa-cubes', label: 'Dự án & Kanban' },
         ],
     },
     {
         key: 'hr',
-        title: 'Nhân sự (HR)',
-        permission: 'hrViewList',
-        feature: 'hr',
-        companyOnly: true,
+        title: 'Nhân sự & HR',
         items: [
-            // Single entry point → body tabs handle sub-items
-            { path: '/app/hr/employees', icon: 'fa-users-gear', label: 'Nhân viên (Team)', feature: 'hr', matchPrefix: '/app/hr' },
+            { path: '/app/hr/employees', icon: 'fa-address-book', label: 'Danh bạ nhân viên' },
+            { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Quản lý nghỉ phép' },
+            { path: '/app/hr/performance', icon: 'fa-star', label: 'Đánh giá KPI', permission: 'HR.MANAGE_PERFORMANCE' },
         ],
     },
     {
-        key: 'payroll',
-        title: 'Nghỉ phép',
-        feature: 'hr',
-        companyOnly: true,
-        // Only show for users WITHOUT full HR access (those with hrViewList see everything in HR body tabs)
-        hideIfPermission: 'hrViewList',
+        key: 'settings',
+        title: 'Quản trị',
         items: [
-            { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
-        ],
-    },
-    {
-        key: 'workspace-tools',
-        title: 'Dự án & Công cụ',
-        roles: ['*'],
-        companyOnly: true,
-        items: [
-            { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án', feature: 'project' },
-            { path: '/app/reports', icon: 'fa-chart-bar', label: 'Báo cáo', feature: 'project' },
-            { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },
-            { path: '/app/company/activity', icon: 'fa-history', label: 'Nhật ký hoạt động', roles: ['OWNER', 'COMPANY_ADMIN'] },
+            { path: '/app/company/settings', icon: 'fa-gear', label: 'Cài đặt Workspace', permission: 'PROJECT.MANAGE_ALL' },
         ],
     },
 ];
 
-const FEATURE_NAMES = {
-    'hr': 'Nhân sự (HR)',
-    'project': 'Dự án',
-    'leave': 'Nghỉ phép',
-    'review': 'Đánh giá',
-    'resourcePlanning': 'Quản lý nguồn lực',
-    'timeTracking': 'Time Tracking',
-    'calendar': 'Lịch',
-};
-
-
-
 export default function Sidebar() {
     const { sidebarCollapsed, toggleSidebar } = useUIStore();
-    const { currentWorkspace, hasPermission } = useWorkspaceStore();
+    const { currentWorkspace } = useWorkspaceStore();
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
     const location = useLocation();
-    const [upgradeModal, setUpgradeModal] = useState(null);
+    const { canAccess, hasPermission } = useAccessControl();
+    const { data: myIssuesForAlert = [] } = useQuery({
+        queryKey: ['sidebar-my-issues-alert'],
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data;
+                return response?.content || response || [];
+            } catch {
+                return [];
+            }
+        },
+    });
+
+    const lateReviewCount = myIssuesForAlert.filter((issue) => {
+        if (issue.statusName !== 'Review') return false;
+        const baseDate = issue.updatedAt || issue.createdAt;
+        const ts = baseDate ? new Date(baseDate).getTime() : NaN;
+        if (!ts || Number.isNaN(ts)) return false;
+        const elapsedHours = (Date.now() - ts) / (1000 * 60 * 60);
+        return elapsedHours >= 48;
+    }).length;
 
     if (user?.isSystemAdmin) return null;
 
-    const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['OWNER']);
-    const settings = currentWorkspace?.settings || null;
-    const permissions = currentWorkspace?.permissions || null;
-    const isPersonalWorkspace = currentWorkspace?.type === 'PERSONAL';
+    // Lọc menu theo quyền và cờ tính năng
+    const visibleSections = NAV_CONFIG.map(section => {
+        // Kiểm tra Feature Toggle của cả section (Ví dụ: tắt HR module thì ẩn cả section)
 
-    // Filter sections and items
-    const visibleSections = NAV_CONFIG.filter(section => {
-        if (section.companyOnly && isPersonalWorkspace) return false;
-        if (section.personalOnly && !isPersonalWorkspace) return false;
-
-        // hideIfPermission: hide section if user HAS this permission (e.g., payroll hidden if user has full HR access)
-        if (section.hideIfPermission && hasPermission(section.hideIfPermission)) return false;
-
-        // Permission-based visibility (preferred)
-        if (section.permission) return hasPermission(section.permission);
-
-        // Role-based visibility (kept for admin-only sections)
-        if (section.roles) {
-            if (section.roles.includes('*')) return true;
-            return section.roles.some(r => currentRoles.includes(r));
-        }
-
-        return true;
-    }).map(section => ({
-        ...section,
-        items: section.items
-            .map(item => {
-                if (item.companyOnly && isPersonalWorkspace) return null;
-                // Permission-based item visibility
-                if (item.permission && !hasPermission(item.permission)) return null;
-                // Legacy role-based item visibility
-                if (item.roles && !item.roles.includes('*') && !item.roles.some(r => currentRoles.includes(r))) return null;
-
-                if (item.feature) {
-                    let planFeature = item.feature;
-                    if (['leave', 'review', 'resourcePlanning'].includes(item.feature)) planFeature = 'hr';
-
-                    const isFullyEnabled = isMenuItemEnabled(item.path, settings, permissions);
-                    return isFullyEnabled ? { ...item, enabled: true } : null;
+        const items = section.items.filter(item => {
+            // Kiểm tra Permission cụ thể của từng item
+            if (item.permission && !canAccess({ permission: item.permission })) {
+                // Special case for Settings: If user can manage requests or members, also show settings
+                if (item.path === '/app/company/settings') {
+                    if (hasPermission('WORKSPACE.MANAGE_REQUESTS') || hasPermission('WORKSPACE.MANAGE_MEMBERS')) return true;
                 }
+                return false;
+            }
+            return true;
+        });
 
-                return { ...item, enabled: true };
-            })
-            .filter(Boolean),
-    })).filter(section => section.items.length > 0);
+        if (items.length === 0) return null;
 
-
+        return { ...section, items };
+    }).filter(Boolean);
 
     const isItemActive = (item) => {
         if (item.exact) return location.pathname === item.path;
-        if (item.matchPrefix) return location.pathname.startsWith(item.matchPrefix);
         return location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     };
 
     return (
-        <aside className={`sidebar fixed top-0 left-0 h-screen z-40 ${sidebarCollapsed ? 'collapsed' : ''}`}>
-            {/* Toggle Button */}
-            <button
-                onClick={toggleSidebar}
-                className="absolute -right-3 top-6 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-gray-400 hover:text-primary transition-colors"
-            >
-                <i className={`fa-solid ${sidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'} text-xs`} />
-            </button>
-
-            {/* Company Switcher */}
-            <div className="p-4 border-b border-gray-100">
-                <CompanySwitcher collapsed={sidebarCollapsed} />
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4">
-                {visibleSections.map(section => (
-                    <div key={section.key} className="menu-section">
-                        {!sidebarCollapsed && (
-                            <div className="menu-title">{section.title}</div>
-                        )}
-                        {section.items.map(item => (
-                            item.enabled ? (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    end={item.exact}
-                                    className={() => `menu-item ${isItemActive(item) ? 'active' : ''}`}
-                                    title={item.label}
-                                >
-                                    <i className={`fa-solid ${item.icon}`} />
-                                    {!sidebarCollapsed && <span>{item.label}</span>}
-                                </NavLink>
-                            ) : null
-                        ))}
+        <aside
+            className={`
+                fixed top-0 left-0 z-40 h-screen transition-all duration-300 ease-in-out
+                ${sidebarCollapsed ? 'w-20' : 'w-[260px]'}
+                bg-white border-r border-gray-100 flex flex-col shadow-sm
+            `}
+        >
+            {/* Header / Logo */}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100/50 bg-white/50 backdrop-blur-xl">
+                {!sidebarCollapsed && (
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                            <i className="fa-solid fa-layer-group text-sm"></i>
+                        </div>
+                        <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">
+                            Workspace
+                        </span>
                     </div>
-                ))}
-            </nav>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-gray-100 space-y-2">
-
-                <NavLink to="/app/me/profile" className="menu-item" title="Cài đặt">
-                    <i className="fa-solid fa-gear" />
-                    {!sidebarCollapsed && <span>Cài đặt</span>}
-                </NavLink>
+                )}
                 <button
-                    onClick={logout}
-                    className="menu-item w-full text-red-500 hover:bg-red-50 hover:text-red-600"
-                    title="Đăng xuất"
+                    onClick={toggleSidebar}
+                    className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-indigo-50 flex items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors mx-auto"
                 >
-                    <i className="fa-solid fa-right-from-bracket" />
-                    {!sidebarCollapsed && <span>Đăng xuất</span>}
+                    <i className={`fa-solid ${sidebarCollapsed ? 'fa-chevron-right' : 'fa-bars'}`}></i>
                 </button>
             </div>
 
+            {/* Workspace Switcher */}
+            {!sidebarCollapsed && (
+                <div className="p-3 border-b border-gray-100/50 bg-gray-50/30">
+                    <CompanySwitcher />
+                </div>
+            )}
 
+            {/* Navigation Links */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4 px-3 space-y-6">
+                {visibleSections.map((section, idx) => (
+                    <div key={idx} className="space-y-1">
+                        {!sidebarCollapsed && section.title && (
+                            <h3 className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                                {section.title}
+                            </h3>
+                        )}
+                        {section.items.map((item, itemIdx) => (
+                            <NavLink
+                                key={itemIdx}
+                                to={item.path}
+                                className={() => `
+                                    relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group
+                                    ${isItemActive(item)
+                                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'
+                                    }
+                                `}
+                                title={sidebarCollapsed ? item.label : ''}
+                            >
+                                <div className={`
+                                    w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+                                    ${isItemActive(item) ? 'bg-indigo-100/50 text-indigo-600' : 'bg-white text-gray-400 group-hover:text-gray-600 group-hover:bg-white border border-gray-100 shadow-sm'}
+                                `}>
+                                    <i className={`fa-solid ${item.icon}`}></i>
+                                </div>
+                                {!sidebarCollapsed && (
+                                    <span className="flex-1 truncate flex items-center gap-2">
+                                        <span>{item.label}</span>
+                                        {item.path === '/app/me/issues' && lateReviewCount > 0 && (
+                                            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                                                {lateReviewCount}
+                                            </span>
+                                        )}
+                                    </span>
+                                )}
+                                {sidebarCollapsed && item.path === '/app/me/issues' && lateReviewCount > 0 && (
+                                    <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                        {lateReviewCount}
+                                    </span>
+                                )}
+                            </NavLink>
+                        ))}
+                    </div>
+                ))}
+            </div>
+
+            {/* User Profile Footer */}
+            <div className="p-3 border-t border-gray-100 bg-white">
+                <div className="flex flex-col gap-1">
+                    <button
+                        onClick={() => navigate('/app/me/profile')}
+                        className={`flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                    >
+                        <img
+                            src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName}&background=6366f1&color=fff`}
+                            alt="avatar"
+                            className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+                        />
+                        {!sidebarCollapsed && (
+                            <div className="flex-1 min-w-0 text-left">
+                                <p className="text-sm font-bold text-gray-900 truncate">{user?.fullName}</p>
+                                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                            </div>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={logout}
+                        className={`flex items-center gap-3 p-2 rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                        title="Đăng xuất"
+                    >
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center">
+                            <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                        </div>
+                        {!sidebarCollapsed && (
+                            <span className="text-sm font-medium">Đăng xuất</span>
+                        )}
+                    </button>
+                </div>
+            </div>
         </aside>
     );
 }

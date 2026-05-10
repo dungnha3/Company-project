@@ -10,4 +10,7 @@ import java.util.List;
 public interface FileRepository extends JpaRepository<FileEntity, Long> {
     List<FileEntity> findByProject_ProjectId(Long projectId);
     List<FileEntity> findByCompanyCompanyIdAndProjectIsNull(Long companyId);
+    List<FileEntity> findByIssue_IssueId(Long issueId);
+    List<FileEntity> findByIssue_IssueIdOrderByCreatedAtDesc(Long issueId);
+    List<FileEntity> findByCompanyCompanyId(Long companyId);
 }

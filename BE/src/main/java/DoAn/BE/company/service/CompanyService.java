@@ -19,7 +19,6 @@ import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -110,8 +109,6 @@ public class CompanyService {
         CompanySettings settings = new CompanySettings();
         settings.setCompany(company);
 
-        settings.setProjectModuleEnabled(true);
-
         companySettingsRepository.save(settings);
         CompanyMember owner = new CompanyMember();
         owner.setCompany(company);
@@ -141,24 +138,6 @@ public class CompanyService {
         return companyRepository.save(company);
     }
 
-    @Transactional
-    @CacheEvict(value = "companySettings", key = "#companyId")
-    public CompanySettings updateSettings(Long companyId, CompanyDto.SettingsUpdateRequest req) {
-        if (companyId == null) {
-            throw new BadRequestException("ID công ty không được để trống");
-        }
-        accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
-
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt"));
-        updateModuleSettings(settings, req);
-
-        log.info("Đã cập nhật cài đặt công ty: {}", companyId);
-        return companySettingsRepository.save(settings);
-    }
-
-
-
     private CompanyDto.CompanyResponse mapToResponse(CompanyMember member) {
         CompanyDto.CompanyResponse resp = new CompanyDto.CompanyResponse();
         Company company = member.getCompany();
@@ -186,11 +165,5 @@ public class CompanyService {
         }
     }
 
-    private void updateModuleSettings(CompanySettings settings, CompanyDto.SettingsUpdateRequest req) {
 
-        if (req.getProjectModuleEnabled() != null) {
-            settings.setProjectModuleEnabled(req.getProjectModuleEnabled());
-        }
-
-    }
 }
