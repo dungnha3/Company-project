@@ -83,6 +83,7 @@ public class IssueService {
         issue.setDescription(request.getDescription());
         issue.setIssueStatus(status);
         issue.setPriority(request.getPriority() != null ? request.getPriority() : Issue.Priority.MEDIUM);
+        issue.setIssueType(request.getIssueType() != null ? request.getIssueType() : Issue.IssueType.TASK);
         issue.setReporter(reporter);
         issue.setAssignee(assignee);
         issue.setEstimatedHours(request.getEstimatedHours());
@@ -264,6 +265,9 @@ public class IssueService {
         if (request.getPriority() != null) {
             issue.setPriority(request.getPriority());
         }
+        if (request.getIssueType() != null) {
+            issue.setIssueType(request.getIssueType());
+        }
         if (request.getAssigneeId() != null) {
             User assignee = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
@@ -392,7 +396,7 @@ public class IssueService {
     }
 
     @Transactional
-    public IssueDTO changeIssueStatus(Long issueId, Integer statusId, Long userId) {
+    public IssueDTO changeIssueStatus(Long issueId, Integer statusId, Integer orderIndex, Long userId) {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
 
@@ -427,6 +431,9 @@ public class IssueService {
         }
 
         issue.changeStatus(status);
+        if (orderIndex != null) {
+            issue.setOrderIndex(orderIndex);
+        }
         issue = issueRepository.save(issue);
 
         // Create activity log for status change
@@ -556,6 +563,8 @@ public class IssueService {
         }
 
         dto.setPriority(issue.getPriority());
+        dto.setIssueType(issue.getIssueType());
+        dto.setOrderIndex(issue.getOrderIndex());
 
         if (issue.getReporter() != null) {
             dto.setReporterId(issue.getReporter().getUserId());

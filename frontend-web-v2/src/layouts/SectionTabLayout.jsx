@@ -9,6 +9,14 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
  */
 export const HR_TAB_CONFIG = [
     {
+        tabKey: 'dashboard',
+        tabLabel: 'Tổng quan',
+        tabIcon: 'fa-chart-simple',
+        items: [
+            { path: '/app/hr', icon: 'fa-chart-simple', label: 'Dashboard', exact: true },
+        ],
+    },
+    {
         tabKey: 'manage',
         tabLabel: 'Nhân viên',
         tabIcon: 'fa-users',

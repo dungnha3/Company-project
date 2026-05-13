@@ -235,8 +235,9 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
     };
 
     const progress = estimatedHours > 0
-        ? Math.min((totalHours / estimatedHours)  * 100, 100)
+        ? Math.min((totalHours / estimatedHours) * 100, 100)
         : null;
+    const remaining = (estimatedHours || 0) - totalHours;
 
     if (loading) {
         return (
@@ -259,36 +260,59 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
             {/* Mini timer (only if this issue is active) */}
             <MiniTimer issueId={issueId} onLogComplete={loadTimelogs} />
 
-            {/* Summary bar */}
+                {/* Summary bar */}
             <div className="bg-slate-800 rounded-xl p-4">
+                {/* Time Tracking Breakdown */}
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-clock text-indigo-400" />
                         <span className="text-white font-semibold text-sm">Time Tracking</span>
                     </div>
-                    <div className="text-right">
-                        <span className="text-indigo-400 font-bold text-lg">
-                            {formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                        </span>
-                        {estimatedHours > 0 && (
-                            <span className="text-slate-400 text-sm ml-1">
-                                / {estimatedHours}h estimated
-                            </span>
-                        )}
+                </div>
+
+                {/* Estimated / Logged / Remaining pills */}
+                <div className="flex gap-2 mb-3">
+                    <div className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Estimated</div>
+                        <div className="text-indigo-300 font-bold text-base">
+                            {formatNumber(estimatedHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
+                        </div>
+                    </div>
+                    <div className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Logged</div>
+                        <div className={`font-bold text-base ${totalHours > estimatedHours ? 'text-red-400' : 'text-green-400'}`}>
+                            {formatNumber(totalHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
+                        </div>
+                    </div>
+                    <div className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Remaining</div>
+                        <div className={`font-bold text-base ${remaining < 0 ? 'text-red-400' : 'text-amber-400'}`}>
+                            {formatNumber(Math.max(0, (estimatedHours || 0) - totalHours), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
+                        </div>
                     </div>
                 </div>
 
-                {/* Progress bar */}
+                {/* Progress bar with percentage */}
                 {estimatedHours > 0 && (
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-3">
-                        <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                                progress > 100 ? 'bg-gradient-to-r from-amber-500 to-red-500'
-                                : progress > 80 ? 'bg-gradient-to-r from-yellow-500 to-amber-500'
-                                : 'bg-gradient-to-r from-indigo-500 to-purple-500'
-                            }`}
-                            style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
+                    <div className="relative mb-3">
+                        <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                    progress > 100 ? 'bg-gradient-to-r from-amber-500 to-red-500'
+                                    : progress > 80 ? 'bg-gradient-to-r from-yellow-500 to-amber-500'
+                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                                }`}
+                                style={{ width: `${Math.min(progress, 100)}%` }}
+                            />
+                        </div>
+                        {/* Percentage overlay */}
+                        <div className="flex justify-end mt-1">
+                            <span className={`text-[10px] font-semibold ${
+                                progress > 100 ? 'text-red-400' : progress > 80 ? 'text-amber-400' : 'text-slate-400'
+                            }`}>
+                                {progress > 100 ? `+${(progress - 100).toFixed(0)}% quá giờ` : `${progress.toFixed(0)}% hoàn thành`}
+                            </span>
+                        </div>
                     </div>
                 )}
 

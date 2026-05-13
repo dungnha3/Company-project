@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.dto.ProjectPhaseDTO;
 import DoAn.BE.project.service.ProjectPhaseService;
 import DoAn.BE.user.entity.User;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class ProjectPhaseController {
 
     private final ProjectPhaseService projectPhaseService;
+    private final AccessControlService accessControlService;
 
     @GetMapping("/{projectId}/phases")
     public ResponseEntity<List<ProjectPhaseDTO.Response>> getPhases(
@@ -39,6 +41,7 @@ public class ProjectPhaseController {
             @PathVariable Long projectId,
             @RequestBody ProjectPhaseDTO.CreateRequest request,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkProjectManagePhasesPermission();
         return ResponseEntity.ok(projectPhaseService.createPhase(projectId, request, user.getUserId()));
     }
 
@@ -47,6 +50,7 @@ public class ProjectPhaseController {
             @PathVariable Long phaseId,
             @RequestBody ProjectPhaseDTO.UpdateRequest request,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkProjectManagePhasesPermission();
         return ResponseEntity.ok(projectPhaseService.updatePhase(phaseId, request, user.getUserId()));
     }
 
@@ -54,6 +58,7 @@ public class ProjectPhaseController {
     public ResponseEntity<Void> deletePhase(
             @PathVariable Long phaseId,
             @AuthenticationPrincipal User user) {
+        accessControlService.checkProjectManagePhasesPermission();
         projectPhaseService.deletePhase(phaseId, user.getUserId());
         return ResponseEntity.noContent().build();
     }

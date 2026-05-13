@@ -19,6 +19,7 @@ import IssueDetailModal from '../components/IssueDetailModal';
 import CreateIssueModal from '../components/CreateIssueModal';
 import TimeLogSection from '../components/TimeLogSection';
 import BoardTimeLogPanel from '../components/BoardTimeLogPanel';
+import QuickReviewModal from '../components/QuickReviewModal';
 
 // ─── Fallback columns (used when API unavailable) ─────────────────────
 const FALLBACK_STATUSES = [
@@ -92,6 +93,7 @@ export default function ProjectBoard({ project }) {
     const [activeId, setActiveId] = useState(null);
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [quickReviewIssueId, setQuickReviewIssueId] = useState(null);
 
     // ── Filter state
     const [searchText, setSearchText] = useState('');
@@ -296,7 +298,9 @@ export default function ProjectBoard({ project }) {
 
     // ── Status change mutation
     const moveIssueMutation = useMutation({
-        mutationFn: ({ id, statusId }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`),
+        mutationFn: ({ id, statusId, orderIndex }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`, null, {
+            params: { orderIndex }
+        }),
         onSuccess: () => {
             queryClient.invalidateQueries(['issues', project.projectId]);
             queryClient.invalidateQueries(['myIssues', 'filtered']);
@@ -349,19 +353,33 @@ export default function ProjectBoard({ project }) {
         const overId = over.id;
 
         let newStatusName = null;
+        let newOrderIndex = null;
+
         if (columnIds.includes(overId)) {
             newStatusName = overId;
+            newOrderIndex = boardData[overId]?.length || 0;
         } else {
             const overIssue = issues.find(i => i.issueId === overId);
-            if (overIssue) newStatusName = overIssue.statusName;
+            if (overIssue) {
+                newStatusName = overIssue.statusName || 'To Do';
+                const colIssues = boardData[newStatusName] || [];
+                const overIndex = colIssues.findIndex(i => i.issueId === overId);
+                newOrderIndex = overIndex >= 0 ? overIndex : 0;
+            }
         }
 
         const activeIssue = issues.find(i => i.issueId === activeIssueId);
-        if (activeIssue && newStatusName && activeIssue.statusName !== newStatusName) {
+        if (activeIssue && newStatusName) {
             const statusId = statusNameToId[newStatusName];
             if (statusId) {
-                // Auto-start timer when moving to In Progress
-                if (newStatusName === 'In Progress') {
+                // If dropping into "Done", show QuickReviewModal instead of mutating immediately
+                if (activeIssue.statusName !== 'Done' && newStatusName === 'Done') {
+                    setQuickReviewIssueId(activeIssueId);
+                    return; // Stop here, wait for modal submission
+                }
+
+                // If it's a different column, auto-start timer if In Progress
+                if (activeIssue.statusName !== newStatusName && newStatusName === 'In Progress') {
                     window.dispatchEvent(new CustomEvent('auto-start-timer', {
                         detail: {
                             issueId: activeIssueId,
@@ -370,10 +388,10 @@ export default function ProjectBoard({ project }) {
                         }
                     }));
                 }
-                moveIssueMutation.mutate({ id: activeIssueId, statusId });
+                moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex });
             }
         }
-    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast]);
+    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData]);
 
     // ── Reorder columns mutation
     const reorderColumnsMutation = useMutation({
@@ -722,6 +740,19 @@ export default function ProjectBoard({ project }) {
                 }}
                 defaultProjectId={project.projectId}
             />
+
+            {/* Quick Review Modal */}
+            {quickReviewIssueId && (
+                <QuickReviewModal
+                    issue={issues.find(i => i.issueId === quickReviewIssueId)}
+                    onClose={() => setQuickReviewIssueId(null)}
+                    onSuccess={() => {
+                        queryClient.invalidateQueries(['issues', project.projectId]);
+                        queryClient.invalidateQueries(['myIssues', 'filtered']);
+                        setQuickReviewIssueId(null);
+                    }}
+                />
+            )}
         </>
     );
 }
@@ -997,10 +1028,20 @@ function SwimlaneGroup({ lane, onIssueClick, showLabel, swimlaneMode }) {
 // ─── DRAGGABLE ISSUE ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════
 function DraggableIssue({ issue, onClick }) {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
         id: issue.issueId,
         data: { type: 'Issue', issue, statusName: issue.statusName },
     });
+
+    const { setNodeRef: setDropRef } = useDroppable({
+        id: issue.issueId,
+        data: { type: 'Issue', issue, statusName: issue.statusName },
+    });
+
+    const setNodeRef = (node) => {
+        setDragRef(node);
+        setDropRef(node);
+    };
 
     const style = {
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -1078,6 +1119,47 @@ function IssueCard({ issue, isOverlay, onClick }) {
 
             {/* Title */}
             <h4 className="text-sm font-medium text-gray-800 mb-2 line-clamp-2">{issue.title}</h4>
+
+            {/* Story Points + Actual Hours + Progress */}
+            {(Number(issue.estimatedHours) > 0 || Number(issue.actualHours) > 0) && (
+                (() => {
+                    const estimated = Number(issue.estimatedHours) || 0;
+                    const actual = Number(issue.actualHours) || 0;
+                    const progressPct = estimated > 0 && actual > 0 ? Math.min((actual / estimated) * 100, 100) : null;
+                    const isOverEstimate = estimated > 0 && actual > estimated;
+                    return (
+                        <div className="mb-2">
+                            <div className="flex items-center justify-between text-[10px] mb-1">
+                                <span className="text-gray-400 flex items-center gap-1">
+                                    <i className="fa-solid fa-fire-flame-curved text-[8px]" />
+                                    {estimated}h ước tính
+                                </span>
+                                {actual > 0 && (
+                                    <span className={`font-semibold flex items-center gap-1 ${isOverEstimate ? 'text-red-500' : 'text-teal-600'}`}>
+                                        <i className="fa-solid fa-clock text-[8px]" />
+                                        {actual.toFixed(1)}h thực tế
+                                    </span>
+                                )}
+                            </div>
+                            {progressPct !== null && (
+                                <div className="relative">
+                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all ${isOverEstimate ? 'bg-red-400' : 'bg-teal-400'}`}
+                                            style={{ width: `${Math.min(progressPct, 100)}%` }}
+                                        />
+                                    </div>
+                                    {isOverEstimate && (
+                                        <span className="absolute right-0 top-[-2px] text-[8px] text-red-500 font-bold">
+                                            +{(actual - estimated).toFixed(1)}h
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()
+            )}
 
             {/* Bottom row: key + due date + assignee */}
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">

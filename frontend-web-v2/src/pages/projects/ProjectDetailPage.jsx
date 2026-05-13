@@ -5,21 +5,20 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import ProjectBoard from './tabs/ProjectBoard';
-import ProjectGantt from './tabs/ProjectGantt';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 import EditProjectModal from './components/EditProjectModal';
 import ExportDropdown from './components/ExportDropdown';
+import ProjectDashboardTab from './tabs/ProjectDashboardTab';
 
 // Lazy load new feature tabs
 const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
 const SprintTab = lazy(() => import('./tabs/SprintTab'));
-const PhaseTab = lazy(() => import('./tabs/PhaseTab'));
 const IssueListTab = lazy(() => import('./tabs/IssueListTab'));
 const ProjectSettingsTab = lazy(() => import('./tabs/ProjectSettingsTab'));
 const ProjectCalendarTab = lazy(() => import('./tabs/ProjectCalendarTab'));
 const EisenhowerMatrixTab = lazy(() => import('./tabs/EisenhowerMatrixTab'));
-const TimelineTab = lazy(() => import('./tabs/TimelineTab'));
+const ProjectGoalTab = lazy(() => import('./tabs/ProjectGoalTab'));
 const TeamTab = lazy(() => import('./tabs/TeamTab'));
 const ProjectCostTab = lazy(() => import('./tabs/ProjectCostTab'));
 const ProjectPerformanceTab = lazy(() => import('./tabs/ProjectPerformanceTab'));
@@ -56,8 +55,7 @@ export default function ProjectDetailPage() {
                 tabs: [
                     { id: 'board', label: 'Bảng (Kanban)' },
                     { id: 'list', label: 'Danh sách' },
-                    { id: 'sprints', label: 'Sprints' },
-                    { id: 'phases', label: 'Giai đoạn' }
+                    { id: 'sprints', label: 'Sprints' }
                 ]
             },
             {
@@ -65,8 +63,7 @@ export default function ProjectDetailPage() {
                 label: 'Lập kế hoạch',
                 icon: 'fa-timeline',
                 tabs: [
-                    { id: 'gantt', label: 'Gantt Chart' },
-                    { id: 'timeline', label: 'Timeline' },
+                    { id: 'goals', label: 'Mục tiêu' },
                     { id: 'eisenhower', label: 'Eisenhower' },
                     { id: 'calendar', label: 'Lịch công việc' }
                 ]
@@ -126,7 +123,7 @@ export default function ProjectDetailPage() {
                             </Link>
                         )}
                         {showTimelogs && (
-                            <Link to="/app/me/timelogs" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Link to="/app/me/performance" className="bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                                 <i className="fa-solid fa-clock mr-2" />Nhật ký
                             </Link>
                         )}
@@ -200,16 +197,11 @@ export default function ProjectDetailPage() {
 
             {/* Tab Content */}
             <div className="min-h-[500px]">
-                {activeTab === 'overview' && <OverviewTab project={project} />}
+                {activeTab === 'overview' && <ProjectDashboardTab projectId={project.projectId} project={project} />}
                 {activeTab === 'board' && <ProjectBoard project={project} />}
                 {activeTab === 'sprints' && (
                     <Suspense fallback={<PageLoader />}>
                         <SprintTab projectId={project.projectId} />
-                    </Suspense>
-                )}
-                {activeTab === 'phases' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <PhaseTab projectId={project.projectId} />
                     </Suspense>
                 )}
                 {activeTab === 'list' && (
@@ -217,7 +209,6 @@ export default function ProjectDetailPage() {
                         <IssueListTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'gantt' && <ProjectGantt project={project} />}
                 {activeTab === 'calendar' && (
                     <Suspense fallback={<PageLoader />}>
                         <ProjectCalendarTab projectId={project.projectId} />
@@ -228,9 +219,9 @@ export default function ProjectDetailPage() {
                         <EisenhowerMatrixTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'timeline' && (
+                {activeTab === 'goals' && (
                     <Suspense fallback={<PageLoader />}>
-                        <TimelineTab projectId={project.projectId} />
+                        <ProjectGoalTab projectId={project.projectId} />
                     </Suspense>
                 )}
                 {activeTab === 'analytics' && (

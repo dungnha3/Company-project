@@ -47,9 +47,17 @@ public class LeaveRequestService {
     }
 
     public LeaveRequest createLeaveRequest(LeaveRequestRequest request, User currentUser) {
-        log.info("User {} creating leave request for employee ID: {}", currentUser.getUsername(),
-                request.getEmployeeId());
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
+        log.info("User {} creating leave request", currentUser.getUsername());
+
+        // Auto-resolve employeeId from currentUser if not provided
+        Long employeeId = request.getEmployeeId();
+        if (employeeId == null) {
+            Employee currentEmployee = employeeRepository.findByUser_UserId(currentUser.getUserId())
+                    .orElseThrow(() -> new BadRequestException("Bạn chưa có hồ sơ nhân viên. Liên hệ HR để được tạo."));
+            employeeId = currentEmployee.getEmployeeId();
+        }
+
+        Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
             // Check if user has HR leave approval permission (managers can create for
@@ -236,6 +244,15 @@ public class LeaveRequestService {
         }
 
         leaveRequest.approve(currentUser, note);
+        
+        if (leaveRequest.getLeaveType() == LeaveRequest.LeaveType.ANNUAL) {
+            Employee emp = leaveRequest.getEmployee();
+            if (emp.getLeaveBalance() != null) {
+                emp.setLeaveBalance(emp.getLeaveBalance() - leaveRequest.getTotalDays());
+                employeeRepository.save(emp);
+            }
+        }
+        
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
         log.info("Leave request approved by {}", currentUser.getUsername());
 
@@ -293,6 +310,11 @@ public class LeaveRequestService {
             return org.springframework.data.domain.Page.empty(pageable);
         }
         return leaveRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
+    }
+
+    public Employee findEmployeeByUserId(Long userId) {
+        return employeeRepository.findByUser_UserId(userId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy hồ sơ nhân viên của bạn"));
     }
 
     public int getTotalLeaveDays(Long employeeId, int year) {

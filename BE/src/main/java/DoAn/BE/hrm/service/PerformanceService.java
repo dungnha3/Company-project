@@ -1,5 +1,7 @@
 package DoAn.BE.hrm.service;
 
+import DoAn.BE.common.context.TenantContext;
+import DoAn.BE.hrm.dto.PerformanceDashboardDTO;
 import DoAn.BE.hrm.dto.PerformanceRankingDTO;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Review;
@@ -9,15 +11,16 @@ import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
+import DoAn.BE.timetracking.repository.TimeLogRepository;
+import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class PerformanceService {
     private final IssueRepository issueRepository;
     private final ReviewRepository reviewRepository;
     private final EmployeeRepository employeeRepository;
+    private final TimeLogRepository timeLogRepository;
 
     public List<PerformanceRankingDTO> getProjectPerformanceRanking(Long projectId) {
         List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
@@ -181,6 +185,230 @@ public class PerformanceService {
         rankings.sort(Comparator.comparing(PerformanceRankingDTO::getTotalPerformanceScore).reversed());
 
         return rankings;
+    }
+
+    /**
+     * My stats - returns current user's performance summary
+     */
+    public PerformanceDashboardDTO.MyStats getMyStats(User currentUser) {
+        if (currentUser == null) {
+            return PerformanceDashboardDTO.MyStats.builder().build();
+        }
+
+        Employee emp = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
+        if (emp == null) {
+            return PerformanceDashboardDTO.MyStats.builder().build();
+        }
+
+        // Aggregate across all projects
+        List<PerformanceRankingDTO> rankings = new ArrayList<>();
+        List<ProjectMember> allMemberships = projectMemberRepository.findByUser_UserId(currentUser.getUserId());
+
+        int totalCompleted = 0;
+        int totalOverdue = 0;
+        int totalLate = 0;
+        int totalReworks = 0;
+        BigDecimal totalSpeed = BigDecimal.ZERO;
+        BigDecimal totalQuality = BigDecimal.ZERO;
+        BigDecimal totalVolume = BigDecimal.ZERO;
+        int projectCount = 0;
+
+        for (ProjectMember pm : allMemberships) {
+            Long projectId = pm.getProject().getProjectId();
+            List<PerformanceRankingDTO> projectRankings = getProjectPerformanceRanking(projectId);
+            for (PerformanceRankingDTO r : projectRankings) {
+                if (r.getUserId() != null && r.getUserId().equals(currentUser.getUserId())) {
+                    totalCompleted += r.getCompletedTasks() != null ? r.getCompletedTasks() : 0;
+                    totalOverdue += r.getOverdueTasks() != null ? r.getOverdueTasks() : 0;
+                    totalLate += r.getLateTasks() != null ? r.getLateTasks() : 0;
+                    totalReworks += r.getReworks() != null ? r.getReworks() : 0;
+                    totalSpeed = totalSpeed.add(r.getSpeedScore() != null ? r.getSpeedScore() : BigDecimal.ZERO);
+                    totalQuality = totalQuality.add(r.getQualityScore() != null ? r.getQualityScore() : BigDecimal.ZERO);
+                    totalVolume = totalVolume.add(r.getVolumeScore() != null ? r.getVolumeScore() : BigDecimal.ZERO);
+                    projectCount++;
+                }
+            }
+        }
+
+        BigDecimal avgSpeed = projectCount > 0 ? totalSpeed.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgQuality = projectCount > 0 ? totalQuality.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgVolume = projectCount > 0 ? totalVolume.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal totalScore = avgSpeed.add(avgQuality).add(avgVolume).divide(new BigDecimal(3), 1, RoundingMode.HALF_UP);
+
+        // Total hours from timelog
+        BigDecimal totalHours = timeLogRepository.sumHoursByUser(currentUser.getUserId(), TenantContext.getCompanyId());
+        if (totalHours == null) totalHours = BigDecimal.ZERO;
+
+        return PerformanceDashboardDTO.MyStats.builder()
+                .totalPerformanceScore(totalScore)
+                .performance(totalScore)
+                .speedScore(avgSpeed)
+                .qualityScore(avgQuality)
+                .volumeScore(avgVolume)
+                .completedTasks(totalCompleted)
+                .overdueTasks(totalOverdue)
+                .lateTasks(totalLate)
+                .reworks(totalReworks)
+                .totalHoursLogged(totalHours)
+                .build();
+    }
+
+    /**
+     * My performance comparison across all projects
+     */
+    public List<PerformanceRankingDTO> getMyPerformanceComparison(User currentUser) {
+        if (currentUser == null) return Collections.emptyList();
+
+        List<PerformanceRankingDTO> allRankings = new ArrayList<>();
+        List<ProjectMember> allMemberships = projectMemberRepository.findByUser_UserId(currentUser.getUserId());
+
+        for (ProjectMember pm : allMemberships) {
+            List<PerformanceRankingDTO> rankings = getProjectPerformanceRanking(pm.getProject().getProjectId());
+            for (PerformanceRankingDTO r : rankings) {
+                if (r.getUserId() != null && r.getUserId().equals(currentUser.getUserId())) {
+                    allRankings.add(r);
+                }
+            }
+        }
+        return allRankings;
+    }
+
+    /**
+     * Employee performance summary for a specific employee
+     */
+    public PerformanceDashboardDTO.EmployeeSummary getEmployeePerformanceSummary(Long employeeId) {
+        Employee emp = employeeRepository.findById(employeeId).orElse(null);
+        if (emp == null || emp.getUser() == null) {
+            return PerformanceDashboardDTO.EmployeeSummary.builder().build();
+        }
+
+        Long userId = emp.getUser().getUserId();
+        List<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId);
+
+        int totalCompleted = 0;
+        int totalOverdue = 0;
+        int totalReworks = 0;
+        BigDecimal totalSpeed = BigDecimal.ZERO;
+        BigDecimal totalQuality = BigDecimal.ZERO;
+        BigDecimal totalVolume = BigDecimal.ZERO;
+        int count = 0;
+        List<String> projectNames = new ArrayList<>();
+
+        for (ProjectMember pm : memberships) {
+            List<PerformanceRankingDTO> rankings = getProjectPerformanceRanking(pm.getProject().getProjectId());
+            for (PerformanceRankingDTO r : rankings) {
+                if (r.getUserId() != null && r.getUserId().equals(userId)) {
+                    totalCompleted += r.getCompletedTasks() != null ? r.getCompletedTasks() : 0;
+                    totalOverdue += r.getOverdueTasks() != null ? r.getOverdueTasks() : 0;
+                    totalReworks += r.getReworks() != null ? r.getReworks() : 0;
+                    totalSpeed = totalSpeed.add(r.getSpeedScore() != null ? r.getSpeedScore() : BigDecimal.ZERO);
+                    totalQuality = totalQuality.add(r.getQualityScore() != null ? r.getQualityScore() : BigDecimal.ZERO);
+                    totalVolume = totalVolume.add(r.getVolumeScore() != null ? r.getVolumeScore() : BigDecimal.ZERO);
+                    count++;
+                    if (pm.getProject().getName() != null) {
+                        projectNames.add(pm.getProject().getName());
+                    }
+                }
+            }
+        }
+
+        BigDecimal avgSpeed = count > 0 ? totalSpeed.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgQuality = count > 0 ? totalQuality.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgVolume = count > 0 ? totalVolume.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal overall = avgSpeed.add(avgQuality).add(avgVolume).divide(new BigDecimal(3), 1, RoundingMode.HALF_UP);
+
+        return PerformanceDashboardDTO.EmployeeSummary.builder()
+                .employeeId(emp.getEmployeeId())
+                .userId(userId)
+                .employeeName(emp.getFullName())
+                .employeeAvatar(emp.getUser().getAvatarUrl())
+                .overallScore(overall)
+                .speedScore(avgSpeed)
+                .qualityScore(avgQuality)
+                .volumeScore(avgVolume)
+                .completedTasks(totalCompleted)
+                .overdueTasks(totalOverdue)
+                .reworks(totalReworks)
+                .projectNames(projectNames)
+                .build();
+    }
+
+    /**
+     * Company-wide performance dashboard
+     */
+    public PerformanceDashboardDTO getPerformanceDashboard(String period) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            return PerformanceDashboardDTO.builder().build();
+        }
+
+        List<Employee> employees = employeeRepository.findByCompanyId(companyId);
+        List<PerformanceDashboardDTO.EmployeeSummary> allSummaries = new ArrayList<>();
+
+        for (Employee emp : employees) {
+            if (emp.getUser() == null) continue;
+            PerformanceDashboardDTO.EmployeeSummary summary = getEmployeePerformanceSummary(emp.getEmployeeId());
+            if (summary.getOverallScore() != null && summary.getOverallScore().compareTo(BigDecimal.ZERO) > 0) {
+                allSummaries.add(summary);
+            }
+        }
+
+        // Top 5 performers
+        List<PerformanceDashboardDTO.EmployeeSummary> top5 = allSummaries.stream()
+                .filter(s -> s.getOverallScore() != null)
+                .sorted(Comparator.comparing(PerformanceDashboardDTO.EmployeeSummary::getOverallScore).reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+
+        // At-risk: score < 6.5
+        List<PerformanceDashboardDTO.EmployeeSummary> atRisk = allSummaries.stream()
+                .filter(s -> s.getOverallScore() != null && s.getOverallScore().compareTo(new BigDecimal("6.5")) < 0)
+                .sorted(Comparator.comparing(PerformanceDashboardDTO.EmployeeSummary::getOverallScore))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        // Aggregates
+        BigDecimal avgPerf = BigDecimal.ZERO, avgSpeed = BigDecimal.ZERO, avgQual = BigDecimal.ZERO, avgVol = BigDecimal.ZERO;
+        long totalCompleted = 0, totalOverdue = 0, totalReworks = 0;
+
+        if (!allSummaries.isEmpty()) {
+            avgPerf = allSummaries.stream().map(PerformanceDashboardDTO.EmployeeSummary::getOverallScore)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(new BigDecimal(allSummaries.size()), 1, RoundingMode.HALF_UP);
+            avgSpeed = allSummaries.stream().map(PerformanceDashboardDTO.EmployeeSummary::getSpeedScore)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(new BigDecimal(allSummaries.size()), 1, RoundingMode.HALF_UP);
+            avgQual = allSummaries.stream().map(PerformanceDashboardDTO.EmployeeSummary::getQualityScore)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(new BigDecimal(allSummaries.size()), 1, RoundingMode.HALF_UP);
+            avgVol = allSummaries.stream().map(PerformanceDashboardDTO.EmployeeSummary::getVolumeScore)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(new BigDecimal(allSummaries.size()), 1, RoundingMode.HALF_UP);
+            totalCompleted = allSummaries.stream().mapToLong(s -> s.getCompletedTasks() != null ? s.getCompletedTasks() : 0).sum();
+            totalOverdue = allSummaries.stream().mapToLong(s -> s.getOverdueTasks() != null ? s.getOverdueTasks() : 0).sum();
+            totalReworks = allSummaries.stream().mapToLong(s -> s.getReworks() != null ? s.getReworks() : 0).sum();
+        }
+
+        // Performance by project
+        List<PerformanceDashboardDTO.ProjectPerformance> projectPerf = new ArrayList<>();
+
+        return PerformanceDashboardDTO.builder()
+                .totalEmployees(employees.size())
+                .averagePerformance(avgPerf)
+                .averageSpeed(avgSpeed)
+                .averageQuality(avgQual)
+                .averageVolume(avgVol)
+                .totalCompletedTasks(totalCompleted)
+                .totalOverdueTasks(totalOverdue)
+                .totalReworks(totalReworks)
+                .topPerformers(top5)
+                .atRiskEmployees(atRisk)
+                .performanceByProject(projectPerf)
+                .build();
     }
 
     private static class MemberStats {

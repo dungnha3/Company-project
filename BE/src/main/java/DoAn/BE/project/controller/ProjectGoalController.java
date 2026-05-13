@@ -7,6 +7,7 @@ import DoAn.BE.project.repository.ProjectGoalRepository;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.common.exception.ProjectAccessDeniedException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class ProjectGoalController {
     private final ProjectGoalRepository goalRepository;
     private final ProjectMemberRepository memberRepository;
     private final jakarta.persistence.EntityManager entityManager;
+    private final AccessControlService accessControlService;
 
     @GetMapping
     public ResponseEntity<List<ProjectGoalDTO>> getGoals(
@@ -48,6 +50,7 @@ public class ProjectGoalController {
             @RequestBody ProjectGoalDTO request,
             Authentication authentication) {
         validateAccess(projectId, authentication);
+        accessControlService.checkProjectManagePhasesPermission();
         Project project = entityManager.find(Project.class, projectId);
         if (project == null)
             throw new ResourceNotFoundException("Không tìm thấy dự án");
@@ -68,6 +71,7 @@ public class ProjectGoalController {
             @PathVariable Long goalId,
             Authentication authentication) {
         validateAccess(projectId, authentication);
+        accessControlService.checkProjectManagePhasesPermission();
         ProjectGoal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mục tiêu"));
         goal.setIsCompleted(!goal.getIsCompleted());
@@ -81,6 +85,7 @@ public class ProjectGoalController {
             @PathVariable Long goalId,
             Authentication authentication) {
         validateAccess(projectId, authentication);
+        accessControlService.checkProjectManagePhasesPermission();
         goalRepository.deleteById(goalId);
         return ResponseEntity.noContent().build();
     }

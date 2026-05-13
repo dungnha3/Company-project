@@ -14,6 +14,7 @@ import {
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useTimerStore } from '@shared/stores/timerStore';
 import IssueDetailModal from './components/IssueDetailModal';
 import SubmitTaskModal from './components/SubmitTaskModal';
 
@@ -63,6 +64,9 @@ export default function MyIssuesPage() {
     // Rework warning modal state
     const [reworkWarning, setReworkWarning] = useState(null);
     const [pendingMove, setPendingMove] = useState(null);
+    // Track which issues have been penalized in the current backward cycle
+    // to avoid double-penalizing when user drags back to a previous state
+    const [penalizedIssues, setPenalizedIssues] = useState(new Set());
     const queryClient = useQueryClient();
     const { showToast } = useToast();
 
@@ -129,14 +133,14 @@ export default function MyIssuesPage() {
     });
 
     const moveIssueMutation = useMutation({
-        mutationFn: async ({ issueId, targetStatusId }) =>
+        mutationFn: async ({ issueId, targetStatusId, applyPenalty }) =>
             apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(issueId, targetStatusId)),
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries(['myIssues']);
             queryClient.invalidateQueries(['myReportedIssues']);
-            // Check if rework was counted
+            // Only show rework toast if penalty was intentionally applied (not re-penalized)
             const reworkCount = data?.data?.reworkCount;
-            if (reworkCount > 0) {
+            if (reworkCount > 0 && variables.applyPenalty) {
                 showToast(`⚠️ Rework! Đã bị trừ ${reworkCount} lần rework (-${reworkCount * 5}% điểm)`, 'warning', 4000);
             }
         },
@@ -215,24 +219,43 @@ export default function MyIssuesPage() {
 
         // Check if this is a backward move (rework)
         if (isBackwardMove(draggedIssue.statusName, targetStatusName)) {
+            // Only penalize if NOT already penalized in this cycle
+            const alreadyPenalized = penalizedIssues.has(draggedIssue.issueId);
             setReworkWarning({
                 issue: draggedIssue,
                 fromStatus: draggedIssue.statusName,
                 toStatus: targetStatusName,
                 reworkCount: (draggedIssue.reworkCount || 0) + 1,
                 penalty: ((draggedIssue.reworkCount || 0) + 1) * 5,
+                alreadyPenalized,
             });
-            setPendingMove({ issueId: draggedIssue.issueId, targetStatusId });
+            setPendingMove({
+                issueId: draggedIssue.issueId,
+                targetStatusId,
+                applyPenalty: !alreadyPenalized,
+            });
         } else if (targetStatusName === 'Review' && draggedIssue.statusName !== 'Review') {
             // Block direct drag to Review — must use Submit modal for evidence
             setSubmitIssue(draggedIssue);
         } else {
+            // Moving forward — reset penalty flag so next backward move can penalize again
+            if (penalizedIssues.has(draggedIssue.issueId)) {
+                setPenalizedIssues(prev => {
+                    const next = new Set(prev);
+                    next.delete(draggedIssue.issueId);
+                    return next;
+                });
+            }
             moveIssueMutation.mutate({ issueId: draggedIssue.issueId, targetStatusId });
         }
     };
 
     const confirmReworkMove = () => {
         if (!pendingMove) return;
+        // Track that this issue has been penalized so we don't penalize again
+        if (pendingMove.applyPenalty) {
+            setPenalizedIssues(prev => new Set([...prev, pendingMove.issueId]));
+        }
         moveIssueMutation.mutate(pendingMove);
         setReworkWarning(null);
         setPendingMove(null);
@@ -350,8 +373,14 @@ export default function MyIssuesPage() {
                                     <i className="fa-solid fa-triangle-exclamation text-2xl" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold">Cảnh báo Rework!</h3>
-                                    <p className="text-red-100 text-sm">Bạn đang kéo task ngược về</p>
+                                    <h3 className="text-lg font-bold">
+                                        {reworkWarning.alreadyPenalized ? 'Di chuyển ngược' : 'Cảnh báo Rework!'}
+                                    </h3>
+                                    <p className="text-red-100 text-sm">
+                                        {reworkWarning.alreadyPenalized
+                                            ? 'Task này đã bị phạt rework. Quay lại không bị phạt thêm.'
+                                            : 'Bạn đang kéo task ngược về'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -378,36 +407,50 @@ export default function MyIssuesPage() {
                             </div>
 
                             {/* Rework impact */}
-                            <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-4 border border-red-100">
-                                <div className="flex items-start gap-3">
-                                    <i className="fa-solid fa-chart-line text-red-500 text-lg mt-0.5" />
-                                    <div>
-                                        <p className="font-bold text-red-700 text-sm">Ảnh hưởng đến điểm Performance</p>
-                                        <div className="mt-2 space-y-1.5">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-600">Rework lần này:</span>
-                                                <span className="font-bold text-red-600">-5%</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-600">Tổng rework:</span>
-                                                <span className="font-bold text-red-600">{reworkWarning.reworkCount} lần</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-600">Tổng penalty:</span>
-                                                <span className="font-bold text-red-600">-{reworkWarning.penalty}% điểm</span>
-                                            </div>
+                            {reworkWarning.alreadyPenalized ? (
+                                <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+                                    <div className="flex items-start gap-3">
+                                        <i className="fa-solid fa-info-circle text-amber-500 text-lg mt-0.5" />
+                                        <div>
+                                            <p className="font-bold text-amber-700 text-sm">Rework đã được tính trước đó</p>
+                                            <p className="text-amber-600 text-xs mt-1">
+                                                Task này đã bị phạt rework rồi. Quay lại trạng thái cũ <strong>không bị phạt thêm</strong>, nhưng vẫn ghi nhận lịch sử kéo ngược.
+                                            </p>
                                         </div>
-                                        <div className="mt-2 pt-2 border-t border-red-200">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-700 font-medium">Điểm sau penalty:</span>
-                                                <span className="font-bold text-red-700">
-                                                    {Math.max(0, 100 - reworkWarning.penalty)}%
-                                                </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-4 border border-red-100">
+                                    <div className="flex items-start gap-3">
+                                        <i className="fa-solid fa-chart-line text-red-500 text-lg mt-0.5" />
+                                        <div>
+                                            <p className="font-bold text-red-700 text-sm">Ảnh hưởng đến điểm Performance</p>
+                                            <div className="mt-2 space-y-1.5">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Rework lần này:</span>
+                                                    <span className="font-bold text-red-600">-5%</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Tổng rework:</span>
+                                                    <span className="font-bold text-red-600">{reworkWarning.reworkCount} lần</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Tổng penalty:</span>
+                                                    <span className="font-bold text-red-600">-{reworkWarning.penalty}% điểm</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-2 pt-2 border-t border-red-200">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-700 font-medium">Điểm sau penalty:</span>
+                                                    <span className="font-bold text-red-700">
+                                                        {Math.max(0, 100 - reworkWarning.penalty)}%
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Reason input */}
                             <div>
@@ -545,13 +588,119 @@ function DraggableIssueCard({ issue, onClick, onSubmit }) {
     );
 }
 
+// ─── Mini burndown bar for a task card ─────────────────────────────────────────
+// Shows: estimated total | logged marker | remaining portion
+function MiniBurndown({ issue }) {
+    const est = issue.estimatedHours;
+    const log = issue.loggedHours ?? 0;
+    if (!est || est <= 0) return null;
+
+    const progress = Math.min((log / est) * 100, 100);
+    const remaining = Math.max(est - log, 0);
+    const isOver = log > est;
+
+    return (
+        <div className="mt-2 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] text-slate-400 font-medium">Time</span>
+                <span className={`text-[9px] font-bold ${isOver ? 'text-red-500' : 'text-slate-500'}`}>
+                    {log.toFixed(1)}h / {est.toFixed(1)}h
+                </span>
+            </div>
+            {/* Burndown bar */}
+            <div className="relative h-1.5 bg-slate-100 rounded-full overflow-visible">
+                {/* Remaining portion (gray → goes down as logged increases) */}
+                <div
+                    className="absolute right-0 top-0 h-full bg-slate-200 rounded-r-full transition-all"
+                    style={{ width: `${Math.max(100 - progress, 0)}%` }}
+                />
+                {/* Logged portion (indigo → grows from left) */}
+                <div
+                    className={`absolute left-0 top-0 h-full rounded-l-full transition-all ${isOver ? 'bg-red-400' : 'bg-indigo-400'}`}
+                    style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+                {/* Overflow (if over) */}
+                {isOver && (
+                    <div
+                        className="absolute top-0 h-full bg-red-500 rounded-r-full"
+                        style={{ left: '100%', width: `${Math.min(((log - est) / est) * 100, 30)}%` }}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Timer state indicator for a Kanban card ─────────────────────────────────
+// Shows: running (pulsing dot + elapsed), paused (orange badge), completed (green badge)
+function TimerStatusBadge({ issue }) {
+    const { isRunning, issueId: runningIssueId, elapsedSeconds } = useTimerStore();
+
+    const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
+
+    const formatCardTime = (s) => {
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    };
+
+    // Card-level pulsing dot when running
+    if (isRunningThis) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-md shrink-0" title="Timer đang chạy">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                {formatCardTime(elapsedSeconds)}
+            </span>
+        );
+    }
+
+    // Paused: in Review column
+    if (issue.statusName === 'Review') {
+        return (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-md shrink-0" title="Tạm dừng — kéo sang Review">
+                <i className="fa-solid fa-pause text-[8px]" />
+                Tạm dừng
+            </span>
+        );
+    }
+
+    // Completed: in Done column
+    if (issue.statusName === 'Done') {
+        return (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md shrink-0" title="Hoàn thành">
+                <i className="fa-solid fa-circle-check text-[8px]" />
+                Xong
+            </span>
+        );
+    }
+
+    // Not started: in To Do / In Progress (but not the running one)
+    if (issue.statusName === 'In Progress' && !isRunningThis) {
+        return (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md shrink-0" title="Bắt đầu kéo sang In Progress để đếm giờ">
+                <i className="fa-solid fa-play text-[8px]" />
+                Chưa đếm
+            </span>
+        );
+    }
+
+    return null;
+}
+
 // ─── Issue Card ───────────────────────────────────────────────────────────
 function IssueCard({ issue, onClick, onSubmit }) {
+    const { isRunning, issueId: runningIssueId } = useTimerStore();
+
     const isImportant = issue.isImportant;
     const isUrgent = issue.isUrgent;
     const isBoth = isImportant && isUrgent;
     const isOverdue = issue.dueDate && !issue.statusName?.includes('Done') && new Date(issue.dueDate) < new Date();
     const reworkCount = issue.reworkCount || 0;
+
+    // Check if this card's issue is the running timer one
+    const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
 
     const highlightClasses = isBoth
         ? 'border-l-4 border-l-red-500 ring-2 ring-red-200 bg-gradient-to-r from-red-50/80 via-white to-orange-50/60 shadow-md shadow-red-100/50'
@@ -593,13 +742,17 @@ function IssueCard({ issue, onClick, onSubmit }) {
                         {issue.projectName || '—'}
                     </span>
                 </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-                    className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 text-xs"
-                    title="Xem chi tiết"
-                >
-                    <i className="fa-solid fa-expand" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Timer state indicator */}
+                    <TimerStatusBadge issue={issue} />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+                        className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 text-xs"
+                        title="Xem chi tiết"
+                    >
+                        <i className="fa-solid fa-expand" />
+                    </button>
+                </div>
             </div>
 
             {/* Title */}
@@ -625,6 +778,16 @@ function IssueCard({ issue, onClick, onSubmit }) {
                             {new Date(issue.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                         </span>
                     )}
+                    {issue.totalScore != null && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                            Number(issue.totalScore) >= 8 ? 'bg-green-100 text-green-700' :
+                            Number(issue.totalScore) >= 6 ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-600'
+                        }`} title={`Total Score: ${Number(issue.totalScore).toFixed(1)}`}>
+                            <i className="fa-solid fa-chart-simple text-[8px] mr-0.5" />
+                            {Number(issue.totalScore).toFixed(1)}
+                        </span>
+                    )}
                     {reworkCount > 0 && (
                         <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-red-100 text-red-600"
                             title={`Đã bị rework ${reworkCount} lần (-${reworkCount * 5}% điểm)`}>
@@ -645,6 +808,9 @@ function IssueCard({ issue, onClick, onSubmit }) {
                     )}
                 </div>
             </div>
+
+            {/* Mini burndown chart */}
+            <MiniBurndown issue={issue} />
 
             {/* Review SLA + submit action */}
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">

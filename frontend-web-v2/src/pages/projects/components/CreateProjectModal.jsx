@@ -5,8 +5,12 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 
 const STATUS_OPTIONS = [
+    { value: 'ACTIVE', label: 'Đang hoạt động' },
     { value: 'PLANNING', label: 'Lập kế hoạch' },
     { value: 'IN_PROGRESS', label: 'Đang thực hiện' },
+    { value: 'ON_HOLD', label: 'Tạm dừng' },
+    { value: 'COMPLETED', label: 'Hoàn thành' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 
 export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
@@ -17,6 +21,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
         startDate: '',
         endDate: '',
         status: 'PLANNING',
+        budget: '',
     });
     const [memberEmail, setMemberEmail] = useState('');
     const [selectedMembers, setSelectedMembers] = useState([]);
@@ -115,6 +120,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             description: form.description || null,
             startDate: form.startDate || null,
             endDate: form.endDate || null,
+            budget: form.budget ? parseFloat(form.budget) : null,
         };
         createMutation.mutate(payload);
     };
@@ -127,6 +133,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             startDate: '',
             endDate: '',
             status: 'PLANNING',
+            budget: '',
         });
         setMemberEmail('');
         setSelectedMembers([]);
@@ -231,6 +238,21 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                         className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngân sách (VND)</label>
+                                    <input
+                                        type="number"
+                                        name="budget"
+                                        value={form.budget}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        placeholder="0"
+                                        min="0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
                                     <select

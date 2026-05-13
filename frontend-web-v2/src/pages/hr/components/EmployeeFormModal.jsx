@@ -37,6 +37,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                 address: emp.address || '',
                 startDate: emp.hireDate || '',
                 baseSalary: emp.baseSalary || '',
+                allowance: emp.allowance || '',
                 status: emp.status || 'ACTIVE',
             });
             return emp;
@@ -57,6 +58,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                 address: data.address,
                 hireDate: data.startDate,
                 baseSalary: Number(data.baseSalary),
+                allowance: data.allowance ? Number(data.allowance) : 0,
                 status: data.status
             };
 
@@ -223,6 +225,21 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                             </div>
                         </div>
 
+                        <div>
+                            <label className="label">Phụ cấp</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    name="allowance"
+                                    className="input w-full pr-12"
+                                    value={formData.allowance}
+                                    onChange={handleChange}
+                                    placeholder="0"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">VND</span>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -253,5 +270,6 @@ const INITIAL_STATE = {
     address: '',
     startDate: new Date().toISOString().split('T')[0],
     baseSalary: '',
+    allowance: '',
     status: 'ACTIVE'
 };

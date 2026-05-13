@@ -2,6 +2,7 @@ package DoAn.BE.timetracking.controller;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -95,5 +96,20 @@ public class TimeLogController {
         // No permission check needed — any authenticated project member can view total
         // hours
         return ResponseEntity.ok(timeTrackingService.getTotalHoursByIssue(issueId, currentUser));
+    }
+
+    // GET /api/timelogs/summary/my - My timelog summary
+    @GetMapping("/summary/my")
+    public ResponseEntity<Map<String, Object>> getMyTimelogSummary(
+            @AuthenticationPrincipal User currentUser) {
+        accessControlService.checkTimetrackingLogPermission();
+        return ResponseEntity.ok(timeTrackingService.getMyTimelogSummary(currentUser));
+    }
+
+    // GET /api/timelogs/project/{projectId}/summary - Project timelog aggregation
+    @GetMapping("/project/{projectId}/summary")
+    public ResponseEntity<Map<String, Object>> getProjectTimelogSummary(
+            @PathVariable Long projectId) {
+        return ResponseEntity.ok(timeTrackingService.getProjectTimelogSummary(projectId));
     }
 }

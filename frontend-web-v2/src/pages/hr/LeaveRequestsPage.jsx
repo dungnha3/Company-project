@@ -6,12 +6,24 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { formatDate } from '@shared/utils/formatters';
+import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 export default function LeaveRequestsPage() {
     const { hasPermission } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('my-requests');
     const [showCreateModal, setShowCreateModal] = useState(false);
+
+    // Fetch pending count for tab badge
+    const { data: pendingData } = useQuery({
+        queryKey: ['pending-leave-count'],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.PENDING, { params: { size: 1 } });
+            return res.data?.totalElements || res.data?.content?.length || 0;
+        },
+        refetchInterval: 30_000,
+    });
+
+    const pendingCount = (typeof pendingData === 'number') ? pendingData : 0;
 
     return (
         <div className="space-y-6">
@@ -61,7 +73,10 @@ export default function LeaveRequestsPage() {
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending-approval' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                         >
                             <i className="fa-solid fa-gavel mr-2" />
-                            Cần duyệt <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">!</span>
+                            Cần duyệt
+                            {pendingCount > 0 && (
+                                <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">{pendingCount}</span>
+                            )}
                         </button>
                     )}
                 </nav>
@@ -71,7 +86,7 @@ export default function LeaveRequestsPage() {
             <div className="min-h-[400px]">
                 {activeTab === 'my-requests' && <MyLeaveRequests />}
                 {activeTab === 'calendar' && <LeaveCalendar />}
-                {activeTab === 'pending-approval' && <PendingLeaveRequests />}
+                {activeTab === 'pending-approval' && hasPermission('leaveApprove') && <PendingLeaveRequests />}
             </div>
 
             {showCreateModal && (
@@ -84,115 +99,320 @@ export default function LeaveRequestsPage() {
     );
 }
 
+// ─── My Leave Requests ───────────────────────────────────────────────────────
+
+const LEAVE_TYPE_LABELS = {
+    ANNUAL: { label: 'Nghỉ phép năm', color: 'bg-indigo-100 text-indigo-700', icon: 'fa-umbrella-beach' },
+    SICK: { label: 'Nghỉ ốm', color: 'bg-red-100 text-red-700', icon: 'fa-head-side-virus' },
+    UNPAID: { label: 'Nghỉ không lương', color: 'bg-gray-100 text-gray-700', icon: 'fa-clock' },
+    MATERNITY: { label: 'Thai sản', color: 'bg-pink-100 text-pink-700', icon: 'fa-baby' },
+    OTHER: { label: 'Khác', color: 'bg-purple-100 text-purple-700', icon: 'fa-ellipsis-h' },
+};
+
+function LeaveTypeBadge({ type }) {
+    const cfg = LEAVE_TYPE_LABELS[type] || LEAVE_TYPE_LABELS.OTHER;
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${cfg.color}`}>
+            <i className={`fa-solid ${cfg.icon} text-[10px]`} />
+            {cfg.label}
+        </span>
+    );
+}
+
+function StatusBadge({ status }) {
+    const styles = {
+        PENDING: { bg: 'bg-yellow-50 border-yellow-200 text-yellow-700', label: 'Chờ duyệt', icon: 'fa-clock' },
+        APPROVED: { bg: 'bg-green-50 border-green-200 text-green-700', label: 'Đã duyệt', icon: 'fa-check-circle' },
+        REJECTED: { bg: 'bg-red-50 border-red-200 text-red-700', label: 'Từ chối', icon: 'fa-xmark-circle' },
+    };
+    const s = styles[status] || styles.PENDING;
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${s.bg}`}>
+            <i className={`fa-solid ${s.icon} text-[10px]`} />
+            {s.label}
+        </span>
+    );
+}
+
 function MyLeaveRequests() {
-    const { data: requests, isLoading } = useQuery({
+    const queryClient = useQueryClient();
+    const { showToast } = useToast();
+    const [detailModal, setDetailModal] = useState(null);
+
+    const { data: requests = [], isLoading } = useQuery({
         queryKey: ['my-leave-requests'],
         queryFn: async () => {
-            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_REQUESTS);
-            return response.data?.content || response.data || [];
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, {
+                params: { size: 100, sort: 'createdAt,desc' }
+            });
+            return res.data?.content || res.data || [];
         },
+    });
+
+    // Fetch leave balance
+    const { data: balance } = useQuery({
+        queryKey: ['leave-balance'],
+        queryFn: async () => {
+            const res = await apiClient.get('/api/leave-requests/me/balance');
+            return res.data;
+        },
+    });
+
+    const remaining = balance?.remainingDays ?? null;
+    const used = balance?.usedDays ?? null;
+    const total = balance?.totalDays ?? 12;
+    const pct = remaining != null ? Math.round((remaining / total) * 100) : null;
+    const pending = requests.filter(r => r.status === 'PENDING').length;
+    const approved = requests.filter(r => r.status === 'APPROVED').length;
+    const rejected = requests.filter(r => r.status === 'REJECTED').length;
+
+    const cancelMutation = useMutation({
+        mutationFn: (id) => apiClient.delete(ENDPOINTS.LEAVE_REQUESTS.BY_ID(id)),
+        onSuccess: () => {
+            showToast('Đã xóa đơn nghỉ phép', 'success');
+            queryClient.invalidateQueries(['my-leave-requests']);
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Không thể xóa đơn', 'error'),
     });
 
     const columns = [
         {
             header: 'Loại nghỉ',
-            accessorKey: 'type',
-            cell: (row) => <span className="font-medium">{row.leaveType || row.type}</span>
+            accessorKey: 'leaveType',
+            cell: (row) => <LeaveTypeBadge type={row.leaveType || row.type} />
         },
         {
-            header: 'Từ ngày',
-            accessorKey: 'startDate',
-            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatDate(row.startDate)}</span>
-        },
-        {
-            header: 'Đến ngày',
-            accessorKey: 'endDate',
-            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{formatDate(row.endDate)}</span>
+            header: 'Thời gian',
+            accessorKey: 'dateRange',
+            cell: (row) => (
+                <div className="flex flex-col">
+                    <span className="text-xs text-gray-600">{formatDate(row.startDate)} → {formatDate(row.endDate)}</span>
+                    <span className="text-[10px] text-gray-400">{row.totalDays} ngày</span>
+                </div>
+            )
         },
         {
             header: 'Lý do',
             accessorKey: 'reason',
-            cell: (row) => <span className="truncate max-w-xs block text-gray-500">{row.reason}</span>
+            cell: (row) => (
+                <span className="truncate max-w-[200px] block text-gray-500 text-xs" title={row.reason}>
+                    {row.reason || '—'}
+                </span>
+            )
+        },
+        {
+            header: 'Dự án',
+            accessorKey: 'projectName',
+            cell: (row) => (
+                <span className="text-xs text-gray-500 truncate max-w-[120px] block">
+                    {row.projectName || '—'}
+                </span>
+            )
         },
         {
             header: 'Trạng thái',
             accessorKey: 'status',
             cell: (row) => <StatusBadge status={row.status} />
-        }
+        },
+        {
+            header: 'Ngày tạo',
+            accessorKey: 'createdAt',
+            cell: (row) => (
+                <span className="text-xs text-gray-400">{formatDate(row.createdAt)}</span>
+            )
+        },
+        {
+            header: '',
+            accessorKey: 'actions',
+            cell: (row) => (
+                <div className="flex items-center gap-2 justify-end">
+                    <button
+                        onClick={() => setDetailModal(row)}
+                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                        title="Chi tiết"
+                    >
+                        <i className="fa-solid fa-eye text-sm" />
+                    </button>
+                    {row.status === 'PENDING' && (
+                        <button
+                            onClick={() => {
+                                if (confirm('Hủy đơn nghỉ phép này?')) {
+                                    cancelMutation.mutate(row.leaveRequestId);
+                                }
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            title="Hủy đơn"
+                        >
+                            <i className="fa-solid fa-trash text-sm" />
+                        </button>
+                    )}
+                </div>
+            )
+        },
     ];
 
-    return <DataTable columns={columns} data={requests || []} loading={isLoading} />;
+    return (
+        <div className="space-y-4">
+            {/* Leave Balance Card */}
+            {remaining != null && (
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                            <i className="fa-solid fa-umbrella-beach text-white text-2xl" />
+                        </div>
+                        <div>
+                            <p className="text-indigo-100 text-sm font-medium">Phép năm {new Date().getFullYear()}</p>
+                            <p className="text-white text-3xl font-black">{remaining} <span className="text-lg font-normal opacity-70">/{total} ngày</span></p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-indigo-100 text-sm">Đã dùng</p>
+                        <p className="text-white text-2xl font-bold">{used}</p>
+                        <div className="w-32 bg-white/20 rounded-full h-2 mt-2 overflow-hidden">
+                            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center">
+                        <i className="fa-solid fa-clock text-yellow-500" />
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-gray-900">{pending}</p>
+                        <p className="text-xs text-gray-500">Chờ duyệt</p>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+                        <i className="fa-solid fa-check-circle text-green-500" />
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-gray-900">{approved}</p>
+                        <p className="text-xs text-gray-500">Đã duyệt</p>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                        <i className="fa-solid fa-xmark-circle text-red-500" />
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-gray-900">{rejected}</p>
+                        <p className="text-xs text-gray-500">Từ chối</p>
+                    </div>
+                </div>
+            </div>
+
+            <DataTable columns={columns} data={requests} loading={isLoading} />
+
+            {detailModal && (
+                <LeaveDetailModal
+                    request={detailModal}
+                    onClose={() => setDetailModal(null)}
+                />
+            )}
+        </div>
+    );
 }
+
+// ─── Pending Approval ────────────────────────────────────────────────────────
 
 function PendingLeaveRequests() {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
+    const [approvalModal, setApprovalModal] = useState(null); // { id, action, name }
+    const [detailModal, setDetailModal] = useState(null);
 
     const { data: requests, isLoading } = useQuery({
         queryKey: ['pending-leave-requests'],
         queryFn: async () => {
-            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
-            return response.data?.content || response.data || [];
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.PENDING, {
+                params: { size: 100 }
+            });
+            return res.data?.content || res.data || [];
         },
     });
 
     const approveMutation = useMutation({
-        mutationFn: (id) => apiClient.patch(ENDPOINTS.LEAVE_REQUESTS.APPROVE(id), { note: '' }),
+        mutationFn: ({ id, note }) => apiClient.patch(ENDPOINTS.LEAVE_REQUESTS.APPROVE(id), { note }),
         onSuccess: () => {
             showToast('Đã duyệt đơn', 'success');
             queryClient.invalidateQueries(['pending-leave-requests']);
-        }
+            setApprovalModal(null);
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Lỗi duyệt', 'error'),
     });
 
     const rejectMutation = useMutation({
-        mutationFn: ({ id, reason }) => apiClient.patch(ENDPOINTS.LEAVE_REQUESTS.REJECT(id), { note: reason || '' }),
+        mutationFn: ({ id, note }) => apiClient.patch(ENDPOINTS.LEAVE_REQUESTS.REJECT(id), { note }),
         onSuccess: () => {
             showToast('Đã từ chối đơn', 'success');
             queryClient.invalidateQueries(['pending-leave-requests']);
-        }
+            setApprovalModal(null);
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Lỗi từ chối', 'error'),
     });
 
-    const handleAction = (id, action) => {
-        if (action === 'approve') approveMutation.mutate(id);
-        if (action === 'reject') rejectMutation.mutate(id);
-    };
-
-    // Batch actions
     const data = Array.isArray(requests) ? requests : requests?.content || [];
 
     const handleSelectAll = () => {
-        if (selectedIds.size === data.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(data.map(r => r.leaveRequestId || r.id)));
-        }
+        if (selectedIds.size === data.length) setSelectedIds(new Set());
+        else setSelectedIds(new Set(data.map(r => r.leaveRequestId)));
     };
 
     const handleSelectOne = (id) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedIds(newSet);
+        const ns = new Set(selectedIds);
+        ns.has(id) ? ns.delete(id) : ns.add(id);
+        setSelectedIds(ns);
+    };
+
+    const openApprovalModal = (row, action) => {
+        setApprovalModal({
+            id: row.leaveRequestId,
+            action,
+            name: row.employee?.fullName || 'Nhân viên',
+            type: row.leaveType,
+            days: row.totalDays,
+            startDate: row.startDate,
+            endDate: row.endDate,
+            reason: row.reason,
+        });
+    };
+
+    const handleConfirmApproval = (note) => {
+        if (!approvalModal) return;
+        if (approvalModal.action === 'approve') {
+            approveMutation.mutate({ id: approvalModal.id, note });
+        } else {
+            if (!note && approvalModal.action === 'reject') {
+                showToast('Vui lòng nhập lý do từ chối', 'error');
+                return;
+            }
+            rejectMutation.mutate({ id: approvalModal.id, note });
+        }
     };
 
     const handleBatchApprove = () => {
-        if (!confirm(`Duyệt tất cả ${selectedIds.size} đơn đã chọn?`)) return;
-        selectedIds.forEach(id => approveMutation.mutate(id));
+        if (!confirm(`Duyệt tất cả ${selectedIds.size} đơn?`)) return;
+        selectedIds.forEach(id => approveMutation.mutate({ id, note: '' }));
         setSelectedIds(new Set());
     };
 
     const handleBatchReject = () => {
-        if (!confirm(`Từ chối tất cả ${selectedIds.size} đơn đã chọn?`)) return;
-        selectedIds.forEach(id => rejectMutation.mutate(id));
+        const reason = window.prompt(`Từ chối ${selectedIds.size} đơn — nhập lý do chung (tùy chọn):`);
+        if (reason === null) return;
+        selectedIds.forEach(id => rejectMutation.mutate({ id, note: reason }));
         setSelectedIds(new Set());
     };
 
     const columns = [
         {
             header: () => (
-                <input
-                    type="checkbox"
+                <input type="checkbox"
                     checked={selectedIds.size > 0 && selectedIds.size === data.length}
                     onChange={handleSelectAll}
                     className="w-4 h-4 rounded border-gray-300 text-indigo-600"
@@ -200,10 +420,9 @@ function PendingLeaveRequests() {
             ),
             accessorKey: 'select',
             cell: (row) => (
-                <input
-                    type="checkbox"
-                    checked={selectedIds.has(row.leaveRequestId || row.id)}
-                    onChange={() => handleSelectOne(row.leaveRequestId || row.id)}
+                <input type="checkbox"
+                    checked={selectedIds.has(row.leaveRequestId)}
+                    onChange={() => handleSelectOne(row.leaveRequestId)}
                     onClick={(e) => e.stopPropagation()}
                     className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                 />
@@ -211,23 +430,41 @@ function PendingLeaveRequests() {
         },
         {
             header: 'Nhân viên',
-            accessorKey: 'employeeName',
+            accessorKey: 'employee',
             cell: (row) => (
-                <div>
-                    <div className="font-semibold">{row.employee?.fullName}</div>
-                    <div className="text-xs text-gray-500">{row.employee?.employeeId}</div>
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                        {(row.employee?.fullName || '?')[0].toUpperCase()}
+                    </div>
+                    <div>
+                        <div className="font-semibold text-sm">{row.employee?.fullName}</div>
+                    </div>
                 </div>
             )
         },
         {
             header: 'Loại nghỉ',
-            accessorKey: 'type',
-            cell: (row) => <span className="font-medium">{row.leaveType || row.type}</span>
+            accessorKey: 'leaveType',
+            cell: (row) => <LeaveTypeBadge type={row.leaveType || row.type} />
         },
         {
             header: 'Thời gian',
             accessorKey: 'dateRange',
-            cell: (row) => <span className="text-gray-600 text-xs">{formatDate(row.startDate)} - {formatDate(row.endDate)}</span>
+            cell: (row) => (
+                <div className="flex flex-col">
+                    <span className="text-xs font-medium">{formatDate(row.startDate)} → {formatDate(row.endDate)}</span>
+                    <span className="text-[10px] text-gray-400">{row.totalDays} ngày</span>
+                </div>
+            )
+        },
+        {
+            header: 'Lý do',
+            accessorKey: 'reason',
+            cell: (row) => (
+                <span className="truncate max-w-[150px] block text-xs text-gray-500" title={row.reason}>
+                    {row.reason || '—'}
+                </span>
+            )
         },
         {
             header: 'Trạng thái',
@@ -238,60 +475,281 @@ function PendingLeaveRequests() {
             header: 'Thao tác',
             accessorKey: 'actions',
             cell: (row) => (
-                <div className="flex gap-2">
+                <div className="flex items-center gap-1.5">
                     <button
-                        onClick={() => handleAction(row.leaveRequestId || row.id, 'approve')}
-                        className="btn-xs bg-green-100 text-green-700 hover:bg-green-200 rounded px-2 py-1"
-                        title="Duyệt"
+                        onClick={() => setDetailModal(row)}
+                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                        title="Chi tiết"
                     >
-                        <i className="fa-solid fa-check" />
+                        <i className="fa-solid fa-eye text-sm" />
                     </button>
                     <button
-                        onClick={() => handleAction(row.leaveRequestId || row.id, 'reject')}
-                        className="btn-xs bg-red-100 text-red-700 hover:bg-red-200 rounded px-2 py-1"
+                        onClick={() => openApprovalModal(row, 'approve')}
+                        className="p-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-md transition-colors"
+                        title="Duyệt"
+                    >
+                        <i className="fa-solid fa-check text-sm" />
+                    </button>
+                    <button
+                        onClick={() => openApprovalModal(row, 'reject')}
+                        className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors"
                         title="Từ chối"
                     >
-                        <i className="fa-solid fa-xmark" />
+                        <i className="fa-solid fa-xmark text-sm" />
                     </button>
                 </div>
             )
-        }
+        },
     ];
 
     return (
         <div className="space-y-4">
-            {/* Batch Action Bar */}
             {selectedIds.size > 0 && (
                 <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
                     <span className="text-indigo-700 font-medium">
                         Đã chọn {selectedIds.size} đơn
                     </span>
                     <div className="flex gap-2">
-                        <button
-                            onClick={handleBatchApprove}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm"
-                        >
+                        <button onClick={handleBatchApprove}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm">
                             <i className="fa-solid fa-check mr-1" /> Duyệt tất cả
                         </button>
-                        <button
-                            onClick={handleBatchReject}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm"
-                        >
+                        <button onClick={handleBatchReject}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm">
                             <i className="fa-solid fa-xmark mr-1" /> Từ chối tất cả
                         </button>
-                        <button
-                            onClick={() => setSelectedIds(new Set())}
-                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-medium text-sm"
-                        >
+                        <button onClick={() => setSelectedIds(new Set())}
+                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-medium text-sm">
                             Bỏ chọn
                         </button>
                     </div>
                 </div>
             )}
+
+            {data.length === 0 && !isLoading && (
+                <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm">
+                    <i className="fa-solid fa-inbox text-4xl text-gray-300 mb-4" />
+                    <p className="text-gray-500 font-medium">Không có đơn nào cần duyệt</p>
+                    <p className="text-sm text-gray-400 mt-1">Tất cả đơn đều đã được xử lý</p>
+                </div>
+            )}
+
             <DataTable columns={columns} data={data} loading={isLoading} />
+
+            {/* Approval Modal */}
+            {approvalModal && (
+                <ApprovalModal
+                    modal={approvalModal}
+                    onClose={() => setApprovalModal(null)}
+                    onConfirm={handleConfirmApproval}
+                    isLoading={approveMutation.isPending || rejectMutation.isPending}
+                />
+            )}
+
+            {detailModal && (
+                <LeaveDetailModal
+                    request={detailModal}
+                    onClose={() => setDetailModal(null)}
+                />
+            )}
         </div>
     );
 }
+
+function ApprovalModal({ modal, onClose, onConfirm, isLoading }) {
+    const [note, setNote] = useState('');
+    const isReject = modal.action === 'reject';
+    const isApprove = modal.action === 'approve';
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className={`flex items-center gap-3 px-6 py-4 rounded-t-2xl ${isApprove ? 'bg-green-600' : 'bg-red-600'}`}>
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <i className={`fa-solid ${isApprove ? 'fa-check' : 'fa-xmark'} text-white`} />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-white">
+                            {isApprove ? 'Duyệt đơn nghỉ phép' : 'Từ chối đơn nghỉ phép'}
+                        </h2>
+                        <p className="text-white/80 text-sm">{modal.name}</p>
+                    </div>
+                    <button onClick={onClose} className="ml-auto text-white/70 hover:text-white">
+                        <i className="fa-solid fa-times text-lg" />
+                    </button>
+                </div>
+
+                {/* Info */}
+                <div className="px-6 py-4 space-y-3 border-b border-gray-100">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span className="text-gray-500 text-xs">Loại nghỉ</span>
+                            <p className="font-medium"><LeaveTypeBadge type={modal.type} /></p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 text-xs">Số ngày</span>
+                            <p className="font-medium">{modal.days} ngày</p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 text-xs">Từ ngày</span>
+                            <p className="font-medium">{formatDate(modal.startDate)}</p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 text-xs">Đến ngày</span>
+                            <p className="font-medium">{formatDate(modal.endDate)}</p>
+                        </div>
+                    </div>
+                    {modal.reason && (
+                        <div>
+                            <span className="text-gray-500 text-xs">Lý do</span>
+                            <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{modal.reason}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Note */}
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {isReject ? 'Lý do từ chối' : 'Ghi chú (tùy chọn)'}
+                            {isReject && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        <textarea
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none"
+                            rows={isReject ? 3 : 2}
+                            placeholder={isReject ? 'Nhập lý do từ chối...' : 'Ghi chú khi duyệt (tùy chọn)...'}
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            onClick={() => onConfirm(note)}
+                            disabled={isReject && !note.trim() || isLoading}
+                            className={`flex-1 px-4 py-2.5 text-white rounded-lg transition-colors disabled:opacity-50
+                                ${isApprove ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                        >
+                            {isLoading ? (
+                                <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang xử lý...</>
+                            ) : (
+                                <>{isApprove ? 'Duyệt đơn' : 'Từ chối'}</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Leave Detail Modal ────────────────────────────────────────────────────
+
+function LeaveDetailModal({ request, onClose }) {
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 rounded-t-2xl">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                            {(request.employee?.fullName || '?')[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">{request.employee?.fullName || '—'}</h2>
+                            <p className="text-xs text-gray-500">Chi tiết đơn nghỉ phép</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <StatusBadge status={request.status} />
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                            <i className="fa-solid fa-times text-lg" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <span className="text-xs text-gray-500">Loại nghỉ</span>
+                            <div className="mt-1"><LeaveTypeBadge type={request.leaveType || request.type} /></div>
+                        </div>
+                        <div>
+                            <span className="text-xs text-gray-500">Số ngày nghỉ</span>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">{request.totalDays} ngày</p>
+                        </div>
+                        <div>
+                            <span className="text-xs text-gray-500">Từ ngày</span>
+                            <p className="mt-1 text-sm font-medium text-gray-900">{formatDate(request.startDate)}</p>
+                        </div>
+                        <div>
+                            <span className="text-xs text-gray-500">Đến ngày</span>
+                            <p className="mt-1 text-sm font-medium text-gray-900">{formatDate(request.endDate)}</p>
+                        </div>
+                        {request.projectName && (
+                            <div>
+                                <span className="text-xs text-gray-500">Dự án liên quan</span>
+                                <p className="mt-1 text-sm font-medium text-gray-900">{request.projectName}</p>
+                            </div>
+                        )}
+                        <div>
+                            <span className="text-xs text-gray-500">Ngày tạo</span>
+                            <p className="mt-1 text-sm text-gray-900">{formatDateTime(request.createdAt)}</p>
+                        </div>
+                    </div>
+
+                    {request.reason && (
+                        <div>
+                            <span className="text-xs text-gray-500">Lý do</span>
+                            <p className="mt-1 text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{request.reason}</p>
+                        </div>
+                    )}
+
+                    {(request.approverName || request.approvalNote) && (
+                        <div className="bg-green-50 border border-green-100 rounded-lg p-4 space-y-2">
+                            <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide">Kết quả phê duyệt</h4>
+                            {request.approverName && (
+                                <div className="flex items-center gap-2">
+                                    <i className="fa-solid fa-user-check text-green-500 text-sm" />
+                                    <span className="text-sm text-gray-700">Bởi <strong>{request.approverName}</strong></span>
+                                </div>
+                            )}
+                            {request.approvedAt && (
+                                <div className="flex items-center gap-2">
+                                    <i className="fa-solid fa-calendar-check text-green-500 text-sm" />
+                                    <span className="text-xs text-gray-500">{formatDateTime(request.approvedAt)}</span>
+                                </div>
+                            )}
+                            {request.approvalNote && (
+                                <div className="flex items-start gap-2">
+                                    <i className="fa-solid fa-comment text-green-500 text-sm mt-0.5" />
+                                    <span className="text-sm text-gray-700">"{request.approvalNote}"</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Create Leave Modal ────────────────────────────────────────────────────
 
 function CreateLeaveModal({ isOpen, onClose }) {
     const queryClient = useQueryClient();
@@ -307,17 +765,37 @@ function CreateLeaveModal({ isOpen, onClose }) {
         onError: (err) => showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
     });
 
+    // Fetch user's projects
+    const { data: projects = [] } = useQuery({
+        queryKey: ['my-projects-leave'],
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS)).data;
+            return Array.isArray(res) ? res : (res?.content || []);
+        },
+        enabled: isOpen,
+    });
+
+    // Fetch leave balance
+    const { data: balance } = useQuery({
+        queryKey: ['leave-balance'],
+        queryFn: async () => {
+            const res = await apiClient.get('/api/leave-requests/me/balance');
+            return res.data;
+        },
+        enabled: isOpen,
+    });
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = {
-            leaveType: formData.get('leaveType'),
-            startDate: formData.get('startDate'),
-            endDate: formData.get('endDate'),
-            reason: formData.get('reason'),
-            projectName: formData.get('projectName') || null,
-        };
-        mutation.mutate(data);
+        const fd = new FormData(e.target);
+        mutation.mutate({
+            leaveType: fd.get('leaveType'),
+            startDate: fd.get('startDate'),
+            endDate: fd.get('endDate'),
+            reason: fd.get('reason'),
+            projectId: fd.get('projectId') ? Number(fd.get('projectId')) : null,
+            projectName: projects.find(p => String(p.projectId) === fd.get('projectId'))?.name || null,
+        });
     };
 
     if (!isOpen) return null;
@@ -329,17 +807,25 @@ function CreateLeaveModal({ isOpen, onClose }) {
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                         <h2 className="text-lg font-bold text-gray-800">Tạo đơn xin nghỉ</h2>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng"><i className="fa-solid fa-xmark" /></button>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                            <i className="fa-solid fa-xmark text-xl" />
+                        </button>
                     </div>
 
                     <div className="p-6 space-y-4">
+                        {balance && balance.remainingDays != null && (
+                            <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-3 rounded-lg text-sm flex items-center gap-2 font-medium">
+                                <i className="fa-solid fa-umbrella-beach" />
+                                <span>Số ngày phép năm còn lại: <strong>{balance.remainingDays}</strong> / {balance.totalDays || 12} ngày</span>
+                            </div>
+                        )}
                         <div>
                             <label className="label-required">Loại nghỉ</label>
                             <select name="leaveType" className="input w-full" required>
                                 <option value="ANNUAL">Nghỉ phép năm</option>
                                 <option value="SICK">Nghỉ ốm</option>
                                 <option value="UNPAID">Nghỉ không lương</option>
-
+                                <option value="MATERNITY">Thai sản</option>
                                 <option value="OTHER">Khác</option>
                             </select>
                         </div>
@@ -355,11 +841,16 @@ function CreateLeaveModal({ isOpen, onClose }) {
                         </div>
                         <div>
                             <label className="label-required">Lý do</label>
-                            <textarea name="reason" className="input w-full" rows="3" required placeholder="Nhập lý do nghỉ..."></textarea>
+                            <textarea name="reason" className="input w-full" rows="3" required placeholder="Nhập lý do nghỉ..." />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Dự án liên quan (tùy chọn)</label>
-                            <input type="text" name="projectName" className="input w-full" placeholder="Tên dự án sẽ bị ảnh hưởng..." />
+                            <select name="projectId" className="input w-full">
+                                <option value="">-- Không chọn --</option>
+                                {projects.map(p => (
+                                    <option key={p.projectId} value={p.projectId}>{p.name}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -375,15 +866,7 @@ function CreateLeaveModal({ isOpen, onClose }) {
     );
 }
 
-function StatusBadge({ status }) {
-    const styles = {
-        PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Chờ duyệt' },
-        APPROVED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đã duyệt' },
-        REJECTED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Từ chối' },
-    };
-    const s = styles[status] || styles.PENDING;
-    return <span className={`badge ${s.bg} ${s.text}`}>{s.label}</span>;
-}
+// ─── Leave Calendar ──────────────────────────────────────────────────────────
 
 function LeaveCalendar() {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -393,7 +876,6 @@ function LeaveCalendar() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    // Fetch approved leaves via team-calendar endpoint with date range
     const { data: leaveRequests = [] } = useQuery({
         queryKey: ['leave-calendar', month, year],
         queryFn: async () => {
@@ -407,8 +889,6 @@ function LeaveCalendar() {
         staleTime: 60_000,
     });
 
-    const days = [];
-    // Build leave map by date range
     const leaveDays = {};
     leaveRequests.forEach(req => {
         const start = new Date(req.startDate);
@@ -422,19 +902,16 @@ function LeaveCalendar() {
 
     const startPadding = firstDay.getDay();
     const daysInMonth = lastDay.getDate();
+    const days = [
+        ...Array(startPadding).fill(null),
+        ...Array.from({ length: daysInMonth }, (_, i) => {
+            const d = new Date(year, month, i + 1);
+            return { day: i + 1, date: d, leaves: leaveDays[d.toDateString()] || [] };
+        }),
+    ];
 
-    for (let i = 0; i < startPadding; i++) {
-        days.push({ day: null });
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(year, month, d);
-        days.push({ day: d, date, leaves: leaveDays[date.toDateString()] || [] });
-    }
-
-    const goToPrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
-    const goToNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
-
-    const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const goToPrev = () => setCurrentMonth(new Date(year, month - 1, 1));
+    const goToNext = () => setCurrentMonth(new Date(year, month + 1, 1));
 
     const LEAVE_COLORS = {
         ANNUAL: 'bg-indigo-100 text-indigo-700 border-indigo-200',
@@ -446,66 +923,52 @@ function LeaveCalendar() {
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
-            {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <button onClick={goToPrevMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+                    <button onClick={goToPrev} className="p-2 hover:bg-gray-100 rounded-lg">
                         <i className="fa-solid fa-chevron-left text-gray-500" />
                     </button>
                     <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
                         {formatDate(currentMonth, { month: 'long', year: 'numeric' })}
                     </h3>
-                    <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+                    <button onClick={goToNext} className="p-2 hover:bg-gray-100 rounded-lg">
                         <i className="fa-solid fa-chevron-right text-gray-500" />
                     </button>
                 </div>
             </div>
 
-            {/* Weekdays */}
             <div className="grid grid-cols-7 mb-2">
-                {WEEKDAYS.map(day => (
-                    <div key={day} className="text-center text-xs font-semibold text-gray-400 py-2">
-                        {day}
-                    </div>
+                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(day => (
+                    <div key={day} className="text-center text-xs font-semibold text-gray-400 py-2">{day}</div>
                 ))}
             </div>
 
-            {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-1">
-                {days.map((item, idx) => {
-                    if (!item.day) {
-                        return <div key={idx} className="h-24 bg-gray-50 rounded-lg" />;
-                    }
-
+                {/* Empty cells for padding */}
+                {Array(startPadding).fill(null).map((_, i) => (
+                    <div key={`pad-${i}`} className="h-24 bg-gray-50 rounded-lg" />
+                ))}
+                {days.slice(startPadding).map((item) => {
                     const isToday = item.date.toDateString() === new Date().toDateString();
                     const isWeekend = item.date.getDay() === 0 || item.date.getDay() === 6;
-
                     return (
-                        <div
-                            key={idx}
-                            className={`
-                                h-24 p-2 rounded-lg border transition-all overflow-hidden
+                        <div key={item.day}
+                            className={`h-24 p-2 rounded-lg border transition-all overflow-hidden
                                 ${isWeekend ? 'bg-gray-50' : 'bg-white'}
-                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}
-                            `}
-                        >
+                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}`}>
                             <div className={`text-sm font-medium mb-1 ${isToday ? 'text-indigo-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
                                 {item.day}
                             </div>
                             <div className="space-y-0.5">
                                 {item.leaves.slice(0, 2).map((leave, i) => (
-                                    <div
-                                        key={i}
-                                        className={`text-xs px-1.5 py-0.5 rounded truncate border ${LEAVE_COLORS[leave.leaveType || leave.type] || LEAVE_COLORS.OTHER}`}
-                                        title={`${leave.employee?.fullName || 'User'} - ${leave.leaveType || leave.type}`}
-                                    >
+                                    <div key={i}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded truncate border ${LEAVE_COLORS[leave.leaveType || leave.type] || LEAVE_COLORS.OTHER}`}
+                                        title={`${leave.employee?.fullName || 'User'} - ${leave.leaveType || leave.type}`}>
                                         {leave.employee?.fullName?.split(' ').pop() || 'User'}
                                     </div>
                                 ))}
                                 {item.leaves.length > 2 && (
-                                    <div className="text-xs text-gray-400 px-1">
-                                        +{item.leaves.length - 2} khác
-                                    </div>
+                                    <div className="text-[10px] text-gray-400 px-1">+{item.leaves.length - 2}</div>
                                 )}
                             </div>
                         </div>
@@ -513,24 +976,18 @@ function LeaveCalendar() {
                 })}
             </div>
 
-            {/* Legend */}
             <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 rounded bg-indigo-100 border border-indigo-200" />
-                    <span className="text-gray-600 dark:text-gray-400">Nghỉ phép</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
-                    <span className="text-gray-600 dark:text-gray-400">Nghỉ ốm</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200" />
-                    <span className="text-gray-600 dark:text-gray-400">Không lương</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <div className="w-4 h-4 rounded bg-pink-100 border border-pink-200" />
-                    <span className="text-gray-600 dark:text-gray-400">Thai sản</span>
-                </div>
+                {Object.entries({
+                    'Nghỉ phép': 'bg-indigo-100 border-indigo-200 text-indigo-700',
+                    'Nghỉ ốm': 'bg-red-100 border-red-200 text-red-700',
+                    'Không lương': 'bg-gray-100 border-gray-200 text-gray-700',
+                    'Thai sản': 'bg-pink-100 border-pink-200 text-pink-700',
+                }).map(([label, cls]) => (
+                    <div key={label} className="flex items-center gap-2 text-sm">
+                        <div className={`w-4 h-4 rounded border ${cls}`} />
+                        <span className="text-gray-600 dark:text-gray-400">{label}</span>
+                    </div>
+                ))}
             </div>
         </div>
     );

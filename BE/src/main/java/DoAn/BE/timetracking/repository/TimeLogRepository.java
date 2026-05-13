@@ -54,4 +54,11 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
     java.math.BigDecimal sumHoursByUserAndProject(
             @Param("userId") Long userId,
             @Param("projectId") Long projectId);
+
+    // Sum all hours for a user in a company
+    @Query("SELECT COALESCE(SUM(t.loggedHours), 0) FROM TimeLog t " +
+            "WHERE t.user.userId = :userId AND t.company.companyId = :companyId")
+    java.math.BigDecimal sumHoursByUser(
+            @Param("userId") Long userId,
+            @Param("companyId") Long companyId);
 }

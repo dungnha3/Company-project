@@ -85,6 +85,9 @@ public class Employee extends TenantScopedEntity {
     @Column(name = "allowance", precision = 15, scale = 2)
     private BigDecimal allowance = BigDecimal.ZERO;
 
+    @Column(name = "leave_balance")
+    private Integer leaveBalance = 12;
+
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<LeaveRequest> leaveRequests;

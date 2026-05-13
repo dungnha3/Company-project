@@ -225,6 +225,7 @@ export const ENDPOINTS = {
         SUBMIT: (id) => `/api/reviews/${id}/submit`,
         APPROVE: (id) => `/api/reviews/${id}/approve`,
         REJECT: (id) => `/api/reviews/${id}/reject`,
+        QUICK_SCORE: (issueId) => `/api/reviews/quick-score/${issueId}`,
     },
 
     // OKR (Objectives and Key Results)
@@ -411,6 +412,15 @@ export const ENDPOINTS = {
         DELETE: (id) => `/api/projects/custom-fields/${id}`,
         // Values usually handled within Issue update or specific endpoint
         ISSUE_VALUES: (issueId) => `/api/issues/${issueId}/custom-fields`,
+    },
+
+    // Performance (HR individual performance — matches BE PerformanceController)
+    PERFORMANCE: {
+        MY_STATS: '/api/hr/performance/my-stats',
+        MY_TIMELOG: '/api/timelogs/my',
+        MY_OKRS: '/api/okrs/my',
+        COMPARISON_ME: '/api/hr/performance-comparison/me',
+        COMPARISON_BY_PROJECT: (projectId) => `/api/hr/performance-comparison/projects/${projectId}`,
     },
 
     // Storage (Google Drive Integration)

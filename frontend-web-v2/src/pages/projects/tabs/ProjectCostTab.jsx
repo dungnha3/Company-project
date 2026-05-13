@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { formatCurrency, formatDate } from '@shared/utils/formatters';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function ProjectCostTab({ projectId }) {
@@ -11,8 +12,11 @@ export default function ProjectCostTab({ projectId }) {
         expenseName: '',
         amount: '',
         expenseDate: new Date().toISOString().split('T')[0],
-        description: ''
+        description: '',
+        category: 'OTHER'
     });
+    const { hasPermission } = useAccessControl();
+    const canManageCost = hasPermission('PROJECT.MANAGE_ALL');
 
     const { data: costData, isLoading } = useQuery({
         queryKey: ['project-costs', projectId],
@@ -36,12 +40,30 @@ export default function ProjectCostTab({ projectId }) {
     if (isLoading) return <div className="p-8 text-center"><i className="fa-solid fa-spinner fa-spin text-3xl text-primary" /></div>;
     if (!costData) return <div className="p-8 text-center text-red-500">Không thể tải dữ liệu chi phí</div>;
 
-    const COLORS = ['#6366f1', '#f59e0b'];
+    const CATEGORY_LABELS = {
+        'SERVER': 'Máy chủ/Cloud',
+        'SOFTWARE': 'Bản quyền PM',
+        'HARDWARE': 'Thiết bị',
+        'MARKETING': 'Marketing',
+        'TRAVEL': 'Đi lại',
+        'OTHER': 'Khác'
+    };
+
+    const expenseCategories = (costData.expenses || []).reduce((acc, curr) => {
+        const cat = curr.category || 'OTHER';
+        acc[cat] = (acc[cat] || 0) + curr.amount;
+        return acc;
+    }, {});
+
+    const COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e'];
 
     const pieData = [
         { name: 'Chi phí Nhân sự', value: costData.totalHrCost || 0 },
-        { name: 'Chi phí Khác', value: costData.totalExpenses || 0 }
-    ];
+        ...Object.entries(expenseCategories).map(([cat, val]) => ({
+            name: CATEGORY_LABELS[cat] || cat,
+            value: val
+        }))
+    ].filter(d => d.value > 0);
 
     const barData = (costData.memberCosts || []).map(m => ({
         name: m.fullName,
@@ -54,7 +76,8 @@ export default function ProjectCostTab({ projectId }) {
             expenseName: newExpense.expenseName,
             amount: parseFloat(newExpense.amount),
             expenseDate: newExpense.expenseDate,
-            description: newExpense.description
+            description: newExpense.description,
+            category: newExpense.category
         });
     };
 
@@ -130,12 +153,14 @@ export default function ProjectCostTab({ projectId }) {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-gray-800">Danh sách Chi phí Phát sinh</h3>
-                    <button
-                        onClick={() => setShowAddExpense(true)}
-                        className="btn-primary"
-                    >
-                        <i className="fa-solid fa-plus mr-2" /> Thêm chi phí
-                    </button>
+                    {canManageCost && (
+                        <button
+                            onClick={() => setShowAddExpense(true)}
+                            className="btn-primary"
+                        >
+                            <i className="fa-solid fa-plus mr-2" /> Thêm chi phí
+                        </button>
+                    )}
                 </div>
 
                 {showAddExpense && (
@@ -151,6 +176,18 @@ export default function ProjectCostTab({ projectId }) {
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                                     placeholder="Ví dụ: Thuê máy chủ AWS"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
+                                <select
+                                    value={newExpense.category}
+                                    onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                                >
+                                    {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+                                        <option key={val} value={val}>{label}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền (VND)</label>
@@ -200,6 +237,7 @@ export default function ProjectCostTab({ projectId }) {
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
                                 <th className="p-3 text-sm font-semibold text-gray-600">Ngày</th>
+                                <th className="p-3 text-sm font-semibold text-gray-600">Danh mục</th>
                                 <th className="p-3 text-sm font-semibold text-gray-600">Tên khoản chi</th>
                                 <th className="p-3 text-sm font-semibold text-gray-600">Ghi chú</th>
                                 <th className="p-3 text-sm font-semibold text-gray-600">Người tạo</th>
@@ -211,6 +249,11 @@ export default function ProjectCostTab({ projectId }) {
                                 costData.expenses.map((expense) => (
                                     <tr key={expense.expenseId} className="border-b border-gray-100 hover:bg-gray-50">
                                         <td className="p-3 text-sm text-gray-900">{formatDate(expense.expenseDate)}</td>
+                                        <td className="p-3 text-sm text-gray-500">
+                                            <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium">
+                                                {CATEGORY_LABELS[expense.category] || expense.category || 'Khác'}
+                                            </span>
+                                        </td>
                                         <td className="p-3 text-sm font-medium text-gray-900">{expense.expenseName}</td>
                                         <td className="p-3 text-sm text-gray-500">{expense.description || '-'}</td>
                                         <td className="p-3 text-sm text-gray-500">{expense.createdByName}</td>

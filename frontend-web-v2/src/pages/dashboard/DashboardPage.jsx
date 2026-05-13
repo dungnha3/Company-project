@@ -148,16 +148,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
                         </div>
                     </div>
 
-                    {/* Quick Links */}
-                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
-                        <h3 className="font-bold text-gray-800 mb-4">Truy cập nhanh</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                            <QuickLink to="/app/hr/employees" icon="fa-users" label="Nhân viên" />
-                            <QuickLink to="/app/storage" icon="fa-folder" label="Tài liệu" />
-                            <QuickLink to="/app/me/calendar" icon="fa-calendar" label="Lịch" />
-                            <QuickLink to="/app/company/settings" icon="fa-cog" label="Cài đặt" />
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>

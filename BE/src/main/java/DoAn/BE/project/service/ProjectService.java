@@ -54,6 +54,12 @@ public class ProjectService {
 
         log.info("User {} tạo dự án mới: {}", currentUser.getUsername(), request.getName());
 
+        String key = request.getKeyProject();
+        if (key == null || key.trim().isEmpty()) {
+            key = generateProjectKey(request.getName());
+            request.setKeyProject(key);
+        }
+
         if (projectRepository.findByKeyProject(request.getKeyProject()).isPresent()) {
             throw new DuplicateException("Mã dự án đã tồn tại: " + request.getKeyProject());
         }
@@ -311,5 +317,31 @@ public class ProjectService {
         }
 
         return dto;
+    }
+
+    private String generateProjectKey(String name) {
+        if (name == null || name.trim().isEmpty()) return "PROJ";
+        String[] words = name.trim().split("\\s+");
+        StringBuilder keyBuilder = new StringBuilder();
+        if (words.length == 1) {
+            keyBuilder.append(words[0].substring(0, Math.min(3, words[0].length())).toUpperCase());
+        } else {
+            for (String word : words) {
+                if (!word.isEmpty() && Character.isLetterOrDigit(word.charAt(0))) {
+                    keyBuilder.append(Character.toUpperCase(word.charAt(0)));
+                }
+            }
+        }
+        String baseKey = keyBuilder.toString();
+        if (baseKey.isEmpty()) baseKey = "PROJ";
+        if (baseKey.length() > 10) baseKey = baseKey.substring(0, 10);
+        
+        String key = baseKey;
+        int counter = 1;
+        while (projectRepository.findByKeyProject(key).isPresent()) {
+            key = baseKey + "-" + counter;
+            counter++;
+        }
+        return key;
     }
 }

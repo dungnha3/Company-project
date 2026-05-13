@@ -157,20 +157,48 @@ export default function EmployeesPage() {
                 <div className="flex flex-col">
                     <span className="text-sm text-gray-700" title={row.email}>{row.email}</span>
                     <span className="text-xs text-gray-500">{row.phone || '---'}</span>
+                    {row.address && (
+                        <span className="text-xs text-gray-400 truncate max-w-[150px]" title={row.address}>
+                            <i className="fa-solid fa-location-dot mr-1" />{row.address}
+                        </span>
+                    )}
                 </div>
             )
         },
-        // Removed department/position column
-        // Salary column - Only for users with salaryView permission
-        ...(hasPermission('salaryView') ? [{
-            header: 'Mức lương',
-            accessorKey: 'baseSalary',
+        {
+            header: 'Giới tính',
+            accessorKey: 'gender',
             cell: (row) => (
-                <span className="font-mono text-green-700 font-medium">
-                    {row.baseSalary ? formatCurrency(row.baseSalary) : '---'}
+                <div className="flex items-center gap-1.5">
+                    {row.gender === 'MALE' && <i className="fa-solid fa-person text-blue-500 text-sm" title="Nam" />}
+                    {row.gender === 'FEMALE' && <i className="fa-solid fa-person-dress text-pink-500 text-sm" title="Nữ" />}
+                    {row.gender === 'OTHER' && <i className="fa-solid fa-person text-gray-500 text-sm" title="Khác" />}
+                    <span className="text-xs text-gray-600">
+                        {row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : 'Khác'}
+                    </span>
+                </div>
+            )
+        },
+        {
+            header: 'Ngày sinh',
+            accessorKey: 'dateOfBirth',
+            cell: (row) => (
+                <span className="text-xs text-gray-600">
+                    {row.dateOfBirth ? formatDate(row.dateOfBirth) : '---'}
                 </span>
             )
-        }] : []),
+        },
+        {
+            header: 'Phép năm',
+            accessorKey: 'leaveBalance',
+            cell: (row) => (
+                <div className="flex flex-col">
+                    <span className="font-mono text-indigo-700 font-medium text-sm">
+                        {row.leaveBalance != null ? `${row.leaveBalance} ngày` : '---'}
+                    </span>
+                </div>
+            )
+        },
         {
             header: 'Ngày vào',
             accessorKey: 'hireDate',

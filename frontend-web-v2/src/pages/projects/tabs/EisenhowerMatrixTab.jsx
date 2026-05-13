@@ -27,11 +27,17 @@ export default function EisenhowerMatrixTab({ projectId }) {
 
     const issues = Array.isArray(issuesRaw) ? issuesRaw : [];
 
-    // Group issues by eisenhower quadrant
+    // Group issues by eisenhower quadrant — compute client-side from isImportant/isUrgent
     const quadrantData = useMemo(() => {
         const map = { 1: [], 2: [], 3: [], 4: [] };
         issues.forEach(i => {
-            const q = i.eisenhowerQuadrant || 4;
+            const imp = Boolean(i.isImportant);
+            const urg = Boolean(i.isUrgent);
+            let q;
+            if (imp && urg)      q = 1;  // Do first
+            else if (imp && !urg) q = 2;  // Schedule
+            else if (!imp && urg) q = 3;  // Delegate
+            else                  q = 4;  // Eliminate
             map[q].push(i);
         });
         return map;

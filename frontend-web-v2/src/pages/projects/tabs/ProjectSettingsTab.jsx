@@ -4,6 +4,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useNavigate } from 'react-router-dom';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUS_OPTIONS = [
     { value: 'PLANNING', label: 'Lập kế hoạch' },
@@ -27,6 +28,9 @@ export default function ProjectSettingsTab({ project }) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const { hasPermission } = useAccessControl();
+    const canManageAll = hasPermission('PROJECT.MANAGE_ALL');
+    const canDelete = hasPermission('PROJECT.DELETE');
 
     // Initialize form
     useEffect(() => {
@@ -209,9 +213,11 @@ export default function ProjectSettingsTab({ project }) {
                         </div>
                     </div>
                     <div className="flex justify-end pt-2">
-                        <button type="submit" disabled={updateMutation.isPending} className="btn-primary">
-                            {updateMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
-                        </button>
+                        {canManageAll && (
+                            <button type="submit" disabled={updateMutation.isPending} className="btn-primary">
+                                {updateMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>
@@ -223,19 +229,21 @@ export default function ProjectSettingsTab({ project }) {
                         <h3 className="text-lg font-bold text-gray-900">Thành viên</h3>
                         <p className="text-sm text-gray-500">Quản lý thành viên trong dự án</p>
                     </div>
-                    <div className="flex gap-2">
-                        <input
-                            type="email"
-                            placeholder="Email thành viên..."
-                            className="input w-64 text-sm"
-                            value={memberEmail}
-                            onChange={e => { setMemberEmail(e.target.value); setSearchError('') }}
-                            onKeyDown={e => e.key === 'Enter' && handleSearchMember()}
-                        />
-                        <button onClick={handleSearchMember} disabled={addMemberMutation.isPending} className="btn-primary">
-                            Thêm
-                        </button>
-                    </div>
+                    {canManageAll && (
+                        <div className="flex gap-2">
+                            <input
+                                type="email"
+                                placeholder="Email thành viên..."
+                                className="input w-64 text-sm"
+                                value={memberEmail}
+                                onChange={e => { setMemberEmail(e.target.value); setSearchError('') }}
+                                onKeyDown={e => e.key === 'Enter' && handleSearchMember()}
+                            />
+                            <button onClick={handleSearchMember} disabled={addMemberMutation.isPending} className="btn-primary">
+                                Thêm
+                            </button>
+                        </div>
+                    )}
                 </div>
                 {searchError && <div className="px-6 pt-2 text-sm text-red-500">{searchError}</div>}
 
@@ -256,7 +264,7 @@ export default function ProjectSettingsTab({ project }) {
                                     <span className={`badge ${member.role === 'OWNER' ? 'bg-purple-100 text-purple-700' : member.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>
                                         {member.role === 'OWNER' ? 'Chủ dự án' : member.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'}
                                     </span>
-                                    {member.role !== 'OWNER' && (
+                                    {member.role !== 'OWNER' && canManageAll && (
                                         <button
                                             onClick={() => removeMemberMutation.mutate(member.userId)}
                                             className="text-red-500 hover:bg-red-50 p-2 rounded"
@@ -273,21 +281,22 @@ export default function ProjectSettingsTab({ project }) {
                 </div>
             </div>
 
-            {/* Danger Zone */}
-            <div className="bg-red-50 rounded-xl shadow-sm border border-red-100 overflow-hidden">
-                <div className="p-6 border-b border-red-100">
-                    <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
-                </div>
-                <div className="p-6 flex items-center justify-between">
-                    <div>
-                        <p className="font-medium text-red-900">Xóa dự án</p>
-                        <p className="text-sm text-red-600">Hành động này sẽ xóa vĩnh viễn dự án và tất cả dữ liệu liên quan. Không thể hoàn tác.</p>
+            {canDelete && (
+                <div className="bg-red-50 rounded-xl shadow-sm border border-red-100 overflow-hidden">
+                    <div className="p-6 border-b border-red-100">
+                        <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
                     </div>
-                    <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
-                        Xóa dự án
-                    </button>
+                    <div className="p-6 flex items-center justify-between">
+                        <div>
+                            <p className="font-medium text-red-900">Xóa dự án</p>
+                            <p className="text-sm text-red-600">Hành động này sẽ xóa vĩnh viễn dự án và tất cả dữ liệu liên quan. Không thể hoàn tác.</p>
+                        </div>
+                        <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
+                            Xóa dự án
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

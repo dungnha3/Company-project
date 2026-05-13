@@ -1,8 +1,12 @@
 package DoAn.BE.timetracking.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -228,5 +232,120 @@ public class TimeTrackingService {
                 .description(timeLog.getDescription())
                 .createdAt(timeLog.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * My timelog summary - total hours this week, this month, breakdown by project/day
+     */
+    public Map<String, Object> getMyTimelogSummary(User currentUser) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null || currentUser == null) {
+            return java.util.Collections.emptyMap();
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1);
+        LocalDate weekEnd = weekStart.plusDays(6);
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
+
+        BigDecimal weekHours = timeLogRepository.sumHoursByUserAndDateRange(
+                currentUser.getUserId(), weekStart, weekEnd);
+        BigDecimal monthHours = timeLogRepository.sumHoursByUserAndDateRange(
+                currentUser.getUserId(), monthStart, monthEnd);
+        BigDecimal totalHours = timeLogRepository.sumHoursByUser(currentUser.getUserId(), companyId);
+        if (weekHours == null) weekHours = BigDecimal.ZERO;
+        if (monthHours == null) monthHours = BigDecimal.ZERO;
+        if (totalHours == null) totalHours = BigDecimal.ZERO;
+
+        List<TimeLog> allLogs = timeLogRepository.findByUser_UserIdAndWorkDateBetween(
+                currentUser.getUserId(), monthStart, monthEnd);
+
+        // Hours by project
+        Map<Long, Map<String, Object>> byProjectMap = new LinkedHashMap<>();
+        for (TimeLog log : allLogs) {
+            Long pid = log.getIssue().getProject().getProjectId();
+            String pname = log.getIssue().getProject().getName();
+            byProjectMap.computeIfAbsent(pid, k -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("projectId", pid);
+                m.put("projectName", pname);
+                m.put("totalHours", BigDecimal.ZERO);
+                m.put("issueCount", 0);
+                return m;
+            });
+            BigDecimal curr = (BigDecimal) byProjectMap.get(pid).get("totalHours");
+            BigDecimal updated = (curr != null ? curr : BigDecimal.ZERO).add(log.getLoggedHours());
+            byProjectMap.get(pid).put("totalHours", updated);
+            Integer count = (Integer) byProjectMap.get(pid).get("issueCount");
+            byProjectMap.get(pid).put("issueCount", count != null ? count + 1 : 1);
+        }
+        List<Map<String, Object>> byProject = new ArrayList<>(byProjectMap.values());
+
+        // Hours by day
+        Map<LocalDate, BigDecimal> byDayMap = new LinkedHashMap<>();
+        for (TimeLog log : allLogs) {
+            byDayMap.merge(log.getWorkDate(), log.getLoggedHours(), BigDecimal::add);
+        }
+        List<Map<String, Object>> byDay = byDayMap.entrySet().stream()
+                .sorted(java.util.Map.Entry.<LocalDate, BigDecimal>comparingByKey().reversed())
+                .limit(30)
+                .map(e -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("date", e.getKey().toString());
+                    m.put("hours", e.getValue());
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalHoursThisWeek", weekHours);
+        result.put("totalHoursThisMonth", monthHours);
+        result.put("totalHoursAllTime", totalHours);
+        result.put("hoursByProject", byProject);
+        result.put("hoursByDay", byDay);
+        return result;
+    }
+
+    /**
+     * Project timelog aggregation - total hours, by member, by sprint
+     */
+    public Map<String, Object> getProjectTimelogSummary(Long projectId) {
+        List<Issue> issues = issueRepository.findByProject_ProjectId(projectId);
+        BigDecimal totalHours = timeLogRepository.sumHoursByProject(projectId);
+        if (totalHours == null) totalHours = BigDecimal.ZERO;
+
+        List<TimeLog> allProjectLogs = new ArrayList<>();
+        for (Issue issue : issues) {
+            allProjectLogs.addAll(timeLogRepository.findByIssue_IssueIdOrderByWorkDateDesc(issue.getIssueId()));
+        }
+        Map<Long, Map<String, Object>> byMemberMap = new LinkedHashMap<>();
+        for (TimeLog log : allProjectLogs) {
+            Long uid = log.getUser().getUserId();
+            byMemberMap.computeIfAbsent(uid, k -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("userId", uid);
+                m.put("userName", log.getUser().getUsername());
+                m.put("totalHours", BigDecimal.ZERO);
+                m.put("issueCount", 0);
+                return m;
+            });
+            BigDecimal curr = (BigDecimal) byMemberMap.get(uid).get("totalHours");
+            BigDecimal updated = (curr != null ? curr : BigDecimal.ZERO).add(log.getLoggedHours());
+            byMemberMap.get(uid).put("totalHours", updated);
+            Integer count = (Integer) byMemberMap.get(uid).get("issueCount");
+            byMemberMap.get(uid).put("issueCount", count != null ? count + 1 : 1);
+        }
+        List<Map<String, Object>> byMember = new ArrayList<>(byMemberMap.values());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("projectId", projectId);
+        result.put("totalHours", totalHours);
+        result.put("hoursByMember", byMember);
+        result.put("totalIssues", issues.size());
+        result.put("averagePerIssue",
+                issues.isEmpty() ? BigDecimal.ZERO :
+                        totalHours.divide(new BigDecimal(issues.size()), 1, RoundingMode.HALF_UP));
+        return result;
     }
 }

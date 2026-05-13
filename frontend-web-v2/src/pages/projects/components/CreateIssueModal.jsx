@@ -32,6 +32,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         weight: '',
         isImportant: false,
         isUrgent: false,
+        sprintId: '',
     });
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -53,6 +54,16 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         enabled: isOpen && !!form.projectId,
     });
 
+    // Fetch sprints when project selected
+    const { data: sprints = [] } = useQuery({
+        queryKey: ['projectSprints', form.projectId],
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(form.projectId))).data;
+            return Array.isArray(res) ? res : (res?.content || []);
+        },
+        enabled: isOpen && !!form.projectId,
+    });
+
     // Reset form when defaultProjectId changes
     useEffect(() => {
         if (defaultProjectId) {
@@ -66,7 +77,6 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                 projectId: parseInt(data.projectId),
                 title: data.title.trim(),
                 description: data.description.trim() || null,
-                issueType: data.issueType,
                 priority: data.priority,
                 assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
                 estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : null,
@@ -75,6 +85,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                 weight: data.weight ? parseInt(data.weight) : null,
                 isImportant: data.isImportant,
                 isUrgent: data.isUrgent,
+                sprintId: data.sprintId ? parseInt(data.sprintId) : null,
             };
             return (await apiClient.post(ENDPOINTS.ISSUES.CREATE, payload)).data;
         },
@@ -118,6 +129,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             weight: '',
             isImportant: false,
             isUrgent: false,
+            sprintId: '',
         });
         onClose();
     };
@@ -218,7 +230,52 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                             />
                         </div>
 
-                        {/* Priority & Assignee Row */}
+                        {/* Sprint & Assignee Row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Sprint</label>
+                                <select
+                                    name="sprintId"
+                                    value={form.sprintId}
+                                    onChange={handleInputChange}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600 disabled:opacity-50"
+                                    disabled={!form.projectId || sprints.length === 0}
+                                >
+                                    <option value="">-- Backlog (không gán) --</option>
+                                    {sprints.map(s => (
+                                        <option key={s.sprintId} value={s.sprintId}>
+                                            {s.name} {s.status === 'ACTIVE' ? '🔥' : s.status === 'PLANNING' ? '📋' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {form.projectId && sprints.length === 0 && (
+                                    <p className="text-xs text-gray-400 mt-1">Chưa có sprint nào</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Người thực hiện</label>
+                                <select
+                                    name="assigneeId"
+                                    value={form.assigneeId}
+                                    onChange={handleInputChange}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600 disabled:opacity-50"
+                                    disabled={!form.projectId}
+                                >
+                                    <option value="">-- Chọn người --</option>
+                                    {members.map(m => (
+                                        <option key={m.userId} value={m.userId}>
+                                            {m.username || m.fullName} ({m.role === 'OWNER' ? 'Chủ dự án' : m.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'})
+                                        </option>
+                                    ))}
+                                </select>
+                                {!form.projectId && (
+                                    <p className="text-xs text-gray-400 mt-1">Chọn dự án trước</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Priority Row */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Độ ưu tiên</label>
@@ -234,27 +291,6 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                         </option>
                                     ))}
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Người thực hiện</label>
-                                <select
-                                    name="assigneeId"
-                                    value={form.assigneeId}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
-                                    disabled={!form.projectId}
-                                >
-                                    <option value="">-- Chọn người --</option>
-                                    {members.map(m => (
-                                        <option key={m.userId} value={m.userId}>
-                                            {m.username || m.fullName} ({m.role === 'OWNER' ? 'Chủ dự án' : m.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'})
-                                        </option>
-                                    ))}
-                                </select>
-                                {!form.projectId && (
-                                    <p className="text-xs text-gray-400 mt-1">Chọn dự án trước</p>
-                                )}
                             </div>
                         </div>
 

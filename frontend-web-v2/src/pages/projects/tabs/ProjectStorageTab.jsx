@@ -4,12 +4,15 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDateTime } from '@shared/utils/formatters';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function ProjectStorageTab({ projectId }) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const { hasPermission } = useAccessControl();
+    const canManageStorage = hasPermission('PROJECT.MANAGE_ALL');
 
     // Check Drive Connection Status
     const { data: driveStatus } = useQuery({
@@ -100,23 +103,27 @@ export default function ProjectStorageTab({ projectId }) {
         <div className="card p-6 min-h-[500px]">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-bold text-gray-900">Tài liệu dự án</h2>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                />
-                <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="btn-primary"
-                >
-                    {uploading ? (
-                        <><i className="fa-solid fa-spinner fa-spin mr-2" /> Đang tải...</>
-                    ) : (
-                        <><i className="fa-solid fa-upload mr-2" /> Tải lên File</>
-                    )}
-                </button>
+                {canManageStorage && (
+                    <>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="btn-primary"
+                        >
+                            {uploading ? (
+                                <><i className="fa-solid fa-spinner fa-spin mr-2" /> Đang tải...</>
+                            ) : (
+                                <><i className="fa-solid fa-upload mr-2" /> Tải lên File</>
+                            )}
+                        </button>
+                    </>
+                )}
             </div>
 
             {isLoading ? (
@@ -161,17 +168,19 @@ export default function ProjectStorageTab({ projectId }) {
                                             >
                                                 <i className="fa-solid fa-download"></i>
                                             </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (window.confirm('Bạn có chắc chắn muốn xóa file này?')) {
-                                                        deleteMutation.mutate(file.id);
-                                                    }
-                                                }}
-                                                className="w-8 h-8 rounded hover:bg-red-50 text-red-500 transition-colors"
-                                                title="Xóa file"
-                                            >
-                                                <i className="fa-solid fa-trash-can"></i>
-                                            </button>
+                                            {canManageStorage && (
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm('Bạn có chắc chắn muốn xóa file này?')) {
+                                                            deleteMutation.mutate(file.id);
+                                                        }
+                                                    }}
+                                                    className="w-8 h-8 rounded hover:bg-red-50 text-red-500 transition-colors"
+                                                    title="Xóa file"
+                                                >
+                                                    <i className="fa-solid fa-trash-can"></i>
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

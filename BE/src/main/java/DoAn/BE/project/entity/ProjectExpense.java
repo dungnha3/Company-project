@@ -35,6 +35,9 @@ public class ProjectExpense extends BaseEntity {
     @Column(name = "expense_date", nullable = false)
     private LocalDate expenseDate;
 
+    @Column(name = "category", length = 100, columnDefinition = "NVARCHAR(100)")
+    private String category;
+
     @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 

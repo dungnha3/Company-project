@@ -34,18 +34,20 @@ const LeaveRequestsPage = lazy(() => import('@pages/hr/LeaveRequestsPage'));
 const ReviewsPage = lazy(() => import('@pages/hr/ReviewsPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
 const PerformanceOverviewPage = lazy(() => import('@pages/hr/PerformanceOverviewPage'));
+const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
 
 // Project pages
 const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
 
 
-const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
-const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
-
 // New feature pages
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
-const MyTimelogsPage = lazy(() => import('@pages/timelogs/MyTimelogsPage'));
 const MyPerformancePage = lazy(() => import('@pages/hr/MyPerformancePage'));
+const MyWorkPage = lazy(() => import('@pages/personal/MyWorkPage'));
+const MyTimelogsPage = lazy(() => import('@pages/personal/MyTimelogsPage'));
+
+const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
+const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
 
 
 const ActivityLogPage = lazy(() => import('@pages/company/ActivityLogPage'));
@@ -107,10 +109,20 @@ const router = createBrowserRouter([
                 element: <Navigate to="/app/projects" replace />,
             },
 
-            // Personal Settings (/app/me)
+            // Personal Work Hub (/app/me)
             {
                 path: 'me',
                 children: [
+                    {
+                        index: true,
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyWorkPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
                     {
                         path: 'issues',
                         element: (
@@ -178,6 +190,14 @@ const router = createBrowserRouter([
                     </AccessControlGuard>
                 ),
                 children: [
+                    {
+                        index: true,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <HRDashboardPage />
+                            </Suspense>
+                        ),
+                    },
                     {
                         path: 'employees',
                         element: (

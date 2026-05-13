@@ -242,6 +242,53 @@ BEGIN
         (@p, NULL, 'HRMS-30', N'Multi-language i18n',            N'VN/EN support',             @st, 'LOW',      @u_own, NULL,  NULL, 40, NULL, GETDATE(), GETDATE());
 
     PRINT N'✅ 30 issues created (19 done, 2 in-progress, 1 review, 8 todo/backlog)';
+
+    -- ── BỔ SUNG CÁC TRƯỜNG MỚI CHO ISSUE (start_date, weight, completed_at, rework_count, is_important, is_urgent)
+    -- Update Done issues: set completed_at = due_date + 1 day (simulate completion on/before deadline)
+    UPDATE issues SET completed_at = DATEADD(day, 1, due_date)
+    WHERE project_id = @p AND status_id = @sd AND due_date IS NOT NULL;
+
+    -- Sprint 1: Set weights (difficulty), rework counts, start_dates
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 7, rework_count = 1 WHERE issue_key = 'HRMS-1';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 8, rework_count = 2 WHERE issue_key = 'HRMS-2';  -- Schema rework
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 9, rework_count = 0 WHERE issue_key = 'HRMS-3';  -- Critical, hard
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 6, rework_count = 0 WHERE issue_key = 'HRMS-4';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 7, rework_count = 1 WHERE issue_key = 'HRMS-5';  -- Security rework
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 4, rework_count = 0 WHERE issue_key = 'HRMS-6';
+
+    -- Sprint 2
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 7, rework_count = 1 WHERE issue_key = 'HRMS-7';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 5, rework_count = 0 WHERE issue_key = 'HRMS-8';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 5, rework_count = 0 WHERE issue_key = 'HRMS-9';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 6, rework_count = 1 WHERE issue_key = 'HRMS-10';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 8, rework_count = 2 WHERE issue_key = 'HRMS-11'; -- Multi-tenant hard
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 7, rework_count = 0 WHERE issue_key = 'HRMS-12';
+
+    -- Sprint 3
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 7, rework_count = 0 WHERE issue_key = 'HRMS-13';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 7, rework_count = 1 WHERE issue_key = 'HRMS-14';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 9, rework_count = 0 WHERE issue_key = 'HRMS-15'; -- Critical salary
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 6, rework_count = 0 WHERE issue_key = 'HRMS-16';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 6, rework_count = 0 WHERE issue_key = 'HRMS-17';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 6, rework_count = 0 WHERE issue_key = 'HRMS-18';
+    UPDATE issues SET start_date = DATEADD(day, -1, due_date), weight = 4, rework_count = 0 WHERE issue_key = 'HRMS-19';
+
+    -- Sprint 4: mixed status - set start_dates and weights, is_important for critical ones
+    UPDATE issues SET start_date = DATEADD(day, -7, GETDATE()), weight = 7, rework_count = 0 WHERE issue_key = 'HRMS-20';
+    UPDATE issues SET start_date = DATEADD(day, -5, GETDATE()), weight = 5, rework_count = 0 WHERE issue_key = 'HRMS-21';
+    UPDATE issues SET start_date = DATEADD(day, -3, GETDATE()), weight = 7, rework_count = 1 WHERE issue_key = 'HRMS-22'; -- Review, rework
+    UPDATE issues SET start_date = DATEADD(day, -2, GETDATE()), weight = 8, rework_count = 0, is_important = 1 WHERE issue_key = 'HRMS-23'; -- High priority
+    UPDATE issues SET start_date = DATEADD(day, -1, GETDATE()), weight = 6, rework_count = 0 WHERE issue_key = 'HRMS-24';
+    UPDATE issues SET start_date = GETDATE(), weight = 5, rework_count = 0 WHERE issue_key = 'HRMS-25';  -- To Do
+    UPDATE issues SET start_date = DATEADD(day, 2, GETDATE()), weight = 4, rework_count = 0 WHERE issue_key = 'HRMS-26'; -- To Do, future start
+    UPDATE issues SET start_date = GETDATE(), weight = 8, rework_count = 0, is_important = 1, is_urgent = 1 WHERE issue_key = 'HRMS-27'; -- Critical bug, immediate
+
+    -- Backlog: set weights and future start dates
+    UPDATE issues SET start_date = DATEADD(day, 14, GETDATE()), weight = 6, rework_count = 0 WHERE issue_key = 'HRMS-28';
+    UPDATE issues SET start_date = DATEADD(day, 21, GETDATE()), weight = 4, rework_count = 0 WHERE issue_key = 'HRMS-29';
+    UPDATE issues SET start_date = DATEADD(day, 30, GETDATE()), weight = 5, rework_count = 0 WHERE issue_key = 'HRMS-30';
+
+    PRINT N'✅ Issue metadata supplemented (start_date, weight, completed_at, rework_count, is_important, is_urgent)';
 END
 GO
 
@@ -450,4 +497,400 @@ BEGIN
     END
     PRINT N'✅ Đã giao 3 tasks trong HRMS cho full_emp';
 END
+GO
+
+-- =====================================================
+-- BỔ SUNG DATA ĐẦY ĐỦ CHO full_emp (Test User)
+-- =====================================================
+-- Mục tiêu: full_emp có task ở mọi trạng thái, time logs, reviews
+-- =====================================================
+
+USE DACN;
+GO
+
+DECLARE @uid_full BIGINT;
+SELECT @uid_full = user_id FROM users WHERE username = 'full_emp';
+
+IF @uid_full IS NOT NULL
+BEGIN
+    PRINT N'========== BỔ SUNG DATA CHO full_emp ==========';
+
+    -- ── 1. TẠO EMPLOYEE RECORD CHO full_emp (cần có employee_id để tạo review)
+    IF NOT EXISTS (SELECT 1 FROM employees WHERE user_id = @uid_full)
+    BEGIN
+        INSERT INTO employees (user_id, company_id, full_name, id_card, date_of_birth, gender, hire_date, [status], base_salary, allowance, created_at, updated_at)
+        VALUES (
+            @uid_full, 1,
+            N'Full Employee',
+            '0' + CAST(@uid_full + 123456789 AS VARCHAR),
+            DATEADD(year, -25, GETDATE()),
+            'MALE',
+            DATEADD(month, -3, GETDATE()),
+            'ACTIVE',
+            18000000,
+            2000000,
+            GETDATE(), GETDATE()
+        );
+        PRINT N'✅ Employee record created for full_emp';
+    END
+    ELSE
+        PRINT N'ℹ️  full_emp đã có employee record';
+
+    DECLARE @emp_full BIGINT;
+    SELECT @emp_full = employee_id FROM employees WHERE user_id = @uid_full;
+
+    -- ── 2. THÊM full_emp VÀO CÁC PROJECT (ECOM, MOBI)
+    DECLARE @ecom_proj2 BIGINT = (SELECT project_id FROM projects WHERE key_project = 'ECOM');
+    DECLARE @mobi_proj BIGINT = (SELECT project_id FROM projects WHERE key_project = 'MOBI');
+
+    IF NOT EXISTS (SELECT 1 FROM project_members WHERE user_id = @uid_full AND project_id = @ecom_proj2)
+    BEGIN
+        INSERT INTO project_members (project_id, user_id, [role], position, allocation_rate, member_status, join_date, created_at, updated_at)
+        VALUES (@ecom_proj2, @uid_full, 'MEMBER', N'Full-stack Dev', 80, 'ACTIVE', GETDATE(), GETDATE(), GETDATE());
+        PRINT N'✅ full_emp added to ECOM project';
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM project_members WHERE user_id = @uid_full AND project_id = @mobi_proj)
+    BEGIN
+        INSERT INTO project_members (project_id, user_id, [role], position, allocation_rate, member_status, join_date, created_at, updated_at)
+        VALUES (@mobi_proj, @uid_full, 'MEMBER', N'Mobile Dev', 50, 'ACTIVE', GETDATE(), GETDATE(), GETDATE());
+        PRINT N'✅ full_emp added to MOBI project';
+    END
+
+    -- ── 3. GÁN TASK CHO full_emp - MỖI TRẠNG THÁI ÍT NHẤT 1 TASK
+    -- Đếm xem full_emp đã có task ở mỗi trạng thái chưa
+    DECLARE @todo_count INT, @prog_count INT, @rev_count INT, @done_count INT;
+    SELECT @todo_count = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'To Do');
+    SELECT @prog_count = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'In Progress');
+    SELECT @rev_count  = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'Review');
+    SELECT @done_count = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'Done');
+
+    PRINT N'  current tasks → To Do: ' + CAST(@todo_count AS VARCHAR) + N', In Progress: ' + CAST(@prog_count AS VARCHAR) + N', Review: ' + CAST(@rev_count AS VARCHAR) + N', Done: ' + CAST(@done_count AS VARCHAR);
+
+    -- Gán thêm task To Do (HRMS backlog chưa ai nhận)
+    IF @todo_count < 2
+    BEGIN
+        UPDATE TOP (2) issues
+        SET assignee_id = @uid_full, updated_at = GETDATE()
+        WHERE project_id = (SELECT project_id FROM projects WHERE key_project = 'HRMS')
+          AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'To Do')
+          AND assignee_id IS NULL;
+        PRINT N'✅ Assigned To Do tasks to full_emp';
+    END
+
+    -- Gán thêm task In Progress (HRMS Sprint 4 đang in-progress chưa ai nhận)
+    IF @prog_count < 2
+    BEGIN
+        UPDATE TOP (2) issues
+        SET assignee_id = @uid_full, updated_at = GETDATE()
+        WHERE project_id = (SELECT project_id FROM projects WHERE key_project = 'HRMS')
+          AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'In Progress')
+          AND assignee_id IS NULL;
+        PRINT N'✅ Assigned In Progress tasks to full_emp';
+    END
+
+    -- Gán task Review (HRMS-22 đang ở Review, cần reviewer)
+    IF @rev_count < 1
+    BEGIN
+        UPDATE issues
+        SET assignee_id = @uid_full, updated_at = GETDATE()
+        WHERE project_id = (SELECT project_id FROM projects WHERE key_project = 'HRMS')
+          AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'Review')
+          AND assignee_id IS NULL;
+        PRINT N'✅ Assigned Review task to full_emp';
+    END
+
+    -- Gán task Done từ Sprint 4 (các task đã done gán cho full_emp)
+    IF @done_count < 3
+    BEGIN
+        UPDATE TOP (3) issues
+        SET assignee_id = @uid_full, updated_at = GETDATE()
+        WHERE project_id = (SELECT project_id FROM projects WHERE key_project = 'HRMS')
+          AND status_id = (SELECT status_id FROM issue_statuses WHERE name = 'Done')
+          AND assignee_id IS NULL;
+        PRINT N'✅ Assigned Done tasks to full_emp';
+    END
+
+    -- ── 4. TẠO TASK MỚI DO full_emp LÀM REPORTER (test tab "Tôi tạo")
+    -- Chỉ tạo nếu chưa tồn tại (idempotent - chạy lại không lỗi)
+    DECLARE @hrms_proj BIGINT = (SELECT project_id FROM projects WHERE key_project = 'HRMS');
+    DECLARE @ecom_proj BIGINT = (SELECT project_id FROM projects WHERE key_project = 'ECOM');
+    DECLARE @st INT = (SELECT status_id FROM issue_statuses WHERE name = 'To Do');
+    DECLARE @sp INT = (SELECT status_id FROM issue_statuses WHERE name = 'In Progress');
+    DECLARE @sr INT = (SELECT status_id FROM issue_statuses WHERE name = 'Review');
+    DECLARE @sd INT = (SELECT status_id FROM issue_statuses WHERE name = 'Done');
+    -- Lấy số lớn nhất của HRMS-xxx (bỏ qua dấu '-')
+    DECLARE @max_hrms_num BIGINT = (SELECT ISNULL(MAX(CAST(SUBSTRING(issue_key, CHARINDEX('-', issue_key) + 1, 10) AS INT)), 0) FROM issues WHERE project_id = @hrms_proj);
+    DECLARE @max_ecom_num BIGINT = (SELECT ISNULL(MAX(CAST(SUBSTRING(issue_key, CHARINDEX('-', issue_key) + 1, 10) AS INT)), 0) FROM issues WHERE project_id = @ecom_proj);
+
+    DECLARE @new_hrms_start BIGINT = @max_hrms_num + 1;
+    DECLARE @new_ecom_start BIGINT = @max_ecom_num + 1;
+    DECLARE @insert_count INT = 0;
+
+    -- HRMS-31 → In Progress, do full_emp tạo và được giao
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @hrms_proj AND issue_key = 'HRMS-' + CAST(@new_hrms_start AS VARCHAR))
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, actual_hours, weight, rework_count, is_important, created_at, updated_at)
+        VALUES (@hrms_proj, 'HRMS-' + CAST(@new_hrms_start AS VARCHAR), N'Thiết kế API notification service', N'Xây dựng service gửi notification real-time qua WebSocket', @sp, 'HIGH', @uid_full, @uid_full, DATEADD(day, 7, GETDATE()), DATEADD(day, -2, GETDATE()), 16, 4, 7, 0, 0, GETDATE(), GETDATE());
+        SET @insert_count = @insert_count + 1;
+    END
+
+    -- HRMS-32 → In Progress, do full_emp tạo và được giao
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @hrms_proj AND issue_key = 'HRMS-' + CAST(@new_hrms_start + 1 AS VARCHAR))
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, actual_hours, weight, rework_count, created_at, updated_at)
+        VALUES (@hrms_proj, 'HRMS-' + CAST(@new_hrms_start + 1 AS VARCHAR), N'Integration test cho auth module', N'Viết unit test + integration test cho JWT flow', @sp, 'HIGH', @uid_full, @uid_full, DATEADD(day, 5, GETDATE()), DATEADD(day, -1, GETDATE()), 12, 6, 6, 0, GETDATE(), GETDATE());
+        SET @insert_count = @insert_count + 1;
+    END
+
+    -- HRMS-33 → Review, do full_emp tạo và được giao
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @hrms_proj AND issue_key = 'HRMS-' + CAST(@new_hrms_start + 2 AS VARCHAR))
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, actual_hours, weight, rework_count, completed_at, created_at, updated_at)
+        VALUES (@hrms_proj, 'HRMS-' + CAST(@new_hrms_start + 2 AS VARCHAR), N'Optimize database query performance', N'Tuning các câu query chậm trong report module', @sr, 'MEDIUM', @uid_full, @uid_full, DATEADD(day, 3, GETDATE()), DATEADD(day, -3, GETDATE()), 8, 7, 6, 0, DATEADD(day, -1, GETDATE()), GETDATE(), GETDATE());
+        SET @insert_count = @insert_count + 1;
+    END
+
+    -- HRMS-34 → Done, do full_emp tạo và được giao (completed before deadline → bonus)
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @hrms_proj AND issue_key = 'HRMS-' + CAST(@new_hrms_start + 3 AS VARCHAR))
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, actual_hours, weight, rework_count, completed_at, created_at, updated_at)
+        VALUES (@hrms_proj, 'HRMS-' + CAST(@new_hrms_start + 3 AS VARCHAR), N'Setup CI/CD pipeline cho BE', N'Cấu hình GitHub Actions build + deploy tự động', @sd, 'HIGH', @uid_full, @uid_full, DATEADD(day, -5, GETDATE()), DATEADD(day, -8, GETDATE()), 10, 9, 7, 1, DATEADD(day, -6, GETDATE()), GETDATE(), GETDATE());
+        SET @insert_count = @insert_count + 1;
+    END
+
+    -- HRMS-35 → To Do (backlog), do full_emp tạo, chưa gán ai
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @hrms_proj AND issue_key = 'HRMS-' + CAST(@new_hrms_start + 4 AS VARCHAR))
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, weight, created_at, updated_at)
+        VALUES (@hrms_proj, 'HRMS-' + CAST(@new_hrms_start + 4 AS VARCHAR), N'Implement export Excel cho reports', N'Xuất báo cáo ra file Excel với Apache POI', @st, 'LOW', @uid_full, NULL, DATEADD(day, 14, GETDATE()), DATEADD(day, 14, GETDATE()), 8, 5, GETDATE(), GETDATE());
+        SET @insert_count = @insert_count + 1;
+    END
+
+    -- ECOM task do full_emp tạo (để test cross-project)
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @ecom_proj AND issue_key = 'ECOM-' + CAST(@new_ecom_start AS VARCHAR))
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, actual_hours, weight, rework_count, created_at, updated_at)
+        VALUES (@ecom_proj, 'ECOM-' + CAST(@new_ecom_start AS VARCHAR), N'Design cart checkout flow', N'Thiết kế UI/UX cho trang thanh toán', @sp, 'HIGH', @uid_full, @uid_full, DATEADD(day, 6, GETDATE()), DATEADD(day, -1, GETDATE()), 20, 8, 6, 0, GETDATE(), GETDATE());
+        SET @insert_count = @insert_count + 1;
+    END
+
+    PRINT N'✅ Created ' + CAST(@insert_count AS VARCHAR) + N' new issues (reported by full_emp) across HRMS and ECOM';
+
+    -- ── 5. TẠO TIME LOGS CHO full_emp (bảng time_logs)
+    -- Chỉ tạo nếu chưa có (idempotent - không xóa data cũ)
+    IF NOT EXISTS (SELECT 1 FROM time_logs WHERE user_id = @uid_full)
+    BEGIN
+        -- Tạo time log dựa trên issues có assignee_id = full_emp và có estimated_hours
+        -- Log ngày hôm nay - 1
+        INSERT INTO time_logs (issue_id, user_id, company_id, logged_hours, work_date, description, created_at, updated_at)
+        SELECT i.issue_id, @uid_full, 1, 1.0, CAST(DATEADD(day, -1, GETDATE()) AS DATE), N'Development work', GETDATE(), GETDATE()
+        FROM issues i WHERE i.assignee_id = @uid_full AND i.estimated_hours IS NOT NULL AND i.status_id IN (@sp, @sr, @sd);
+
+        -- Log ngày hôm nay - 2
+        INSERT INTO time_logs (issue_id, user_id, company_id, logged_hours, work_date, description, created_at, updated_at)
+        SELECT i.issue_id, @uid_full, 1, 2.0, CAST(DATEADD(day, -2, GETDATE()) AS DATE), N'Coding + debugging', GETDATE(), GETDATE()
+        FROM issues i WHERE i.assignee_id = @uid_full AND i.estimated_hours IS NOT NULL AND i.status_id IN (@sp, @sr, @sd);
+
+        -- Log ngày hôm nay - 3 (chỉ Review/Done)
+        INSERT INTO time_logs (issue_id, user_id, company_id, logged_hours, work_date, description, created_at, updated_at)
+        SELECT i.issue_id, @uid_full, 1, 3.0, CAST(DATEADD(day, -3, GETDATE()) AS DATE), N'Code review + testing', GETDATE(), GETDATE()
+        FROM issues i WHERE i.assignee_id = @uid_full AND i.estimated_hours IS NOT NULL AND i.status_id IN (@sr, @sd);
+
+        -- Log ngày hôm nay - 5 (chỉ Done)
+        INSERT INTO time_logs (issue_id, user_id, company_id, logged_hours, work_date, description, created_at, updated_at)
+        SELECT i.issue_id, @uid_full, 1, 4.0, CAST(DATEADD(day, -5, GETDATE()) AS DATE), N'Final polish + merge PR', GETDATE(), GETDATE()
+        FROM issues i WHERE i.assignee_id = @uid_full AND i.estimated_hours IS NOT NULL AND i.status_id = @sd;
+
+        -- Log ngày hôm nay - 7 (chỉ Done)
+        INSERT INTO time_logs (issue_id, user_id, company_id, logged_hours, work_date, description, created_at, updated_at)
+        SELECT i.issue_id, @uid_full, 1, 3.0, CAST(DATEADD(day, -7, GETDATE()) AS DATE), N'Feature implementation', GETDATE(), GETDATE()
+        FROM issues i WHERE i.assignee_id = @uid_full AND i.estimated_hours IS NOT NULL AND i.status_id = @sd;
+
+        -- Cập nhật actual_hours trên issues dựa trên SUM của time_logs
+        UPDATE i SET i.actual_hours = ISNULL(t.total_hours, i.actual_hours)
+        FROM issues i
+        INNER JOIN (
+            SELECT issue_id, SUM(logged_hours) AS total_hours
+            FROM time_logs
+            WHERE user_id = @uid_full
+            GROUP BY issue_id
+        ) t ON i.issue_id = t.issue_id;
+
+        PRINT N'✅ Created time logs for full_emp (5 entries across past week)';
+    END
+    ELSE
+        PRINT N'ℹ️  full_emp already has time logs - skipped';
+
+    -- ── 6. TẠO PERFORMANCE REVIEWS CHO full_emp
+    -- Chỉ tạo nếu chưa có review nào cho full_emp (idempotent)
+    IF NOT EXISTS (SELECT 1 FROM reviews WHERE employee_id = @emp_full)
+    BEGIN
+        DECLARE @pm_a_emp BIGINT;
+        SELECT @pm_a_emp = employee_id FROM employees WHERE user_id = (SELECT user_id FROM users WHERE username = 'pm_a');
+
+        DECLARE @hrms_proj_id BIGINT = (SELECT project_id FROM projects WHERE key_project = 'HRMS');
+        DECLARE @ecom_proj_id BIGINT = (SELECT project_id FROM projects WHERE key_project = 'ECOM');
+
+        -- Review Q1 2026 - EXCELLENT (project: HRMS)
+        INSERT INTO reviews (employee_id, reviewer_id, project_id, project_name, review_period, review_type, technical_score, attitude_score, soft_skills_score, teamwork_score, total_score, rating, comments, status, completed_date, start_date, end_date, created_at, updated_at)
+        VALUES (
+            @emp_full, @pm_a_emp, @hrms_proj_id,
+            N'HR Management System',
+            'Q1-2026', 'PROJECT',
+            9.0, 8.5, 9.0, 9.5,
+            9.0,
+            'EXCELLENT',
+            N'Hoàn thành xuất sắc các task được giao. Chất lượng code tốt, commit đều đặn.',
+            'APPROVED',
+            DATEADD(day, -10, GETDATE()),
+            DATEADD(day, -90, GETDATE()),
+            DATEADD(day, -1, GETDATE()),
+            GETDATE(), GETDATE()
+        );
+
+        -- Review Q2 2026 - GOOD (project: ECOM)
+        INSERT INTO reviews (employee_id, reviewer_id, project_id, project_name, review_period, review_type, technical_score, attitude_score, soft_skills_score, teamwork_score, total_score, rating, comments, status, completed_date, start_date, end_date, created_at, updated_at)
+        VALUES (
+            @emp_full, @pm_a_emp, @ecom_proj_id,
+            N'E-Commerce Platform',
+            'Q2-2026', 'PROJECT',
+            8.5, 8.0, 8.0, 8.5,
+            8.3,
+            'GOOD',
+            N'Làm việc tốt, cần cải thiện tốc độ hoàn thành task. Giao tiếp kém hơn Q1.',
+            'APPROVED',
+            GETDATE(),
+            DATEADD(day, -89, GETDATE()),
+            GETDATE(),
+            GETDATE(), GETDATE()
+        );
+
+        -- Review periodic - IN_PROGRESS (chưa review)
+        INSERT INTO reviews (employee_id, reviewer_id, project_id, project_name, review_period, review_type, technical_score, attitude_score, soft_skills_score, teamwork_score, total_score, rating, comments, status, start_date, end_date, created_at, updated_at)
+        VALUES (
+            @emp_full, @pm_a_emp, @hrms_proj_id,
+            N'HR Management System',
+            'May-2026', 'PERIODIC',
+            NULL, NULL, NULL, NULL,
+            NULL, NULL,
+            NULL,
+            'IN_PROGRESS',
+            DATEADD(day, -1, GETDATE()),
+            DATEADD(day, 29, GETDATE()),
+            GETDATE(), GETDATE()
+        );
+
+        PRINT N'✅ Created 3 performance reviews for full_emp (Q1-EXCELLENT, Q2-GOOD, May-IN_PROGRESS)';
+    END
+    ELSE
+        PRINT N'ℹ️  full_emp already has reviews - skipped';
+
+    -- ── 7. TẠO NOTIFICATIONS CHO full_emp
+    -- Chỉ tạo nếu chưa có notification nào (idempotent)
+    IF NOT EXISTS (SELECT 1 FROM notifications WHERE user_id = @uid_full)
+    BEGIN
+        INSERT INTO notifications (user_id, type, title, content, link, is_read, created_at) VALUES
+            (@uid_full, 'TASK_ASSIGNED', N'Task mới được giao', N'Bạn được giao task "Thiết kế API notification service"', '/app/me/issues', 0, DATEADD(hour, -1, GETDATE())),
+            (@uid_full, 'TASK_ASSIGNED', N'Task mới được giao', N'Bạn được giao task "Integration test cho auth module"', '/app/me/issues', 0, DATEADD(day, -1, GETDATE())),
+            (@uid_full, 'TASK_REVIEW_REQUEST', N'Yêu cầu review', N'Task "Optimize DB performance" cần được review', '/app/me/issues', 0, DATEADD(day, -2, GETDATE())),
+            (@uid_full, 'REVIEW_SUBMITTED', N'Review Q2 được duyệt', N'PM đã duyệt review Q2-2026 của bạn - Đánh giá GOOD', '/app/me/performance', 1, DATEADD(day, -3, GETDATE())),
+            (@uid_full, 'DEADLINE_APPROACHING', N'Deadline sắp đến', N'Task "Integration test" sẽ hết hạn trong 5 ngày', '/app/me/issues', 0, GETDATE());
+        PRINT N'✅ Created 5 notifications for full_emp';
+    END
+    ELSE
+        PRINT N'ℹ️  full_emp already has notifications - skipped';
+
+    -- ── 8. TẠO CALENDAR EVENTS CHO full_emp
+    -- Chỉ tạo nếu chưa có event nào (idempotent)
+    IF NOT EXISTS (SELECT 1 FROM calendar_events WHERE created_by = @uid_full)
+    BEGIN
+        INSERT INTO calendar_events (title, description, start_time, end_time, all_day, event_type, location, created_by, company_id, created_at, updated_at) VALUES
+            (N'Sprint 5 Planning', N'Thảo luận kế hoạch Sprint 5', DATEADD(day, 2, GETDATE()), DATEADD(hour, 3, DATEADD(day, 2, GETDATE())), 0, 'MEETING', N'Google Meet', @uid_full, 1, GETDATE(), GETDATE()),
+            (N'Review HRMS-33', N'Review code task Optimize DB Performance', DATEADD(day, 3, GETDATE()), DATEADD(hour, 1, DATEADD(day, 3, GETDATE())), 0, 'MEETING', N'Phòng họp A', @uid_full, 1, GETDATE(), GETDATE()),
+            (N'HRMS-31 Deadline', N'Task notification service sắp hết hạn', DATEADD(day, 7, GETDATE()), DATEADD(day, 7, GETDATE()), 1, 'DEADLINE', NULL, @uid_full, 1, GETDATE(), GETDATE());
+        PRINT N'✅ Created 3 calendar events for full_emp';
+    END
+    ELSE
+        PRINT N'ℹ️  full_emp already has calendar events - skipped';
+
+    -- ── 9. TẠO TASK QUÁ HẠN (OVERDUE) CHO full_emp
+    -- Chỉ tạo nếu chưa tồn tại (idempotent)
+    DECLARE @overdue_key VARCHAR(50) = 'HRMS-' + CAST(@max_hrms_num + 6 AS VARCHAR);
+    IF NOT EXISTS (SELECT 1 FROM issues WHERE project_id = @hrms_proj AND issue_key = @overdue_key)
+    BEGIN
+        INSERT INTO issues (project_id, issue_key, title, description, status_id, priority, reporter_id, assignee_id, due_date, start_date, estimated_hours, actual_hours, weight, rework_count, is_important, is_urgent, created_at, updated_at)
+        VALUES (
+            @hrms_proj,
+            @overdue_key,
+            N'Hotfix lỗi bảo mật JWT refresh token',
+            N'Phát hiện lỗ hổng bảo mật trong JWT refresh flow cần fix gấp',
+            @sp, 'CRITICAL', @uid_full, @uid_full,
+            DATEADD(day, -3, GETDATE()), -- Đã quá hạn 3 ngày
+            DATEADD(day, -5, GETDATE()), -- Đã bắt đầu 5 ngày trước
+            8, 10,
+            8, 1,  -- weight=8 (khó), rework=1 (đã fix 1 lần)
+            1, 1,  -- is_important=1, is_urgent=1 (Làm ngay!)
+            GETDATE(), GETDATE()
+        );
+        PRINT N'✅ Created 1 overdue + urgent task for full_emp (SLA breach test)';
+    END
+    ELSE
+        PRINT N'ℹ️  full_emp overdue task already exists - skipped';
+
+    -- ── FINAL SUMMARY
+    PRINT N'';
+    PRINT N'========== DATA FULL_EMP SUMMARY ==========';
+    SELECT @todo_count = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = @st;
+    SELECT @prog_count = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = @sp;
+    SELECT @rev_count  = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = @sr;
+    SELECT @done_count = COUNT(*) FROM issues WHERE assignee_id = @uid_full AND status_id = @sd;
+
+    DECLARE @rep_count INT = (SELECT COUNT(*) FROM issues WHERE reporter_id = @uid_full);
+    DECLARE @tl_count  INT = (SELECT COUNT(*) FROM time_logs WHERE user_id = @uid_full);
+    DECLARE @rev2_count INT = (SELECT COUNT(*) FROM reviews WHERE employee_id = @emp_full);
+    DECLARE @notif_count INT = (SELECT COUNT(*) FROM notifications WHERE user_id = @uid_full);
+    DECLARE @cal_count  INT = (SELECT COUNT(*) FROM calendar_events WHERE created_by = @uid_full);
+    DECLARE @pm_count   INT = (SELECT COUNT(*) FROM project_members WHERE user_id = @uid_full);
+
+    PRINT N'  Tasks assigned: To Do=' + CAST(@todo_count AS VARCHAR)
+            + N', In Progress=' + CAST(@prog_count AS VARCHAR)
+            + N', Review=' + CAST(@rev_count AS VARCHAR)
+            + N', Done=' + CAST(@done_count AS VARCHAR);
+    PRINT N'  Tasks reported (I created): ' + CAST(@rep_count AS VARCHAR);
+    PRINT N'  Time logs: ' + CAST(@tl_count AS VARCHAR);
+    PRINT N'  Reviews: ' + CAST(@rev2_count AS VARCHAR);
+    PRINT N'  Notifications: ' + CAST(@notif_count AS VARCHAR);
+    PRINT N'  Calendar events: ' + CAST(@cal_count AS VARCHAR);
+    PRINT N'  Projects joined: ' + CAST(@pm_count AS VARCHAR);
+    PRINT N'===========================================';
+    PRINT N'✅ ALL DATA SUPPLEMENTED FOR full_emp!';
+END
+ELSE
+BEGIN
+    PRINT N'⚠️  full_emp user not found in database';
+END
+GO
+
+-- =====================================================
+-- BỔ SUNG: GÁN ISSUES VÀO SPRINT 5 (PLANNING)
+-- Mục tiêu: Sprint 5 hiển thị data thay vì 0 issues
+-- =====================================================
+DECLARE @hrms_p BIGINT, @s5 BIGINT;
+SELECT @hrms_p = project_id FROM projects WHERE key_project = 'HRMS';
+SELECT @s5 = sprint_id FROM sprints WHERE name LIKE 'Sprint 5%' AND project_id = @hrms_p;
+
+IF @s5 IS NOT NULL
+BEGIN
+    -- Gán tất cả issue thuộc HRMS mà chưa có sprint (backlog) vào Sprint 5
+    UPDATE issues
+    SET sprint_id = @s5, updated_at = GETDATE()
+    WHERE project_id = @hrms_p
+      AND sprint_id IS NULL;
+
+    DECLARE @assigned_count INT = @@ROWCOUNT;
+    PRINT N'✅ Assigned ' + CAST(@assigned_count AS VARCHAR) + N' backlog issues to Sprint 5 (Planning)';
+END
+ELSE
+    PRINT N'⚠️  Sprint 5 not found - skipping issue assignment';
 GO

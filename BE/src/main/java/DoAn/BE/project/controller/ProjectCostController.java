@@ -1,6 +1,7 @@
 package DoAn.BE.project.controller;
 
 
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.dto.ProjectCostDTO;
 import DoAn.BE.project.dto.ProjectExpenseDTO;
 import DoAn.BE.project.dto.ProjectExpenseRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectCostController {
 
     private final ProjectCostService projectCostService;
+    private final AccessControlService accessControlService;
 
     @GetMapping("/{projectId}")
     public ResponseEntity<ProjectCostDTO> getProjectCost(@PathVariable Long projectId) {
@@ -28,6 +30,7 @@ public class ProjectCostController {
     public ResponseEntity<ProjectExpenseDTO> addExpense(
             @Valid @RequestBody ProjectExpenseRequest request,
             @AuthenticationPrincipal User currentUser) {
+        accessControlService.checkProjectManageAllPermission();
         return ResponseEntity.ok(projectCostService.addExpense(request, currentUser));
     }
 }

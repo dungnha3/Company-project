@@ -10,6 +10,10 @@ import DoAn.BE.hrm.entity.Review;
 import DoAn.BE.hrm.entity.Review.ReviewStatus;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.repository.ReviewRepository;
+import DoAn.BE.project.entity.Issue;
+import DoAn.BE.project.entity.IssueStatus;
+import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.user.entity.User;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +34,8 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final EmployeeRepository employeeRepository;
+    private final IssueRepository issueRepository;
+    private final IssueStatusRepository issueStatusRepository;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -280,5 +286,66 @@ public class ReviewService {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Review> getReviewsByProject(Long projectId) {
         return reviewRepository.findByProjectId(projectId);
+    }
+
+    @Transactional
+    public Review quickScoreAndCompleteIssue(Long issueId, ReviewRequest request, User currentUser) {
+        // 1. Check permissions
+        accessControlService.checkProjectManageIssuesPermission();
+
+        // 2. Find Issue
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
+
+        if (issue.getAssignee() == null) {
+            throw new BadRequestException("Issue chưa được giao cho ai, không thể chấm điểm");
+        }
+
+        // 3. Find Employee profile of Assignee
+        Employee employee = employeeRepository.findByUser_UserId(issue.getAssignee().getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Người được giao chưa có hồ sơ nhân sự"));
+
+        // 4. Create Review
+        Review review = new Review();
+        review.setEmployee(employee);
+        
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        Employee reviewer = null;
+        if (companyId != null) {
+            reviewer = employeeRepository.findByUser_UserIdAndCompany_CompanyId(currentUser.getUserId(), companyId).orElse(null);
+        }
+        if (reviewer == null) {
+            reviewer = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
+        }
+        review.setReviewer(reviewer);
+        
+        review.setReviewPeriod("Quick Review - " + issue.getIssueKey());
+        review.setReviewType("PROJECT_BASED");
+        review.setProjectId(issue.getProject().getProjectId());
+        review.setProjectName(issue.getProject().getName());
+        review.setStartDate(LocalDate.now());
+        review.setEndDate(LocalDate.now());
+
+        review.setTechnicalScore(request.getTechnicalScore());
+        review.setAttitudeScore(request.getAttitudeScore());
+        review.setSoftSkillsScore(request.getSoftSkillsScore());
+        review.setTeamworkScore(request.getTeamworkScore());
+        review.setComments(request.getComments() != null ? request.getComments() : "Quick review from Kanban board");
+        review.setStatus(ReviewStatus.APPROVED); // Automatically approved
+        review.setCompletedDate(LocalDate.now());
+
+        review = reviewRepository.save(review);
+
+        // 5. Update Issue status to Done
+        IssueStatus doneStatus = issueStatusRepository.findByName("Done")
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái Done"));
+        issue.changeStatus(doneStatus);
+        issueRepository.save(issue);
+
+        // Publish Event
+        eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.REVIEW_CREATED,
+                review, currentUser.getUserId(), "Quick Review for " + employee.getFullName()));
+
+        return review;
     }
 }

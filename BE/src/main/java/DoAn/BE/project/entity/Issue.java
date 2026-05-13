@@ -66,6 +66,13 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(length = 20, nullable = false)
     private Priority priority = Priority.MEDIUM;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "issue_type", length = 20)
+    private IssueType issueType = IssueType.TASK;
+
+    @Column(name = "order_index")
+    private Integer orderIndex = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter; // Người tạo issue
@@ -165,5 +172,11 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
         MEDIUM, // Trung bình
         HIGH, // Cao
         CRITICAL // Khẩn cấp
+    }
+
+    public enum IssueType {
+        TASK,
+        BUG,
+        STORY
     }
 }

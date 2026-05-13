@@ -4,6 +4,7 @@ import DoAn.BE.hrm.dto.ApprovalRequest;
 import DoAn.BE.hrm.dto.LeaveRequestDTO;
 import DoAn.BE.hrm.dto.LeaveRequestRequest;
 import DoAn.BE.hrm.entity.LeaveRequest;
+import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.mapper.LeaveRequestMapper;
 import DoAn.BE.hrm.service.LeaveRequestService;
 import DoAn.BE.user.entity.User;
@@ -142,6 +143,20 @@ public class LeaveRequestController {
             @AuthenticationPrincipal User currentUser) {
         LeaveRequest leaveRequest = leaveRequestService.rejectLeaveRequest(id, request.getNote(), currentUser);
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
+    }
+
+    @GetMapping("/me/balance")
+    public ResponseEntity<Map<String, Object>> getMyLeaveBalance(
+            @AuthenticationPrincipal User currentUser) {
+        Employee employee = leaveRequestService.findEmployeeByUserId(currentUser.getUserId());
+        int usedDays = leaveRequestService.getTotalLeaveDays(employee.getEmployeeId(), LocalDate.now().getYear());
+        Map<String, Object> response = new HashMap<>();
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("year", LocalDate.now().getYear());
+        response.put("usedDays", usedDays);
+        response.put("totalDays", 12);
+        response.put("remainingDays", 12 - usedDays);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/employee/{employeeId}/total-days")

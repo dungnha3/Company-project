@@ -20,6 +20,7 @@ public class AnalyticsController {
 
     private final ProjectAnalyticsService analyticsService;
     private final DoAn.BE.project.repository.ProjectMemberRepository projectMemberRepository;
+    private final DoAn.BE.common.service.AccessControlService accessControlService;
 
     private void validateProjectAccess(Long projectId, User currentUser) {
         if (currentUser.isSystemAdminAccount())
@@ -35,6 +36,7 @@ public class AnalyticsController {
             @RequestParam Long sprintId,
             @AuthenticationPrincipal User currentUser) {
         validateProjectAccess(projectId, currentUser);
+        accessControlService.checkAnalyticsViewPermission();
         return ResponseEntity.ok(analyticsService.getBurndownData(projectId, sprintId));
     }
 
@@ -44,6 +46,7 @@ public class AnalyticsController {
             @RequestParam(defaultValue = "5") int sprintCount,
             @AuthenticationPrincipal User currentUser) {
         validateProjectAccess(projectId, currentUser);
+        accessControlService.checkAnalyticsViewPermission();
         sprintCount = Math.min(sprintCount, 50);
         return ResponseEntity.ok(analyticsService.getVelocityData(projectId, sprintCount));
     }
@@ -53,6 +56,7 @@ public class AnalyticsController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
         validateProjectAccess(projectId, currentUser);
+        accessControlService.checkAnalyticsViewPermission();
         return ResponseEntity.ok(analyticsService.getStatusDistribution(projectId));
     }
 
@@ -61,6 +65,7 @@ public class AnalyticsController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal User currentUser) {
         validateProjectAccess(projectId, currentUser);
+        accessControlService.checkAnalyticsViewPermission();
         return ResponseEntity.ok(analyticsService.getTeamWorkload(projectId));
     }
 }

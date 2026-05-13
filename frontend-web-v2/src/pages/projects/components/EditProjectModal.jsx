@@ -21,6 +21,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
         startDate: '',
         endDate: '',
         status: 'PLANNING',
+        budget: '',
     });
     const [memberEmail, setMemberEmail] = useState('');
     const [searchError, setSearchError] = useState('');
@@ -37,6 +38,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                 startDate: project.startDate?.split('T')[0] || '',
                 endDate: project.endDate?.split('T')[0] || '',
                 status: project.status || 'PLANNING',
+                budget: project.budget || '',
             });
         }
     }, [project]);
@@ -209,7 +211,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
                                     <input
@@ -228,6 +230,9 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                         className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
                                     <select
@@ -239,6 +244,17 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngân sách (VND)</label>
+                                    <input
+                                        type="number"
+                                        value={form.budget}
+                                        onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        placeholder="0"
+                                        min="0"
+                                    />
                                 </div>
                             </div>
 

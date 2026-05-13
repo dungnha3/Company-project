@@ -13,10 +13,11 @@ export const NAV_CONFIG = [
         key: 'personal',
         title: 'Cá nhân',
         items: [
-            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi', exact: true },
-            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân' },
+            { path: '/app/me', icon: 'fa-house', label: 'Dashboard', exact: true },
+            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi' },
             { path: '/app/me/timelogs', icon: 'fa-clock', label: 'Nhật ký giờ làm' },
-            { path: '/app/me/performance', icon: 'fa-chart-line', label: 'Hiệu suất của tôi' },
+            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân' },
+            { path: '/app/me/performance', icon: 'fa-chart-line', label: 'Hiệu suất' },
         ],
     },
     {
@@ -30,6 +31,7 @@ export const NAV_CONFIG = [
         key: 'hr',
         title: 'Nhân sự & HR',
         items: [
+            { path: '/app/hr', icon: 'fa-chart-simple', label: 'Dashboard', exact: true },
             { path: '/app/hr/employees', icon: 'fa-address-book', label: 'Danh bạ nhân viên' },
             { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Quản lý nghỉ phép' },
             { path: '/app/hr/performance', icon: 'fa-star', label: 'Đánh giá KPI', permission: 'HR.MANAGE_PERFORMANCE' },

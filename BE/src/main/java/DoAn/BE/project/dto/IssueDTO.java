@@ -25,6 +25,8 @@ public class IssueDTO {
     private String statusName;
     private String statusColor;
     private Priority priority;
+    private DoAn.BE.project.entity.Issue.IssueType issueType;
+    private Integer orderIndex;
     private Long reporterId;
     private String reporterName;
     private Long assigneeId;

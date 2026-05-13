@@ -132,4 +132,13 @@ public class ReviewController {
         List<Review> reviews = reviewService.getReviewsByProject(projectId);
         return ResponseEntity.ok(reviewMapper.toDTOList(reviews));
     }
+
+    @PostMapping("/quick-score/{issueId}")
+    public ResponseEntity<ReviewDTO> quickScoreAndCompleteIssue(
+            @PathVariable Long issueId,
+            @Valid @RequestBody ReviewRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        Review review = reviewService.quickScoreAndCompleteIssue(issueId, request, currentUser);
+        return ResponseEntity.ok(reviewMapper.toDTO(review));
+    }
 }
