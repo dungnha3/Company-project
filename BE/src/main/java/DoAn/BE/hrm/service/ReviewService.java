@@ -8,6 +8,7 @@ import DoAn.BE.hrm.dto.ReviewRequest;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Review;
 import DoAn.BE.hrm.entity.Review.ReviewStatus;
+import DoAn.BE.hrm.entity.Review.ReviewType;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.repository.ReviewRepository;
 import DoAn.BE.project.entity.Issue;
@@ -320,7 +321,7 @@ public class ReviewService {
         review.setReviewer(reviewer);
         
         review.setReviewPeriod("Quick Review - " + issue.getIssueKey());
-        review.setReviewType("PROJECT_BASED");
+        review.setReviewType(ReviewType.PROJECT);
         review.setProjectId(issue.getProject().getProjectId());
         review.setProjectName(issue.getProject().getName());
         review.setStartDate(LocalDate.now());
