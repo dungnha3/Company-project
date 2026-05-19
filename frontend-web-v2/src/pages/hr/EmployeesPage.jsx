@@ -31,7 +31,7 @@ export default function EmployeesPage() {
     const debouncedKeyword = useDebounce(keyword, 500);
 
     // Queries
-    const { data: employeesData, isLoading: isLoadingEmployees } = useQuery({
+    const { data: employeesData, isLoading: isLoadingEmployees, isError: isEmployeesError, error: employeesError, refetch } = useQuery({
         queryKey: ['employees', page, pageSize, debouncedKeyword, status],
         queryFn: async () => {
             const params = {
@@ -45,6 +45,7 @@ export default function EmployeesPage() {
             return response.data;
         },
         placeholderData: (prev) => prev,
+        retry: 1,
     });
 
     const employeeRows = Array.isArray(employeesData?.content)
@@ -141,68 +142,46 @@ export default function EmployeesPage() {
             header: 'Nhân viên',
             accessorKey: 'fullName',
             cell: (row) => (
-                <div className="flex items-center gap-3">
-                    <Avatar src={row.avatarUrl} name={row.fullName} size="md" />
-                    <div>
-                        <div className="font-semibold text-gray-900">{row.fullName}</div>
-                        <div className="text-xs text-gray-500">{row.idCard || `ID: ${row.employeeId}`}</div>
+                <div className="flex items-center gap-2">
+                    <Avatar src={row.avatarUrl} name={row.fullName} size="sm" />
+                    <div className="min-w-0">
+                        <div className="font-semibold color-main truncate max-w-[140px]" title={row.fullName}>{row.fullName}</div>
+                        <div className="text-[10px] color-slate">{row.phone || '—'}</div>
                     </div>
                 </div>
             )
         },
         {
-            header: 'Liên hệ',
+            header: 'Email',
             accessorKey: 'email',
             cell: (row) => (
-                <div className="flex flex-col">
-                    <span className="text-sm text-gray-700" title={row.email}>{row.email}</span>
-                    <span className="text-xs text-gray-500">{row.phone || '---'}</span>
-                    {row.address && (
-                        <span className="text-xs text-gray-400 truncate max-w-[150px]" title={row.address}>
-                            <i className="fa-solid fa-location-dot mr-1" />{row.address}
-                        </span>
-                    )}
-                </div>
+                <span className="text-xs color-slate truncate block max-w-[160px]" title={row.email}>
+                    {row.email}
+                </span>
             )
         },
         {
             header: 'Giới tính',
             accessorKey: 'gender',
             cell: (row) => (
-                <div className="flex items-center gap-1.5">
-                    {row.gender === 'MALE' && <i className="fa-solid fa-person text-blue-500 text-sm" title="Nam" />}
-                    {row.gender === 'FEMALE' && <i className="fa-solid fa-person-dress text-pink-500 text-sm" title="Nữ" />}
-                    {row.gender === 'OTHER' && <i className="fa-solid fa-person text-gray-500 text-sm" title="Khác" />}
-                    <span className="text-xs text-gray-600">
-                        {row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : 'Khác'}
-                    </span>
-                </div>
-            )
-        },
-        {
-            header: 'Ngày sinh',
-            accessorKey: 'dateOfBirth',
-            cell: (row) => (
-                <span className="text-xs text-gray-600">
-                    {row.dateOfBirth ? formatDate(row.dateOfBirth) : '---'}
+                <span className="text-xs color-slate">
+                    {row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : 'Khác'}
                 </span>
             )
         },
         {
-            header: 'Phép năm',
+            header: 'Phép',
             accessorKey: 'leaveBalance',
             cell: (row) => (
-                <div className="flex flex-col">
-                    <span className="font-mono text-indigo-700 font-medium text-sm">
-                        {row.leaveBalance != null ? `${row.leaveBalance} ngày` : '---'}
-                    </span>
-                </div>
+                <span className="text-xs font-semibold color-blue">
+                    {row.leaveBalance != null ? `${row.leaveBalance}` : '—'}
+                </span>
             )
         },
         {
-            header: 'Ngày vào',
+            header: 'Vào',
             accessorKey: 'hireDate',
-            cell: (row) => <span className="text-gray-600 dark:text-gray-400">{row.hireDate ? formatDate(row.hireDate) : '---'}</span>
+            cell: (row) => <span className="text-xs color-slate">{row.hireDate ? formatDate(row.hireDate) : '—'}</span>
         },
         {
             header: 'Trạng thái',
@@ -213,7 +192,7 @@ export default function EmployeesPage() {
             header: '',
             accessorKey: 'actions',
             cell: (row) => (
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-1">
                     {hasPermission('hrEditProfile') && (
                         <>
                             <button
@@ -225,30 +204,30 @@ export default function EmployeesPage() {
                                     }
                                     navigate(`/app/company/settings?tab=members&memberUserId=${row.userId}`);
                                 }}
-                                className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
                                 title="Phân quyền"
                             >
-                                <i className="fa-solid fa-sliders" />
+                                <i className="fa-solid fa-shield-halved text-xs" />
                             </button>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedEmployeeId(row.employeeId);
                                 }}
-                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                                 title="Sửa"
                             >
-                                <i className="fa-solid fa-pen" />
+                                <i className="fa-solid fa-pen text-xs" />
                             </button>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleDelete(row.employeeId);
                                 }}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                 title="Xóa"
                             >
-                                <i className="fa-solid fa-trash" />
+                                <i className="fa-solid fa-trash text-xs" />
                             </button>
                         </>
                     )}
@@ -258,17 +237,18 @@ export default function EmployeesPage() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/60 p-5">
+            <div className="border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-3">
-                            <i className="fa-solid fa-users" />
-                            Nhân sự
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-users text-indigo-500 text-xl" />
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900">Danh sách thành viên</h1>
-                        <p className="text-gray-600 text-sm mt-1">Quản lý nhân sự theo trạng thái, liên hệ và thông tin cơ bản</p>
+                        <div>
+                            <h1 className="text-2xl font-black color-main">Danh sách thành viên</h1>
+                            <p className="text-xs color-slate mt-0.5">Quản lý nhân sự theo trạng thái, liên hệ và thông tin cơ bản</p>
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:min-w-[360px]">
                         <MiniStat label="Trên trang" value={statusCounts.total} tone="slate" />
@@ -310,9 +290,9 @@ export default function EmployeesPage() {
 
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        <span className="text-indigo-700 font-medium">
+                        <span className="color-blue font-semibold">
                             Đã chọn {selectedIds.size} thành viên
                         </span>
                     </div>
@@ -332,7 +312,7 @@ export default function EmployeesPage() {
                         </button>
                         <button
                             onClick={() => setSelectedIds(new Set())}
-                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors text-sm"
+                            className="px-4 py-2 border border-gray-200 color-slate hover:bg-gray-50 rounded-lg font-medium transition-colors text-sm"
                         >
                             Bỏ chọn
                         </button>
@@ -341,15 +321,15 @@ export default function EmployeesPage() {
             )}
 
             {/* Filters */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     {/* Status Tabs */}
-                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                    <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-200">
                         {['ALL', 'ACTIVE', 'ON_LEAVE', 'RESIGNED'].map(s => (
                             <button
                                 key={s}
                                 onClick={() => setStatus(s)}
-                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${status === s ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${status === s ? 'bg-white color-main shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
                             >
                                 {s === 'ALL' ? 'Tất cả' : s === 'ACTIVE' ? 'Đang làm' : s === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Nghỉ việc'}
                             </button>
@@ -384,14 +364,16 @@ export default function EmployeesPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-2xl overflow-hidden">
+            <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                 <DataTable
                     loading={isLoadingEmployees}
+                    error={isEmployeesError}
                     columns={columns}
                     data={employeeRows}
                     totalCount={totalEmployees}
                     pagination={{ pageIndex: page, pageSize }}
                     onPaginationChange={({ pageIndex }) => setPage(pageIndex)}
+                    onRetry={refetch}
                 />
             </div>
         </div>
@@ -407,9 +389,9 @@ function MiniStat({ label, value, tone }) {
     }[tone] || 'bg-slate-50 text-slate-700 border-slate-200';
 
     return (
-        <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
-            <p className="text-[11px] uppercase tracking-wide opacity-80">{label}</p>
-            <p className="text-lg font-bold leading-tight">{value}</p>
+        <div className={`rounded-xl border px-3 py-2 hover:shadow-md transition-shadow ${toneClass}`}>
+            <p className="text-[10px] uppercase tracking-wide font-bold opacity-80">{label}</p>
+            <p className="text-lg font-black leading-tight mt-0.5">{value}</p>
         </div>
     );
 }

@@ -26,11 +26,16 @@ export default function LeaveRequestsPage() {
     const pendingCount = (typeof pendingData === 'number') ? pendingData : 0;
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Nghỉ phép</h1>
-                    <p className="text-gray-500 text-sm">Quản lý đơn xin nghỉ phép</p>
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            <div className="flex justify-between items-center border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-umbrella-beach text-indigo-500 text-xl" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black color-main">Nghỉ phép</h1>
+                        <p className="text-xs color-slate">Quản lý đơn xin nghỉ phép</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     {hasPermission('leaveViewAll') && (
@@ -51,31 +56,31 @@ export default function LeaveRequestsPage() {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm px-4">
                 <nav className="flex space-x-8" aria-label="Tabs">
                     <button
                         onClick={() => setActiveTab('my-requests')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'my-requests' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'my-requests' ? 'border-indigo-500 color-blue' : 'border-transparent color-slate hover:text-gray-700 hover:border-gray-300'}`}
                     >
-                        <i className="fa-solid fa-list mr-2" />
+                        <i className="fa-solid fa-list text-xs" />
                         Đơn của tôi
                     </button>
                     <button
                         onClick={() => setActiveTab('calendar')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'calendar' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'calendar' ? 'border-indigo-500 color-blue' : 'border-transparent color-slate hover:text-gray-700 hover:border-gray-300'}`}
                     >
-                        <i className="fa-solid fa-calendar-days mr-2" />
+                        <i className="fa-solid fa-calendar-days text-xs" />
                         Lịch nghỉ
                     </button>
                     {hasPermission('leaveApprove') && (
                         <button
                             onClick={() => setActiveTab('pending-approval')}
-                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending-approval' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'pending-approval' ? 'border-indigo-500 color-blue' : 'border-transparent color-slate hover:text-gray-700 hover:border-gray-300'}`}
                         >
-                            <i className="fa-solid fa-gavel mr-2" />
+                            <i className="fa-solid fa-gavel text-xs" />
                             Cần duyệt
                             {pendingCount > 0 && (
-                                <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">{pendingCount}</span>
+                                <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs font-bold">{pendingCount}</span>
                             )}
                         </button>
                     )}
@@ -255,21 +260,21 @@ function MyLeaveRequests() {
         <div className="space-y-4">
             {/* Leave Balance Card */}
             {remaining != null && (
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+                <div className="border border-indigo-200 bg-white rounded-lg p-5 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                            <i className="fa-solid fa-umbrella-beach text-white text-2xl" />
+                        <div className="w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center">
+                            <i className="fa-solid fa-umbrella-beach text-indigo-500 text-2xl" />
                         </div>
                         <div>
-                            <p className="text-indigo-100 text-sm font-medium">Phép năm {new Date().getFullYear()}</p>
-                            <p className="text-white text-3xl font-black">{remaining} <span className="text-lg font-normal opacity-70">/{total} ngày</span></p>
+                            <p className="text-xs color-slate font-semibold">Phép năm {new Date().getFullYear()}</p>
+                            <p className="text-3xl font-black color-main mt-1">{remaining} <span className="text-base font-normal opacity-60">/{total} ngày</span></p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-indigo-100 text-sm">Đã dùng</p>
-                        <p className="text-white text-2xl font-bold">{used}</p>
-                        <div className="w-32 bg-white/20 rounded-full h-2 mt-2 overflow-hidden">
-                            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        <p className="text-xs color-slate">Đã dùng</p>
+                        <p className="text-2xl font-bold color-main">{used}</p>
+                        <div className="w-32 bg-gray-100 rounded-full h-2 mt-2 overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                     </div>
                 </div>
@@ -277,31 +282,31 @@ function MyLeaveRequests() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-3 gap-4">
-                <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
-                    <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center">
+                <div className="border border-gray-200 bg-white rounded-lg p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
                         <i className="fa-solid fa-clock text-yellow-500" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-gray-900">{pending}</p>
-                        <p className="text-xs text-gray-500">Chờ duyệt</p>
+                        <p className="text-2xl font-black color-main">{pending}</p>
+                        <p className="text-xs color-slate">Chờ duyệt</p>
                     </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
-                    <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+                <div className="border border-gray-200 bg-white rounded-lg p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                         <i className="fa-solid fa-check-circle text-green-500" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-gray-900">{approved}</p>
-                        <p className="text-xs text-gray-500">Đã duyệt</p>
+                        <p className="text-2xl font-black color-main">{approved}</p>
+                        <p className="text-xs color-slate">Đã duyệt</p>
                     </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
-                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                <div className="border border-gray-200 bg-white rounded-lg p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
                         <i className="fa-solid fa-xmark-circle text-red-500" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-gray-900">{rejected}</p>
-                        <p className="text-xs text-gray-500">Từ chối</p>
+                        <p className="text-2xl font-black color-main">{rejected}</p>
+                        <p className="text-xs color-slate">Từ chối</p>
                     </div>
                 </div>
             </div>

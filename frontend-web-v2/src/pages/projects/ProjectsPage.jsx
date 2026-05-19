@@ -39,31 +39,36 @@ export default function ProjectsPage() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Dự án</h1>
-                    <p className="text-gray-500 text-sm">Quản lý các dự án và tiến độ công việc</p>
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-folder text-indigo-500 text-xl" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black color-main">Dự án</h1>
+                        <p className="text-xs color-slate">Quản lý các dự án và tiến độ công việc</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
-                    <div className="bg-gray-100 p-1 rounded-lg flex">
+                    <div className="bg-gray-50 p-1 rounded-lg flex border border-gray-200">
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white color-main shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <i className="fa-solid fa-list mr-1" /> List
+                            <i className="fa-solid fa-list text-xs" /> List
                         </button>
                         <button
                             onClick={() => setViewMode('card')}
-                            className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${viewMode === 'card' ? 'bg-white color-main shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <i className="fa-solid fa-grid-2 mr-1" /> Card
+                            <i className="fa-solid fa-grid-2 text-xs" /> Card
                         </button>
                     </div>
                     {hasPermission('projectManageIssues') && (
                         <button
                             onClick={() => setShowIssueModal(true)}
-                            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                            className="px-4 py-2 border border-gray-200 color-slate rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                         >
                             <i className="fa-solid fa-plus mr-1" /> Task
                         </button>
@@ -80,7 +85,7 @@ export default function ProjectsPage() {
             </div>
 
             {/* Search & Filter */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                 <div className="relative flex-1 max-w-md">
                     <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
                     <input
@@ -91,7 +96,7 @@ export default function ProjectsPage() {
                         className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm color-slate font-medium">
                     {(projects || []).filter(p => {
                         if (!searchTerm) return true;
                         const s = searchTerm.toLowerCase();

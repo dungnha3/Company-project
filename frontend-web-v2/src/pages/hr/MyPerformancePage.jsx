@@ -21,46 +21,32 @@ const METRIC_COLORS = {
 function ScoreBadge({ value, label, color }) {
     const score = Number(value) || 0;
     const bgMap = {
-        '#6366f1': 'bg-indigo-50 border-indigo-100 text-indigo-700',
-        '#14b8a6': 'bg-teal-50 border-teal-100 text-teal-700',
-        '#f59e0b': 'bg-amber-50 border-amber-100 text-amber-700',
-        '#8b5cf6': 'bg-purple-50 border-purple-100 text-purple-700',
+        '#6366f1': 'bg-indigo-50 border-indigo-200 text-indigo-700',
+        '#14b8a6': 'bg-teal-50 border-teal-200 text-teal-700',
+        '#f59e0b': 'bg-amber-50 border-amber-200 text-amber-700',
+        '#8b5cf6': 'bg-purple-50 border-purple-200 text-purple-700',
     };
-    const cls = bgMap[color] || 'bg-gray-50 border-gray-100 text-gray-700';
+    const cls = bgMap[color] || 'bg-gray-50 border-gray-200 text-gray-700';
     return (
-        <div className={`rounded-xl border p-4 flex flex-col items-center gap-1 ${cls}`}>
-            <span className="text-2xl font-black leading-none">{score.toFixed(1)}</span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">{label}</span>
+        <div className={`rounded-xl border p-4 flex flex-col items-center gap-1 hover:shadow-md transition-shadow ${cls}`}>
+            <span className="text-2xl font-black leading-none color-main">{score.toFixed(1)}</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold opacity-70">{label}</span>
         </div>
     );
 }
 
 function MiniStat({ title, value, sub, tone = 'slate' }) {
     const styles = {
-        slate: 'bg-slate-50 border-slate-100 text-slate-700',
-        red: 'bg-red-50 border-red-100 text-red-700',
-        green: 'bg-green-50 border-green-100 text-green-700',
-        purple: 'bg-purple-50 border-purple-100 text-purple-700',
-    };
-    const iconStyles = {
-        slate: 'bg-slate-100 text-slate-500',
-        red: 'bg-red-100 text-red-500',
-        green: 'bg-green-100 text-green-500',
-        purple: 'bg-purple-100 text-purple-500',
-    };
-    const icons = {
-        slate: 'fa-users', red: 'fa-clock', green: 'fa-check-circle', purple: 'fa-chart-line',
+        slate: 'bg-slate-50 border-slate-200 text-slate-700',
+        red: 'bg-red-50 border-red-200 text-red-700',
+        green: 'bg-green-50 border-green-200 text-green-700',
+        purple: 'bg-purple-50 border-purple-200 text-purple-700',
     };
     return (
-        <div className={`rounded-xl border p-4 flex items-center gap-3 ${styles[tone] || styles.slate}`}>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm ${iconStyles[tone]}`}>
-                <i className={`fa-solid ${icons[tone]}`} />
-            </div>
-            <div>
-                <p className="text-[10px] uppercase tracking-wider font-semibold opacity-70">{title}</p>
-                <p className="text-xl font-black leading-tight">{value}</p>
-                {sub && <p className="text-[10px] opacity-60 mt-0.5">{sub}</p>}
-            </div>
+        <div className={`rounded-xl border px-4 py-3 hover:shadow-md transition-shadow ${styles[tone] || styles.slate}`}>
+            <p className="text-[10px] uppercase tracking-wider font-bold opacity-80">{title}</p>
+            <p className="text-xl font-black leading-tight mt-1">{value}</p>
+            {sub && <p className="text-[10px] opacity-60 mt-0.5">{sub}</p>}
         </div>
     );
 }
@@ -73,9 +59,9 @@ function RadarScores({ scores }) {
         { metric: 'Khối lượng', value: Number(scores.volume || 0), fullMark: 10 },
     ];
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-800 mb-1">Điểm số cá nhân</h3>
-            <p className="text-xs text-gray-400 mb-3">So sánh 4 tiêu chí (thang 10)</p>
+        <div className="border border-gray-200 bg-white rounded-lg p-5">
+            <h3 className="font-bold color-main mb-1">Điểm số cá nhân</h3>
+            <p className="text-xs color-slate mb-3">So sánh 4 tiêu chí (thang 10)</p>
             <ResponsiveContainer width="100%" height={220}>
                 <RadarChart data={data}>
                     <PolarGrid stroke="#e2e8f0" />
@@ -90,9 +76,9 @@ function RadarScores({ scores }) {
 
 function PerformanceTrend({ history }) {
     if (!history || history.length === 0) return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-800 mb-1">Xu hướng hiệu suất</h3>
-            <p className="text-xs text-gray-400 mb-3">Điểm trung bình theo tuần</p>
+        <div className="border border-gray-200 bg-white rounded-lg p-5">
+            <h3 className="font-bold color-main mb-1">Xu hướng hiệu suất</h3>
+            <p className="text-xs color-slate mb-3">Điểm trung bình theo tuần</p>
             <div className="h-[160px] flex items-center justify-center text-gray-300 text-sm">
                 <i className="fa-solid fa-chart-line text-3xl" />
                 <span className="ml-2">Chưa có dữ liệu</span>
@@ -100,9 +86,9 @@ function PerformanceTrend({ history }) {
         </div>
     );
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-800 mb-1">Xu hướng hiệu suất</h3>
-            <p className="text-xs text-gray-400 mb-3">Điểm trung bình theo tuần</p>
+        <div className="border border-gray-200 bg-white rounded-lg p-5">
+            <h3 className="font-bold color-main mb-1">Xu hướng hiệu suất</h3>
+            <p className="text-xs color-slate mb-3">Điểm trung bình theo tuần</p>
             <ResponsiveContainer width="100%" height={160}>
                 <LineChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -127,10 +113,10 @@ function ComparisonTable({ myId, comparisonData }) {
     if (rows.length === 0) return null;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-800">So sánh với đồng nghiệp</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Top 5 theo điểm hiệu suất trong dự án</p>
+        <div className="border border-gray-200 bg-white rounded-lg overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+                <h3 className="font-bold color-main">So sánh với đồng nghiệp</h3>
+                <p className="text-xs color-slate mt-0.5">Top 5 theo điểm hiệu suất trong dự án</p>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -145,7 +131,7 @@ function ComparisonTable({ myId, comparisonData }) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {rows.map((r, i) => {
+                            {rows.map((r, i) => {
                             const isMe = (r.userId || r.employeeId) === myId;
                             return (
                                 <tr key={r.userId || r.employeeId} className={`${isMe ? 'bg-indigo-50/50' : 'hover:bg-gray-50/70'}`}>
@@ -155,16 +141,16 @@ function ComparisonTable({ myId, comparisonData }) {
                                             <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
                                                 {(r.employeeName || '?').charAt(0)}
                                             </div>
-                                            <span className={`font-medium ${isMe ? 'text-indigo-700' : 'text-gray-800'}`}>
+                                            <span className={`font-semibold ${isMe ? 'color-blue' : 'color-main'}`}>
                                                 {r.employeeName || '—'}
-                                                {isMe && <span className="ml-1 text-[9px] bg-indigo-200 text-indigo-700 px-1 py-0.5 rounded font-semibold">Bạn</span>}
+                                                {isMe && <span className="ml-1 text-[9px] bg-indigo-200 color-blue px-1 py-0.5 rounded font-semibold">Bạn</span>}
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2.5 text-center font-bold text-indigo-700">{Number(r.totalPerformanceScore || 0).toFixed(1)}</td>
-                                    <td className="px-4 py-2.5 text-center text-teal-700">{Number(r.speedScore || 0).toFixed(1)}</td>
-                                    <td className="px-4 py-2.5 text-center text-amber-700">{Number(r.qualityScore || 0).toFixed(1)}</td>
-                                    <td className="px-4 py-2.5 text-center text-gray-600">{r.completedTasks || 0}</td>
+                                    <td className="px-4 py-2.5 text-center font-bold color-blue">{Number(r.totalPerformanceScore || 0).toFixed(1)}</td>
+                                    <td className="px-4 py-2.5 text-center color-blue">{Number(r.speedScore || 0).toFixed(1)}</td>
+                                    <td className="px-4 py-2.5 text-center color-main">{Number(r.qualityScore || 0).toFixed(1)}</td>
+                                    <td className="px-4 py-2.5 text-center color-slate">{r.completedTasks || 0}</td>
                                 </tr>
                             );
                         })}
@@ -179,11 +165,11 @@ function KpiBar({ label, current, max = 10, color = '#6366f1' }) {
     const pct = Math.min((Number(current) / max) * 100, 100);
     return (
         <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 w-24 flex-shrink-0">{label}</span>
+            <span className="text-xs color-slate w-24 flex-shrink-0">{label}</span>
             <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
             </div>
-            <span className="text-xs font-bold text-gray-600 w-10 text-right">{Number(current).toFixed(1)}/{max}</span>
+            <span className="text-xs font-bold color-main w-10 text-right">{Number(current).toFixed(1)}/{max}</span>
         </div>
     );
 }
@@ -287,23 +273,23 @@ function PerformanceTab() {
             {/* So sánh với đồng nghiệp */}
             {selectedProjectId ? (
                     loadingComparison ? (
-                        <div className="bg-white rounded-2xl border border-gray-100 p-10 flex items-center justify-center">
-                            <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-400" />
+                        <div className="border border-gray-200 bg-white rounded-lg p-10 flex items-center justify-center shadow-sm">
+                            <i className="fa-solid fa-spinner fa-spin text-2xl color-main" />
                         </div>
                     ) : (
                         <ComparisonTable myId={null} comparisonData={comparisonData} />
                     )
                 ) : (
-                    <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+                    <div className="border border-dashed border-gray-300 bg-white rounded-lg p-10 text-center shadow-sm">
                         <i className="fa-solid fa-users-viewfinder text-3xl text-gray-200 mb-2 block" />
-                        <p className="font-semibold text-gray-500">Chọn dự án để xem so sánh</p>
+                        <p className="font-semibold color-slate">Chọn dự án để xem so sánh</p>
                     </div>
                 )}
 
             {/* KPI Bars */}
             {comparisonData.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                    <h3 className="font-bold text-gray-800 mb-4">Chi tiết KPI</h3>
+                <div className="border border-gray-200 bg-white rounded-lg p-5 shadow-sm">
+                    <h3 className="font-bold color-main mb-4">Chi tiết KPI</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-3">
                             <KpiBar label="Hiệu suất" current={radarScores.performance} max={10} color={METRIC_COLORS.performance} />
@@ -413,16 +399,21 @@ function TimelogsTab() {
     return (
         <div className="space-y-4">
             {/* Header stats */}
-            <div className="bg-indigo-600 rounded-2xl p-5 flex items-center justify-between">
-                <div>
-                    <p className="text-indigo-200 text-sm">Tổng cộng đã log</p>
-                    <p className="text-white font-black text-3xl mt-1">
-                        {formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                    </p>
+            <div className="border border-gray-200 bg-white rounded-lg p-5 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                        <i className="fa-solid fa-clock text-indigo-500" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] color-slate uppercase tracking-wider">Tổng cộng đã log</p>
+                        <p className="text-2xl font-black color-main mt-1">
+                            {formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
+                        </p>
+                    </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-indigo-200 text-sm">{timelogs.length} entries</p>
-                    <p className="text-indigo-200 text-sm">{issueSummaries.length} issues</p>
+                    <p className="text-[10px] color-slate">{timelogs.length} entries</p>
+                    <p className="text-[10px] color-slate">{issueSummaries.length} issues</p>
                 </div>
             </div>
 
@@ -435,15 +426,15 @@ function TimelogsTab() {
 
             {/* Log list */}
             {loading && page === 0 ? (
-                <div className="text-center text-gray-400 py-16">
+                <div className="text-center color-slate py-16">
                     <div className="w-8 h-8 border-2 border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
                     Đang tải...
                 </div>
             ) : Object.keys(groupedLogs).length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-                    <div className="text-4xl mb-3"><i className="fa-solid fa-clock-rotate-left text-indigo-200" /></div>
-                    <p className="text-gray-600 font-medium mb-1">Chưa có time log nào</p>
-                    <p className="text-gray-400 text-sm">Bắt đầu timer hoặc log nhanh để theo dõi công việc</p>
+                <div className="text-center py-20 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="text-4xl mb-3"><i className="fa-solid fa-clock-rotate-left text-gray-200" /></div>
+                    <p className="color-main font-semibold mb-1">Chưa có time log nào</p>
+                    <p className="text-sm color-slate">Bắt đầu timer hoặc log nhanh để theo dõi công việc</p>
                 </div>
             ) : (
                 <div className="flex flex-col gap-5">
@@ -529,7 +520,7 @@ function TimelogsTab() {
                     })}
                     {hasMore && (
                         <button onClick={() => setPage(p => p + 1)} disabled={loading}
-                            className="py-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-600 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            className="py-3 bg-white border border-gray-200 hover:border-gray-300 color-slate rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                             {loading ? (
                                 <><div className="w-4 h-4 border-2 border-gray-300/30 border-t-gray-500 rounded-full animate-spin" /> Đang tải...</>
                             ) : (
@@ -553,22 +544,22 @@ export default function MyPerformancePage() {
     ];
 
     return (
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
+            <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg">
-                        <i className="fa-solid fa-chart-line" />
+                    <div className="w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm">
+                        <i className="fa-solid fa-chart-line text-2xl" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Hiệu suất & Nhật ký giờ</h1>
-                        <p className="text-sm text-gray-400 mt-0.5">Theo dõi KPI, thời gian và so sánh với đồng nghiệp</p>
+                        <h1 className="text-2xl font-black color-main tracking-tight">Hiệu suất & Nhật ký giờ</h1>
+                        <p className="text-xs color-slate font-semibold mt-0.5">Theo dõi KPI, thời gian và so sánh với đồng nghiệp</p>
                     </div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-2xl border border-gray-100 mb-6 overflow-hidden">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <div className="flex border-b border-gray-100">
                     {tabs.map(tab => (
                         <button
@@ -576,8 +567,8 @@ export default function MyPerformancePage() {
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold transition-colors ${
                                 activeTab === tab.id
-                                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50'
-                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                    ? 'color-blue border-b-2 border-indigo-500 bg-indigo-50/50'
+                                    : 'color-slate hover:bg-gray-50'
                             }`}
                         >
                             <i className={`fa-solid ${tab.icon} text-xs`} />

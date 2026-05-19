@@ -133,40 +133,42 @@ export default function PerformanceOverviewPage() {
 
     if (loadingProjects || loadingRankings) {
         return (
-            <div className="p-8 text-center">
-                <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
-                <p className="text-gray-500 mt-2">Đang tải hiệu suất tổng thể...</p>
+            <div className="max-w-7xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+                <i className="fa-solid fa-spinner fa-spin text-3xl color-main" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-chart-line text-indigo-500 text-xl" />
+                    </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Hiệu suất tổng thể (toàn thời gian)</h1>
-                        <p className="text-gray-500 mt-1">
+                        <h1 className="text-2xl font-black color-main">Hiệu suất tổng thể</h1>
+                        <p className="text-xs color-slate mt-0.5">
                             Tổng hợp hiệu suất nhân sự xuyên các dự án hiện có trong workspace.
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">Chu kỳ:</span>
-                        <select
-                            value={period}
-                            onChange={(e) => setPeriod(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                        >
-                            <option value="all">Toàn thời gian</option>
-                            <option value="24">24 tháng gần nhất</option>
-                            <option value="12">12 tháng gần nhất</option>
-                            <option value="6">6 tháng gần nhất</option>
-                        </select>
-                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm color-slate font-medium">Chu kỳ:</span>
+                    <select
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="all">Toàn thời gian</option>
+                        <option value="24">24 tháng gần nhất</option>
+                        <option value="12">12 tháng gần nhất</option>
+                        <option value="6">6 tháng gần nhất</option>
+                    </select>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <MiniStat title="Nhân sự" value={summary.employees} tone="slate" />
                 <MiniStat title="Dự án có dữ liệu" value={summary.projects} tone="indigo" />
                 <MiniStat title="Task hoàn thành" value={summary.completedTasks} tone="green" />
@@ -175,9 +177,9 @@ export default function PerformanceOverviewPage() {
                 <MiniStat title="Điểm TB" value={summary.avgPerformance} tone="purple" />
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-1">So sánh hiệu suất Top nhân sự</h3>
-                <p className="text-xs text-gray-500 mb-4">Hiệu suất trung bình, tốc độ trung bình và chất lượng trung bình</p>
+            <div className="border border-gray-200 bg-white rounded-lg p-6 shadow-sm">
+                <h3 className="text-lg font-bold color-main mb-1">So sánh hiệu suất Top nhân sự</h3>
+                <p className="text-xs color-slate mb-4">Hiệu suất trung bình, tốc độ trung bình và chất lượng trung bình</p>
                 <div className="h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>
@@ -194,10 +196,10 @@ export default function PerformanceOverviewPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900">Bảng so sánh nhân sự</h3>
-                    <p className="text-sm text-gray-500">Thống kê toàn thời gian theo dữ liệu hiệu suất dự án</p>
+            <div className="border border-gray-200 bg-white rounded-lg overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h3 className="text-lg font-bold color-main">Bảng so sánh nhân sự</h3>
+                    <p className="text-xs color-slate">Thống kê toàn thời gian theo dữ liệu hiệu suất dự án</p>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -217,11 +219,11 @@ export default function PerformanceOverviewPage() {
                         <tbody className="divide-y divide-gray-100">
                             {leaderboard.map((u) => (
                                 <tr key={u.userId || u.employeeId} className="hover:bg-gray-50/70">
-                                    <td className="px-4 py-3 font-medium text-gray-900">{u.employeeName}</td>
+                                    <td className="px-4 py-3 font-medium color-main">{u.employeeName}</td>
                                     <td className="px-4 py-3 text-center">{u.projects}</td>
-                                    <td className="px-4 py-3 text-center font-semibold text-indigo-700">{u.avgPerformance}</td>
-                                    <td className="px-4 py-3 text-center text-teal-700">{u.avgSpeed}</td>
-                                    <td className="px-4 py-3 text-center text-amber-700">{u.avgQuality}</td>
+                                    <td className="px-4 py-3 text-center font-semibold color-blue">{u.avgPerformance}</td>
+                                    <td className="px-4 py-3 text-center color-blue">{u.avgSpeed}</td>
+                                    <td className="px-4 py-3 text-center color-main">{u.avgQuality}</td>
                                     <td className="px-4 py-3 text-center">{u.completedTasks}</td>
                                     <td className="px-4 py-3 text-center text-red-600">{u.overdueTasks}</td>
                                     <td className="px-4 py-3 text-center text-orange-600">{u.reworks}</td>
@@ -250,17 +252,28 @@ function SlaBadge({ overdue = 0, late = 0, reworks = 0 }) {
 
 function MiniStat({ title, value, tone = 'slate' }) {
     const styles = {
-        slate: 'bg-slate-50 text-slate-700 border-slate-100',
-        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-        green: 'bg-green-50 text-green-700 border-green-100',
-        red: 'bg-red-50 text-red-700 border-red-100',
-        amber: 'bg-amber-50 text-amber-700 border-amber-100',
+        slate: 'bg-slate-50 text-slate-700 border-slate-200',
+        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        green: 'bg-green-50 text-green-700 border-green-200',
+        red: 'bg-red-50 text-red-700 border-red-200',
+        amber: 'bg-amber-50 text-amber-700 border-amber-200',
         purple: 'bg-purple-50 text-purple-700 border-purple-100',
     };
+    const iconStyles = {
+        slate: 'bg-slate-100 text-slate-500',
+        indigo: 'bg-indigo-100 text-indigo-500',
+        green: 'bg-green-100 text-green-500',
+        red: 'bg-red-100 text-red-500',
+        amber: 'bg-amber-100 text-amber-500',
+        purple: 'bg-purple-100 text-purple-500',
+    };
+    const icons = {
+        slate: 'fa-users', indigo: 'fa-chart-line', green: 'fa-check-circle', red: 'fa-clock', amber: 'fa-rotate', purple: 'fa-star',
+    };
     return (
-        <div className={`rounded-xl border px-3 py-2 ${styles[tone] || styles.slate}`}>
-            <p className="text-[11px] uppercase tracking-wide opacity-80">{title}</p>
-            <p className="text-lg font-bold leading-tight">{value}</p>
+        <div className={`rounded-xl border px-4 py-3 hover:shadow-md transition-shadow ${styles[tone] || styles.slate}`}>
+            <p className="text-[10px] uppercase tracking-wider font-bold opacity-80">{title}</p>
+            <p className="text-xl font-black leading-tight mt-1">{value}</p>
         </div>
     );
 }

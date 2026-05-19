@@ -271,17 +271,19 @@ export default function CalendarPage() {
     };
 
     return (
-        <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-            {/* ═══ Header ═══════════════════════════════════════════════════ */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            {/* Header Banner */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
                 {/* Title + breadcrumb */}
                 <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-calendar-days text-indigo-500 text-xl" />
+                    </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <i className="fa-solid fa-calendar-days text-indigo-500" />
+                        <h1 className="text-2xl font-black color-main flex items-center gap-2">
                             Lịch cá nhân
                         </h1>
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="text-xs color-slate mt-0.5">
                             {filteredEvents.length} sự kiện
                             {filteredEvents.length !== events.length && ` / ${events.length} tổng`}
                         </p>
@@ -290,8 +292,8 @@ export default function CalendarPage() {
 
                 {/* Right: View switcher + create button */}
                 <div className="flex items-center gap-3">
-                    {/* View Switcher (like Kanban toolbar) */}
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                    {/* View Switcher (like Dashboard toolbar) */}
+                    <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-200">
                         {[
                             { id: 'month', label: 'Tháng', icon: 'fa-calendar' },
                             { id: 'week', label: 'Tuần', icon: 'fa-calendar-week' },
@@ -301,7 +303,7 @@ export default function CalendarPage() {
                                 key={view.id}
                                 onClick={() => handleViewChange(view.id)}
                                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${viewMode === view.id
-                                    ? 'bg-white shadow-sm text-gray-900 ring-1 ring-gray-200'
+                                    ? 'bg-white shadow-sm color-main ring-1 ring-gray-200'
                                     : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
@@ -314,7 +316,7 @@ export default function CalendarPage() {
                     {canManage && (
                         <button
                             onClick={openCreateForm}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
                         >
                             <i className="fa-solid fa-plus text-xs" />
                             Tạo sự kiện
@@ -323,16 +325,16 @@ export default function CalendarPage() {
                 </div>
             </div>
 
-            {/* ═══ Toolbar (matching Kanban pattern) ═══════════════════════ */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 bg-white rounded-xl border border-gray-200 p-3">
+            {/* Toolbar (matching Dashboard pattern) */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                 {/* Left: Filters */}
                 <div className="flex items-center gap-2 flex-wrap">
                     {/* My Events */}
                     <button
                         onClick={() => setFilterMyEvents(p => !p)}
                         className={`px-3 py-1.5 text-xs rounded-lg border transition-all font-medium ${filterMyEvents
-                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'bg-indigo-50 border-indigo-300 color-blue'
+                            : 'bg-white border-gray-200 color-slate hover:bg-gray-50'
                             }`}
                     >
                         <i className="fa-solid fa-user mr-1.5" />Của tôi
@@ -343,8 +345,8 @@ export default function CalendarPage() {
                         value={filterType}
                         onChange={e => setFilterType(e.target.value)}
                         className={`px-3 py-1.5 text-xs rounded-lg border transition-all font-medium appearance-none cursor-pointer ${filterType
-                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                            : 'bg-white border-gray-200 text-gray-600'
+                            ? 'bg-indigo-50 border-indigo-300 color-blue'
+                            : 'bg-white border-gray-200 color-slate'
                             }`}
                     >
                         {FILTER_OPTIONS.map(o => (
@@ -352,7 +354,7 @@ export default function CalendarPage() {
                         ))}
                     </select>
 
-                    {/* Search (matching Kanban search pattern) */}
+                    {/* Search (matching Dashboard search pattern) */}
                     <div className="relative">
                         <i className="fa-solid fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]" />
                         <input
@@ -360,7 +362,7 @@ export default function CalendarPage() {
                             placeholder="Tìm kiếm sự kiện..."
                             value={searchText}
                             onChange={e => setSearchText(e.target.value)}
-                            className="pl-7 pr-8 py-1.5 text-xs rounded-lg border border-gray-200 w-44 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
+                            className="pl-7 pr-8 py-1.5 text-xs rounded-lg border border-gray-200 w-44 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all bg-white"
                         />
                         {searchText && (
                             <button
@@ -376,7 +378,7 @@ export default function CalendarPage() {
                     {activeFilterCount > 0 && (
                         <button
                             onClick={() => { setFilterMyEvents(false); setFilterType(''); setSearchText(''); }}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium px-2"
+                            className="text-xs color-blue hover:underline font-semibold px-2"
                         >
                             <i className="fa-solid fa-filter-circle-xmark mr-1" />
                             Xóa lọc ({activeFilterCount})
@@ -388,25 +390,25 @@ export default function CalendarPage() {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => navigateHandler()(-1)}
-                        className="w-9 h-9 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors flex items-center justify-center"
+                        className="w-9 h-9 bg-white border border-gray-200 rounded-lg color-slate hover:bg-gray-50 hover:color-main transition-colors flex items-center justify-center"
                         title="Trước"
                     >
                         <i className="fa-solid fa-chevron-left text-xs" />
                     </button>
                     <button
                         onClick={goToToday}
-                        className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium"
+                        className="px-3 py-1.5 text-xs bg-indigo-50 color-blue rounded-lg hover:bg-indigo-100 transition-colors font-semibold"
                     >
                         Hôm nay
                     </button>
                     <button
                         onClick={() => navigateHandler()(1)}
-                        className="w-9 h-9 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors flex items-center justify-center"
+                        className="w-9 h-9 bg-white border border-gray-200 rounded-lg color-slate hover:bg-gray-50 hover:color-main transition-colors flex items-center justify-center"
                         title="Sau"
                     >
                         <i className="fa-solid fa-chevron-right text-xs" />
                     </button>
-                    <h2 className="text-sm font-semibold text-gray-800 min-w-[160px] text-center">
+                    <h2 className="text-sm font-semibold color-main min-w-[160px] text-center">
                         {renderHeaderTitle()}
                     </h2>
                 </div>

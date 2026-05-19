@@ -269,29 +269,28 @@ export default function MyIssuesPage() {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header Banner */}
-            <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute -top-16 -right-16 w-60 h-60 bg-white rounded-full" />
-                    <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-white rounded-full" />
-                </div>
-                <div className="relative flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-list-check text-indigo-500 text-xl" />
+                    </div>
                     <div>
-                        <h1 className="text-2xl font-bold">Công việc của tôi</h1>
-                        <p className="text-indigo-100 text-sm mt-1">Kéo thả để chuyển trạng thái • Kéo ngược sẽ bị trừ điểm</p>
+                        <h2 className="text-2xl font-black color-main tracking-tight">Công việc của tôi</h2>
+                        <p className="text-xs color-slate font-semibold mt-0.5">Kéo thả để chuyển trạng thái • Kéo ngược sẽ bị trừ điểm</p>
                     </div>
-                    <div className="flex gap-3 flex-wrap">
-                        <StatMini icon="fa-list-check" label="Tổng" value={stats.total} />
-                        <StatMini icon="fa-user-check" label="Được giao" value={stats.assigned} />
-                        <StatMini icon="fa-user-pen" label="Tôi tạo" value={stats.reported} />
-                        <StatMini icon="fa-clock" label="Quá hạn" value={stats.overdue} highlight={stats.overdue > 0} />
-                    </div>
+                </div>
+                <div className="flex gap-3 flex-wrap">
+                    <StatMini icon="fa-list-check" label="Tổng" value={stats.total} />
+                    <StatMini icon="fa-user-check" label="Được giao" value={stats.assigned} />
+                    <StatMini icon="fa-user-pen" label="Tôi tạo" value={stats.reported} />
+                    <StatMini icon="fa-clock" label="Quá hạn" value={stats.overdue} highlight={stats.overdue > 0} />
                 </div>
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                 <div className="flex gap-1.5 flex-wrap">
                     {VIEW_MODES.map(mode => (
                         <button
@@ -299,8 +298,8 @@ export default function MyIssuesPage() {
                             onClick={() => setViewMode(mode.id)}
                             className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm
                                 ${viewMode === mode.id
-                                    ? 'bg-white text-indigo-700 shadow-md ring-1 ring-indigo-200'
-                                    : 'bg-white/70 text-gray-500 hover:bg-white hover:text-gray-700'
+                                    ? 'bg-indigo-50 text-indigo-700 shadow-md ring-1 ring-indigo-200 border border-indigo-200'
+                                    : 'bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 border border-gray-200'
                                 }`}
                         >
                             <i className={`fa-solid ${mode.icon} text-xs`} />
@@ -507,13 +506,13 @@ export default function MyIssuesPage() {
 // ─── Stat Mini Card ───────────────────────────────────────────────────────
 function StatMini({ icon, label, value, highlight }) {
     return (
-        <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl backdrop-blur-sm transition-all
-            ${highlight ? 'bg-red-500/20 ring-1 ring-red-400/50' : 'bg-white/10 ring-1 ring-white/20'}`}
+        <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all
+            ${highlight ? 'bg-red-50 border-red-200 ring-1 ring-red-100' : 'bg-gray-50 border-gray-200'}`}
         >
-            <i className={`fa-solid ${icon} text-sm ${highlight ? 'text-red-200' : 'text-indigo-200'}`} />
+            <i className={`fa-solid ${icon} text-sm ${highlight ? 'text-red-500' : 'text-indigo-500'}`} />
             <div>
-                <div className={`text-lg font-bold leading-none ${highlight ? 'text-red-100' : 'text-white'}`}>{value}</div>
-                <div className={`text-[10px] mt-0.5 ${highlight ? 'text-red-200' : 'text-indigo-200'}`}>{label}</div>
+                <div className={`text-lg font-black leading-none ${highlight ? 'text-red-600' : 'color-main'}`}>{value}</div>
+                <div className={`text-[10px] mt-0.5 ${highlight ? 'text-red-500' : 'color-slate'}`}>{label}</div>
             </div>
         </div>
     );

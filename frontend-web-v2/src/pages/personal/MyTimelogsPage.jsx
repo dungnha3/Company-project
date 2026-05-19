@@ -19,7 +19,7 @@ export default function MyTimelogsPage() {
     const PAGE_SIZE = 20;
 
     // Fetch timelogs
-    const { data, isLoading, isFetching } = useQuery({
+    const { data, isLoading, isFetching, isError: timelogsError, refetch: refetchTimelogs } = useQuery({
         queryKey: ['timelogs', 'my', page, refreshKey],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.TIMELOGS.MY_LOGS, {
@@ -28,17 +28,24 @@ export default function MyTimelogsPage() {
             return res.data;
         },
         staleTime: 30 * 1000,
+        retry: 1,
     });
 
     // Fetch summary
-    const { data: summary } = useQuery({
+    const { data: summary, refetch: refetchSummary } = useQuery({
         queryKey: ['timelogs', 'summary', 'my', refreshKey],
         queryFn: async () => {
             const res = await apiClient.get('/api/timelogs/summary/my');
             return res.data;
         },
         staleTime: 30 * 1000,
+        retry: 1,
     });
+
+    const handleRetry = () => {
+        refetchTimelogs();
+        refetchSummary();
+    };
 
     const timelogs = useMemo(() => {
         const list = data?.content || data || [];
@@ -118,24 +125,31 @@ export default function MyTimelogsPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-teal-600 to-cyan-600 rounded-2xl p-6 text-white">
-                <h1 className="text-2xl font-bold mb-1">Nhật ký giờ làm</h1>
-                <p className="text-teal-100 text-sm">Theo dõi thời gian làm việc của bạn</p>
-                <div className="mt-4 flex items-center gap-6">
-                    <div>
-                        <p className="text-teal-200 text-xs uppercase tracking-wider">Tuần này</p>
-                        <p className="text-3xl font-black">{formatNumber(totalHours, { minimumFractionDigits: 1 })}h</p>
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            {/* Header Banner */}
+            <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-clock text-teal-500 text-xl" />
                     </div>
-                    <div className="flex-1">
-                        <div className="w-full bg-teal-700/30 rounded-full h-3 mt-2">
+                    <div>
+                        <h2 className="text-2xl font-black color-main tracking-tight">Nhật ký giờ làm</h2>
+                        <p className="text-xs color-slate font-semibold mt-0.5">Theo dõi thời gian làm việc của bạn</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-[10px] color-slate uppercase tracking-wider">Tuần này</p>
+                        <p className="text-2xl font-black color-main">{formatNumber(totalHours, { minimumFractionDigits: 1 })}h</p>
+                    </div>
+                    <div className="w-40">
+                        <div className="w-full bg-gray-100 rounded-full h-2.5">
                             <div
-                                className="bg-white rounded-full h-3 transition-all"
+                                className="bg-teal-500 rounded-full h-2.5 transition-all"
                                 style={{ width: `${Math.min((totalHours / weeklyTarget) * 100, 100)}%` }}
                             />
                         </div>
-                        <p className="text-xs text-teal-200 mt-1">{Math.round((totalHours / weeklyTarget) * 100)}% mục tiêu tuần ({weeklyTarget}h)</p>
+                        <p className="text-[10px] color-slate mt-1 text-right">{Math.round((totalHours / weeklyTarget) * 100)}% mục tiêu ({weeklyTarget}h)</p>
                     </div>
                 </div>
             </div>
@@ -146,15 +160,15 @@ export default function MyTimelogsPage() {
 
             {/* Summary by project */}
             {byProject.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                    <h3 className="font-bold text-gray-800 mb-3">Tổng hợp theo dự án</h3>
+                <div className="border border-gray-200 rounded-lg bg-white p-5 shadow-sm">
+                    <h3 className="font-bold color-main text-lg mb-3">Tổng hợp theo dự án</h3>
                     <div className="space-y-2">
                         {byProject.map(proj => {
                             const maxHours = Math.max(...byProject.map(p => p.totalHours), 1);
                             const pct = (proj.totalHours / maxHours) * 100;
                             return (
-                                <div key={proj.projectId} className="flex items-center gap-3">
-                                    <div className="w-32 text-sm font-medium text-gray-700 truncate">{proj.projectName}</div>
+                                <div key={proj.projectId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <div className="w-32 text-sm font-medium color-main truncate">{proj.projectName}</div>
                                     <div className="flex-1">
                                         <div className="w-full bg-gray-100 rounded-full h-2">
                                             <div
@@ -163,10 +177,10 @@ export default function MyTimelogsPage() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="w-16 text-right text-sm font-bold text-gray-700">
+                                    <div className="w-16 text-right text-sm font-bold color-main">
                                         {proj.totalHours.toFixed(1)}h
                                     </div>
-                                    <div className="w-12 text-right text-xs text-gray-400">
+                                    <div className="w-12 text-right text-xs color-slate">
                                         {proj.issueCount} issues
                                     </div>
                                 </div>
@@ -177,12 +191,12 @@ export default function MyTimelogsPage() {
             )}
 
             {/* Timelog List */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="font-bold text-gray-800">Lịch sử</h3>
+            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <h3 className="font-bold color-main text-lg">Lịch sử</h3>
                     <button
                         onClick={handleRefresh}
-                        className="text-xs text-gray-400 hover:text-indigo-500 flex items-center gap-1"
+                        className="text-xs color-blue font-semibold hover:underline flex items-center gap-1"
                         disabled={isFetching}
                     >
                         <i className={`fa-solid fa-rotate text-[10px] ${isFetching ? 'animate-spin' : ''}`} />
@@ -194,6 +208,21 @@ export default function MyTimelogsPage() {
                     <div className="p-10 text-center text-gray-400">
                         <i className="fa-solid fa-spinner fa-spin text-2xl" />
                         <p className="mt-2">Đang tải...</p>
+                    </div>
+                ) : timelogsError ? (
+                    <div className="p-10 text-center">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-400">
+                            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
+                        </div>
+                        <h3 className="color-main font-semibold mb-1">Không thể tải dữ liệu</h3>
+                        <p className="color-slate text-sm mb-4">Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại.</p>
+                        <button
+                            onClick={handleRetry}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm"
+                        >
+                            <i className="fa-solid fa-rotate mr-2" />
+                            Thử lại
+                        </button>
                     </div>
                 ) : Object.keys(groupedLogs).length === 0 ? (
                     <div className="p-10 text-center text-gray-400">

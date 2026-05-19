@@ -37,19 +37,13 @@ export default function ProfilePage() {
     }, [searchParams]);
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
             {/* Header with Avatar */}
-            <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden">
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
-                </div>
-
-                <div className="relative flex items-center gap-6">
+            <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
+                <div className="flex items-center gap-4">
                     {/* Avatar */}
                     <div className="relative group">
-                        <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 flex items-center justify-center text-4xl font-bold overflow-hidden">
+                        <div className="w-20 h-20 rounded-full bg-indigo-50 border-2 border-indigo-200 flex items-center justify-center text-3xl font-bold color-main overflow-hidden">
                             {user?.avatarUrl ? (
                                 <Avatar src={user.avatarUrl} name={user.fullName} size="xl" className="w-full h-full" />
                             ) : (
@@ -60,7 +54,7 @@ export default function ProfilePage() {
                             onClick={() => fileInputRef.current?.click()}
                             className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity disabled:cursor-not-allowed"
                         >
-                            <i className="fa-solid fa-camera text-lg" />
+                            <i className="fa-solid fa-camera text-lg text-white" />
                         </button>
                         <input
                             type="file"
@@ -89,10 +83,10 @@ export default function ProfilePage() {
 
                     {/* Info */}
                     <div>
-                        <h1 className="text-2xl font-bold">{user?.fullName || 'User'}</h1>
-                        <p className="text-indigo-200">{user?.email}</p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <span className="text-indigo-200 text-sm">
+                        <h1 className="text-2xl font-black color-main">{user?.fullName || 'User'}</h1>
+                        <p className="text-sm color-slate">{user?.email}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs color-slate">
                                 Tham gia: {formatDate(user?.createdAt || Date.now())}
                             </span>
                         </div>
@@ -101,13 +95,13 @@ export default function ProfilePage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+            <div className="flex gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
                 {TABS.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                            ? 'bg-white text-indigo-600 shadow-sm'
+                            ? 'bg-white color-blue shadow-sm border border-gray-200'
                             : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
@@ -118,7 +112,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Tab Content */}
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div role="dialog" aria-modal="true" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 {activeTab === 'info' && <ProfileInfoTab user={user} />}
                 {activeTab === 'security' && <SecurityTab />}
                 {activeTab === 'notifications' && <NotificationsTab />}

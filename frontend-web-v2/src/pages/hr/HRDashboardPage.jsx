@@ -9,7 +9,7 @@ export default function HRDashboardPage() {
     const navigate = useNavigate();
     const [period, setPeriod] = useState('all');
 
-    // Fetch active employees count
+    // Fetch employees
     const { data: employeesData, isLoading: loadingEmp } = useQuery({
         queryKey: ['employees', 'page', 0, 20, 'ACTIVE'],
         queryFn: async () => {
@@ -32,6 +32,16 @@ export default function HRDashboardPage() {
                 params: { startDate: start, endDate: end }
             });
             return res.data || [];
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // Fetch attendance report
+    const { data: attendanceData, isLoading: loadingAttendance } = useQuery({
+        queryKey: ['attendance', 'report'],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.ATTENDANCE.REPORT);
+            return res.data;
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -81,6 +91,7 @@ export default function HRDashboardPage() {
     const activeCount = employees.length;
     const onLeaveCount = Array.isArray(leavesData) ? leavesData.filter(l => l.status === 'APPROVED').length : 0;
     const pendingLeaveCount = Array.isArray(leavesData) ? leavesData.filter(l => l.status === 'PENDING').length : 0;
+    const attendanceRate = attendanceData?.rate || attendanceData?.attendanceRate || 0;
 
     // Top performers from all performance data
     const { topPerformers, atRiskEmployees, companyAvgPerf } = useMemo(() => {
@@ -139,7 +150,7 @@ export default function HRDashboardPage() {
             .slice(0, 5);
     }, [leavesData]);
 
-    const isLoading = loadingEmp || loadingLeaves || loadingReviews || loadingPerf || loadingProjects;
+    const isLoading = loadingEmp || loadingLeaves || loadingAttendance || loadingReviews || loadingPerf || loadingProjects;
 
     if (isLoading) {
         return (
@@ -202,18 +213,18 @@ export default function HRDashboardPage() {
                     <p className="text-3xl font-black color-main">{onLeaveCount}</p>
                 </div>
 
-                {/* Chờ duyệt nghỉ phép */}
+                {/* Tỷ lệ điểm danh */}
                 <div className="border border-gray-200 rounded-lg bg-white p-5 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-                            <i className="fa-solid fa-clock text-yellow-500 text-lg" />
+                        <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                            <i className="fa-solid fa-clipboard-check text-green-500 text-lg" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold color-slate uppercase tracking-wider">Chờ duyệt</p>
-                            <p className="text-[10px] color-slate mt-0.5">yêu cầu nghỉ phép</p>
+                            <p className="text-[10px] font-bold color-slate uppercase tracking-wider">Tỷ lệ điểm danh</p>
+                            <p className="text-[10px] color-slate mt-0.5">hôm nay</p>
                         </div>
                     </div>
-                    <p className="text-3xl font-black color-main">{pendingLeaveCount}</p>
+                    <p className="text-3xl font-black color-main">{attendanceRate.toFixed(0)}%</p>
                 </div>
 
                 {/* Hiệu suất TB */}
