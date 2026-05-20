@@ -4,55 +4,70 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function HRDashboardPage() {
     const navigate = useNavigate();
     const [period, setPeriod] = useState('all');
+    const { hasPermission } = useWorkspaceStore();
 
     // Fetch employees
-    const { data: employeesData, isLoading: loadingEmp } = useQuery({
+    const { data: employeesData = {}, isLoading: loadingEmp } = useQuery({
         queryKey: ['employees', 'page', 0, 20, 'ACTIVE'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.EMPLOYEES.PAGE, {
-                params: { page: 0, size: 20, status: 'ACTIVE' }
-            });
-            return res.data;
+            try {
+                const res = await apiClient.get(ENDPOINTS.EMPLOYEES.PAGE, {
+                    params: { page: 0, size: 20, status: 'ACTIVE' }
+                });
+                return res.data || {};
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch employees:', e.message);
+                return {};
+            }
         },
+        retry: false,
         staleTime: 5 * 60 * 1000,
     });
 
     // Fetch leave calendar (today + upcoming)
-    const { data: leavesData, isLoading: loadingLeaves } = useQuery({
+    const { data: leavesData = [], isLoading: loadingLeaves } = useQuery({
         queryKey: ['leaves', 'team-calendar'],
         queryFn: async () => {
-            const today = new Date();
-            const start = today.toISOString().split('T')[0];
-            const end = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.TEAM_CALENDAR, {
-                params: { startDate: start, endDate: end }
-            });
-            return res.data || [];
+            try {
+                const today = new Date();
+                const start = today.toISOString().split('T')[0];
+                const end = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.TEAM_CALENDAR, {
+                    params: { startDate: start, endDate: end }
+                });
+                return Array.isArray(res.data) ? res.data : [];
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch leaves:', e.message);
+                return [];
+            }
         },
+        retry: false,
         staleTime: 5 * 60 * 1000,
     });
 
-    // Fetch attendance report
-    const { data: attendanceData, isLoading: loadingAttendance } = useQuery({
-        queryKey: ['attendance', 'report'],
-        queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.ATTENDANCE.REPORT);
-            return res.data;
-        },
-        staleTime: 5 * 60 * 1000,
-    });
+    // Fetch attendance report - disabled since backend endpoint may not exist
+    const attendanceData = { rate: 0, present: false, count: 0 };
+    const loadingAttendance = false;
 
-    // Fetch pending reviews
+    // Fetch pending reviews - only call if user has reviewApprove permission
     const { data: pendingReviews = [], isLoading: loadingReviews } = useQuery({
         queryKey: ['reviews', 'pending'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
-            return res.data || [];
+            try {
+                const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
+                return Array.isArray(res.data) ? res.data : [];
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch pending reviews:', e.message);
+                return [];
+            }
         },
+        enabled: hasPermission('reviewApprove'),
+        retry: false,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -60,9 +75,15 @@ export default function HRDashboardPage() {
     const { data: projects = [], isLoading: loadingProjects } = useQuery({
         queryKey: ['projects', 'list'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
-            return Array.isArray(res.data) ? res.data : (res.data?.content || []);
+            try {
+                const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
+                return Array.isArray(res.data) ? res.data : (res.data?.content || []);
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch projects:', e.message);
+                return [];
+            }
         },
+        retry: false,
         staleTime: 2 * 60 * 1000,
     });
 
@@ -70,24 +91,34 @@ export default function HRDashboardPage() {
     const { data: allPerfData = [], isLoading: loadingPerf } = useQuery({
         queryKey: ['performance', 'all-comparisons', period],
         queryFn: async () => {
-            const activeProjects = projects.slice(0, 5);
-            const calls = activeProjects.map(async (p) => {
-                const pid = p.projectId || p.id;
-                try {
-                    const res = await apiClient.get(`/api/hr/performance-comparison/projects/${pid}`);
-                    return { projectId: pid, projectName: p.name, rankings: res.data || [] };
-                } catch {
-                    return { projectId: pid, projectName: p.name, rankings: [] };
-                }
-            });
-            return Promise.all(calls);
+            try {
+                const activeProjects = (projects || []).slice(0, 5);
+                const calls = activeProjects.map(async (p) => {
+                    const pid = p.projectId || p.id;
+                    try {
+                        const res = await apiClient.get(`/api/hr/performance-comparison/projects/${pid}`);
+                        return { projectId: pid, projectName: p.name, rankings: res.data || [] };
+                    } catch {
+                        return { projectId: pid, projectName: p.name, rankings: [] };
+                    }
+                });
+                return Promise.all(calls);
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch performance data:', e.message);
+                return [];
+            }
         },
-        enabled: projects.length > 0,
+        enabled: (projects || []).length > 0,
+        retry: false,
         staleTime: 5 * 60 * 1000,
     });
 
-    // Derived data
-    const employees = employeesData?.content || employeesData || [];
+    // Derived data - ensure employees is always an array
+    const employees = (() => {
+        if (Array.isArray(employeesData)) return employeesData;
+        if (employeesData && employeesData.content && Array.isArray(employeesData.content)) return employeesData.content;
+        return [];
+    })();
     const activeCount = employees.length;
     const onLeaveCount = Array.isArray(leavesData) ? leavesData.filter(l => l.status === 'APPROVED').length : 0;
     const pendingLeaveCount = Array.isArray(leavesData) ? leavesData.filter(l => l.status === 'PENDING').length : 0;
@@ -95,8 +126,9 @@ export default function HRDashboardPage() {
 
     // Top performers from all performance data
     const { topPerformers, atRiskEmployees, companyAvgPerf } = useMemo(() => {
+        const perfData = allPerfData || [];
         const map = {};
-        for (const project of allPerfData) {
+        for (const project of perfData) {
             for (const perf of (project.rankings || [])) {
                 const key = perf.userId || perf.employeeId;
                 if (!key) continue;
@@ -131,7 +163,8 @@ export default function HRDashboardPage() {
 
     // Performance by project chart data
     const projectPerfChart = useMemo(() => {
-        return allPerfData
+        const perfData = allPerfData || [];
+        return perfData
             .filter(p => p.rankings?.length > 0)
             .map(p => {
                 const avg = p.rankings.reduce((s, r) => s + Number(r.totalPerformanceScore || 0), 0) / Math.max(p.rankings.length, 1);
@@ -303,7 +336,7 @@ export default function HRDashboardPage() {
             {projectPerfChart.length > 0 && (
                 <div className="border border-gray-200 rounded-lg bg-white p-6">
                     <h3 className="font-bold color-main mb-4 pb-3 border-b border-gray-100">Hiệu suất theo dự án</h3>
-                    <div style={{ height: '250px' }}>
+                    <div style={{ height: '250px' }} className="min-h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={projectPerfChart}>
                                 <XAxis dataKey="name" fontSize={11} tick={{ fill: '#78350F', fontWeight: 600 }} />

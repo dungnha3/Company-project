@@ -314,7 +314,12 @@ function PendingReviewsTable({ canApprove }) {
 
     const { data: reviews, isLoading } = useQuery({
         queryKey: ['pending-reviews'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.PENDING)).data,
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
+            return res.data || [];
+        },
+        enabled: canApprove,
+        retry: false,
     });
 
     const approveMutation = useMutation({
