@@ -5,6 +5,7 @@ import { lazy, Suspense } from 'react';
 import DashboardLayout from '@layouts/DashboardLayout';
 import AuthLayout from '@layouts/AuthLayout';
 import SectionTabLayout, { HR_TAB_CONFIG } from '@layouts/SectionTabLayout';
+import SystemAdminLayout from '@layouts/SystemAdminLayout';
 
 // Guards
 import { AccessControlGuard } from './guards/AccessControlGuard';
@@ -56,6 +57,12 @@ const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPag
 // Other pages
 const ProfilePage = lazy(() => import('@pages/profile/ProfilePage'));
 const NotificationsPage = lazy(() => import('@pages/notifications/NotificationsPage'));
+
+// System Admin pages
+const AdminCompaniesPage = lazy(() => import('@pages/admin/AdminCompaniesPage'));
+const AdminUsersPage = lazy(() => import('@pages/admin/AdminUsersPage'));
+const AdminAnalyticsPage = lazy(() => import('@pages/admin/AdminAnalyticsPage'));
+const AdminSettingsPage = lazy(() => import('@pages/admin/AdminSettingsPage'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -355,6 +362,54 @@ const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={<PageLoader />}>
                         <NotificationsPage />
+                    </Suspense>
+                ),
+            },
+        ],
+    },
+
+    // System Admin routes
+    {
+        path: '/admin',
+        element: (
+            <SystemAdminGuard>
+                <SystemAdminLayout />
+            </SystemAdminGuard>
+        ),
+        children: [
+            {
+                index: true,
+                element: <Navigate to="/admin/companies" replace />,
+            },
+            {
+                path: 'companies',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminCompaniesPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'users',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminUsersPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'analytics',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminAnalyticsPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'settings',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <AdminSettingsPage />
                     </Suspense>
                 ),
             },

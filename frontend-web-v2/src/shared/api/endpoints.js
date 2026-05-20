@@ -93,7 +93,9 @@ export const ENDPOINTS = {
 
         // Members
         MEMBERS: (companyId) => `/api/companies/${companyId}/members`,
+        MEMBER_REMOVE: (companyId, userId) => `/api/companies/${companyId}/members/${userId}`,
         MEMBER_PERMISSIONS: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/permissions`,
+        MEMBER_ROLE: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/role`,
     },
 
 

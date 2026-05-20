@@ -57,6 +57,7 @@ export const useWorkspaceStore = create(
                     set({
                         currentWorkspace: {
                             ...firstCompany,
+                            id: targetId,
                             settings: null,
                             roles: roles,
                         },
@@ -115,6 +116,7 @@ export const useWorkspaceStore = create(
                     set({
                         currentWorkspace: {
                             ...company,
+                            id: companyId,
                             settings: null,
                             roles: roles,
                         },
@@ -230,8 +232,9 @@ export const useWorkspaceStore = create(
                 const token = localStorage.getItem('accessToken');
                 if (!token) return;
 
-                if (state?.currentWorkspace?.id) {
-                    const companyId = state.currentWorkspace.id;
+                const companyIdForRefresh = state?.currentWorkspace?.id || state?.currentWorkspace?.companyId;
+                if (companyIdForRefresh) {
+                    const companyId = companyIdForRefresh;
                     import('@shared/api/client').then(({ default: apiClient }) => {
                         import('@shared/api/endpoints').then(({ ENDPOINTS }) => {
                             Promise.all([
@@ -245,7 +248,7 @@ export const useWorkspaceStore = create(
                             ])
                                 .then(([settingsRes, workspacesRes]) => {
                                     const companies = (workspacesRes.data || []).map(c => ({...c, type: 'COMPANY'}));
-                                    const freshCompany = companies.find(w => w.id === companyId);
+                                    const freshCompany = companies.find(w => w.id === companyId || w.companyId === companyId);
                                     const freshRoles = freshCompany?.roles || state.currentWorkspace.roles || ['EMPLOYEE'];
                                     const freshPermissions = freshCompany?.permissions || state.currentWorkspace.permissions || null;
 
@@ -253,6 +256,7 @@ export const useWorkspaceStore = create(
                                         workspaces: companies,
                                         currentWorkspace: {
                                             ...prev.currentWorkspace,
+                                            id: companyId,
                                             settings: settingsRes.data,
                                             roles: freshRoles,
                                             permissions: freshPermissions,

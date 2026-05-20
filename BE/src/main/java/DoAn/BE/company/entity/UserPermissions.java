@@ -34,6 +34,7 @@ public class UserPermissions implements Serializable {
     private boolean reviewApprove = false;
 
     // ===== NHÓM DỰ ÁN =====
+    private boolean projectView = true; // Tất cả thành viên đều có thể xem project
     private boolean projectCreate = false;
     private boolean projectDelete = false;
     private boolean projectManageAll = false;
@@ -129,6 +130,7 @@ public class UserPermissions implements Serializable {
         copy.reviewCreate = this.reviewCreate;
         copy.reviewApprove = this.reviewApprove;
         // Project
+        copy.projectView = this.projectView;
         copy.projectCreate = this.projectCreate;
         copy.projectDelete = this.projectDelete;
         copy.projectManageAll = this.projectManageAll;
@@ -177,6 +179,7 @@ public class UserPermissions implements Serializable {
     }
 
     public void applyProjectTemplate(boolean enabled) {
+        this.projectView = enabled; // Luôn true cho tất cả thành viên
         this.projectCreate = enabled;
         this.projectDelete = enabled;
         this.projectManageAll = enabled;

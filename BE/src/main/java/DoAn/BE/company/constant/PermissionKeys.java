@@ -21,6 +21,7 @@ public class PermissionKeys {
     public static final String REVIEW_APPROVE = "REVIEW.APPROVE";
 
     // PROJECT GROUP
+    public static final String PROJECT_VIEW = "PROJECT.VIEW";
     public static final String PROJECT_CREATE = "PROJECT.CREATE";
     public static final String PROJECT_MANAGE_ALL = "PROJECT.MANAGE_ALL";
     public static final String PROJECT_DELETE = "PROJECT.DELETE";

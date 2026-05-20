@@ -78,6 +78,8 @@ public class PermissionService {
             case "REVIEW.APPROVE":
                 return p.isReviewApprove();
             // Project
+            case "PROJECT.VIEW":
+                return p.isProjectView();
             case "PROJECT.CREATE":
                 return p.isProjectCreate();
             case "PROJECT.MANAGE_ALL":
@@ -129,6 +131,9 @@ public class PermissionService {
             case "STORAGE.UPLOAD":
             case "STORAGE.DELETE":
             case "TIMETRACKING.LOG":
+                return true;
+            // PROJECT.VIEW: tất cả thành viên đều có thể xem projects mà họ tham gia
+            case "PROJECT.VIEW":
                 return true;
         }
 
