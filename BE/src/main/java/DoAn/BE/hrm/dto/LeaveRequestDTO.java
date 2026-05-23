@@ -24,6 +24,9 @@ public class LeaveRequestDTO {
     private String reason;
     private LeaveStatus status;
 
+    // Nested employee info for frontend convenience
+    private EmployeeInfo employee;
+
     // Approval info
     private Long approverId;
     private String approverName;
@@ -35,4 +38,13 @@ public class LeaveRequestDTO {
     private String projectName;
 
     private LocalDateTime createdAt;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EmployeeInfo {
+        private Long employeeId;
+        private String fullName;
+        private String avatarUrl;
+    }
 }

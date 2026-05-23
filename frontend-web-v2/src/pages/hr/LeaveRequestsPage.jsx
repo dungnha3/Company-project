@@ -230,7 +230,7 @@ function MyLeaveRequests() {
             header: '',
             accessorKey: 'actions',
             cell: (row) => (
-                <div className="flex items-center gap-2 justify-end">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={() => setDetailModal(row)}
                         className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
@@ -480,7 +480,7 @@ function PendingLeaveRequests() {
             header: 'Thao tác',
             accessorKey: 'actions',
             cell: (row) => (
-                <div className="flex items-center gap-1.5 justify-end">
+                <div className="flex items-center gap-1.5">
                     <button
                         onClick={() => setDetailModal(row)}
                         className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
