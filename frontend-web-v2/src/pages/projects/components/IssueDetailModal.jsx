@@ -143,7 +143,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
 
     return (
         <div className="modal-overlay items-start pt-8 overflow-y-auto" onClick={onClose}>
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl mx-4 mb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" className="bg-white rounded-2xl w-full max-w-4xl mx-4 mb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-t-2xl">
                     <div className="flex items-center gap-3">
@@ -181,7 +181,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.statusId || 1}
                                 onChange={(e) => statusMutation.mutate(Number(e.target.value))}
                                 disabled={statusMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
                             >
                                 {STATUSES.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -196,7 +196,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.priority || 'MEDIUM'}
                                 onChange={(e) => updateIssueMutation.mutate({ priority: e.target.value })}
                                 disabled={updateIssueMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
                             >
                                 {PRIORITIES.map(p => (
                                     <option key={p.value} value={p.value}>{p.label}</option>
@@ -211,7 +211,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.assigneeId || ''}
                                 onChange={(e) => assignMutation.mutate(e.target.value || null)}
                                 disabled={assignMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
                             >
                                 <option value="">-- Chưa giao --</option>
                                 {members.map(m => (
@@ -467,7 +467,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                         value={newComment}
                                         onChange={(e) => setNewComment(e.target.value)}
                                         placeholder="Thêm bình luận..."
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 resize-none"
                                         rows={2}
                                     />
                                     <div className="flex justify-end mt-2">
@@ -686,7 +686,7 @@ function ActivityLogTab({ issueId }) {
                                     {formatDateTime(activity.createdAt)}
                                 </span>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-400">{activity.description}</p>
+                            <p className="text-gray-600">{activity.description}</p>
                             {activity.oldValue && activity.newValue && (
                                 <div className="mt-2 text-xs flex items-center gap-2">
                                     <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded line-through">{activity.oldValue}</span>

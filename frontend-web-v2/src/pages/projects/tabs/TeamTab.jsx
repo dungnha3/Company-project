@@ -68,7 +68,7 @@ function EditMemberModal({ member, projectId, onClose }) {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fade-in"
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fade-in"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -82,7 +82,7 @@ function EditMemberModal({ member, projectId, onClose }) {
                             </div>
                         )}
                         <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">{member.fullName || member.username}</p>
+                            <p className="font-semibold text-gray-900">{member.fullName || member.username}</p>
                             <p className="text-xs text-gray-500">{member.email}</p>
                         </div>
                     </div>
@@ -208,7 +208,7 @@ function MemberCard({ member, projectId, canManage }) {
                             </div>
                         )}
                         <div>
-                            <p className="font-semibold text-gray-900 dark:text-white leading-tight">
+                            <p className="font-semibold text-gray-900 leading-tight">
                                 {member.fullName || member.username}
                             </p>
                             <p className="text-xs text-gray-500">{member.position || member.email}</p>
@@ -245,17 +245,17 @@ function MemberCard({ member, projectId, canManage }) {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 rounded-xl">
                     <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{member.completedIssues ?? 0}</p>
+                        <p className="text-lg font-bold text-gray-900">{member.completedIssues ?? 0}</p>
                         <p className="text-[10px] text-gray-500 leading-tight">Hoàn thành</p>
                     </div>
-                    <div className="text-center border-x border-gray-200 dark:border-gray-600">
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{member.totalIssues ?? 0}</p>
+                    <div className="text-center border-x border-gray-200">
+                        <p className="text-lg font-bold text-gray-900">{member.totalIssues ?? 0}</p>
                         <p className="text-[10px] text-gray-500 leading-tight">Tổng task</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        <p className="text-lg font-bold text-gray-900">
                             {member.totalLoggedHours != null ? Number(member.totalLoggedHours).toFixed(1) : '—'}
                         </p>
                         <p className="text-[10px] text-gray-500 leading-tight">Giờ làm</p>

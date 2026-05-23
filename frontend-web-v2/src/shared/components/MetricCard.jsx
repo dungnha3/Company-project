@@ -1,81 +1,68 @@
 /**
- * MetricCard - Reusable metric display card
- * Used in: MyWorkPage, ProjectDashboard, HRDashboard, various overview pages
+ * MetricCard - Reusable metric display card (Minimalist style)
  */
 export default function MetricCard({
     title,
     value,
     subtitle,
     icon,
-    color = 'indigo', // 'indigo' | 'green' | 'red' | 'amber' | 'teal' | 'purple' | 'slate'
+    color = 'gray', // 'gray' | 'green' | 'red' | 'amber' | 'blue' | 'purple' | 'primary'
     trend,
     trendDirection, // 'up' | 'down' | 'neutral'
     onClick,
     className = '',
     size = 'md', // 'sm' | 'md' | 'lg'
 }) {
+    // Minimalist color map - only accent color for emphasis
     const colorMap = {
-        indigo: {
-            bg: 'bg-indigo-50',
-            border: 'border-indigo-100',
-            text: 'text-indigo-700',
-            iconBg: 'bg-indigo-100',
-            iconText: 'text-indigo-600',
+        gray: {
+            iconBg: 'bg-gray-100',
+            iconText: 'text-gray-500',
+            valueText: 'text-gray-900',
         },
         green: {
-            bg: 'bg-green-50',
-            border: 'border-green-100',
-            text: 'text-green-700',
-            iconBg: 'bg-green-100',
+            iconBg: 'bg-green-50',
             iconText: 'text-green-600',
+            valueText: 'text-gray-900',
         },
         red: {
-            bg: 'bg-red-50',
-            border: 'border-red-100',
-            text: 'text-red-700',
-            iconBg: 'bg-red-100',
+            iconBg: 'bg-red-50',
             iconText: 'text-red-600',
+            valueText: 'text-gray-900',
         },
         amber: {
-            bg: 'bg-amber-50',
-            border: 'border-amber-100',
-            text: 'text-amber-700',
-            iconBg: 'bg-amber-100',
+            iconBg: 'bg-amber-50',
             iconText: 'text-amber-600',
+            valueText: 'text-gray-900',
         },
-        teal: {
-            bg: 'bg-teal-50',
-            border: 'border-teal-100',
-            text: 'text-teal-700',
-            iconBg: 'bg-teal-100',
-            iconText: 'text-teal-600',
+        blue: {
+            iconBg: 'bg-blue-50',
+            iconText: 'text-blue-600',
+            valueText: 'text-gray-900',
         },
         purple: {
-            bg: 'bg-purple-50',
-            border: 'border-purple-100',
-            text: 'text-purple-700',
-            iconBg: 'bg-purple-100',
+            iconBg: 'bg-purple-50',
             iconText: 'text-purple-600',
+            valueText: 'text-gray-900',
         },
-        slate: {
-            bg: 'bg-slate-50',
-            border: 'border-slate-100',
-            text: 'text-slate-700',
-            iconBg: 'bg-slate-100',
-            iconText: 'text-slate-600',
+        primary: {
+            iconBg: 'bg-indigo-50',
+            iconText: 'text-indigo-600',
+            valueText: 'text-gray-900',
         },
     };
 
-    const cls = colorMap[color] || colorMap.indigo;
+    const cls = colorMap[color] || colorMap.gray;
 
     const sizeMap = {
-        sm: { padding: 'p-2', iconSize: 'w-7 h-7 text-xs', valueSize: 'text-lg', titleSize: 'text-[10px]' },
-        md: { padding: 'p-3', iconSize: 'w-9 h-9 text-sm', valueSize: 'text-xl', titleSize: 'text-[10px]' },
-        lg: { padding: 'p-4', iconSize: 'w-11 h-11 text-base', valueSize: 'text-2xl', titleSize: 'text-xs' },
+        sm: { padding: 'p-3', iconSize: 'w-8 h-8 text-xs', valueSize: 'text-lg', titleSize: 'text-[10px]' },
+        md: { padding: 'p-4', iconSize: 'w-10 h-10 text-sm', valueSize: 'text-xl', titleSize: 'text-[10px]' },
+        lg: { padding: 'p-5', iconSize: 'w-12 h-12 text-base', valueSize: 'text-2xl', titleSize: 'text-xs' },
     };
 
     const s = sizeMap[size] || sizeMap.md;
 
+    // Minimalist trend styling
     const trendMap = {
         up: { text: 'text-green-600', icon: 'fa-arrow-up' },
         down: { text: 'text-red-600', icon: 'fa-arrow-down' },
@@ -87,9 +74,10 @@ export default function MetricCard({
     return (
         <div
             className={`
-                rounded-xl border ${cls.bg} ${cls.border} ${s.padding}
+                bg-white rounded-xl ${s.padding}
+                border border-gray-100
                 flex items-center gap-3
-                ${onClick ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}
+                ${onClick ? 'cursor-pointer hover:shadow-sm hover:border-gray-200 transition-all' : ''}
                 ${className}
             `}
             onClick={onClick}
@@ -100,15 +88,15 @@ export default function MetricCard({
                 </div>
             )}
             <div className="flex-1 min-w-0">
-                <p className={`${s.titleSize} uppercase tracking-wider font-semibold opacity-70 ${cls.text}`}>
+                <p className={`${s.titleSize} uppercase tracking-wider font-medium ${cls.iconText} opacity-70`}>
                     {title}
                 </p>
                 <div className="flex items-baseline gap-2">
-                    <p className={`${s.valueSize} font-black leading-tight ${cls.text}`}>
+                    <p className={`${s.valueSize} font-bold leading-tight ${cls.valueText}`}>
                         {value}
                     </p>
                     {trend !== undefined && trendCls && (
-                        <span className={`text-xs font-semibold ${trendCls.text}`}>
+                        <span className={`text-xs font-medium ${trendCls.text}`}>
                             <i className={`fa-solid ${trendCls.icon} text-[8px] mr-0.5`} />
                             {typeof trend === 'number' ? `${trend > 0 ? '+' : ''}${trend}%` : trend}
                         </span>

@@ -241,24 +241,24 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="w-full max-w-2xl bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+                <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Nộp task</h3>
+                            <h3 className="text-lg font-bold text-gray-900">Nộp task</h3>
                             <p className="text-sm text-gray-500 mt-0.5">Đính kèm file và ghi chú tiến độ trước khi chuyển trạng thái</p>
                         </div>
-                        <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 flex items-center justify-center transition-colors">
+                        <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center transition-colors">
                             <i className="fa-solid fa-times text-sm" />
                         </button>
                     </div>
                     {/* Issue info strip */}
-                    <div className="mt-3 flex items-center gap-2 p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
-                        <span className="font-mono text-xs text-indigo-500 bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded font-bold">
+                    <div className="mt-3 flex items-center gap-2 p-2.5 bg-indigo-50 rounded-xl">
+                        <span className="font-mono text-xs text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded font-bold">
                             {issue.issueKey}
                         </span>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 line-clamp-1">{issue.title}</span>
+                        <span className="text-sm font-medium text-gray-700 line-clamp-1">{issue.title}</span>
                         <span className="ml-auto text-xs text-gray-400 shrink-0">
                             {issue.statusName} →
                             {(issue.statusName || '').toLowerCase() === 'in progress' ? ' Review/Done' :
@@ -272,7 +272,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
 
                     {/* File upload zone */}
                     <div>
-                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 block mb-2">
+                        <label className="text-sm font-semibold text-gray-700 block mb-2">
                             <i className="fa-solid fa-paperclip text-xs mr-1" />
                             File đính kèm
                             <span className="text-gray-400 font-normal ml-1">(tối đa 50MB/file)</span>
@@ -288,7 +288,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                                 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
                                 ${dragOver
                                     ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
-                                    : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-slate-800 hover:border-indigo-300 hover:bg-indigo-50/50'
+                                    : 'border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/50'
                                 }`}
                         >
                             <input
@@ -301,11 +301,11 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                             />
                             <div className="flex flex-col items-center gap-2">
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl
-                                    ${dragOver ? 'bg-indigo-100 text-indigo-500' : 'bg-gray-100 dark:bg-slate-700 text-gray-400'}`}>
+                                    ${dragOver ? 'bg-indigo-100 text-indigo-500' : 'bg-gray-100 text-gray-400'}`}>
                                     <i className={`fa-solid ${dragOver ? 'fa-arrow-down' : 'fa-cloud-arrow-up'}`} />
                                 </div>
                                 <div>
-                                    <p className={`text-sm font-semibold ${dragOver ? 'text-indigo-600' : 'text-gray-600 dark:text-gray-300'}`}>
+                                    <p className={`text-sm font-semibold ${dragOver ? 'text-indigo-600' : 'text-gray-600'}`}>
                                         {dragOver ? 'Thả file vào đây' : 'Kéo thả file hoặc click để chọn'}
                                     </p>
                                     <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Ảnh, Video, ZIP...</p>
@@ -317,12 +317,12 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                         {attachedFiles.filter(f => f._pending).length > 0 && (
                             <div className="mt-2 space-y-2">
                                 {attachedFiles.filter(f => f._pending).map(f => (
-                                    <div key={f.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-xl">
-                                        <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500">
+                                    <div key={f.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                        <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
                                             <i className="fa-solid fa-spinner fa-spin text-sm" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{f.name}</p>
+                                            <p className="text-sm font-medium text-gray-700 truncate">{f.name}</p>
                                             <p className="text-xs text-gray-400">{formatBytes(f.size)} · Đang upload...</p>
                                         </div>
                                         <button onClick={() => handleRemovePending(f.id)} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -339,12 +339,12 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                                 {existingFiles.map(f => {
                                     const { icon, color } = getFileIcon(f.contentType, f.fileName);
                                     return (
-                                        <div key={f.id} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-gray-700 rounded-xl">
+                                        <div key={f.id} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl">
                                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm ${color}`}>
                                                 <i className={`fa-solid ${icon}`} />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{f.fileName}</p>
+                                                <p className="text-sm font-medium text-gray-700 truncate">{f.fileName}</p>
                                                 <p className="text-xs text-gray-400">{f.fileSize ? formatBytes(f.fileSize) : ''}</p>
                                             </div>
                                             <button
@@ -370,7 +370,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
 
                     {/* Note */}
                     <div>
-                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 block mb-2">
+                        <label className="text-sm font-semibold text-gray-700 block mb-2">
                             <i className="fa-solid fa-note-sticky text-xs mr-1" />
                             Ghi chú nộp task <span className="text-red-500">*</span>
                         </label>
@@ -379,7 +379,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                             onChange={e => setNote(e.target.value)}
                             placeholder="Mô tả tiến độ, kết quả đã hoàn thành, link PR, note cho reviewer..."
                             rows={5}
-                            className="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-gray-300 transition-all resize-none"
                             autoFocus
                         />
                         <div className="flex items-center justify-between mt-1">
@@ -397,9 +397,9 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                         );
                         if (!isBackward) return null;
                         return (
-                            <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                                 <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5" />
-                                <p className="text-xs text-amber-700 dark:text-amber-300">
+                                <p className="text-xs text-amber-700">
                                     Bạn đang nộp task từ <strong>Review/Done</strong> → <strong>Done</strong>. Thao tác này sẽ ghi nhận lịch sử vào activity log.
                                 </p>
                             </div>
@@ -408,7 +408,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+                <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         {/* File count / warning badge */}
                         {(() => {
@@ -417,7 +417,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                             const isToReview = current !== 'review' && current !== 'done';
                             const hasEnough = uploadedFiles.length > 0 || current === 'review' || current === 'done';
                             return (
-                                <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg ${hasEnough || !isToReview ? 'text-gray-500 bg-gray-100 dark:bg-slate-800' : 'text-amber-600 bg-amber-50'}`}>
+                                    <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg ${hasEnough || !isToReview ? 'text-gray-500 bg-gray-100' : 'text-amber-600 bg-amber-50'}`}>
                                     <i className={`fa-solid ${hasEnough || !isToReview ? 'fa-paperclip' : 'fa-triangle-exclamation'}`} />
                                     {hasEnough || !isToReview ? `${uploadedFiles.length} file` : 'Cần đính kèm file'}
                                 </div>
@@ -432,7 +432,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                         <div className="flex-1" />
                         <button
                             onClick={onClose}
-                            className="px-5 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                            className="px-5 py-2 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors font-medium"
                         >
                             Hủy
                         </button>

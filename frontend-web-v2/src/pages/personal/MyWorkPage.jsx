@@ -106,24 +106,24 @@ export default function MyWorkPage() {
     if (isLoading) {
         return (
             <div className="p-8 flex items-center justify-center">
-                <i className="fa-solid fa-spinner fa-spin text-2xl color-main" />
+                <div className="loading-spinner" />
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
-            {/* Header Banner */}
-            <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
+        <div className="max-w-7xl mx-auto p-6 space-y-5">
+            {/* Header Banner - Clean white card */}
+            <div className="flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-lg bg-blue-50 flex items-center justify-center text-2xl font-black color-main">
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-lg font-semibold text-gray-600">
                         {(user?.username || user?.email || '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black color-main tracking-tight">
+                        <h1 className="text-xl font-semibold text-gray-900">
                             {greeting()}, {user?.username || 'there'}!
                         </h1>
-                        <p className="text-xs color-slate font-semibold mt-1">
+                        <p className="text-sm text-gray-500 mt-0.5">
                             {TODAY.toLocaleDateString('vi-VN', {
                                 weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
                             })}
@@ -133,42 +133,42 @@ export default function MyWorkPage() {
                 <div className="flex gap-2">
                     <Link
                         to="/app/me/calendar"
-                        className="px-4 py-2 border border-gray-200 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                        className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-600 transition-colors flex items-center gap-2"
                     >
-                        <i className="fa-solid fa-calendar color-main" />
+                        <i className="fa-solid fa-calendar text-gray-400" />
                         Lịch
                     </Link>
                 </div>
             </div>
 
-            {/* Quick Stats - 4 cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricBox title="Đến hạn hôm nay" value={todayMetrics.dueToday} subtitle="tasks" color="blue" icon="fa-clock" />
-                <MetricBox title="Đã hoàn thành" value={todayMetrics.doneToday} subtitle="tasks" color="green" icon="fa-check-circle" />
-                <MetricBox title="Giờ làm hôm nay" value={todayMetrics.hoursToday.toFixed(1)} subtitle="giờ" color="orange" icon="fa-hourglass-half" />
-                <MetricBox title="Tasks đang làm" value={myIssues.filter(i => i.status === 'IN_PROGRESS').length} subtitle="tasks" color="purple" icon="fa-spinner" />
+            {/* Quick Stats - Clean minimal cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <MetricBox title="Đến hạn hôm nay" value={todayMetrics.dueToday} subtitle="tasks" icon="fa-clock" iconColor="text-gray-500" />
+                <MetricBox title="Đã hoàn thành" value={todayMetrics.doneToday} subtitle="tasks" icon="fa-check-circle" iconColor="text-gray-500" />
+                <MetricBox title="Giờ làm hôm nay" value={todayMetrics.hoursToday.toFixed(1)} subtitle="giờ" icon="fa-hourglass-half" iconColor="text-gray-500" />
+                <MetricBox title="Tasks đang làm" value={myIssues.filter(i => i.status === 'IN_PROGRESS').length} subtitle="tasks" icon="fa-spinner" iconColor="text-gray-500" />
             </div>
 
             {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Left Column */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* My Issues Today */}
-                    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100" style={{ backgroundColor: '#fff7ed' }}>
-                            <h3 className="font-bold color-main flex items-center gap-2">
-                                <i className="fa-solid fa-list-check text-orange-500" />
+                <div className="lg:col-span-2 space-y-5">
+                    {/* My Issues Today - Clean white card */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                                <i className="fa-solid fa-list-check text-gray-400" />
                                 Công việc đến hạn hôm nay
                             </h3>
-                            <Link to="/app/me/issues" className="text-xs color-blue font-semibold hover:underline">
+                            <Link to="/app/me/issues" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Xem tất cả →
                             </Link>
                         </div>
                         <div className="p-5">
                             {todaysIssues.length === 0 ? (
                                 <div className="text-center py-8">
-                                    <i className="fa-solid fa-check-circle text-3xl text-green-300 mb-2" />
-                                    <p className="font-semibold color-main">Không có công việc nào đến hạn hôm nay</p>
+                                    <i className="fa-solid fa-check-circle text-3xl text-gray-300 mb-2" />
+                                    <p className="font-medium text-gray-600">Không có công việc nào đến hạn hôm nay</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
@@ -180,23 +180,23 @@ export default function MyWorkPage() {
                         </div>
                     </div>
 
-                    {/* Timelogs Today */}
-                    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100" style={{ backgroundColor: '#eff6ff' }}>
-                            <h3 className="font-bold color-main flex items-center gap-2">
-                                <i className="fa-solid fa-clock text-blue-500" />
+                    {/* Timelogs Today - Clean white card */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                                <i className="fa-solid fa-clock text-gray-400" />
                                 Nhật ký làm việc hôm nay
                             </h3>
-                            <Link to="/app/me/timelogs" className="text-xs color-blue font-semibold hover:underline">
+                            <Link to="/app/me/timelogs" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Xem tất cả →
                             </Link>
                         </div>
                         <div className="p-5">
                             {todayTimelogs.length === 0 ? (
                                 <div className="text-center py-8">
-                                    <i className="fa-solid fa-clock-rotate-left text-2xl color-slate mb-2" />
-                                    <p className="font-semibold color-slate text-sm">Chưa có nhật ký nào hôm nay</p>
-                                    <Link to="/app/me/timelogs" className="color-blue text-xs font-semibold hover:underline mt-1 inline-block">
+                                    <i className="fa-solid fa-clock-rotate-left text-2xl text-gray-300 mb-2" />
+                                    <p className="font-medium text-gray-500 text-sm">Chưa có nhật ký nào hôm nay</p>
+                                    <Link to="/app/me/timelogs" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium mt-1 inline-block">
                                         Bắt đầu log thời gian
                                     </Link>
                                 </div>
@@ -206,7 +206,7 @@ export default function MyWorkPage() {
                                         <TimeLogRow key={log.logId} log={log} />
                                     ))}
                                     {todayTimelogs.length > 5 && (
-                                        <Link to="/app/me/timelogs" className="block text-center text-xs color-blue font-semibold hover:underline py-2">
+                                        <Link to="/app/me/timelogs" className="block text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium py-2">
                                             +{todayTimelogs.length - 5} entries khác
                                         </Link>
                                     )}
@@ -217,51 +217,51 @@ export default function MyWorkPage() {
                 </div>
 
                 {/* Right Column */}
-                <div className="space-y-6">
-                    {/* My Performance */}
-                    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100" style={{ backgroundColor: '#f5f3ff' }}>
-                            <h3 className="font-bold color-main flex items-center gap-2">
-                                <i className="fa-solid fa-chart-line text-purple-500" />
+                <div className="space-y-5">
+                    {/* My Performance - Clean white card */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                                <i className="fa-solid fa-chart-line text-gray-400" />
                                 Hiệu suất của tôi
                             </h3>
-                            <Link to="/app/me/performance" className="text-xs color-blue font-semibold hover:underline">
+                            <Link to="/app/me/performance" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Chi tiết →
                             </Link>
                         </div>
                         <div className="p-5">
                             {perfScores ? (
                                 <div className="space-y-3">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <ScoreBox label="Hiệu suất" value={perfScores.performance} color="#3b82f6" />
-                                        <ScoreBox label="Tốc độ" value={perfScores.speed} color="#10b981" />
-                                        <ScoreBox label="Chất lượng" value={perfScores.quality} color="#f59e0b" />
-                                        <ScoreBox label="Khối lượng" value={perfScores.volume} color="#8b5cf6" />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <ScoreBox label="Hiệu suất" value={perfScores.performance} />
+                                        <ScoreBox label="Tốc độ" value={perfScores.speed} />
+                                        <ScoreBox label="Chất lượng" value={perfScores.quality} />
+                                        <ScoreBox label="Khối lượng" value={perfScores.volume} />
                                     </div>
                                     {perfStats?.completedTasks !== undefined && (
-                                        <div className="pt-2 border-t border-gray-100 flex justify-between text-xs color-slate">
-                                            <span>Tasks hoàn thành: <strong className="color-main">{perfStats.completedTasks || 0}</strong></span>
-                                            <span>Quá hạn: <strong className={perfStats.overdueTasks > 0 ? 'color-red' : 'color-main'}>{perfStats.overdueTasks || 0}</strong></span>
+                                        <div className="pt-3 border-t border-gray-100 flex justify-between text-sm text-gray-500">
+                                            <span>Tasks hoàn thành: <strong className="text-gray-900">{perfStats.completedTasks || 0}</strong></span>
+                                            <span>Quá hạn: <strong className={perfStats.overdueTasks > 0 ? 'text-red-600' : 'text-gray-900'}>{perfStats.overdueTasks || 0}</strong></span>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="text-center py-4">
-                                    <i className="fa-solid fa-chart-simple text-2xl color-slate mb-2" />
-                                    <p className="text-sm color-slate font-semibold">Chưa có dữ liệu hiệu suất</p>
+                                    <i className="fa-solid fa-chart-simple text-2xl text-gray-300 mb-2" />
+                                    <p className="text-sm text-gray-500 font-medium">Chưa có dữ liệu hiệu suất</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* My Projects */}
-                    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100" style={{ backgroundColor: '#fff7ed' }}>
-                            <h3 className="font-bold color-main flex items-center gap-2">
-                                <i className="fa-solid fa-folder text-orange-500" />
+                    {/* My Projects - Clean white card */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                                <i className="fa-solid fa-folder text-gray-400" />
                                 Dự án của tôi
                             </h3>
-                            <Link to="/app/projects" className="text-xs color-blue font-semibold hover:underline">
+                            <Link to="/app/projects" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Tất cả →
                             </Link>
                         </div>
@@ -277,55 +277,46 @@ export default function MyWorkPage() {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function MetricBox({ title, value, subtitle, color, icon }) {
-    const colorMap = {
-        blue: { bg: 'bg-blue-50', text: 'text-blue-500', border: 'border-blue-200' },
-        orange: { bg: 'bg-orange-50', text: 'text-orange-500', border: 'border-orange-200' },
-        amber: { bg: 'bg-amber-50', text: 'text-amber-500', border: 'border-amber-200' },
-        green: { bg: 'bg-green-50', text: 'text-green-500', border: 'border-green-200' },
-        purple: { bg: 'bg-purple-50', text: 'text-purple-500', border: 'border-purple-200' },
-    };
-    const c = colorMap[color] || colorMap.blue;
-
+function MetricBox({ title, value, subtitle, icon, iconColor = 'text-gray-500' }) {
     return (
-        <div className={`border ${c.border} rounded-lg bg-white p-5 hover:shadow-md transition-shadow`}>
-            <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg ${c.bg} flex items-center justify-center`}>
-                    <i className={`fa-solid ${icon} ${c.text} text-lg`} />
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <i className={`fa-solid ${icon} ${iconColor}`} />
                 </div>
                 <div>
-                    <p className="text-[10px] font-bold color-slate uppercase tracking-wider">{title}</p>
-                    <p className="text-[10px] color-slate mt-0.5">{subtitle}</p>
+                    <p className="text-[10px] font-medium text-black uppercase tracking-wider">{title}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{subtitle}</p>
                 </div>
             </div>
-            <p className="text-3xl font-black color-main">{value}</p>
+            <p className="text-2xl font-semibold text-gray-900">{value}</p>
         </div>
     );
 }
 
 function IssueRow({ issue }) {
     const priorityColors = {
-        CRITICAL: 'bg-red-100 text-red-600',
-        HIGH: 'bg-orange-100 text-orange-600',
-        MEDIUM: 'bg-yellow-100 text-yellow-700',
-        LOW: 'bg-gray-100 text-gray-600',
+        CRITICAL: 'bg-red-50 text-red-700',
+        HIGH: 'bg-amber-50 text-amber-700',
+        MEDIUM: 'bg-gray-100 text-gray-600',
+        LOW: 'bg-gray-100 text-gray-500',
     };
 
     return (
-        <div className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all cursor-pointer">
+        <div className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold color-blue">{issue.issueKey}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${priorityColors[issue.priority] || priorityColors.LOW}`}>
+                    <span className="text-xs font-medium text-gray-500">{issue.issueKey}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColors[issue.priority] || priorityColors.LOW}`}>
                         {issue.priority}
                     </span>
                     {issue.isOverdue && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-bold">Quá hạn</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-medium">Quá hạn</span>
                     )}
                 </div>
-                <p className="text-sm font-medium color-main truncate">{issue.title}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{issue.title}</p>
                 {issue.projectName && (
-                    <p className="text-[10px] color-slate mt-0.5 truncate">
+                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">
                         <i className="fa-solid fa-folder text-[8px] mr-1" />
                         {issue.projectName}
                     </p>
@@ -333,7 +324,7 @@ function IssueRow({ issue }) {
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
                 {issue.estimatedHours && (
-                    <span className="text-xs color-slate">
+                    <span className="text-xs text-gray-500">
                         <i className="fa-solid fa-clock text-[10px] mr-1" />
                         {issue.estimatedHours}h
                     </span>
@@ -346,19 +337,19 @@ function IssueRow({ issue }) {
 function TimeLogRow({ log }) {
     return (
         <div className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center color-blue text-xs font-bold shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">
                 {log.issueKey?.split('-')[1] || '?'}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium color-main truncate">
+                <p className="text-sm font-medium text-gray-800 truncate">
                     {log.issueTitle || log.issue?.title || 'No title'}
                 </p>
                 {log.projectName && (
-                    <p className="text-[10px] color-slate truncate">{log.projectName}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{log.projectName}</p>
                 )}
             </div>
             <div className="text-right shrink-0">
-                <span className="text-base font-black color-blue">
+                <span className="text-base font-medium text-gray-900">
                     {formatNumber(log.loggedHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
                 </span>
             </div>
@@ -366,12 +357,12 @@ function TimeLogRow({ log }) {
     );
 }
 
-function ScoreBox({ label, value, color }) {
+function ScoreBox({ label, value }) {
     const score = Number(value) || 0;
     return (
         <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider color-slate font-bold mb-1">{label}</p>
-            <p className="text-xl font-black" style={{ color }}>{score.toFixed(1)}</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-1">{label}</p>
+            <p className="text-xl font-semibold text-gray-900">{score.toFixed(1)}</p>
         </div>
     );
 }
@@ -399,8 +390,8 @@ function MyProjectsList() {
     if (projects.length === 0) {
         return (
             <div className="text-center py-4">
-                <i className="fa-solid fa-folder-open text-2xl color-slate mb-2" />
-                <p className="text-sm color-slate font-semibold">Chưa có dự án nào</p>
+                <i className="fa-solid fa-folder-open text-2xl text-gray-300 mb-2" />
+                <p className="text-sm text-gray-500 font-medium">Chưa có dự án nào</p>
             </div>
         );
     }
@@ -411,22 +402,22 @@ function MyProjectsList() {
                 <Link
                     key={project.projectId || project.id}
                     to={`/app/projects/${project.projectId || project.id}`}
-                    className="flex items-center gap-3 p-2 border border-gray-100 rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all group"
+                    className="flex items-center gap-3 p-2 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors group"
                 >
-                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center color-orange text-xs font-bold shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">
                         {(project.name || '?').charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold color-main truncate group-hover:color-blue">
+                        <p className="text-sm font-medium text-gray-800 truncate group-hover:text-indigo-600">
                             {project.name}
                         </p>
-                        <p className="text-[10px] color-slate">{project.keyProject || project.status}</p>
+                        <p className="text-[10px] text-gray-400">{project.keyProject || project.status}</p>
                     </div>
-                    <i className="fa-solid fa-chevron-right text-[10px] color-slate group-hover:color-blue" />
+                    <i className="fa-solid fa-chevron-right text-[10px] text-gray-400" />
                 </Link>
             ))}
             {projects.length > 5 && (
-                <Link to="/app/projects" className="block text-center text-xs color-blue font-semibold hover:underline py-2">
+                <Link to="/app/projects" className="block text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium py-2">
                     +{projects.length - 5} dự án khác
                 </Link>
             )}

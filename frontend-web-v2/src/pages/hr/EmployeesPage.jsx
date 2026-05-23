@@ -8,7 +8,7 @@ import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
-import { formatDate, formatCurrency } from '@shared/utils/formatters';
+import { formatDate } from '@shared/utils/formatters';
 import { Avatar } from '@shared/components/OptimizedImage';
 import EmployeeFormModal from './components/EmployeeFormModal';
 
@@ -20,9 +20,8 @@ export default function EmployeesPage() {
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
-    const [selectedIds, setSelectedIds] = useState(new Set()); // For bulk selection
+    const [selectedIds, setSelectedIds] = useState(new Set());
 
-    // State
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(10);
     const [keyword, setKeyword] = useState('');
@@ -35,12 +34,11 @@ export default function EmployeesPage() {
         queryKey: ['employees', page, pageSize, debouncedKeyword, status],
         queryFn: async () => {
             const params = {
-                page: page,
+                page,
                 size: pageSize,
                 search: debouncedKeyword || undefined,
                 status: status !== 'ALL' ? status : undefined,
             };
-
             const response = await apiClient.get(ENDPOINTS.EMPLOYEES.PAGE, { params });
             return response.data;
         },
@@ -74,12 +72,11 @@ export default function EmployeesPage() {
     });
 
     const handleDelete = (id) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này? Hành động này không thể hoàn tác.')) {
+        if (window.confirm('Xóa nhân viên này? Hành động này không thể hoàn tác.')) {
             deleteMutation.mutate(id);
         }
     };
 
-    // Bulk actions
     const handleSelectAll = () => {
         if (selectedIds.size === employeeRows.length) {
             setSelectedIds(new Set());
@@ -90,26 +87,20 @@ export default function EmployeesPage() {
 
     const handleSelectOne = (id) => {
         const newSet = new Set(selectedIds);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
-        }
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
         setSelectedIds(newSet);
     };
 
     const handleBulkDelete = async () => {
-        if (window.confirm(`Bạn có chắc muốn xóa ${selectedIds.size} nhân viên đã chọn?`)) {
+        if (window.confirm(`Xóa ${selectedIds.size} nhân viên đã chọn?`)) {
             const ids = [...selectedIds];
             const results = await Promise.allSettled(
                 ids.map(id => apiClient.delete(ENDPOINTS.EMPLOYEES.BY_ID(id)))
             );
             const failed = results.filter(r => r.status === 'rejected').length;
-            if (failed > 0) {
-                showToast(`${failed}/${ids.length} nhân viên xóa thất bại`, 'error');
-            } else {
-                showToast(`Đã xóa ${ids.length} nhân viên`, 'success');
-            }
+            if (failed > 0) showToast(`${failed}/${ids.length} nhân viên xóa thất bại`, 'error');
+            else showToast(`Đã xóa ${ids.length} nhân viên`, 'success');
             queryClient.invalidateQueries(['employees']);
             setSelectedIds(new Set());
         }
@@ -117,14 +108,13 @@ export default function EmployeesPage() {
 
     // Columns Configuration
     const columns = [
-        // Checkbox column for bulk select
         {
             header: () => (
                 <input
                     type="checkbox"
                     checked={selectedIds.size > 0 && selectedIds.size === employeeRows.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-gray-300"
                 />
             ),
             accessorKey: 'select',
@@ -134,7 +124,7 @@ export default function EmployeesPage() {
                     checked={selectedIds.has(row.employeeId)}
                     onChange={() => handleSelectOne(row.employeeId)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-gray-300"
                 />
             )
         },
@@ -145,8 +135,8 @@ export default function EmployeesPage() {
                 <div className="flex items-center gap-2">
                     <Avatar src={row.avatarUrl} name={row.fullName} size="sm" />
                     <div className="min-w-0">
-                        <div className="font-semibold color-main truncate max-w-[140px]" title={row.fullName}>{row.fullName}</div>
-                        <div className="text-[10px] color-slate">{row.phone || '—'}</div>
+                        <div className="font-medium text-gray-900 truncate max-w-[140px]" title={row.fullName}>{row.fullName}</div>
+                        <div className="text-[10px] text-gray-500">{row.phone || '—'}</div>
                     </div>
                 </div>
             )
@@ -155,7 +145,7 @@ export default function EmployeesPage() {
             header: 'Email',
             accessorKey: 'email',
             cell: (row) => (
-                <span className="text-xs color-slate truncate block max-w-[160px]" title={row.email}>
+                <span className="text-xs text-gray-500 truncate block max-w-[160px]" title={row.email}>
                     {row.email}
                 </span>
             )
@@ -164,7 +154,7 @@ export default function EmployeesPage() {
             header: 'Giới tính',
             accessorKey: 'gender',
             cell: (row) => (
-                <span className="text-xs color-slate">
+                <span className="text-xs text-gray-500">
                     {row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : 'Khác'}
                 </span>
             )
@@ -173,7 +163,7 @@ export default function EmployeesPage() {
             header: 'Phép',
             accessorKey: 'leaveBalance',
             cell: (row) => (
-                <span className="text-xs font-semibold color-blue">
+                <span className="text-xs font-medium text-gray-900">
                     {row.leaveBalance != null ? `${row.leaveBalance}` : '—'}
                 </span>
             )
@@ -181,7 +171,7 @@ export default function EmployeesPage() {
         {
             header: 'Vào',
             accessorKey: 'hireDate',
-            cell: (row) => <span className="text-xs color-slate">{row.hireDate ? formatDate(row.hireDate) : '—'}</span>
+            cell: (row) => <span className="text-xs text-gray-500">{row.hireDate ? formatDate(row.hireDate) : '—'}</span>
         },
         {
             header: 'Trạng thái',
@@ -204,7 +194,7 @@ export default function EmployeesPage() {
                                     }
                                     navigate(`/app/company/settings?tab=members&memberUserId=${row.userId}`);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
                                 title="Phân quyền"
                             >
                                 <i className="fa-solid fa-shield-halved text-xs" />
@@ -214,7 +204,7 @@ export default function EmployeesPage() {
                                     e.stopPropagation();
                                     setSelectedEmployeeId(row.employeeId);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
                                 title="Sửa"
                             >
                                 <i className="fa-solid fa-pen text-xs" />
@@ -224,7 +214,7 @@ export default function EmployeesPage() {
                                     e.stopPropagation();
                                     handleDelete(row.employeeId);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
                                 title="Xóa"
                             >
                                 <i className="fa-solid fa-trash text-xs" />
@@ -239,22 +229,22 @@ export default function EmployeesPage() {
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
+            <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                            <i className="fa-solid fa-users text-indigo-500 text-xl" />
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-users text-gray-500 text-xl" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black color-main">Danh sách thành viên</h1>
-                            <p className="text-xs color-slate mt-0.5">Quản lý nhân sự theo trạng thái, liên hệ và thông tin cơ bản</p>
+                            <h1 className="text-xl font-semibold text-gray-900">Danh sách thành viên</h1>
+                            <p className="text-sm text-gray-500 mt-0.5">Quản lý nhân sự theo trạng thái, liên hệ và thông tin cơ bản</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:min-w-[360px]">
-                        <MiniStat label="Trên trang" value={statusCounts.total} tone="slate" />
-                        <MiniStat label="Đang làm" value={statusCounts.active} tone="green" />
-                        <MiniStat label="Tạm nghỉ" value={statusCounts.onLeave} tone="amber" />
-                        <MiniStat label="Nghỉ việc" value={statusCounts.resigned} tone="red" />
+                        <MiniStat label="Trên trang" value={statusCounts.total} tone="default" />
+                        <MiniStat label="Đang làm" value={statusCounts.active} tone="success" />
+                        <MiniStat label="Tạm nghỉ" value={statusCounts.onLeave} tone="warning" />
+                        <MiniStat label="Nghỉ việc" value={statusCounts.resigned} tone="danger" />
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-3 mt-4">
@@ -268,7 +258,7 @@ export default function EmployeesPage() {
                     {hasPermission('hrCreateEmployee') && (
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm transition-colors"
+                            className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-sm transition-colors"
                         >
                             <i className="fa-solid fa-plus" /> Thêm thành viên
                         </button>
@@ -290,9 +280,9 @@ export default function EmployeesPage() {
 
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        <span className="color-blue font-semibold">
+                        <span className="font-medium text-gray-900">
                             Đã chọn {selectedIds.size} thành viên
                         </span>
                     </div>
@@ -312,7 +302,7 @@ export default function EmployeesPage() {
                         </button>
                         <button
                             onClick={() => setSelectedIds(new Set())}
-                            className="px-4 py-2 border border-gray-200 color-slate hover:bg-gray-50 rounded-lg font-medium transition-colors text-sm"
+                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors text-sm"
                         >
                             Bỏ chọn
                         </button>
@@ -321,15 +311,14 @@ export default function EmployeesPage() {
             )}
 
             {/* Filters */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                    {/* Status Tabs */}
-                    <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-200">
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
                         {['ALL', 'ACTIVE', 'ON_LEAVE', 'RESIGNED'].map(s => (
                             <button
                                 key={s}
                                 onClick={() => setStatus(s)}
-                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${status === s ? 'bg-white color-main shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${status === s ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             >
                                 {s === 'ALL' ? 'Tất cả' : s === 'ACTIVE' ? 'Đang làm' : s === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Nghỉ việc'}
                             </button>
@@ -341,7 +330,7 @@ export default function EmployeesPage() {
                             <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                             <input
                                 type="text"
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 bg-white"
                                 placeholder="Tìm tên, email..."
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
@@ -364,7 +353,7 @@ export default function EmployeesPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+            <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm">
                 <DataTable
                     loading={isLoadingEmployees}
                     error={isEmployeesError}
@@ -382,31 +371,31 @@ export default function EmployeesPage() {
 
 function MiniStat({ label, value, tone }) {
     const toneClass = {
-        slate: 'bg-slate-50 text-slate-700 border-slate-200',
-        green: 'bg-green-50 text-green-700 border-green-200',
-        amber: 'bg-amber-50 text-amber-700 border-amber-200',
-        red: 'bg-red-50 text-red-700 border-red-200',
-    }[tone] || 'bg-slate-50 text-slate-700 border-slate-200';
+        default: 'bg-gray-50 border-gray-100 text-gray-700',
+        success: 'bg-green-50 border-green-100 text-green-700',
+        warning: 'bg-amber-50 border-amber-100 text-amber-700',
+        danger: 'bg-red-50 border-red-100 text-red-700',
+    }[tone] || 'bg-gray-50 border-gray-100 text-gray-700';
 
     return (
-        <div className={`rounded-xl border px-3 py-2 hover:shadow-md transition-shadow ${toneClass}`}>
-            <p className="text-[10px] uppercase tracking-wide font-bold opacity-80">{label}</p>
-            <p className="text-lg font-black leading-tight mt-0.5">{value}</p>
+        <div className={`rounded-xl border px-3 py-2 hover:shadow-sm transition-shadow ${toneClass}`}>
+            <p className="text-[10px] uppercase tracking-wide font-medium opacity-80">{label}</p>
+            <p className="text-lg font-semibold leading-tight mt-0.5">{value}</p>
         </div>
     );
 }
 
 function StatusBadge({ status }) {
     const configs = {
-        ACTIVE: { color: 'text-green-700 bg-green-50 border-green-100', icon: 'fa-check', label: 'Đang làm' },
-        ON_LEAVE: { color: 'text-orange-700 bg-orange-50 border-orange-100', icon: 'fa-clock', label: 'Tạm nghỉ' },
-        RESIGNED: { color: 'text-red-700 bg-red-50 border-red-100', icon: 'fa-xmark', label: 'Nghỉ việc' },
+        ACTIVE: { color: 'bg-green-50 text-green-700', icon: 'fa-check', label: 'Đang làm' },
+        ON_LEAVE: { color: 'bg-amber-50 text-amber-700', icon: 'fa-clock', label: 'Tạm nghỉ' },
+        RESIGNED: { color: 'bg-red-50 text-red-700', icon: 'fa-xmark', label: 'Nghỉ việc' },
     };
 
     const config = configs[status] || configs.ACTIVE;
 
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${config.color}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${config.color}`}>
             <i className={`fa-solid ${config.icon}`}></i>
             {config.label}
         </span>

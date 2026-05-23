@@ -212,7 +212,7 @@ function SprintView({ projectId }) {
                     </h3>
                     <div className="space-y-3">
                         {planningSprints.map(sprint => (
-                            <div key={sprint.sprintId} className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 p-4 hover:border-indigo-300 transition-colors">
+                            <div key={sprint.sprintId} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-indigo-300 transition-colors">
                                 <div className="flex items-center justify-between">
                                     <div className="cursor-pointer select-none" onClick={() => setExpandedSprint(expandedSprint === sprint.sprintId ? null : sprint.sprintId)}>
                                         <h4 className="font-medium text-gray-900 flex items-center gap-2">
@@ -260,7 +260,7 @@ function SprintView({ projectId }) {
                     </h3>
                     <div className="space-y-2">
                         {completedSprints.slice(0, 5).map(sprint => (
-                            <div key={sprint.sprintId} className="bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-100 p-3">
+                            <div key={sprint.sprintId} className="bg-gray-50 rounded-lg border border-gray-100 p-3">
                                 <div className="flex items-center justify-between">
                                     <div className="cursor-pointer select-none" onClick={() => setExpandedSprint(expandedSprint === sprint.sprintId ? null : sprint.sprintId)}>
                                         <h4 className="font-medium text-gray-700 flex items-center gap-2">
@@ -449,7 +449,7 @@ function PhaseView({ projectId }) {
                                                         <select
                                                             value={phase.status}
                                                             onChange={(e) => updateStatusMutation.mutate({ phaseId: phase.phaseId, status: e.target.value })}
-                                                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500"
+                                                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-gray-300"
                                                         >
                                                             {Object.entries(PHASE_STATUS).map(([key, val]) => (
                                                                 <option key={key} value={key}>{val.label}</option>
@@ -597,7 +597,7 @@ function TimelineView({ projectId }) {
                     <input
                         type="text" value={filter} onChange={e => setFilter(e.target.value)}
                         placeholder="Tìm kiếm..."
-                        className="pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm w-56 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm w-56 focus:outline-none focus:border-gray-300 focus:border-transparent"
                     />
                 </div>
             </div>
@@ -794,7 +794,7 @@ function AddIssueToSprintModal({ projectId, sprintId, onClose, onSuccess }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900">Thêm Issue vào Sprint</h2>
@@ -806,7 +806,7 @@ function AddIssueToSprintModal({ projectId, sprintId, onClose, onSuccess }) {
                     <div className="relative">
                         <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
                         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:border-gray-600 dark:text-gray-100"
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                             placeholder="Tìm issue theo tên..." />
                     </div>
                     {selectedIssues.length > 0 && <div className="mt-2 text-xs text-indigo-600 font-medium">Đã chọn {selectedIssues.length} issue</div>}
@@ -873,7 +873,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900">Tạo Sprint Mới</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-times" /></button>
@@ -882,25 +882,25 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Tên Sprint <span className="text-red-500">*</span></label>
                         <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                             placeholder="VD: Sprint 1" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Sprint Goal</label>
                         <textarea value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:border-transparent resize-none"
                             placeholder="Mục tiêu của sprint này..." rows={2} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
                             <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600" />
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
                             <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600" />
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white" />
                         </div>
                     </div>
                     <div className="flex justify-end gap-3 pt-4">
@@ -945,7 +945,7 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900">{isEditing ? 'Chỉnh sửa giai đoạn' : 'Thêm giai đoạn mới'}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-times" /></button>
@@ -954,39 +954,39 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Tên giai đoạn <span className="text-red-500">*</span></label>
                         <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                             placeholder="VD: Giai đoạn thiết kế" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                         <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:border-transparent resize-none"
                             placeholder="Mô tả chi tiết..." rows={2} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
                             <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600" />
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
                             <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600" />
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
                             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600">
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white">
                                 {Object.entries(PHASE_STATUS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Thứ tự</label>
                             <input type="number" value={form.orderIndex} onChange={(e) => setForm({ ...form, orderIndex: parseInt(e.target.value) || 1 })}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                                 min="1" />
                         </div>
                     </div>

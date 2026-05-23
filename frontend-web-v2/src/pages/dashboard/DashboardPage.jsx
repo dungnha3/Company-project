@@ -42,7 +42,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
     const completedTasks = myTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-7xl mx-auto p-6 space-y-5">
             {/* Header Banner */}
             <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
                 <div>
@@ -61,7 +61,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
             </div>
 
             {/* Key Metrics - 4 cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricBox title="Công việc" value={myTasks.length} subtitle="tasks" color="blue" icon="fa-list-check" />
                 <MetricBox title="Cần làm" value={todoTasks} subtitle="tasks" color="orange" icon="fa-clock" />
                 <MetricBox title="Đang thực hiện" value={inProgressTasks} subtitle="tasks" color="amber" icon="fa-spinner" />
@@ -69,7 +69,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Left Column - Tasks */}
                 <div className="lg:col-span-2">
                     <div className="border border-gray-200 rounded-lg bg-white p-6 h-full">
@@ -93,7 +93,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
                 </div>
 
                 {/* Right Column */}
-                <div className="space-y-6">
+                <div className="space-y-5">
                     {/* Projects */}
                     <div className="border border-gray-200 rounded-lg bg-white p-6">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
@@ -145,7 +145,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
             </div>
 
             {/* Quick Links */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <QuickLink to="/app/me/issues" icon="fa-list-check" label="Công việc" color="blue" />
                 <QuickLink to="/app/projects" icon="fa-folder" label="Dự án" color="orange" />
                 <QuickLink to="/app/hr/leave-requests" icon="fa-umbrella-beach" label="Nghỉ phép" color="amber" />

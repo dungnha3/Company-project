@@ -188,8 +188,22 @@ export default function IssueListTab({ projectId }) {
 
     return (
         <div className="space-y-4">
-            {/* Toolbar with Filters */}
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+            {/* Header + Filters */}
+            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm space-y-3">
+                {/* Toolbar header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-list-check text-gray-400 text-sm" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Danh sách công việc</p>
+                            <p className="text-[10px] text-gray-500">{allIssuesRaw.length} công việc</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filters row */}
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
@@ -198,7 +212,7 @@ export default function IssueListTab({ projectId }) {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                             placeholder="Tìm theo tên hoặc mã..."
                         />
                     </div>
@@ -207,7 +221,7 @@ export default function IssueListTab({ projectId }) {
                     <select
                         value={filterStatus}
                         onChange={handleFilterChange(setFilterStatus)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                     >
                         <option value="">Tất cả trạng thái</option>
                         {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -217,7 +231,7 @@ export default function IssueListTab({ projectId }) {
                     <select
                         value={filterPriority}
                         onChange={handleFilterChange(setFilterPriority)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                     >
                         <option value="">Tất cả ưu tiên</option>
                         {priorityOptions.map(p => <option key={p} value={p}>{priorityLabels[p] || p}</option>)}
@@ -227,7 +241,7 @@ export default function IssueListTab({ projectId }) {
                     <select
                         value={filterAssignee}
                         onChange={handleFilterChange(setFilterAssignee)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                     >
                         <option value="">Tất cả người thực hiện</option>
                         {assigneeOptions.map(a => <option key={a} value={a}>{a}</option>)}
@@ -251,16 +265,16 @@ export default function IssueListTab({ projectId }) {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100">
+                        <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Task</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Ưu tiên</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Hạn chót</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Người thực hiện</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Task</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trạng thái</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Ưu tiên</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Hạn chót</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Người thực hiện</th>
                                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="AI Score">AI</th>
                                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="Human Score">Human</th>
                                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="Total Score">Total</th>

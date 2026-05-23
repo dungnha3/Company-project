@@ -181,7 +181,6 @@ function PerformanceWidgetSkeleton({ compact, size }) {
         </div>
     );
 }
-
 // ── Helper functions (exported for use elsewhere) ──────────────────────────
 
 export function getScoreColor(score) {
@@ -210,3 +209,4 @@ export function getScoreColorHex(score) {
     if (s >= 5.0) return '#f97316';
     return '#ef4444';
 }
+

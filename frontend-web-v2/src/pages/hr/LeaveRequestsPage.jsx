@@ -27,14 +27,14 @@ export default function LeaveRequestsPage() {
 
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-6">
-            <div className="flex justify-between items-center border border-gray-200 bg-white rounded-lg shadow-sm px-6 py-5">
+            <div className="flex justify-between items-center bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                        <i className="fa-solid fa-umbrella-beach text-indigo-500 text-xl" />
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-umbrella-beach text-gray-400 text-xl" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black color-main">Nghỉ phép</h1>
-                        <p className="text-xs color-slate">Quản lý đơn xin nghỉ phép</p>
+                        <h1 className="text-xl font-semibold text-gray-900">Nghỉ phép</h1>
+                        <p className="text-sm text-gray-500 mt-0.5">Quản lý đơn xin nghỉ phép</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -49,25 +49,25 @@ export default function LeaveRequestsPage() {
                             label="Xuất Excel"
                         />
                     )}
-                    <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-                        <i className="fa-solid fa-plus mr-2" /> Tạo đơn xin nghỉ
+                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-sm transition-colors">
+                        <i className="fa-solid fa-plus mr-2" /> Tạo đơn
                     </button>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm px-4">
+            <div className="bg-white rounded-xl border border-gray-100 px-4 shadow-sm">
                 <nav className="flex space-x-8" aria-label="Tabs">
                     <button
                         onClick={() => setActiveTab('my-requests')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'my-requests' ? 'border-indigo-500 color-blue' : 'border-transparent color-slate hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'my-requests' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         <i className="fa-solid fa-list text-xs" />
                         Đơn của tôi
                     </button>
                     <button
                         onClick={() => setActiveTab('calendar')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'calendar' ? 'border-indigo-500 color-blue' : 'border-transparent color-slate hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'calendar' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         <i className="fa-solid fa-calendar-days text-xs" />
                         Lịch nghỉ
@@ -75,12 +75,12 @@ export default function LeaveRequestsPage() {
                     {hasPermission('leaveApprove') && (
                         <button
                             onClick={() => setActiveTab('pending-approval')}
-                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'pending-approval' ? 'border-indigo-500 color-blue' : 'border-transparent color-slate hover:text-gray-700 hover:border-gray-300'}`}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'pending-approval' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                         >
                             <i className="fa-solid fa-gavel text-xs" />
                             Cần duyệt
                             {pendingCount > 0 && (
-                                <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs font-bold">{pendingCount}</span>
+                                <span className="ml-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-xs font-medium">{pendingCount}</span>
                             )}
                         </button>
                     )}
@@ -107,11 +107,11 @@ export default function LeaveRequestsPage() {
 // ─── My Leave Requests ───────────────────────────────────────────────────────
 
 const LEAVE_TYPE_LABELS = {
-    ANNUAL: { label: 'Nghỉ phép năm', color: 'bg-indigo-100 text-indigo-700', icon: 'fa-umbrella-beach' },
-    SICK: { label: 'Nghỉ ốm', color: 'bg-red-100 text-red-700', icon: 'fa-head-side-virus' },
-    UNPAID: { label: 'Nghỉ không lương', color: 'bg-gray-100 text-gray-700', icon: 'fa-clock' },
-    MATERNITY: { label: 'Thai sản', color: 'bg-pink-100 text-pink-700', icon: 'fa-baby' },
-    OTHER: { label: 'Khác', color: 'bg-purple-100 text-purple-700', icon: 'fa-ellipsis-h' },
+    ANNUAL: { label: 'Nghỉ phép năm', color: 'bg-gray-100 text-gray-700', icon: 'fa-umbrella-beach' },
+    SICK: { label: 'Nghỉ ốm', color: 'bg-red-50 text-red-700', icon: 'fa-head-side-virus' },
+    UNPAID: { label: 'Nghỉ không lương', color: 'bg-gray-100 text-gray-600', icon: 'fa-clock' },
+    MATERNITY: { label: 'Thai sản', color: 'bg-pink-50 text-pink-700', icon: 'fa-baby' },
+    OTHER: { label: 'Khác', color: 'bg-gray-100 text-gray-600', icon: 'fa-ellipsis-h' },
 };
 
 function LeaveTypeBadge({ type }) {
@@ -126,13 +126,13 @@ function LeaveTypeBadge({ type }) {
 
 function StatusBadge({ status }) {
     const styles = {
-        PENDING: { bg: 'bg-yellow-50 border-yellow-200 text-yellow-700', label: 'Chờ duyệt', icon: 'fa-clock' },
-        APPROVED: { bg: 'bg-green-50 border-green-200 text-green-700', label: 'Đã duyệt', icon: 'fa-check-circle' },
-        REJECTED: { bg: 'bg-red-50 border-red-200 text-red-700', label: 'Từ chối', icon: 'fa-xmark-circle' },
+        PENDING: { bg: 'bg-amber-50 text-amber-700', label: 'Chờ duyệt', icon: 'fa-clock' },
+        APPROVED: { bg: 'bg-green-50 text-green-700', label: 'Đã duyệt', icon: 'fa-check-circle' },
+        REJECTED: { bg: 'bg-red-50 text-red-700', label: 'Từ chối', icon: 'fa-xmark-circle' },
     };
     const s = styles[status] || styles.PENDING;
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${s.bg}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${s.bg}`}>
             <i className={`fa-solid ${s.icon} text-[10px]`} />
             {s.label}
         </span>
@@ -191,7 +191,7 @@ function MyLeaveRequests() {
             accessorKey: 'dateRange',
             cell: (row) => (
                 <div className="flex flex-col">
-                    <span className="text-xs text-gray-600">{formatDate(row.startDate)} → {formatDate(row.endDate)}</span>
+                    <span className="text-xs text-gray-700">{formatDate(row.startDate)} → {formatDate(row.endDate)}</span>
                     <span className="text-[10px] text-gray-400">{row.totalDays} ngày</span>
                 </div>
             )
@@ -233,7 +233,7 @@ function MyLeaveRequests() {
                 <div className="flex items-center gap-2 justify-end">
                     <button
                         onClick={() => setDetailModal(row)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
                         title="Chi tiết"
                     >
                         <i className="fa-solid fa-eye text-sm" />
@@ -245,7 +245,7 @@ function MyLeaveRequests() {
                                     cancelMutation.mutate(row.leaveRequestId);
                                 }
                             }}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
                             title="Hủy đơn"
                         >
                             <i className="fa-solid fa-trash text-sm" />
@@ -260,21 +260,21 @@ function MyLeaveRequests() {
         <div className="space-y-4">
             {/* Leave Balance Card */}
             {remaining != null && (
-                <div className="border border-indigo-200 bg-white rounded-lg p-5 flex items-center justify-between shadow-sm">
+                <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center">
-                            <i className="fa-solid fa-umbrella-beach text-indigo-500 text-2xl" />
+                        <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-umbrella-beach text-gray-400 text-2xl" />
                         </div>
                         <div>
-                            <p className="text-xs color-slate font-semibold">Phép năm {new Date().getFullYear()}</p>
-                            <p className="text-3xl font-black color-main mt-1">{remaining} <span className="text-base font-normal opacity-60">/{total} ngày</span></p>
+                            <p className="text-xs text-gray-500 font-medium">Phép năm {new Date().getFullYear()}</p>
+                            <p className="text-3xl font-semibold text-gray-900 mt-1">{remaining} <span className="text-base font-normal text-gray-400">/{total} ngày</span></p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs color-slate">Đã dùng</p>
-                        <p className="text-2xl font-bold color-main">{used}</p>
-                        <div className="w-32 bg-gray-100 rounded-full h-2 mt-2 overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        <p className="text-xs text-gray-500">Đã dùng</p>
+                        <p className="text-2xl font-semibold text-gray-900">{used}</p>
+                        <div className="w-32 bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                            <div className="h-full bg-gray-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                     </div>
                 </div>
@@ -282,31 +282,31 @@ function MyLeaveRequests() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-3 gap-4">
-                <div className="border border-gray-200 bg-white rounded-lg p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-                        <i className="fa-solid fa-clock text-yellow-500" />
+                <div className="bg-white rounded-xl p-4 flex items-center gap-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <i className="fa-solid fa-clock text-gray-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black color-main">{pending}</p>
-                        <p className="text-xs color-slate">Chờ duyệt</p>
+                        <p className="text-2xl font-semibold text-gray-900">{pending}</p>
+                        <p className="text-xs text-gray-500">Chờ duyệt</p>
                     </div>
                 </div>
-                <div className="border border-gray-200 bg-white rounded-lg p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                        <i className="fa-solid fa-check-circle text-green-500" />
+                <div className="bg-white rounded-xl p-4 flex items-center gap-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <i className="fa-solid fa-check-circle text-gray-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black color-main">{approved}</p>
-                        <p className="text-xs color-slate">Đã duyệt</p>
+                        <p className="text-2xl font-semibold text-gray-900">{approved}</p>
+                        <p className="text-xs text-gray-500">Đã duyệt</p>
                     </div>
                 </div>
-                <div className="border border-gray-200 bg-white rounded-lg p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
-                        <i className="fa-solid fa-xmark-circle text-red-500" />
+                <div className="bg-white rounded-xl p-4 flex items-center gap-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <i className="fa-solid fa-xmark-circle text-gray-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black color-main">{rejected}</p>
-                        <p className="text-xs color-slate">Từ chối</p>
+                        <p className="text-2xl font-semibold text-gray-900">{rejected}</p>
+                        <p className="text-xs text-gray-500">Từ chối</p>
                     </div>
                 </div>
             </div>
@@ -329,7 +329,7 @@ function PendingLeaveRequests() {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
-    const [approvalModal, setApprovalModal] = useState(null); // { id, action, name }
+    const [approvalModal, setApprovalModal] = useState(null);
     const [detailModal, setDetailModal] = useState(null);
 
     const { data: requests, isLoading } = useQuery({
@@ -420,7 +420,7 @@ function PendingLeaveRequests() {
                 <input type="checkbox"
                     checked={selectedIds.size > 0 && selectedIds.size === data.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600"
+                    className="w-4 h-4 rounded border-gray-300"
                 />
             ),
             accessorKey: 'select',
@@ -429,7 +429,7 @@ function PendingLeaveRequests() {
                     checked={selectedIds.has(row.leaveRequestId)}
                     onChange={() => handleSelectOne(row.leaveRequestId)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600"
+                    className="w-4 h-4 rounded border-gray-300"
                 />
             )
         },
@@ -438,11 +438,11 @@ function PendingLeaveRequests() {
             accessorKey: 'employee',
             cell: (row) => (
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-medium">
                         {(row.employee?.fullName || '?')[0].toUpperCase()}
                     </div>
                     <div>
-                        <div className="font-semibold text-sm">{row.employee?.fullName}</div>
+                        <div className="font-medium text-sm text-gray-900">{row.employee?.fullName}</div>
                     </div>
                 </div>
             )
@@ -457,7 +457,7 @@ function PendingLeaveRequests() {
             accessorKey: 'dateRange',
             cell: (row) => (
                 <div className="flex flex-col">
-                    <span className="text-xs font-medium">{formatDate(row.startDate)} → {formatDate(row.endDate)}</span>
+                    <span className="text-xs font-medium text-gray-700">{formatDate(row.startDate)} → {formatDate(row.endDate)}</span>
                     <span className="text-[10px] text-gray-400">{row.totalDays} ngày</span>
                 </div>
             )
@@ -480,24 +480,24 @@ function PendingLeaveRequests() {
             header: 'Thao tác',
             accessorKey: 'actions',
             cell: (row) => (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 justify-end">
                     <button
                         onClick={() => setDetailModal(row)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
                         title="Chi tiết"
                     >
                         <i className="fa-solid fa-eye text-sm" />
                     </button>
                     <button
                         onClick={() => openApprovalModal(row, 'approve')}
-                        className="p-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-md transition-colors"
+                        className="p-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded transition-all"
                         title="Duyệt"
                     >
                         <i className="fa-solid fa-check text-sm" />
                     </button>
                     <button
                         onClick={() => openApprovalModal(row, 'reject')}
-                        className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors"
+                        className="p-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded transition-all"
                         title="Từ chối"
                     >
                         <i className="fa-solid fa-xmark text-sm" />
@@ -510,21 +510,21 @@ function PendingLeaveRequests() {
     return (
         <div className="space-y-4">
             {selectedIds.size > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
-                    <span className="text-indigo-700 font-medium">
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-gray-900 font-medium">
                         Đã chọn {selectedIds.size} đơn
                     </span>
                     <div className="flex gap-2">
                         <button onClick={handleBatchApprove}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm">
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm transition-colors">
                             <i className="fa-solid fa-check mr-1" /> Duyệt tất cả
                         </button>
                         <button onClick={handleBatchReject}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm">
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors">
                             <i className="fa-solid fa-xmark mr-1" /> Từ chối tất cả
                         </button>
                         <button onClick={() => setSelectedIds(new Set())}
-                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-medium text-sm">
+                            className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-lg font-medium text-sm transition-colors">
                             Bỏ chọn
                         </button>
                     </div>
@@ -591,19 +591,19 @@ function ApprovalModal({ modal, onClose, onConfirm, isLoading }) {
                     <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
                             <span className="text-gray-500 text-xs">Loại nghỉ</span>
-                            <p className="font-medium"><LeaveTypeBadge type={modal.type} /></p>
+                            <p className="font-medium mt-0.5"><LeaveTypeBadge type={modal.type} /></p>
                         </div>
                         <div>
                             <span className="text-gray-500 text-xs">Số ngày</span>
-                            <p className="font-medium">{modal.days} ngày</p>
+                            <p className="font-medium mt-0.5 text-gray-900">{modal.days} ngày</p>
                         </div>
                         <div>
                             <span className="text-gray-500 text-xs">Từ ngày</span>
-                            <p className="font-medium">{formatDate(modal.startDate)}</p>
+                            <p className="font-medium mt-0.5 text-gray-900">{formatDate(modal.startDate)}</p>
                         </div>
                         <div>
                             <span className="text-gray-500 text-xs">Đến ngày</span>
-                            <p className="font-medium">{formatDate(modal.endDate)}</p>
+                            <p className="font-medium mt-0.5 text-gray-900">{formatDate(modal.endDate)}</p>
                         </div>
                     </div>
                     {modal.reason && (
@@ -624,7 +624,7 @@ function ApprovalModal({ modal, onClose, onConfirm, isLoading }) {
                         <textarea
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 resize-none bg-white"
                             rows={isReject ? 3 : 2}
                             placeholder={isReject ? 'Nhập lý do từ chối...' : 'Ghi chú khi duyệt (tùy chọn)...'}
                         />
@@ -666,11 +666,11 @@ function LeaveDetailModal({ request, onClose }) {
                 onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 rounded-t-2xl">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm">
                             {(request.employee?.fullName || '?')[0].toUpperCase()}
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900">{request.employee?.fullName || '—'}</h2>
+                            <h2 className="text-lg font-semibold text-gray-900">{request.employee?.fullName || '—'}</h2>
                             <p className="text-xs text-gray-500">Chi tiết đơn nghỉ phép</p>
                         </div>
                     </div>
@@ -720,23 +720,23 @@ function LeaveDetailModal({ request, onClose }) {
                     )}
 
                     {(request.approverName || request.approvalNote) && (
-                        <div className="bg-green-50 border border-green-100 rounded-lg p-4 space-y-2">
-                            <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide">Kết quả phê duyệt</h4>
+                        <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 space-y-2">
+                            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Kết quả phê duyệt</h4>
                             {request.approverName && (
                                 <div className="flex items-center gap-2">
-                                    <i className="fa-solid fa-user-check text-green-500 text-sm" />
+                                    <i className="fa-solid fa-user-check text-gray-400 text-sm" />
                                     <span className="text-sm text-gray-700">Bởi <strong>{request.approverName}</strong></span>
                                 </div>
                             )}
                             {request.approvedAt && (
                                 <div className="flex items-center gap-2">
-                                    <i className="fa-solid fa-calendar-check text-green-500 text-sm" />
+                                    <i className="fa-solid fa-calendar-check text-gray-400 text-sm" />
                                     <span className="text-xs text-gray-500">{formatDateTime(request.approvedAt)}</span>
                                 </div>
                             )}
                             {request.approvalNote && (
                                 <div className="flex items-start gap-2">
-                                    <i className="fa-solid fa-comment text-green-500 text-sm mt-0.5" />
+                                    <i className="fa-solid fa-comment text-gray-400 text-sm mt-0.5" />
                                     <span className="text-sm text-gray-700">"{request.approvalNote}"</span>
                                 </div>
                             )}
@@ -810,8 +810,8 @@ function CreateLeaveModal({ isOpen, onClose }) {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 <form onSubmit={handleSubmit}>
-                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
-                        <h2 className="text-lg font-bold text-gray-800">Tạo đơn xin nghỉ</h2>
+                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-gray-900">Tạo đơn xin nghỉ</h2>
                         <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
                             <i className="fa-solid fa-xmark text-xl" />
                         </button>
@@ -819,14 +819,14 @@ function CreateLeaveModal({ isOpen, onClose }) {
 
                     <div className="p-6 space-y-4">
                         {balance && balance.remainingDays != null && (
-                            <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-3 rounded-lg text-sm flex items-center gap-2 font-medium">
-                                <i className="fa-solid fa-umbrella-beach" />
-                                <span>Số ngày phép năm còn lại: <strong>{balance.remainingDays}</strong> / {balance.totalDays || 12} ngày</span>
+                            <div className="bg-gray-50 border border-gray-100 text-gray-700 p-3 rounded-lg text-sm flex items-center gap-2 font-medium">
+                                <i className="fa-solid fa-umbrella-beach text-gray-400" />
+                                <span>Ngày phép còn lại: <strong>{balance.remainingDays}</strong> / {balance.totalDays || 12} ngày</span>
                             </div>
                         )}
                         <div>
-                            <label className="label-required">Loại nghỉ</label>
-                            <select name="leaveType" className="input w-full" required>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Loại nghỉ <span className="text-red-500">*</span></label>
+                            <select name="leaveType" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 bg-white" required>
                                 <option value="ANNUAL">Nghỉ phép năm</option>
                                 <option value="SICK">Nghỉ ốm</option>
                                 <option value="UNPAID">Nghỉ không lương</option>
@@ -836,21 +836,21 @@ function CreateLeaveModal({ isOpen, onClose }) {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="label-required">Từ ngày</label>
-                                <input type="date" name="startDate" className="input w-full" required />
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Từ ngày <span className="text-red-500">*</span></label>
+                                <input type="date" name="startDate" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 bg-white" required />
                             </div>
                             <div>
-                                <label className="label-required">Đến ngày</label>
-                                <input type="date" name="endDate" className="input w-full" required />
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Đến ngày <span className="text-red-500">*</span></label>
+                                <input type="date" name="endDate" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 bg-white" required />
                             </div>
                         </div>
                         <div>
-                            <label className="label-required">Lý do</label>
-                            <textarea name="reason" className="input w-full" rows="3" required placeholder="Nhập lý do nghỉ..." />
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Lý do <span className="text-red-500">*</span></label>
+                            <textarea name="reason" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 resize-none bg-white" rows="3" required placeholder="Nhập lý do nghỉ..." />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Dự án liên quan (tùy chọn)</label>
-                            <select name="projectId" className="input w-full">
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Dự án liên quan (tùy chọn)</label>
+                            <select name="projectId" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 bg-white">
                                 <option value="">-- Không chọn --</option>
                                 {projects.map(p => (
                                     <option key={p.projectId} value={p.projectId}>{p.name}</option>
@@ -859,10 +859,10 @@ function CreateLeaveModal({ isOpen, onClose }) {
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-xl">
-                        <button type="button" onClick={onClose} className="btn-ghost">Hủy</button>
-                        <button type="submit" disabled={mutation.isPending} className="btn-primary">
-                            {mutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : 'Gửi đơn'}
+                    <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">Hủy</button>
+                        <button type="submit" disabled={mutation.isPending} className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl transition-colors disabled:opacity-50">
+                            {mutation.isPending ? <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang xử lý...</> : 'Gửi đơn'}
                         </button>
                     </div>
                 </form>
@@ -919,32 +919,32 @@ function LeaveCalendar() {
     const goToNext = () => setCurrentMonth(new Date(year, month + 1, 1));
 
     const LEAVE_COLORS = {
-        ANNUAL: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-        SICK: 'bg-red-100 text-red-700 border-red-200',
-        UNPAID: 'bg-gray-100 text-gray-700 border-gray-200',
-        MATERNITY: 'bg-pink-100 text-pink-700 border-pink-200',
-        OTHER: 'bg-purple-100 text-purple-700 border-purple-200',
+        ANNUAL: 'bg-gray-100 text-gray-700 border-gray-200',
+        SICK: 'bg-red-50 text-red-700 border-red-100',
+        UNPAID: 'bg-gray-100 text-gray-600 border-gray-200',
+        MATERNITY: 'bg-pink-50 text-pink-700 border-pink-100',
+        OTHER: 'bg-gray-100 text-gray-600 border-gray-200',
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <button onClick={goToPrev} className="p-2 hover:bg-gray-100 rounded-lg">
-                        <i className="fa-solid fa-chevron-left text-gray-500" />
+                    <button onClick={goToPrev} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i className="fa-solid fa-chevron-left text-gray-400" />
                     </button>
-                    <h3 className="text-lg font-bold text-gray-800 min-w-[180px] text-center">
+                    <h3 className="text-lg font-semibold text-gray-900 min-w-[180px] text-center">
                         {formatDate(currentMonth, { month: 'long', year: 'numeric' })}
                     </h3>
-                    <button onClick={goToNext} className="p-2 hover:bg-gray-100 rounded-lg">
-                        <i className="fa-solid fa-chevron-right text-gray-500" />
+                    <button onClick={goToNext} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i className="fa-solid fa-chevron-right text-gray-400" />
                     </button>
                 </div>
             </div>
 
             <div className="grid grid-cols-7 mb-2">
                 {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(day => (
-                    <div key={day} className="text-center text-xs font-semibold text-gray-400 py-2">{day}</div>
+                    <div key={day} className="text-center text-xs font-medium text-gray-400 py-2">{day}</div>
                 ))}
             </div>
 
@@ -960,8 +960,8 @@ function LeaveCalendar() {
                         <div key={item.day}
                             className={`h-24 p-2 rounded-lg border transition-all overflow-hidden
                                 ${isWeekend ? 'bg-gray-50' : 'bg-white'}
-                                ${isToday ? 'ring-2 ring-indigo-400 ring-offset-1' : 'border-gray-100'}`}>
-                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-indigo-600' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
+                                ${isToday ? 'ring-2 ring-gray-400 ring-offset-1' : 'border-gray-100'}`}>
+                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-gray-900' : isWeekend ? 'text-gray-400' : 'text-gray-600'}`}>
                                 {item.day}
                             </div>
                             <div className="space-y-0.5">
@@ -983,14 +983,14 @@ function LeaveCalendar() {
 
             <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-gray-100">
                 {Object.entries({
-                    'Nghỉ phép': 'bg-indigo-100 border-indigo-200 text-indigo-700',
-                    'Nghỉ ốm': 'bg-red-100 border-red-200 text-red-700',
-                    'Không lương': 'bg-gray-100 border-gray-200 text-gray-700',
-                    'Thai sản': 'bg-pink-100 border-pink-200 text-pink-700',
+                    'Nghỉ phép': 'bg-gray-100 border-gray-200 text-gray-700',
+                    'Nghỉ ốm': 'bg-red-50 border-red-100 text-red-700',
+                    'Không lương': 'bg-gray-100 border-gray-200 text-gray-600',
+                    'Thai sản': 'bg-pink-50 border-pink-100 text-pink-700',
                 }).map(([label, cls]) => (
                     <div key={label} className="flex items-center gap-2 text-sm">
                         <div className={`w-4 h-4 rounded border ${cls}`} />
-                        <span className="text-gray-600 dark:text-gray-400">{label}</span>
+                        <span className="text-gray-600">{label}</span>
                     </div>
                 ))}
             </div>

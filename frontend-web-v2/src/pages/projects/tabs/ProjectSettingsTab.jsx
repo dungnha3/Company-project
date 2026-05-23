@@ -144,7 +144,7 @@ export default function ProjectSettingsTab({ project }) {
     return (
         <div className="space-y-8 max-w-4xl mx-auto pb-10">
             {/* General Info Section */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900">Thông tin chung</h3>
                     <p className="text-sm text-gray-500">Cập nhật thông tin cơ bản của dự án</p>
@@ -223,7 +223,7 @@ export default function ProjectSettingsTab({ project }) {
             </div>
 
             {/* Members Section */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900">Thành viên</h3>

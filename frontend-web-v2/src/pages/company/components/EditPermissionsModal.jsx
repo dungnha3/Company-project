@@ -44,6 +44,32 @@ export default function EditPermissionsModal({ isOpen, onClose, member }) {
         togglePermissionMutation.mutate({ permissionKey: apiKey, enabled: newValue });
     };
 
+    // Toggle all permissions in a group
+    const handleToggleGroup = (group, enable) => {
+        const updates = {};
+        group.items.forEach(item => {
+            if (permissions[item.jsonKey] !== enable) {
+                updates[item.jsonKey] = enable;
+            }
+        });
+
+        if (Object.keys(updates).length === 0) return;
+
+        setPermissions(prev => ({ ...prev, ...updates }));
+
+        // Call API for each permission
+        group.items.forEach(item => {
+            if (updates[item.jsonKey] !== undefined) {
+                togglePermissionMutation.mutate({ permissionKey: item.apiKey, enabled: updates[item.jsonKey] });
+            }
+        });
+    };
+
+    // Check if all items in a group are enabled
+    const isGroupAllEnabled = (group) => {
+        return group.items.every(item => permissions[item.jsonKey]);
+    };
+
     if (!isOpen || !member) return null;
 
     // Định nghĩa các nhóm quyền để hiển thị
@@ -131,8 +157,21 @@ export default function EditPermissionsModal({ isOpen, onClose, member }) {
 
                     {permissionGroups.map(group => (
                         <div key={group.title} className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
-                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
                                 <h3 className="font-semibold text-gray-800">{group.title}</h3>
+                                {!isOwner && (
+                                    <button
+                                        onClick={() => handleToggleGroup(group, !isGroupAllEnabled(group))}
+                                        disabled={togglePermissionMutation.isPending}
+                                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                                            isGroupAllEnabled(group)
+                                                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                        } disabled:opacity-50`}
+                                    >
+                                        {isGroupAllEnabled(group) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                    </button>
+                                )}
                             </div>
                             <div className="divide-y divide-gray-50">
                                 {group.items.map(item => (
