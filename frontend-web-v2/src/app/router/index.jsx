@@ -109,10 +109,10 @@ const router = createBrowserRouter([
             </AccessControlGuard>
         ),
         children: [
-            // Redirect root /app to Projects (or My Issues if preferred)
+            // Redirect root /app to Dashboard
             {
                 index: true,
-                element: <Navigate to="/app/projects" replace />,
+                element: <Navigate to="/app/me" replace />,
             },
 
             // Personal Work Hub (/app/me)

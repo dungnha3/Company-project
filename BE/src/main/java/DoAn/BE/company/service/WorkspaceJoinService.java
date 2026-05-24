@@ -9,6 +9,7 @@ import DoAn.BE.company.entity.*;
 import DoAn.BE.company.repository.CompanyMemberRepository;
 import DoAn.BE.company.repository.CompanyRepository;
 import DoAn.BE.company.repository.WorkspaceJoinRequestRepository;
+import DoAn.BE.notification.service.EmailNotificationService;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class WorkspaceJoinService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository memberRepository;
     private final AccessControlService accessControlService;
+    private final EmailNotificationService emailNotificationService;
 
     // ============================================================
     // USER: Gửi yêu cầu xin gia nhập Workspace bằng companyId
@@ -134,6 +136,14 @@ public class WorkspaceJoinService {
 
         log.info("User {} đã được duyệt gia nhập Workspace {} bởi {}",
                 request.getUser().getUserId(), request.getCompany().getCompanyId(), reviewerId);
+
+        if (request.getUser().getEmail() != null) {
+            emailNotificationService.sendWorkspaceJoinApprovedEmail(
+                    request.getUser().getEmail(),
+                    request.getUser().getFullName() != null ? request.getUser().getFullName() : request.getUser().getUsername(),
+                    request.getCompany().getName()
+            );
+        }
 
         return Map.of(
                 "message", "Đã duyệt thành công. " + request.getUser().getFullName() + " đã gia nhập Workspace.",
