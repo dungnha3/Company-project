@@ -42,7 +42,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
     const completedTasks = myTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-5">
+        <div className="max-w-full mx-auto p-6 space-y-5">
             {/* Header Banner */}
             <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
                 <div>

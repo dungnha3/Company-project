@@ -15,6 +15,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useTimerStore } from '@shared/stores/timerStore';
+import { fireTaskCompleted } from '@shared/stores/timerStore';
 import IssueDetailModal from '../components/IssueDetailModal';
 import CreateIssueModal from '../components/CreateIssueModal';
 import TimeLogSection from '../components/TimeLogSection';
@@ -312,6 +313,19 @@ export default function ProjectBoard({ project }) {
             queryClient.invalidateQueries(['myIssues', 'filtered']);
         }
     });
+
+    // Listen to quick submit task button clicks from IssueCard
+    useEffect(() => {
+        const handler = (e) => {
+            const { issue } = e.detail;
+            const reviewStatusId = statusNameToId['Review'];
+            if (reviewStatusId && issue.statusName !== 'Review' && issue.statusName !== 'Done') {
+                moveIssueMutation.mutate({ id: issue.issueId, statusId: reviewStatusId, orderIndex: 0 });
+            }
+        };
+        window.addEventListener('submit-issue-kanban', handler);
+        return () => window.removeEventListener('submit-issue-kanban', handler);
+    }, [statusNameToId, moveIssueMutation]);
 
     // ── Drag handlers (supports both issue and column drags)
     const [dragType, setDragType] = useState(null); // 'Issue' or 'Column'
@@ -747,6 +761,8 @@ export default function ProjectBoard({ project }) {
                     issue={issues.find(i => i.issueId === quickReviewIssueId)}
                     onClose={() => setQuickReviewIssueId(null)}
                     onSuccess={() => {
+                        // Auto-stop timer and log time when task is completed
+                        fireTaskCompleted(quickReviewIssueId);
                         queryClient.invalidateQueries(['issues', project.projectId]);
                         queryClient.invalidateQueries(['myIssues', 'filtered']);
                         setQuickReviewIssueId(null);
@@ -1059,6 +1075,58 @@ function DraggableIssue({ issue, onClick }) {
 // ════════════════════════════════════════════════════════════════════════
 // ─── ISSUE CARD (Enhanced) ────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════
+// ─── Timer status indicator badge for team card
+function TimerStatusBadge({ issue }) {
+    const { isRunning, issueId: runningIssueId, elapsedSeconds } = useTimerStore();
+    const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
+
+    const formatCardTime = (s) => {
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    };
+
+    if (isRunningThis) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                {formatCardTime(elapsedSeconds)}
+            </span>
+        );
+    }
+
+    if (issue.statusName === 'Review') {
+        return (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">
+                <i className="fa-solid fa-pause text-[8px]" />
+            </span>
+        );
+    }
+
+    if (issue.statusName === 'Done') {
+        return (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded shrink-0">
+                <i className="fa-solid fa-check text-[8px]" />
+            </span>
+        );
+    }
+
+    return null;
+}
+
+// ─── Review SLA Chip for team card
+function ReviewSlaChip({ issue }) {
+    const ts = issue.updatedAt || issue.createdAt ? new Date(issue.updatedAt || issue.createdAt).getTime() : NaN;
+    if (!ts || Number.isNaN(ts)) return null;
+    const h = (Date.now() - ts) / (1000 * 60 * 60);
+    if (h < 0) return null;
+    if (h >= 48) return <span className="inline-flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-triangle-exclamation text-[8px]" />Trễ SLA</span>;
+    if (h >= 24) return <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-clock text-[8px]" />Sắp trễ</span>;
+    return <span className="inline-flex items-center gap-1 text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-check text-[8px]" />SLA OK</span>;
+}
+
 function IssueCard({ issue, isOverlay, onClick }) {
     if (!issue) return null;
 
@@ -1108,13 +1176,16 @@ function IssueCard({ issue, isOverlay, onClick }) {
                         </span>
                     )}
                 </div>
-                <button
-                    className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-                    title="Xem chi tiết"
-                >
-                    <i className="fa-solid fa-expand" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <TimerStatusBadge issue={issue} />
+                    <button
+                        className="text-gray-300 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+                        title="Xem chi tiết"
+                    >
+                        <i className="fa-solid fa-expand text-xs" />
+                    </button>
+                </div>
             </div>
 
             {/* Title */}
@@ -1179,6 +1250,12 @@ function IssueCard({ issue, isOverlay, onClick }) {
                             {new Date(issue.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                         </span>
                     )}
+                    {issue.reworkCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-medium bg-red-50 text-red-600">
+                            <i className="fa-solid fa-rotate-right text-[8px]" />
+                            {issue.reworkCount}
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -1195,6 +1272,28 @@ function IssueCard({ issue, isOverlay, onClick }) {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* SLA + Submit row */}
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {issue.statusName === 'Review' && <ReviewSlaChip issue={issue} />}
+                </div>
+                {issue.statusName !== 'Done' ? (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            window.dispatchEvent(new CustomEvent('submit-issue-kanban', { detail: { issue } }));
+                        }}
+                        className="px-2.5 py-1 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-[10px] font-medium transition-colors"
+                    >
+                        Nộp
+                    </button>
+                ) : (
+                    <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
+                        <i className="fa-solid fa-check mr-1 text-[8px]" />
+                    </span>
+                )}
             </div>
         </div>
     );

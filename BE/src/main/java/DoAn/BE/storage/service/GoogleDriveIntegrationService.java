@@ -12,7 +12,11 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import DoAn.BE.company.entity.CompanySettings;
+import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.repository.CompanySettingsRepository;
+import DoAn.BE.company.repository.CompanyRepository;
+import jakarta.persistence.EntityManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,9 +38,16 @@ public class GoogleDriveIntegrationService {
     private String redirectUri;
 
     private final CompanySettingsRepository companySettingsRepository;
+    private final CompanyRepository companyRepository;
+    private final EntityManager entityManager;
 
-    public GoogleDriveIntegrationService(CompanySettingsRepository companySettingsRepository) {
+    public GoogleDriveIntegrationService(
+            CompanySettingsRepository companySettingsRepository,
+            CompanyRepository companyRepository,
+            EntityManager entityManager) {
         this.companySettingsRepository = companySettingsRepository;
+        this.companyRepository = companyRepository;
+        this.entityManager = entityManager;
     }
 
     private GoogleAuthorizationCodeFlow getFlow() {
@@ -63,14 +74,23 @@ public class GoogleDriveIntegrationService {
                 .build();
     }
 
+    @Transactional
     public void handleCallback(String code, String state) throws IOException {
         Long companyId = Long.parseLong(state);
         TokenResponse response = getFlow().newTokenRequest(code)
                 .setRedirectUri(redirectUri)
                 .execute();
 
-        CompanySettings settings = companySettingsRepository.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("Company settings not found"));
+        CompanySettings settings = companySettingsRepository.findById(companyId).orElse(null);
+        boolean isNew = false;
+        if (settings == null) {
+            settings = new CompanySettings();
+            settings.setCompanyId(companyId);
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new RuntimeException("Company not found: " + companyId));
+            settings.setCompany(company);
+            isNew = true;
+        }
 
         settings.setGoogleDriveAccessToken(response.getAccessToken());
         if (response.getRefreshToken() != null) {
@@ -82,7 +102,11 @@ public class GoogleDriveIntegrationService {
         String folderId = initializeRootFolder(driveService);
         settings.setDriveFolderId(folderId);
 
-        companySettingsRepository.save(settings);
+        if (isNew) {
+            entityManager.persist(settings);
+        } else {
+            companySettingsRepository.save(settings);
+        }
     }
 
     @SuppressWarnings("deprecation")

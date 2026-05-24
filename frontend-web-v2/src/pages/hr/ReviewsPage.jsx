@@ -7,18 +7,25 @@ import { formatNumber } from '@shared/utils/formatters';
 import DataTable from '@shared/components/ui/DataTable';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ReviewFormModal from './components/ReviewFormModal';
+import BulkReviewModal from './components/BulkReviewModal';
 
 export default function ReviewsPage() {
-    const { hasPermission } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('all-reviews');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showBulkModal, setShowBulkModal] = useState(false);
     const [editingReview, setEditingReview] = useState(null);
 
-    const isManager = hasPermission('reviewCreate');
-    const canApprove = hasPermission('reviewApprove');
+    const currentWorkspace = useWorkspaceStore(state => state.currentWorkspace);
+    // Backend Lombok serializes `boolean isOwner` as JSON key "owner" (strips "is" prefix)
+    // Also check roles array as ultimate fallback
+    const isOwner = !!(currentWorkspace?.isOwner || currentWorkspace?.owner
+        || currentWorkspace?.roles?.includes('OWNER')
+        || currentWorkspace?.role === 'OWNER');
+    const canCreate = isOwner || !!(currentWorkspace?.permissions?.reviewCreate);
+    const canApprove = isOwner || !!(currentWorkspace?.permissions?.reviewApprove);
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex justify-between items-center">
@@ -31,10 +38,18 @@ export default function ReviewsPage() {
                             <p className="text-sm text-gray-500 mt-0.5">Quản lý hiệu suất và đánh giá định kỳ</p>
                         </div>
                     </div>
-                    {isManager && (
-                        <button onClick={() => setShowCreateModal(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-sm transition-colors">
-                            <i className="fa-solid fa-plus mr-2" /> Tạo đánh giá
-                        </button>
+                    {canCreate && (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowBulkModal(true)}
+                                className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-medium transition-colors text-sm shadow-sm"
+                            >
+                                <i className="fa-solid fa-layer-group mr-2" /> Tạo hàng loạt
+                            </button>
+                            <button onClick={() => setShowCreateModal(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-sm transition-colors">
+                                <i className="fa-solid fa-plus mr-2" /> Tạo đánh giá
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -68,7 +83,7 @@ export default function ReviewsPage() {
                 {activeTab === 'all-reviews' && (
                     <AllReviewsTable
                         onEdit={(review) => { setEditingReview(review); setShowCreateModal(true); }}
-                        isManager={isManager}
+                        canCreate={canCreate}
                         canApprove={canApprove}
                     />
                 )}
@@ -85,6 +100,12 @@ export default function ReviewsPage() {
                     review={editingReview}
                 />
             )}
+            {showBulkModal && (
+                <BulkReviewModal
+                    isOpen={showBulkModal}
+                    onClose={() => setShowBulkModal(false)}
+                />
+            )}
         </div>
     );
 }
@@ -94,6 +115,7 @@ function ReviewStats() {
     const { data: reviews } = useQuery({
         queryKey: ['reviews-stats'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.LIST)).data,
+        retry: false,
     });
 
     const reviewList = Array.isArray(reviews) ? reviews : reviews?.content || [];
@@ -150,13 +172,14 @@ function StatCard({ label, value, icon, accent, success }) {
 }
 
 // All Reviews Table
-function AllReviewsTable({ onEdit, isManager, canApprove }) {
+function AllReviewsTable({ onEdit, canCreate, canApprove }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
 
-    const { data: reviews, isLoading } = useQuery({
+    const { data: reviews, isLoading, error } = useQuery({
         queryKey: ['reviews'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.LIST)).data,
+        retry: false,
     });
 
     const deleteMutation = useMutation({
@@ -185,6 +208,23 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
         },
         onError: (err) => showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
     });
+
+    if (error) {
+        const status = error?.response?.status;
+        return (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                    <i className="fa-solid fa-triangle-exclamation text-red-400 text-xl" />
+                </div>
+                <p className="text-gray-700 font-medium">
+                    {status === 403 ? 'Bạn không có quyền xem danh sách đánh giá' : 'Không thể tải dữ liệu'}
+                </p>
+                <p className="text-sm text-gray-400 mt-1">
+                    {status === 403 ? 'Vui lòng liên hệ quản trị viên để được cấp quyền' : `Lỗi: ${error?.message}`}
+                </p>
+            </div>
+        );
+    }
 
     const columns = [
         {
@@ -253,7 +293,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                         <i className="fa-solid fa-eye text-sm" />
                     </button>
 
-                    {isManager && row.status === 'IN_PROGRESS' && (
+                    {canCreate && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => onEdit(row)}
                             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
@@ -263,7 +303,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                         </button>
                     )}
 
-                    {isManager && row.status === 'IN_PROGRESS' && (
+                    {canCreate && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => submitMutation.mutate(row.reviewId || row.id)}
                             className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all"
@@ -283,7 +323,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                         </button>
                     )}
 
-                    {isManager && row.status === 'IN_PROGRESS' && (
+                    {canCreate && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => {
                                 if (window.confirm('Xác nhận xóa đánh giá này?')) {

@@ -87,7 +87,13 @@ public class StorageController {
             return new RedirectView(frontendUrl + "/app/company/settings?drive_connected=true");
         } catch (Exception e) {
             log.error("Drive OAuth callback failed", e);
-            return new RedirectView(frontendUrl + "/app/company/settings?drive_error=true");
+            String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            try {
+                errMsg = java.net.URLEncoder.encode(errMsg, java.nio.charset.StandardCharsets.UTF_8.toString());
+            } catch (Exception ex) {
+                errMsg = "error";
+            }
+            return new RedirectView(frontendUrl + "/app/company/settings?drive_error=true&error_message=" + errMsg);
         }
     }
     
@@ -125,6 +131,7 @@ public class StorageController {
     public ResponseEntity<FileEntity> uploadProjectFile(
             @PathVariable Long projectId,
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "folder", required = false) String folder,
             @AuthenticationPrincipal User user) {
         try {
             Long companyId = TenantContext.getCompanyId();
@@ -132,7 +139,7 @@ public class StorageController {
 
             // Check if user has access to project
             Project project = projectRepository.findById(projectId).orElseThrow();
-            CompanyMember member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+            CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
                     .orElse(null);
             if (member == null || !permissionService.hasPermission(member, "STORAGE", "UPLOAD")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -148,10 +155,45 @@ public class StorageController {
             fileEntity.setProject(project);
             fileEntity.setUploadedBy(user);
             fileEntity.setCompany(companyRepository.findById(companyId).orElseThrow());
+            fileEntity.setFolder(folder);
 
             return ResponseEntity.ok(fileRepository.save(fileEntity));
         } catch (Exception e) {
             log.error("Error uploading project file for projectId={}: {}", projectId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/projects/{projectId}/folders")
+    public ResponseEntity<FileEntity> createFolder(
+            @PathVariable Long projectId,
+            @RequestParam("name") String name,
+            @RequestParam(value = "folder", required = false) String folder,
+            @AuthenticationPrincipal User user) {
+        try {
+            Long companyId = TenantContext.getCompanyId();
+            if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+            Project project = projectRepository.findById(projectId).orElseThrow();
+            CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
+                    .orElse(null);
+            if (member == null || !permissionService.hasPermission(member, "STORAGE", "UPLOAD")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            FileEntity folderEntity = new FileEntity();
+            folderEntity.setFileName(name);
+            folderEntity.setGoogleDriveFileId("folder");
+            folderEntity.setFileSize(0L);
+            folderEntity.setContentType("folder");
+            folderEntity.setProject(project);
+            folderEntity.setUploadedBy(user);
+            folderEntity.setCompany(companyRepository.findById(companyId).orElseThrow());
+            folderEntity.setFolder(folder);
+
+            return ResponseEntity.ok(fileRepository.save(folderEntity));
+        } catch (Exception e) {
+            log.error("Error creating folder for projectId={}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -204,13 +246,33 @@ public class StorageController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
-            CompanyMember member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+            CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
                     .orElse(null);
             if (member == null || !permissionService.hasPermission(member, "STORAGE", "DELETE")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
-            driveService.deleteFile(companyId, file.getGoogleDriveFileId());
+            if ("folder".equals(file.getContentType())) {
+                // Recursive deletion of subfolders & subfiles
+                String folderPath = (file.getFolder() == null || file.getFolder().isEmpty()) 
+                        ? file.getFileName() 
+                        : file.getFolder() + "/" + file.getFileName();
+                List<FileEntity> subFiles = fileRepository.findByProject_ProjectId(file.getProject().getProjectId());
+                for (FileEntity sub : subFiles) {
+                    if (sub.getFolder() != null && (sub.getFolder().equals(folderPath) || sub.getFolder().startsWith(folderPath + "/"))) {
+                        if (!"folder".equals(sub.getContentType())) {
+                            try {
+                                driveService.deleteFile(companyId, sub.getGoogleDriveFileId());
+                            } catch (Exception e) {
+                                log.warn("Failed to delete file from Drive: {}", sub.getGoogleDriveFileId(), e);
+                            }
+                        }
+                        fileRepository.delete(sub);
+                    }
+                }
+            } else {
+                driveService.deleteFile(companyId, file.getGoogleDriveFileId());
+            }
             fileRepository.delete(file);
 
             return ResponseEntity.ok().build();
@@ -233,7 +295,7 @@ public class StorageController {
             Long companyId = TenantContext.getCompanyId();
             if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
-            CompanyMember member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+            CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
                     .orElse(null);
             if (member == null || !permissionService.hasPermission(member, "STORAGE", "UPLOAD")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();

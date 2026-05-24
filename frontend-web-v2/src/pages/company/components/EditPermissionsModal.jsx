@@ -88,9 +88,17 @@ export default function EditPermissionsModal({ isOpen, onClose, member }) {
                 { jsonKey: 'hrEditProfile', apiKey: 'HR.EDIT_PROFILE', label: 'Sửa hồ sơ nhân viên' },
                 { jsonKey: 'hrCreateEmployee', apiKey: 'HR.CREATE_EMPLOYEE', label: 'Thêm nhân viên mới' },
                 { jsonKey: 'hrDeleteEmployee', apiKey: 'HR.DELETE_EMPLOYEE', label: 'Xóa nhân viên' },
-                { jsonKey: 'hrManageReviews', apiKey: 'HR.MANAGE_REVIEWS', label: 'Quản lý đánh giá' },
+                { jsonKey: 'hrManageReviews', apiKey: 'HR.MANAGE_REVIEWS', label: 'Quản lý đánh giá (Legacy)' },
                 { jsonKey: 'hrViewDashboard', apiKey: 'HR.VIEW_DASHBOARD', label: 'Xem thống kê HR' },
                 { jsonKey: 'hrExport', apiKey: 'HR.EXPORT', label: 'Xuất dữ liệu HR' },
+            ]
+        },
+        {
+            title: "Đánh giá hiệu suất",
+            items: [
+                { jsonKey: 'reviewViewAll', apiKey: 'REVIEW.VIEW_ALL', label: 'Xem tất cả đánh giá' },
+                { jsonKey: 'reviewCreate', apiKey: 'REVIEW.CREATE', label: 'Tạo đánh giá nhân viên' },
+                { jsonKey: 'reviewApprove', apiKey: 'REVIEW.APPROVE', label: 'Phê duyệt đánh giá' },
             ]
         },
         {

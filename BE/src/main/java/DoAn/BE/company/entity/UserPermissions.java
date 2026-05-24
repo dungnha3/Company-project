@@ -102,10 +102,6 @@ public class UserPermissions implements Serializable {
             // Workspace
             p.setWorkspaceManageMembers(true);
             p.setWorkspaceManageRequests(true);
-
-            // EMPLOYEE — quyền cơ bản
-            p.setTimetrackingLog(true);
-            p.setCalendarView(true);
         }
         return p;
     }

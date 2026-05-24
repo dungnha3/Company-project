@@ -17,7 +17,7 @@ export default function CompanySettingsPage() {
 
     const [activeTab, setActiveTab] = useState(() => {
         const tab = searchParams.get('tab');
-        return ['general', 'members', 'requests'].includes(tab) ? tab : 'general';
+        return ['general', 'members', 'requests', 'review-settings'].includes(tab) ? tab : 'general';
     });
 
     const canManageRequests = canAccess({ permission: 'WORKSPACE.MANAGE_REQUESTS' });
@@ -30,12 +30,15 @@ export default function CompanySettingsPage() {
             setSearchParams(searchParams);
         }
         if (searchParams.get('drive_error') === 'true') {
-            toast.error('Lỗi khi kết nối Google Drive. Vui lòng thử lại.');
+            const errMsg = searchParams.get('error_message');
+            const detailedMsg = errMsg ? `: ${decodeURIComponent(errMsg)}` : '. Vui lòng thử lại.';
+            toast.error(`Lỗi khi kết nối Google Drive${detailedMsg}`);
             searchParams.delete('drive_error');
+            searchParams.delete('error_message');
             setSearchParams(searchParams);
         }
         const tabFromUrl = searchParams.get('tab');
-        if (tabFromUrl && ['general', 'members', 'requests'].includes(tabFromUrl)) {
+        if (tabFromUrl && ['general', 'members', 'requests', 'review-settings'].includes(tabFromUrl)) {
             setActiveTab(tabFromUrl);
         }
     }, [searchParams, setSearchParams, toast]);
@@ -98,7 +101,7 @@ export default function CompanySettingsPage() {
     if (isDriveLoading) return <div className="p-6 text-gray-500">Đang tải...</div>;
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="space-y-6">
             <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex items-center justify-between">
                     <div>
@@ -135,6 +138,18 @@ export default function CompanySettingsPage() {
                             }`}
                         >
                             Thành viên & Phân quyền
+                        </button>
+                    )}
+                    {canManageMembers && (
+                        <button
+                            onClick={() => setActiveTab('review-settings')}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                                activeTab === 'review-settings'
+                                    ? 'border-gray-900 text-gray-900'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            Cài đặt Review
                         </button>
                     )}
                     {canManageRequests && (
@@ -252,6 +267,156 @@ export default function CompanySettingsPage() {
                     )}
                 </div>
             )}
+
+            {/* Tab: Cài đặt Review */}
+            {activeTab === 'review-settings' && canManageMembers && (
+                <ReviewSettingsTab companyId={currentWorkspace?.id} />
+            )}
+        </div>
+    );
+}
+
+function ReviewSettingsTab({ companyId }) {
+    const toast = useToast();
+    const queryClient = useQueryClient();
+
+    const { data: settings, isLoading } = useQuery({
+        queryKey: ['review-settings', companyId],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.COMPANIES.REVIEW_SETTINGS(companyId));
+            return res.data;
+        },
+        enabled: !!companyId,
+    });
+
+    const [formData, setFormData] = useState({
+        autoReviewEnabled: false,
+        reviewCycleType: 'QUARTERLY',
+    });
+
+    useEffect(() => {
+        if (settings) {
+            setFormData({
+                autoReviewEnabled: settings.autoReviewEnabled ?? false,
+                reviewCycleType: settings.reviewCycleType ?? 'QUARTERLY',
+            });
+        }
+    }, [settings]);
+
+    const updateMutation = useMutation({
+        mutationFn: async (data) => {
+            return apiClient.put(ENDPOINTS.COMPANIES.REVIEW_SETTINGS(companyId), data);
+        },
+        onSuccess: () => {
+            toast.success('Đã lưu cài đặt review');
+            queryClient.invalidateQueries(['review-settings', companyId]);
+        },
+        onError: (err) => toast.error(err.response?.data?.message || 'Có lỗi khi lưu cài đặt'),
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        updateMutation.mutate(formData);
+    };
+
+    if (isLoading) {
+        return <div className="p-6 text-gray-500">Đang tải...</div>;
+    }
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm animate-fade-in">
+            <h2 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">
+                Cài đặt Đánh giá Nhân viên
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Auto Review Toggle */}
+                <div className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                <i className="fa-solid fa-calendar-check text-purple-600 text-sm" />
+                            </div>
+                            <span className="font-medium text-gray-900">Tạo đánh giá tự động</span>
+                        </div>
+                        <p className="text-sm text-gray-500 ml-10">
+                            Hệ thống sẽ tự động tạo phiếu đánh giá cho tất cả nhân viên vào ngày 1 hàng tháng theo chu kỳ đã chọn.
+                        </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={formData.autoReviewEnabled}
+                            onChange={(e) => setFormData(prev => ({ ...prev, autoReviewEnabled: e.target.checked }))}
+                            className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
+                    </label>
+                </div>
+
+                {/* Review Cycle Type */}
+                <div className={`p-4 border border-gray-100 rounded-xl ${!formData.autoReviewEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <i className="fa-solid fa-repeat text-blue-600 text-sm" />
+                        </div>
+                        <span className="font-medium text-gray-900">Chu kỳ đánh giá</span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 ml-10">
+                        {[
+                            { value: 'QUARTERLY', label: 'Theo Quý', desc: 'Tạo đánh giá mỗi quý (Q1, Q2, Q3, Q4)' },
+                            { value: 'MONTHLY', label: 'Theo Tháng', desc: 'Tạo đánh giá mỗi tháng' },
+                            { value: 'MANUAL', label: 'Thủ công', desc: 'Tắt tự động, tạo đánh giá thủ công' },
+                        ].map(opt => (
+                            <label
+                                key={opt.value}
+                                className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
+                                    formData.reviewCycleType === opt.value
+                                        ? 'border-gray-900 bg-gray-900 text-white'
+                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="reviewCycleType"
+                                    value={opt.value}
+                                    checked={formData.reviewCycleType === opt.value}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, reviewCycleType: e.target.value }))}
+                                    className="mt-1"
+                                />
+                                <div>
+                                    <div className={`font-medium text-sm ${formData.reviewCycleType === opt.value ? 'text-white' : 'text-gray-900'}`}>{opt.label}</div>
+                                    <div className={`text-xs mt-0.5 ${formData.reviewCycleType === opt.value ? 'text-gray-300' : 'text-gray-500'}`}>{opt.desc}</div>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Last auto-created info */}
+                {settings?.lastReviewAutoCreate && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 px-1">
+                        <i className="fa-solid fa-circle-check text-green-500" />
+                        <span>Đã tạo tự động lần cuối cho kỳ: <strong className="text-gray-700">{settings.lastReviewAutoCreate}</strong></span>
+                    </div>
+                )}
+
+                {/* Save button */}
+                <div className="flex justify-end pt-2">
+                    <button
+                        type="submit"
+                        disabled={updateMutation.isPending}
+                        className="px-5 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                    >
+                        {updateMutation.isPending ? (
+                            <><i className="fa-solid fa-spinner fa-spin mr-2" /> Đang lưu...</>
+                        ) : (
+                            <><i className="fa-solid fa-save mr-2" /> Lưu cài đặt</>
+                        )}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }

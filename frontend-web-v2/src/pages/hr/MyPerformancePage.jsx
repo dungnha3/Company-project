@@ -2,14 +2,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
-import { formatNumber } from '@shared/utils/formatters';
-import GlobalTimerBar from '@shared/components/GlobalTimerBar';
-import QuickLogForm from '@shared/components/QuickLogForm';
-import IssueTrackerSummary from '@shared/components/IssueTrackerSummary';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
          RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
          LineChart, Line, CartesianGrid } from 'recharts';
-import { timelogApi } from '@shared/api/featureApi';
 
 // Minimalist chart colors - distinct colors for each metric
 const CHART_COLORS = {
@@ -366,259 +361,26 @@ function PerformanceTab() {
     );
 }
 
-// ─── Timelogs Tab ────────────────────────────────────────────────────────────
-function TimelogsTab() {
-    const [timelogs, setTimelogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
-    const [editingId, setEditingId] = useState(null);
-    const [editHours, setEditHours] = useState('');
-    const [editDesc, setEditDesc] = useState('');
-    const [refreshKey, setRefreshKey] = useState(0);
-
-    const loadTimelogs = async (pageNum) => {
-        try {
-            if (pageNum === 0) setLoading(true);
-            const data = await timelogApi.getMyTimelogs(pageNum, 20);
-            const list = data.content || data;
-            if (pageNum === 0) setTimelogs(list);
-            else setTimelogs(prev => [...prev, ...list]);
-            setHasMore(data.content ? !data.last : list.length === 20);
-        } catch (error) {
-            console.error('Failed to load timelogs:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { loadTimelogs(0); }, [refreshKey]);
-    useEffect(() => { if (page > 0) loadTimelogs(page); }, [page]);
-
-    const issueSummaries = useMemo(() => {
-        if (timelogs.length === 0) return [];
-        const map = {};
-        timelogs.forEach(log => {
-            const key = log.issueId || log.issue?.issueId;
-            if (!key) return;
-            if (!map[key]) {
-                map[key] = {
-                    issueId: key,
-                    issueKey: log.issueKey || log.issue?.issueKey || '?',
-                    title: log.issueTitle || log.issue?.title || '',
-                    statusName: log.issue?.statusName || '',
-                    estimatedHours: log.issue?.estimatedHours || log.estimatedHours || 0,
-                    loggedHours: 0, logCount: 0,
-                    totalScore: log.issue?.totalScore,
-                    aiScore: log.issue?.aiScore,
-                    humanScore: log.issue?.humanScore,
-                };
-            }
-            map[key].loggedHours += log.loggedHours || 0;
-            map[key].logCount += 1;
-            if (log.issue?.estimatedHours) map[key].estimatedHours = log.issue.estimatedHours;
-            if (log.issue?.totalScore != null) map[key].totalScore = log.issue.totalScore;
-            if (log.issue?.aiScore != null) map[key].aiScore = log.issue.aiScore;
-            if (log.issue?.humanScore != null) map[key].humanScore = log.issue.humanScore;
-        });
-        return Object.values(map).sort((a, b) => b.loggedHours - a.loggedHours);
-    }, [timelogs]);
-
-    const groupedLogs = timelogs.reduce((groups, log) => {
-        const date = log.workDate;
-        if (!groups[date]) groups[date] = [];
-        groups[date].push(log);
-        return groups;
-    }, {});
-
-    const totalHours = timelogs.reduce((sum, l) => sum + (l.loggedHours || 0), 0);
-
-    const startEdit = (log) => { setEditingId(log.logId); setEditHours(String(log.loggedHours)); setEditDesc(log.description || ''); };
-    const cancelEdit = () => { setEditingId(null); setEditHours(''); setEditDesc(''); };
-
-    const saveEdit = async (logId) => {
-        try {
-            await timelogApi.updateTimelog(logId, { loggedHours: parseFloat(editHours), description: editDesc.trim() || undefined });
-            setTimelogs(prev => prev.map(l => l.logId === logId ? { ...l, loggedHours: parseFloat(editHours), description: editDesc } : l));
-            cancelEdit();
-        } catch (err) { console.error('Failed to update:', err); }
-    };
-
-    const handleDelete = async (logId) => {
-        if (!confirm('Xóa log này?')) return;
-        try {
-            await timelogApi.deleteTimelog(logId);
-            setTimelogs(prev => prev.filter(l => l.logId !== logId));
-        } catch (err) { console.error('Failed to delete:', err); }
-    };
-
-    return (
-        <div className="space-y-4">
-            {/* Header stats */}
-            <div className="border border-gray-100 bg-white rounded-xl p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                            <i className="fa-solid fa-clock text-gray-500" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-wider">Tổng cộng đã log</p>
-                            <p className="text-2xl font-semibold text-gray-900 mt-1">
-                                {formatNumber(totalHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                            </p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[10px] text-gray-500">{timelogs.length} entries</p>
-                        <p className="text-[10px] text-gray-500">{issueSummaries.length} issues</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Timer + Quick Log */}
-            <GlobalTimerBar onLogComplete={() => setRefreshKey(k => k + 1)} />
-            <QuickLogForm onSuccess={() => setRefreshKey(k => k + 1)} />
-
-            {/* Issue Summary */}
-            {!loading && issueSummaries.length > 0 && <IssueTrackerSummary issueSummaries={issueSummaries} />}
-
-            {/* Log list */}
-            {loading && page === 0 ? (
-                <div className="text-center py-16 text-gray-400">
-                    <div className="loading-spinner mx-auto mb-3" />
-                    Đang tải...
-                </div>
-            ) : Object.keys(groupedLogs).length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-xl border border-gray-100 shadow-sm">
-                    <i className="fa-solid fa-clock-rotate-left text-4xl text-gray-200 mb-3" />
-                    <p className="font-medium text-gray-600 mb-1">Chưa có time log nào</p>
-                    <p className="text-sm text-gray-400">Bắt đầu timer hoặc log nhanh để theo dõi công việc</p>
-                </div>
-            ) : (
-                <div className="flex flex-col gap-5">
-                    {Object.entries(groupedLogs).sort(([a], [b]) => new Date(b) - new Date(a)).map(([date, logs]) => {
-                        const dayTotal = logs.reduce((sum, l) => sum + (l.loggedHours || 0), 0);
-                        const dateObj = new Date(date + 'T00:00:00');
-                        const isToday = dateObj.toDateString() === new Date().toDateString();
-                        return (
-                            <div key={date}>
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-medium ${isToday ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                        {dateObj.getDate()}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {dateObj.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                            {isToday && <span className="ml-2 text-indigo-600 font-medium">Hôm nay</span>}
-                                        </p>
-                                        <p className="text-xs text-gray-400">{logs.length} logs</p>
-                                    </div>
-                                    <span className="ml-auto text-gray-900 font-medium text-sm">
-                                        {formatNumber(dayTotal, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                                    </span>
-                                </div>
-                                <div className="flex flex-col gap-2 ml-0 lg:ml-[52px]">
-                                    {logs.map(log => (
-                                        <div key={log.logId} className="bg-white rounded-lg border border-gray-100 p-4 group hover:border-gray-200 transition-colors">
-                                            {editingId === log.logId ? (
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <input type="number" step="0.25" min="0.25" value={editHours}
-                                                            onChange={e => setEditHours(e.target.value)}
-                                                            className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-center font-medium focus:outline-none focus:border-gray-300" />
-                                                        <span className="text-gray-500 text-sm">giờ</span>
-                                                    </div>
-                                                    <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2}
-                                                        placeholder="Mô tả..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 resize-none" />
-                                                    <div className="flex gap-2">
-                                                        <button onClick={() => saveEdit(log.logId)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800">Lưu</button>
-                                                        <button onClick={cancelEdit} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200">Hủy</button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-start gap-3">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                            {log.issueKey && (<span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium">{log.issueKey}</span>)}
-                                                            {log.issueTitle && (<span className="text-sm font-medium text-gray-700 truncate">{log.issueTitle}</span>)}
-                                                        </div>
-                                                        {log.projectName && (<p className="text-xs text-gray-400 flex items-center gap-1 mb-1"><i className="fa-solid fa-folder text-[10px]" />{log.projectName}</p>)}
-                                                        {log.description && <p className="text-xs text-gray-500 line-clamp-2">{log.description}</p>}
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-1 shrink-0">
-                                                        <span className="text-lg font-medium text-gray-900">
-                                                            {formatNumber(log.loggedHours, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                                                        </span>
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEdit(log)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors" title="Sửa"><i className="fa-solid fa-pen text-xs" /></button>
-                                                            <button onClick={() => handleDelete(log.logId)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Xóa"><i className="fa-solid fa-trash text-xs" /></button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    {hasMore && (
-                        <button onClick={() => setPage(p => p + 1)} disabled={loading}
-                            className="py-3 bg-white border border-gray-100 hover:border-gray-200 text-gray-600 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                            {loading ? (<><div className="w-4 h-4 border-2 border-gray-300/30 border-t-gray-500 rounded-full animate-spin" /> Đang tải...</>) : (<><i className="fa-solid fa-arrow-down" /> Xem thêm</>)}
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
-
 // ─── Main Page ─────────────────────────────────────────────────────────
 export default function MyPerformancePage() {
-    const [activeTab, setActiveTab] = useState('performance');
-
-    const tabs = [
-        { id: 'performance', label: 'Hiệu suất', icon: 'fa-chart-line' },
-        { id: 'timelogs', label: 'Nhật ký giờ', icon: 'fa-clock' },
-    ];
-
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shadow-indigo-100">
                         <i className="fa-solid fa-chart-line text-xl" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-semibold text-gray-900">Hiệu suất & Nhật ký giờ</h1>
-                        <p className="text-sm text-gray-500 mt-0.5">Theo dõi KPI, thời gian và so sánh với đồng nghiệp</p>
+                        <h1 className="text-xl font-bold text-gray-900">Hiệu suất cá nhân</h1>
+                        <p className="text-sm text-gray-500 mt-0.5 font-medium">Theo dõi chỉ số KPI, năng suất và so sánh kết quả với đồng nghiệp</p>
                     </div>
                 </div>
             </div>
 
-            {/* Tabs - Clean minimal */}
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="flex border-b border-gray-100">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium transition-colors ${
-                                activeTab === tab.id
-                                    ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50'
-                                    : 'text-gray-500 hover:bg-gray-50'
-                            }`}
-                        >
-                            <i className={`fa-solid ${tab.icon} text-xs`} />
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                <div className="p-6">
-                    {activeTab === 'performance' ? <PerformanceTab /> : <TimelogsTab />}
-                </div>
+            {/* Performance tab content */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                <PerformanceTab />
             </div>
         </div>
     );

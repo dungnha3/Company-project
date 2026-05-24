@@ -30,19 +30,19 @@ const ISSUE_TYPES = [
 export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const queryClient = useQueryClient();
     const toast = useToast();
-    const [activeTab, setActiveTab] = useState('details'); // details | comments | timelogs
+    const [activeTab, setActiveTab] = useState('details'); // details | comments | activity
     const [newComment, setNewComment] = useState('');
+    const [timelogKey, setTimelogKey] = useState(0); // Increment to force TimeLogSection refresh
 
-    // Auto-switch to timelogs tab when timer starts for this issue
+    // Listen for timelog-updated events (e.g. from auto-stop on task completion)
     useEffect(() => {
         const handler = (e) => {
-            if (e.detail.issueId === issue?.issueId) {
-                setActiveTab('timelogs');
-                toast.info('Timer đã bắt đầu! Chuyển sang tab Time Logs');
+            if (!e.detail?.issueId || e.detail.issueId === issue?.issueId) {
+                setTimelogKey(k => k + 1);
             }
         };
-        window.addEventListener('auto-start-timer', handler);
-        return () => window.removeEventListener('auto-start-timer', handler);
+        window.addEventListener('timelog-updated', handler);
+        return () => window.removeEventListener('timelog-updated', handler);
     }, [issue?.issueId]);
 
     // Fetch full issue details
@@ -250,7 +250,6 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         { id: 'details', label: 'Chi tiết', icon: 'fa-file-lines' },
                         { id: 'comments', label: 'Bình luận', icon: 'fa-comments' },
                         { id: 'activity', label: 'Lịch sử', icon: 'fa-history' },
-                        { id: 'timelogs', label: 'Time Logs', icon: 'fa-clock' },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -268,7 +267,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                 </div>
 
                 {/* Tab Content */}
-                <div className="p-6 min-h-[300px] max-h-[400px] overflow-y-auto">
+                <div className="p-6 min-h-[300px] max-h-[500px] overflow-y-auto">
                     {activeTab === 'details' && (
                         <div className="space-y-4">
                             <div>
@@ -508,15 +507,25 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         </div>
                     )}
 
-                    {activeTab === 'timelogs' && (
-                        <TimeLogSection
-                            issueId={currentIssue.issueId}
-                            estimatedHours={currentIssue.estimatedHours || 0}
-                        />
-                    )}
-
                     {activeTab === 'activity' && (
-                        <ActivityLogTab issueId={currentIssue.issueId} />
+                        <div className="space-y-6">
+                            <TimeLogSection
+                                key={timelogKey}
+                                issueId={currentIssue.issueId}
+                                estimatedHours={currentIssue.estimatedHours || 0}
+                                onUpdate={() => {
+                                    queryClient.invalidateQueries(['issue', currentIssue.issueId]);
+                                    onUpdate?.();
+                                }}
+                            />
+                            <div className="pt-4 border-t border-gray-100">
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <i className="fa-solid fa-history text-indigo-500" />
+                                    Nhật ký hoạt động công việc
+                                </h3>
+                                <ActivityLogTab issueId={currentIssue.issueId} />
+                            </div>
+                        </div>
                     )}
                 </div>
 

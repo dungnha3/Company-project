@@ -4,7 +4,7 @@ import { lazy, Suspense } from 'react';
 // Layouts
 import DashboardLayout from '@layouts/DashboardLayout';
 import AuthLayout from '@layouts/AuthLayout';
-import SectionTabLayout, { HR_TAB_CONFIG } from '@layouts/SectionTabLayout';
+import SectionTabLayout from '@layouts/SectionTabLayout';
 import SystemAdminLayout from '@layouts/SystemAdminLayout';
 
 // Guards
@@ -45,7 +45,6 @@ const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
 const MyPerformancePage = lazy(() => import('@pages/hr/MyPerformancePage'));
 const MyWorkPage = lazy(() => import('@pages/personal/MyWorkPage'));
-const MyTimelogsPage = lazy(() => import('@pages/personal/MyTimelogsPage'));
 
 const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
 const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
@@ -141,16 +140,6 @@ const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'timelogs',
-                        element: (
-                            <AccessControlGuard>
-                                <Suspense fallback={<PageLoader />}>
-                                    <MyTimelogsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
                         path: 'calendar',
                         element: (
                             <AccessControlGuard>
@@ -189,11 +178,7 @@ const router = createBrowserRouter([
                         requireAuth={true}
                         requireCompany={true}
                     >
-                        <SectionTabLayout
-                            tabConfig={HR_TAB_CONFIG}
-                            title="Nhân sự (HR)"
-                            icon="fa-users-gear"
-                        />
+                        <Outlet />
                     </AccessControlGuard>
                 ),
                 children: [
@@ -275,6 +260,16 @@ const router = createBrowserRouter([
                     <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
                             <ProjectsPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+            {
+                path: 'projects/analytics',
+                element: (
+                    <AccessControlGuard>
+                        <Suspense fallback={<PageLoader />}>
+                            <AnalyticsPage />
                         </Suspense>
                     </AccessControlGuard>
                 ),

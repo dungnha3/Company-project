@@ -11,14 +11,11 @@ import EditProjectModal from './components/EditProjectModal';
 import ExportDropdown from './components/ExportDropdown';
 import ProjectDashboardTab from './tabs/ProjectDashboardTab';
 
-// Lazy load new feature tabs
-const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
 const SprintTab = lazy(() => import('./tabs/SprintTab'));
 const IssueListTab = lazy(() => import('./tabs/IssueListTab'));
 const ProjectSettingsTab = lazy(() => import('./tabs/ProjectSettingsTab'));
 const ProjectCalendarTab = lazy(() => import('./tabs/ProjectCalendarTab'));
-const EisenhowerMatrixTab = lazy(() => import('./tabs/EisenhowerMatrixTab'));
-const ProjectGoalTab = lazy(() => import('./tabs/ProjectGoalTab'));
+const InteractivePlannerTab = lazy(() => import('./tabs/InteractivePlannerTab'));
 const TeamTab = lazy(() => import('./tabs/TeamTab'));
 const ProjectCostTab = lazy(() => import('./tabs/ProjectCostTab'));
 const ProjectPerformanceTab = lazy(() => import('./tabs/ProjectPerformanceTab'));
@@ -63,8 +60,7 @@ export default function ProjectDetailPage() {
                 label: 'Lập kế hoạch',
                 icon: 'fa-timeline',
                 tabs: [
-                    { id: 'goals', label: 'Mục tiêu' },
-                    { id: 'eisenhower', label: 'Eisenhower' },
+                    { id: 'planner', label: 'Bản đồ kế hoạch' },
                     { id: 'calendar', label: 'Lịch công việc' }
                 ]
             },
@@ -79,15 +75,16 @@ export default function ProjectDetailPage() {
                 ]
             },
             {
-                id: 'more_group',
-                label: 'Mở rộng',
-                icon: 'fa-ellipsis',
-                tabs: [
-                    { id: 'analytics', label: 'Thống kê nâng cao' },
-                    { id: 'files', label: 'Tài liệu' },
-                    { id: 'webhook', label: 'Webhooks' },
-                    { id: 'settings', label: 'Cài đặt' }
-                ]
+                id: 'files_group',
+                label: 'Tài liệu',
+                icon: 'fa-folder-open',
+                tabs: [{ id: 'files', label: 'Tài liệu' }]
+            },
+            {
+                id: 'settings_group',
+                label: 'Cài đặt',
+                icon: 'fa-gear',
+                tabs: [{ id: 'settings', label: 'Cài đặt' }]
             }
         ];
     }, [settings]);
@@ -129,12 +126,7 @@ export default function ProjectDetailPage() {
                                 Lịch
                             </Link>
                         )}
-                        {showTimelogs && (
-                            <Link to="/app/me/performance" className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium flex items-center gap-2">
-                                <i className="fa-solid fa-clock text-gray-500" />
-                                Nhật ký
-                            </Link>
-                        )}
+
                         <ExportDropdown projectId={project.projectId} projectName={project.name} />
                         <button onClick={() => setShowEditModal(true)} className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                             <i className="fa-solid fa-pen" />
@@ -223,28 +215,12 @@ export default function ProjectDetailPage() {
                         <ProjectCalendarTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'eisenhower' && (
+                {activeTab === 'planner' && (
                     <Suspense fallback={<PageLoader />}>
-                        <EisenhowerMatrixTab projectId={project.projectId} />
+                        <InteractivePlannerTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'goals' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <ProjectGoalTab projectId={project.projectId} />
-                    </Suspense>
-                )}
-                {activeTab === 'analytics' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <AnalyticsPage />
-                    </Suspense>
-                )}
-                {activeTab === 'webhook' && (
-                    <div className="card p-6 text-center">
-                        <i className="fa-solid fa-link text-4xl text-indigo-500 mb-4" />
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">Webhook Integration</h3>
-                        <p className="text-gray-500">Cài đặt webhook trong Company Settings để kết nối với hệ thống bên ngoài.</p>
-                    </div>
-                )}
+
                 { activeTab === 'files' && (
                     <Suspense fallback={<PageLoader />}>
                         <ProjectStorageTab projectId={project.projectId} />

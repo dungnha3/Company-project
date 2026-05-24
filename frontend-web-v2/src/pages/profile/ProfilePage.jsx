@@ -37,7 +37,7 @@ export default function ProfilePage() {
     }, [searchParams]);
 
     return (
-        <div className="max-w-5xl mx-auto p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header with Avatar */}
             <div className="flex items-center justify-between px-6 py-5 border border-gray-200 bg-white rounded-lg shadow-sm">
                 <div className="flex items-center gap-4">
