@@ -5,7 +5,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 
 export default function ResourcePlanningPage() {
     const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState('all'); // all | overloaded | available
+    const [filter, setFilter] = useState('all');
 
     const { data: resources = [], isLoading } = useQuery({
         queryKey: ['resource-overview'],
@@ -35,66 +35,74 @@ export default function ResourcePlanningPage() {
         : 0;
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Nguồn lực dự án</h1>
-                <p className="text-gray-500 text-sm mt-1">
-                    Tổng quan phân bổ nhân sự — phát hiện quá tải và tối ưu nguồn lực
-                </p>
+            <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-users-gear text-gray-400 text-xl" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-semibold text-gray-900">Nguồn lực dự án</h1>
+                            <p className="text-sm text-gray-500 mt-0.5">Tổng quan phân bổ nhân sự</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Tổng nhân sự" value={totalUsers} icon="fa-users" color="bg-indigo-100 text-indigo-600" />
+                <StatCard label="Tổng nhân sự" value={totalUsers} icon="fa-users" />
                 <StatCard
                     label="Quá tải (>100%)"
                     value={overloadedCount}
                     icon="fa-triangle-exclamation"
-                    color="bg-red-100 text-red-600"
-                    highlight={overloadedCount > 0}
+                    danger={overloadedCount > 0}
                 />
-                <StatCard label="Còn khả dụng" value={availableCount} icon="fa-circle-check" color="bg-green-100 text-green-600" />
-                <StatCard label="Phân bổ TB" value={`${avgAllocation}%`} icon="fa-chart-pie" color="bg-purple-100 text-purple-600" />
+                <StatCard label="Còn khả dụng" value={availableCount} icon="fa-circle-check" success />
+                <StatCard label="Phân bổ TB" value={`${avgAllocation}%`} icon="fa-chart-pie" />
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                    <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Tìm kiếm nhân sự..."
-                        className="input w-full pl-10"
-                    />
-                </div>
-                <div className="flex gap-2">
-                    {[
-                        { key: 'all', label: 'Tất cả' },
-                        { key: 'overloaded', label: '⚠ Quá tải' },
-                        { key: 'available', label: '✓ Khả dụng' },
-                    ].map(f => (
-                        <button
-                            key={f.key}
-                            onClick={() => setFilter(f.key)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                filter === f.key
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
+            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Tìm kiếm nhân sự..."
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 bg-white"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        {[
+                            { key: 'all', label: 'Tất cả' },
+                            { key: 'overloaded', label: 'Quá tải' },
+                            { key: 'available', label: 'Khả dụng' },
+                        ].map(f => (
+                            <button
+                                key={f.key}
+                                onClick={() => setFilter(f.key)}
+                                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                                    filter === f.key
+                                        ? 'bg-gray-900 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             {/* Resource List */}
             {isLoading ? (
                 <div className="flex justify-center items-center py-20">
-                    <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-400" />
+                    <i className="fa-solid fa-spinner fa-spin text-2xl text-gray-400" />
                 </div>
             ) : filtered.length === 0 ? (
                 <EmptyState search={search} filter={filter} />
@@ -109,18 +117,18 @@ export default function ResourcePlanningPage() {
     );
 }
 
-function StatCard({ label, value, icon, color, highlight }) {
+function StatCard({ label, value, icon, danger, success }) {
     return (
-        <div className={`bg-white rounded-xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
-            highlight ? 'border-red-200 ring-1 ring-red-200' : 'border-gray-100'
+        <div className={`bg-white rounded-xl p-4 border shadow-sm transition-shadow hover:shadow-md ${
+            danger ? 'border-red-100' : 'border-gray-100'
         }`}>
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-                    <p className={`text-2xl font-bold mt-1 ${highlight ? 'text-red-600' : 'text-gray-900'}`}>{value}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">{label}</p>
+                    <p className={`text-2xl font-semibold mt-1 ${danger ? 'text-red-600' : 'text-gray-900'}`}>{value}</p>
                 </div>
-                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
-                    <i className={`fa-solid ${icon}`} />
+                <div className={`w-10 h-10 rounded-lg ${danger ? 'bg-red-50' : success ? 'bg-green-50' : 'bg-gray-100'} flex items-center justify-center`}>
+                    <i className={`fa-solid ${icon} ${danger ? 'text-red-500' : success ? 'text-green-500' : 'text-gray-400'}`} />
                 </div>
             </div>
         </div>
@@ -133,19 +141,19 @@ function ResourceCard({ resource }) {
 
     const allocationBarColor =
         allocation > 100 ? 'bg-red-500' :
-        allocation >= 80  ? 'bg-orange-400' :
-        allocation >= 50  ? 'bg-indigo-500' : 'bg-green-500';
+        allocation >= 80  ? 'bg-amber-500' :
+        allocation >= 50  ? 'bg-gray-400' : 'bg-green-500';
 
     const allocationTextColor =
         allocation > 100 ? 'text-red-600' :
-        allocation >= 80  ? 'text-orange-600' :
-        allocation >= 50  ? 'text-indigo-600' : 'text-green-600';
+        allocation >= 80  ? 'text-amber-600' :
+        allocation >= 50  ? 'text-gray-700' : 'text-green-600';
 
     const totalHours = (resource.projects || []).reduce((s, p) => s + (p.totalLoggedHours || 0), 0);
 
     return (
         <div className={`bg-white rounded-xl border shadow-sm transition-all ${
-            resource.overloaded ? 'border-red-200 ring-1 ring-red-200' : 'border-gray-100'
+            resource.overloaded ? 'border-red-100' : 'border-gray-100'
         }`}>
             <div
                 className="p-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50/50 rounded-xl"
@@ -156,7 +164,7 @@ function ResourceCard({ resource }) {
                     {resource.avatarUrl ? (
                         <img src={resource.avatarUrl} alt={resource.fullName} className="w-11 h-11 rounded-full object-cover" />
                     ) : (
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                        <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm">
                             {resource.fullName?.charAt(0)?.toUpperCase() || '?'}
                         </div>
                     )}
@@ -170,14 +178,14 @@ function ResourceCard({ resource }) {
                 {/* Name */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-gray-900">{resource.fullName || resource.email}</span>
+                        <span className="font-medium text-gray-900">{resource.fullName || resource.email}</span>
                         {resource.overloaded && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 text-xs font-medium rounded-full">
                                 <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: 10 }} /> Quá tải
                             </span>
                         )}
                         {!resource.overloaded && allocation < 50 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 text-xs font-medium rounded-full">
                                 <i className="fa-solid fa-circle-check" style={{ fontSize: 10 }} /> Khả dụng
                             </span>
                         )}
@@ -189,9 +197,9 @@ function ResourceCard({ resource }) {
                 <div className="w-44 hidden sm:block">
                     <div className="flex justify-between items-center mb-1">
                         <span className="text-xs text-gray-500">Phân bổ tổng</span>
-                        <span className={`text-sm font-bold ${allocationTextColor}`}>{allocation}%</span>
+                        <span className={`text-sm font-semibold ${allocationTextColor}`}>{allocation}%</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
                             className={`h-full rounded-full transition-all duration-500 ${allocationBarColor}`}
                             style={{ width: `${Math.min(allocation, 100)}%` }}
@@ -203,11 +211,11 @@ function ResourceCard({ resource }) {
                 <div className="hidden md:flex gap-5 text-center">
                     <div>
                         <div className="text-xs text-gray-400">Dự án</div>
-                        <div className="font-bold text-gray-800">{resource.projects?.length || 0}</div>
+                        <div className="font-medium text-gray-800">{resource.projects?.length || 0}</div>
                     </div>
                     <div>
                         <div className="text-xs text-gray-400">Giờ log</div>
-                        <div className="font-bold text-gray-800">{totalHours.toFixed(0)}h</div>
+                        <div className="font-medium text-gray-800">{totalHours.toFixed(0)}h</div>
                     </div>
                 </div>
 
@@ -234,12 +242,12 @@ function ResourceCard({ resource }) {
 
 function ProjectSlotRow({ slot }) {
     const alloc = slot.allocationRate || 0;
-    const barColor = alloc > 80 ? 'bg-orange-400' : alloc >= 50 ? 'bg-indigo-400' : 'bg-green-400';
+    const barColor = alloc > 80 ? 'bg-amber-400' : alloc >= 50 ? 'bg-gray-400' : 'bg-green-400';
 
     const statusStyles = {
-        ACTIVE:    'bg-green-100 text-green-700',
-        ON_LEAVE:  'bg-yellow-100 text-yellow-700',
-        PART_TIME: 'bg-blue-100 text-blue-700',
+        ACTIVE:    'bg-green-50 text-green-700',
+        ON_LEAVE:  'bg-amber-50 text-amber-700',
+        PART_TIME: 'bg-gray-100 text-gray-700',
         INACTIVE:  'bg-gray-100 text-gray-500',
     };
     const statusLabel = {
@@ -270,14 +278,14 @@ function ProjectSlotRow({ slot }) {
                     <span className="text-[10px] text-gray-400">Phân bổ</span>
                     <span className="text-[10px] font-semibold text-gray-600">{alloc}%</span>
                 </div>
-                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(alloc, 100)}%` }} />
                 </div>
             </div>
 
             <div className="text-right min-w-[52px]">
                 <div className="text-xs text-gray-400">Giờ</div>
-                <div className="text-sm font-semibold text-gray-700">{(slot.totalLoggedHours || 0).toFixed(0)}h</div>
+                <div className="text-sm font-medium text-gray-700">{(slot.totalLoggedHours || 0).toFixed(0)}h</div>
             </div>
         </div>
     );
@@ -285,16 +293,16 @@ function ProjectSlotRow({ slot }) {
 
 function EmptyState({ search, filter }) {
     return (
-        <div className="text-center py-16 text-gray-400">
-            <i className="fa-solid fa-users-slash text-4xl mb-3 block opacity-40" />
+        <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm">
+            <i className="fa-solid fa-users-slash text-4xl text-gray-300 mb-4" />
             <p className="font-medium text-gray-500">
                 {search
                     ? `Không tìm thấy nhân sự phù hợp với "${search}"`
-                    : filter === 'overloaded' ? 'Không có nhân sự nào đang quá tải 🎉'
+                    : filter === 'overloaded' ? 'Không có nhân sự nào đang quá tải'
                     : filter === 'available'  ? 'Tất cả nhân sự đang được phân bổ đầy đủ'
                     : 'Chưa có dữ liệu phân bổ nguồn lực'}
             </p>
-            <p className="text-sm mt-1">
+            <p className="text-sm text-gray-400 mt-2">
                 Hãy thêm thành viên vào dự án và cập nhật tỉ lệ phân bổ trong tab Nhóm của dự án
             </p>
         </div>

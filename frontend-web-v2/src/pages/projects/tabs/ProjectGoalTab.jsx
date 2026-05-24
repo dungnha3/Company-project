@@ -100,7 +100,7 @@ export default function ProjectGoalTab({ projectId }) {
                     <select
                         value={filterYear}
                         onChange={(e) => setFilterYear(Number(e.target.value))}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300"
                     >
                         {availableYears.length > 0 ? availableYears.map(y => (
                             <option key={y} value={y}>{y}</option>
@@ -293,7 +293,7 @@ function GoalModal({ projectId, goal, defaultYear, onClose, onSuccess }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900">
                         {isEditing ? 'Sửa mục tiêu' : 'Thêm mục tiêu mới'}
@@ -308,7 +308,7 @@ function GoalModal({ projectId, goal, defaultYear, onClose, onSuccess }) {
                         <textarea
                             value={form.title}
                             onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 resize-none"
                             placeholder="VD: Hoàn thành module authentication"
                             rows={3}
                             required
@@ -320,7 +320,7 @@ function GoalModal({ projectId, goal, defaultYear, onClose, onSuccess }) {
                             <select
                                 value={form.month}
                                 onChange={(e) => setForm(prev => ({ ...prev, month: parseInt(e.target.value) }))}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300"
                             >
                                 {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
                             </select>
@@ -331,7 +331,7 @@ function GoalModal({ projectId, goal, defaultYear, onClose, onSuccess }) {
                                 type="number"
                                 value={form.year}
                                 onChange={(e) => setForm(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300"
                                 min={2020}
                                 max={2100}
                             />

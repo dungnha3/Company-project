@@ -39,7 +39,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
 
     return (
         <div className="modal-overlay items-center">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-500 to-teal-600 flex justify-between items-center">
                     <div>
                         <h2 className="text-lg font-bold text-white">Chấm điểm & Hoàn thành</h2>

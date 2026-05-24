@@ -133,29 +133,32 @@ export default function PerformanceOverviewPage() {
 
     if (loadingProjects || loadingRankings) {
         return (
-            <div className="p-8 text-center">
-                <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
-                <p className="text-gray-500 mt-2">Đang tải hiệu suất tổng thể...</p>
+            <div className="max-w-7xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+                <i className="fa-solid fa-spinner fa-spin text-3xl text-gray-400" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Hiệu suất tổng thể (toàn thời gian)</h1>
-                        <p className="text-gray-500 mt-1">
-                            Tổng hợp hiệu suất nhân sự xuyên các dự án hiện có trong workspace.
-                        </p>
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            {/* Header */}
+            <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-chart-line text-gray-400 text-xl" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-semibold text-gray-900">Hiệu suất tổng thể</h1>
+                            <p className="text-sm text-gray-500 mt-0.5">Tổng hợp hiệu suất nhân sự xuyên các dự án</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">Chu kỳ:</span>
+                        <span className="text-sm text-gray-500 font-medium">Chu kỳ:</span>
                         <select
                             value={period}
                             onChange={(e) => setPeriod(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white outline-none focus:border-gray-300"
                         >
                             <option value="all">Toàn thời gian</option>
                             <option value="24">24 tháng gần nhất</option>
@@ -166,38 +169,41 @@ export default function PerformanceOverviewPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                <MiniStat title="Nhân sự" value={summary.employees} tone="slate" />
-                <MiniStat title="Dự án có dữ liệu" value={summary.projects} tone="indigo" />
-                <MiniStat title="Task hoàn thành" value={summary.completedTasks} tone="green" />
-                <MiniStat title="Task quá hạn" value={summary.overdueTasks} tone="red" />
-                <MiniStat title="Bị trả lại" value={summary.reworks} tone="amber" />
-                <MiniStat title="Điểm TB" value={summary.avgPerformance} tone="purple" />
+            {/* Stats */}
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                <MiniStat title="Nhân sự" value={summary.employees} />
+                <MiniStat title="Dự án" value={summary.projects} />
+                <MiniStat title="Hoàn thành" value={summary.completedTasks} success />
+                <MiniStat title="Quá hạn" value={summary.overdueTasks} danger />
+                <MiniStat title="Rework" value={summary.reworks} warning />
+                <MiniStat title="Điểm TB" value={summary.avgPerformance} />
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-1">So sánh hiệu suất Top nhân sự</h3>
-                <p className="text-xs text-gray-500 mb-4">Hiệu suất trung bình, tốc độ trung bình và chất lượng trung bình</p>
+            {/* Chart */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-gray-900 mb-1">So sánh hiệu suất nhân sự</h3>
+                <p className="text-xs text-gray-500 mb-4">Hiệu suất, tốc độ và chất lượng trung bình</p>
                 <div className="h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" fontSize={11} />
-                            <YAxis domain={[0, 10]} fontSize={11} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                            <XAxis dataKey="name" fontSize={11} tick={{ fill: '#6b7280', fontWeight: 500 }} />
+                            <YAxis domain={[0, 10]} fontSize={11} tick={{ fill: '#6b7280', fontWeight: 500 }} />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="Hiệu suất TB" fill="#6366f1" />
-                            <Bar dataKey="Tốc độ TB" fill="#14b8a6" />
-                            <Bar dataKey="Chất lượng TB" fill="#f59e0b" />
+                            <Bar dataKey="Hiệu suất TB" fill="#2563EB" radius={0} />
+                            <Bar dataKey="Tốc độ TB" fill="#059669" radius={0} />
+                            <Bar dataKey="Chất lượng TB" fill="#D97706" radius={0} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {/* Table */}
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900">Bảng so sánh nhân sự</h3>
-                    <p className="text-sm text-gray-500">Thống kê toàn thời gian theo dữ liệu hiệu suất dự án</p>
+                    <h3 className="text-base font-semibold text-gray-900">Bảng so sánh nhân sự</h3>
+                    <p className="text-xs text-gray-500">Thống kê toàn thời gian theo dữ liệu hiệu suất dự án</p>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -208,23 +214,23 @@ export default function PerformanceOverviewPage() {
                                 <th className="px-4 py-3 text-center">Hiệu suất TB</th>
                                 <th className="px-4 py-3 text-center">Tốc độ TB</th>
                                 <th className="px-4 py-3 text-center">Chất lượng TB</th>
-                                <th className="px-4 py-3 text-center">Task hoàn thành</th>
+                                <th className="px-4 py-3 text-center">Hoàn thành</th>
                                 <th className="px-4 py-3 text-center">Quá hạn</th>
                                 <th className="px-4 py-3 text-center">Rework</th>
-                                <th className="px-4 py-3 text-center">Cảnh báo SLA</th>
+                                <th className="px-4 py-3 text-center">SLA</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {leaderboard.map((u) => (
                                 <tr key={u.userId || u.employeeId} className="hover:bg-gray-50/70">
                                     <td className="px-4 py-3 font-medium text-gray-900">{u.employeeName}</td>
-                                    <td className="px-4 py-3 text-center">{u.projects}</td>
-                                    <td className="px-4 py-3 text-center font-semibold text-indigo-700">{u.avgPerformance}</td>
-                                    <td className="px-4 py-3 text-center text-teal-700">{u.avgSpeed}</td>
-                                    <td className="px-4 py-3 text-center text-amber-700">{u.avgQuality}</td>
-                                    <td className="px-4 py-3 text-center">{u.completedTasks}</td>
+                                    <td className="px-4 py-3 text-center text-gray-600">{u.projects}</td>
+                                    <td className="px-4 py-3 text-center font-semibold text-gray-900">{u.avgPerformance}</td>
+                                    <td className="px-4 py-3 text-center text-gray-600">{u.avgSpeed}</td>
+                                    <td className="px-4 py-3 text-center text-gray-600">{u.avgQuality}</td>
+                                    <td className="px-4 py-3 text-center text-gray-600">{u.completedTasks}</td>
                                     <td className="px-4 py-3 text-center text-red-600">{u.overdueTasks}</td>
-                                    <td className="px-4 py-3 text-center text-orange-600">{u.reworks}</td>
+                                    <td className="px-4 py-3 text-center text-amber-600">{u.reworks}</td>
                                     <td className="px-4 py-3 text-center">
                                         <SlaBadge overdue={u.overdueTasks} late={u.lateTasks} reworks={u.reworks} />
                                     </td>
@@ -240,28 +246,19 @@ export default function PerformanceOverviewPage() {
 
 function SlaBadge({ overdue = 0, late = 0, reworks = 0 }) {
     if (overdue >= 3 || late >= 3 || reworks >= 5) {
-        return <span className="px-2 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-700">Cao</span>;
+        return <span className="px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700">Cao</span>;
     }
     if (overdue > 0 || late > 0 || reworks >= 2) {
-        return <span className="px-2 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-700">Trung bình</span>;
+        return <span className="px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700">Trung bình</span>;
     }
-    return <span className="px-2 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700">Ổn định</span>;
+    return <span className="px-2 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700">Ổn định</span>;
 }
 
-function MiniStat({ title, value, tone = 'slate' }) {
-    const styles = {
-        slate: 'bg-slate-50 text-slate-700 border-slate-100',
-        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-        green: 'bg-green-50 text-green-700 border-green-100',
-        red: 'bg-red-50 text-red-700 border-red-100',
-        amber: 'bg-amber-50 text-amber-700 border-amber-100',
-        purple: 'bg-purple-50 text-purple-700 border-purple-100',
-    };
+function MiniStat({ title, value, danger, success, warning }) {
     return (
-        <div className={`rounded-xl border px-3 py-2 ${styles[tone] || styles.slate}`}>
-            <p className="text-[11px] uppercase tracking-wide opacity-80">{title}</p>
-            <p className="text-lg font-bold leading-tight">{value}</p>
+        <div className={`rounded-xl border border-gray-100 px-4 py-3 shadow-sm hover:shadow-md transition-shadow ${danger ? 'bg-red-50' : success ? 'bg-green-50' : warning ? 'bg-amber-50' : 'bg-white'}`}>
+            <p className="text-[10px] uppercase tracking-wider font-medium text-gray-500">{title}</p>
+            <p className={`text-xl font-semibold leading-tight mt-1 ${danger ? 'text-red-600' : success ? 'text-green-600' : warning ? 'text-amber-600' : 'text-gray-900'}`}>{value}</p>
         </div>
     );
 }
-

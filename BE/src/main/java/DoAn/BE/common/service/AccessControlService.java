@@ -271,7 +271,7 @@ public class AccessControlService {
         if (user != null && user.isSystemAdminAccount()) {
             return true;
         }
-        return hasPermission(PermissionKeys.PROJECT_MANAGE_ISSUES);
+        return hasPermission(PermissionKeys.PROJECT_VIEW);
     }
 
     public void checkPermission(Long companyId, CompanyRole requiredRole) {

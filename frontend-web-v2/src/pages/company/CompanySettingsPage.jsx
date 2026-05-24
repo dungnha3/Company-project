@@ -95,25 +95,31 @@ export default function CompanySettingsPage() {
         onError: (err) => toast.error(err.response?.data?.message || 'Có lỗi xảy ra')
     });
 
-    if (isDriveLoading) return <div className="p-6">Đang tải...</div>;
+    if (isDriveLoading) return <div className="p-6 text-gray-500">Đang tải...</div>;
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Cài đặt Workspace</h1>
-                    <p className="text-gray-500 mt-1">Quản lý cấu hình và thành viên Workspace: <strong className="text-indigo-600">{currentWorkspace?.name}</strong> (ID: {currentWorkspace?.id})</p>
+            <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl font-semibold text-gray-900">Cài đặt Workspace</h1>
+                        <p className="text-sm text-gray-500 mt-1">Quản lý cấu hình và thành viên workspace</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{currentWorkspace?.name}</p>
+                        <p className="text-xs text-gray-400">ID: {currentWorkspace?.id}</p>
+                    </div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8">
+            <div className="bg-white rounded-xl border border-gray-100 px-4 shadow-sm">
+                <nav className="flex space-x-8">
                     <button
                         onClick={() => setActiveTab('general')}
                         className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
                             activeTab === 'general'
-                                ? 'border-indigo-500 text-indigo-600'
+                                ? 'border-gray-900 text-gray-900'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
@@ -124,7 +130,7 @@ export default function CompanySettingsPage() {
                             onClick={() => setActiveTab('members')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
                                 activeTab === 'members'
-                                    ? 'border-indigo-500 text-indigo-600'
+                                    ? 'border-gray-900 text-gray-900'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
@@ -136,13 +142,13 @@ export default function CompanySettingsPage() {
                             onClick={() => setActiveTab('requests')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                                 activeTab === 'requests'
-                                    ? 'border-indigo-500 text-indigo-600'
+                                    ? 'border-gray-900 text-gray-900'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
                             Yêu cầu gia nhập
                             {joinRequests?.length > 0 && (
-                                <span className="bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs font-bold">
+                                <span className="bg-red-50 text-red-600 py-0.5 px-2 rounded-full text-xs font-medium">
                                     {joinRequests.length}
                                 </span>
                             )}
@@ -153,37 +159,35 @@ export default function CompanySettingsPage() {
 
             {/* Tab: Cài đặt chung */}
             {activeTab === 'general' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 animate-fade-in">
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-4">Lưu trữ Tài liệu (Google Drive)</h2>
-                        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50">
-                            <div className="flex items-center gap-4">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" className="w-10 h-10" />
-                                <div>
-                                    <div className="font-semibold text-gray-800">Kết nối Google Drive</div>
-                                    <div className="text-sm text-gray-500">
-                                        {driveStatus?.connected ? 'Đã kết nối. Tất cả file tải lên sẽ được lưu vào Google Drive.' : 'Chưa kết nối. Không thể tải file lên nếu chưa kết nối.'}
-                                    </div>
+                <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm animate-fade-in">
+                    <h2 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">Lưu trữ Tài liệu (Google Drive)</h2>
+                    <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl bg-gray-50">
+                        <div className="flex items-center gap-4">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" className="w-10 h-10" />
+                            <div>
+                                <div className="font-medium text-gray-900">Kết nối Google Drive</div>
+                                <div className="text-sm text-gray-500">
+                                    {driveStatus?.connected ? 'Đã kết nối. File tải lên sẽ được lưu vào Google Drive.' : 'Chưa kết nối. Không thể tải file lên nếu chưa kết nối.'}
                                 </div>
                             </div>
-                            {driveStatus?.connected ? (
-                                <button
-                                    onClick={() => disconnectDriveMutation.mutate()}
-                                    disabled={disconnectDriveMutation.isPending}
-                                    className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 disabled:opacity-50"
-                                >
-                                    {disconnectDriveMutation.isPending ? 'Đang xử lý...' : 'Ngắt kết nối'}
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => connectDriveMutation.mutate()}
-                                    disabled={connectDriveMutation.isPending}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50"
-                                >
-                                    {connectDriveMutation.isPending ? 'Đang chuyển hướng...' : 'Kết nối ngay'}
-                                </button>
-                            )}
                         </div>
+                        {driveStatus?.connected ? (
+                            <button
+                                onClick={() => disconnectDriveMutation.mutate()}
+                                disabled={disconnectDriveMutation.isPending}
+                                className="px-4 py-2 bg-red-50 text-red-700 rounded-lg font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+                            >
+                                {disconnectDriveMutation.isPending ? 'Đang xử lý...' : 'Ngắt kết nối'}
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => connectDriveMutation.mutate()}
+                                disabled={connectDriveMutation.isPending}
+                                className="px-4 py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                            >
+                                {connectDriveMutation.isPending ? 'Đang chuyển hướng...' : 'Kết nối ngay'}
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -195,11 +199,11 @@ export default function CompanySettingsPage() {
 
             {/* Tab: Yêu cầu gia nhập */}
             {activeTab === 'requests' && canManageRequests && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-fade-in">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">Danh sách chờ duyệt</h2>
+                <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm animate-fade-in">
+                    <h2 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">Danh sách chờ duyệt</h2>
                     
                     {isRequestsLoading ? (
-                        <div className="py-8 flex justify-center"><i className="fa-solid fa-spinner fa-spin text-indigo-500 text-xl" /></div>
+                        <div className="py-8 flex justify-center"><i className="fa-solid fa-spinner fa-spin text-gray-400 text-xl" /></div>
                     ) : joinRequests?.length === 0 ? (
                         <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-200">
@@ -215,14 +219,14 @@ export default function CompanySettingsPage() {
                                         {req.avatarUrl ? (
                                             <img src={req.avatarUrl} alt={req.fullName} className="w-10 h-10 rounded-full object-cover" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                <span className="text-indigo-600 font-bold text-sm">
+                                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                                <span className="text-gray-600 font-medium text-sm">
                                                     {req.fullName?.charAt(0)?.toUpperCase()}
                                                 </span>
                                             </div>
                                         )}
                                         <div>
-                                            <p className="font-semibold text-gray-900 text-sm">{req.fullName}</p>
+                                            <p className="font-medium text-gray-900 text-sm">{req.fullName}</p>
                                             <p className="text-xs text-gray-500">{req.email}</p>
                                         </div>
                                     </div>
@@ -230,7 +234,7 @@ export default function CompanySettingsPage() {
                                         <button
                                             onClick={() => approveRequestMutation.mutate(req.requestId)}
                                             disabled={approveRequestMutation.isPending || rejectRequestMutation.isPending}
-                                            className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors"
+                                            className="px-3 py-1.5 bg-gray-900 text-white hover:bg-gray-800 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                                         >
                                             Duyệt
                                         </button>

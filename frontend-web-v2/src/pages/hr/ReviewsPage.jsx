@@ -18,38 +18,46 @@ export default function ReviewsPage() {
     const canApprove = hasPermission('reviewApprove');
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Đánh giá nhân viên</h1>
-                    <p className="text-gray-500 text-sm">Quản lý hiệu suất và đánh giá định kỳ</p>
+            <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-clipboard-check text-gray-400 text-xl" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-semibold text-gray-900">Đánh giá nhân viên</h1>
+                            <p className="text-sm text-gray-500 mt-0.5">Quản lý hiệu suất và đánh giá định kỳ</p>
+                        </div>
+                    </div>
+                    {isManager && (
+                        <button onClick={() => setShowCreateModal(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-sm transition-colors">
+                            <i className="fa-solid fa-plus mr-2" /> Tạo đánh giá
+                        </button>
+                    )}
                 </div>
-                {isManager && (
-                    <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-                        <i className="fa-solid fa-plus mr-2" /> Tạo đánh giá
-                    </button>
-                )}
             </div>
 
             {/* Stats Cards */}
             <ReviewStats />
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
+            <div className="bg-white rounded-xl border border-gray-100 px-4 shadow-sm">
                 <nav className="flex space-x-8" aria-label="Tabs">
                     <button
                         onClick={() => setActiveTab('all-reviews')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all-reviews' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all-reviews' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         Tất cả đánh giá
                     </button>
                     {canApprove && (
                         <button
                             onClick={() => setActiveTab('pending-approval')}
-                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending-approval' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'pending-approval' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                         >
-                            Chờ duyệt <span className="ml-2 bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-xs">!</span>
+                            Chờ duyệt
+                            <span className="ml-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-xs font-medium">!</span>
                         </button>
                     )}
                 </nav>
@@ -103,40 +111,38 @@ function ReviewStats() {
                 label="Tổng đánh giá"
                 value={stats.total}
                 icon="fa-clipboard-list"
-                color="bg-indigo-100 text-indigo-600"
             />
             <StatCard
                 label="Chờ duyệt"
                 value={stats.pending}
                 icon="fa-clock"
-                color="bg-orange-100 text-orange-600"
+                accent
             />
             <StatCard
                 label="Đã duyệt"
                 value={stats.approved}
                 icon="fa-check-circle"
-                color="bg-green-100 text-green-600"
+                success
             />
             <StatCard
                 label="Bản nháp"
                 value={stats.inProgress}
                 icon="fa-file-pen"
-                color="bg-gray-100 text-gray-600"
             />
         </div>
     );
 }
 
-function StatCard({ label, value, icon, color }) {
+function StatCard({ label, value, icon, accent, success }) {
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">{label}</p>
+                    <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
                 </div>
-                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
-                    <i className={`fa-solid ${icon}`} />
+                <div className={`w-10 h-10 rounded-lg ${accent ? 'bg-amber-50' : success ? 'bg-green-50' : 'bg-gray-100'} flex items-center justify-center`}>
+                    <i className={`fa-solid ${icon} ${accent ? 'text-amber-500' : success ? 'text-green-500' : 'text-gray-400'}`} />
                 </div>
             </div>
         </div>
@@ -186,11 +192,11 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             accessorKey: 'employeeName',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm">
                         {(row.employeeName || row.employee?.fullName || 'N')?.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <div className="font-semibold text-gray-900">{row.employeeName || row.employee?.fullName}</div>
+                        <div className="font-medium text-gray-900">{row.employeeName || row.employee?.fullName}</div>
                         <div className="text-xs text-gray-500">{row.employee?.position?.name || ''}</div>
                     </div>
                 </div>
@@ -200,7 +206,7 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             header: 'Kỳ đánh giá',
             accessorKey: 'reviewPeriod',
             cell: (row) => (
-                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-sm font-medium">
+                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
                     {row.reviewPeriod}
                     {row.projectName && (
                         <span className="ml-1 text-xs text-gray-400" title={row.projectName}>
@@ -238,50 +244,45 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
             header: '',
             accessorKey: 'actions',
             cell: (row) => (
-                <div className="flex justify-end gap-2">
-                    {/* View */}
+                <div className="flex justify-end gap-1">
                     <button
                         onClick={() => onEdit(row)}
-                        className="btn-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded px-2 py-1"
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
                         title="Xem chi tiết"
                     >
-                        <i className="fa-solid fa-eye" />
+                        <i className="fa-solid fa-eye text-sm" />
                     </button>
 
-                    {/* Edit (for IN_PROGRESS only) */}
                     {isManager && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => onEdit(row)}
-                            className="btn-xs bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded px-2 py-1"
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
                             title="Chỉnh sửa"
                         >
-                            <i className="fa-solid fa-pen" />
+                            <i className="fa-solid fa-pen text-sm" />
                         </button>
                     )}
 
-                    {/* Submit for approval (for IN_PROGRESS) */}
                     {isManager && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => submitMutation.mutate(row.reviewId || row.id)}
-                            className="btn-xs bg-orange-100 text-orange-600 hover:bg-orange-200 rounded px-2 py-1"
+                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all"
                             title="Gửi duyệt"
                         >
-                            <i className="fa-solid fa-paper-plane" />
+                            <i className="fa-solid fa-paper-plane text-sm" />
                         </button>
                     )}
 
-                    {/* Approve (for PENDING) */}
                     {canApprove && row.status === 'PENDING' && (
                         <button
                             onClick={() => approveMutation.mutate(row.reviewId || row.id)}
-                            className="btn-xs bg-green-100 text-green-600 hover:bg-green-200 rounded px-2 py-1"
+                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all"
                             title="Duyệt"
                         >
-                            <i className="fa-solid fa-check" />
+                            <i className="fa-solid fa-check text-sm" />
                         </button>
                     )}
 
-                    {/* Delete (for IN_PROGRESS only) */}
                     {isManager && row.status === 'IN_PROGRESS' && (
                         <button
                             onClick={() => {
@@ -289,10 +290,10 @@ function AllReviewsTable({ onEdit, isManager, canApprove }) {
                                     deleteMutation.mutate(row.reviewId || row.id);
                                 }
                             }}
-                            className="btn-xs bg-red-100 text-red-600 hover:bg-red-200 rounded px-2 py-1"
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
                             title="Xóa"
                         >
-                            <i className="fa-solid fa-trash" />
+                            <i className="fa-solid fa-trash text-sm" />
                         </button>
                     )}
                 </div>
@@ -314,7 +315,12 @@ function PendingReviewsTable({ canApprove }) {
 
     const { data: reviews, isLoading } = useQuery({
         queryKey: ['pending-reviews'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.PENDING)).data,
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
+            return res.data || [];
+        },
+        enabled: canApprove,
+        retry: false,
     });
 
     const approveMutation = useMutation({
@@ -353,11 +359,11 @@ function PendingReviewsTable({ canApprove }) {
             accessorKey: 'employeeName',
             cell: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm">
                         {(row.employeeName || row.employee?.fullName || 'N')?.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <div className="font-semibold text-gray-900">{row.employeeName || row.employee?.fullName}</div>
+                        <div className="font-medium text-gray-900">{row.employeeName || row.employee?.fullName}</div>
                         <div className="text-xs text-gray-500">{row.employee?.department?.name}</div>
                     </div>
                 </div>
@@ -366,7 +372,7 @@ function PendingReviewsTable({ canApprove }) {
         {
             header: 'Kỳ đánh giá',
             accessorKey: 'reviewPeriod',
-            cell: (row) => <span className="font-medium">{row.reviewPeriod}</span>
+            cell: (row) => <span className="font-medium text-gray-700">{row.reviewPeriod}</span>
         },
         {
             header: 'Loại',
@@ -386,26 +392,26 @@ function PendingReviewsTable({ canApprove }) {
             header: 'Người đánh giá',
             accessorKey: 'reviewer',
             cell: (row) => (
-                <span className="text-gray-600 dark:text-gray-400">{row.reviewer?.fullName || row.reviewerName || '-'}</span>
+                <span className="text-gray-600">{row.reviewer?.fullName || row.reviewerName || '-'}</span>
             )
         },
         {
             header: 'Thao tác',
             accessorKey: 'actions',
             cell: (row) => canApprove && (
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                     <button
                         onClick={() => approveMutation.mutate(row.reviewId || row.id)}
                         disabled={approveMutation.isPending}
-                        className="btn-xs bg-green-500 text-white hover:bg-green-600 rounded px-3 py-1 flex items-center gap-1"
+                        className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
-                        <i className="fa-solid fa-check" /> Duyệt
+                        <i className="fa-solid fa-check mr-1" /> Duyệt
                     </button>
                     <button
                         onClick={() => setRejectingId(row.reviewId || row.id)}
-                        className="btn-xs bg-red-100 text-red-600 hover:bg-red-200 rounded px-3 py-1 flex items-center gap-1"
+                        className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors"
                     >
-                        <i className="fa-solid fa-xmark" /> Từ chối
+                        <i className="fa-solid fa-xmark mr-1" /> Từ chối
                     </button>
                 </div>
             )
@@ -424,29 +430,29 @@ function PendingReviewsTable({ canApprove }) {
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setRejectingId(null)} />
                     <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-gray-800">Từ chối đánh giá</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">Từ chối đánh giá</h3>
                             <button onClick={() => setRejectingId(null)} className="text-gray-400 hover:text-gray-600">
                                 <i className="fa-solid fa-xmark" />
                             </button>
                         </div>
                         <div className="p-6">
-                            <label className="label-required">Lý do từ chối</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Lý do từ chối <span className="text-red-500">*</span></label>
                             <textarea
                                 value={rejectReason}
                                 onChange={(e) => setRejectReason(e.target.value)}
-                                className="input w-full"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-300 resize-none bg-white"
                                 rows="3"
                                 placeholder="Nhập lý do từ chối..."
                             />
                         </div>
                         <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
-                            <button onClick={() => setRejectingId(null)} className="btn-ghost">Hủy</button>
+                            <button onClick={() => setRejectingId(null)} className="px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">Hủy</button>
                             <button
                                 onClick={handleReject}
                                 disabled={rejectMutation.isPending}
-                                className="btn-danger"
+                                className="px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
                             >
-                                {rejectMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : 'Xác nhận từ chối'}
+                                {rejectMutation.isPending ? <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang xử lý...</> : 'Xác nhận từ chối'}
                             </button>
                         </div>
                     </div>
@@ -460,39 +466,39 @@ function PendingReviewsTable({ canApprove }) {
 function StatusBadge({ status }) {
     const styles = {
         IN_PROGRESS: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đang đánh giá' },
-        PENDING: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Chờ duyệt' },
-        APPROVED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đã duyệt' },
-        REJECTED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Từ chối' },
+        PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Chờ duyệt' },
+        APPROVED: { bg: 'bg-green-50', text: 'text-green-700', label: 'Đã duyệt' },
+        REJECTED: { bg: 'bg-red-50', text: 'text-red-700', label: 'Từ chối' },
     };
     const s = styles[status] || styles.IN_PROGRESS;
-    return <span className={`badge ${s.bg} ${s.text} text-xs px-2 py-1 rounded-full`}>{s.label}</span>;
+    return <span className={`inline-flex items-center gap-1 ${s.bg} ${s.text} text-xs px-2 py-1 rounded-md font-medium`}>{s.label}</span>;
 }
 
 function ReviewTypeBadge({ type }) {
     const styles = {
-        SPRINT_REVIEW:      { bg: 'bg-indigo-50',  text: 'text-indigo-700',  label: 'Sprint Review' },
-        PROJECT_COMPLETION: { bg: 'bg-purple-50',  text: 'text-purple-700', label: 'Khết thúc dự án' },
-        PERIODIC:           { bg: 'bg-cyan-50',    text: 'text-cyan-700',   label: 'Định kỳ' },
-        PROJECT:            { bg: 'bg-teal-50',    text: 'text-teal-700',   label: 'Dự án' },
-        PROMOTION:          { bg: 'bg-green-50',   text: 'text-green-700',  label: 'Thăng chức' },
+        SPRINT_REVIEW:      { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Sprint Review' },
+        PROJECT_COMPLETION: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Kết thúc dự án' },
+        PERIODIC:           { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Định kỳ' },
+        PROJECT:            { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Dự án' },
+        PROMOTION:          { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Thăng chức' },
     };
-    const s = styles[type] || { bg: 'bg-gray-50', text: 'text-gray-700', label: type };
-    return <span className={`${s.bg} ${s.text} text-xs px-2 py-1 rounded font-medium`}>{s.label}</span>;
+    const s = styles[type] || { bg: 'bg-gray-100', text: 'text-gray-700', label: type };
+    return <span className={`inline-flex items-center gap-1 ${s.bg} ${s.text} text-xs px-2 py-1 rounded-md font-medium`}>{s.label}</span>;
 }
 
 function RankBadge({ rank }) {
     const styles = {
-        A: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
-        B: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300' },
-        C: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
-        D: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
+        A: { bg: 'bg-green-50', text: 'text-green-700' },
+        B: { bg: 'bg-gray-100', text: 'text-gray-700' },
+        C: { bg: 'bg-amber-50', text: 'text-amber-700' },
+        D: { bg: 'bg-red-50', text: 'text-red-700' },
     };
-    const s = styles[rank] || { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
+    const s = styles[rank] || { bg: 'bg-gray-100', text: 'text-gray-700' };
 
     if (!rank) return <span className="text-gray-400">-</span>;
 
     return (
-        <span className={`${s.bg} ${s.text} border ${s.border} font-bold text-sm w-8 h-8 flex items-center justify-center rounded-full`}>
+        <span className={`${s.bg} ${s.text} font-semibold text-sm w-8 h-8 flex items-center justify-center rounded-full`}>
             {rank}
         </span>
     );
@@ -502,11 +508,11 @@ function ScoreBadge({ score }) {
     if (score === '-' || score == null) return <span className="text-gray-400">-</span>;
 
     const numScore = parseFloat(score);
-    let color = 'text-gray-600';
+    let color = 'text-gray-700';
     if (numScore >= 8) color = 'text-green-600';
-    else if (numScore >= 6) color = 'text-indigo-600';
-    else if (numScore >= 4) color = 'text-yellow-600';
+    else if (numScore >= 6) color = 'text-gray-900';
+    else if (numScore >= 4) color = 'text-amber-600';
     else color = 'text-red-600';
 
-    return <span className={`font-bold ${color}`}>{score}</span>;
+    return <span className={`font-semibold ${color}`}>{score}</span>;
 }
