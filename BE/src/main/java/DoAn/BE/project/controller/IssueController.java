@@ -1,7 +1,7 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.project.dto.CreateIssueRequest;
 import DoAn.BE.project.dto.IssueDTO;
 import DoAn.BE.project.dto.UpdateIssueRequest;
@@ -23,17 +23,18 @@ import org.springframework.data.domain.Pageable;
 @RequestMapping("/api/issues")
 @RequiredArgsConstructor
 @Slf4j
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class IssueController {
 
     private final IssueService issueService;
+    private final AccessControlService accessControlService;
 
     @PostMapping
     @Transactional
     public ResponseEntity<IssueDTO> createIssue(
             @Valid @RequestBody CreateIssueRequest request,
             Authentication authentication) {
+        accessControlService.checkProjectManageIssuesPermission();
         log.info("Tạo issue mới - Request: {}", request);
         User user = (User) authentication.getPrincipal();
         IssueDTO issue = issueService.createIssue(request, user.getUserId());
@@ -56,6 +57,7 @@ public class IssueController {
             @PathVariable Long issueId,
             @Valid @RequestBody UpdateIssueRequest request,
             Authentication authentication) {
+        accessControlService.checkProjectManageIssuesPermission();
         User user = (User) authentication.getPrincipal();
         IssueDTO issue = issueService.updateIssue(issueId, request, user.getUserId());
         return ResponseEntity.ok(issue);
@@ -66,6 +68,7 @@ public class IssueController {
     public ResponseEntity<Void> deleteIssue(
             @PathVariable Long issueId,
             Authentication authentication) {
+        accessControlService.checkProjectManageIssuesPermission();
         User user = (User) authentication.getPrincipal();
         issueService.deleteIssue(issueId, user.getUserId());
         return ResponseEntity.noContent().build();
@@ -135,9 +138,10 @@ public class IssueController {
     public ResponseEntity<IssueDTO> changeIssueStatus(
             @PathVariable Long issueId,
             @PathVariable Integer statusId,
+            @RequestParam(required = false) Integer orderIndex,
             Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        IssueDTO issue = issueService.changeIssueStatus(issueId, statusId, user.getUserId());
+        IssueDTO issue = issueService.changeIssueStatus(issueId, statusId, orderIndex, user.getUserId());
         return ResponseEntity.ok(issue);
     }
 }

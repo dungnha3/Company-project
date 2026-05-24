@@ -22,6 +22,7 @@ public class UpdateIssueRequest {
 
     private Integer statusId;
     private Priority priority;
+    private DoAn.BE.project.entity.Issue.IssueType issueType;
     private Long assigneeId;
     private BigDecimal estimatedHours;
     private BigDecimal actualHours;

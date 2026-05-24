@@ -23,7 +23,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@Transactional(readOnly = true)
 public class AuthController {
 
     private final AuthService authService;

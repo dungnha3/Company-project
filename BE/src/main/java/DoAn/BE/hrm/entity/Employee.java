@@ -19,16 +19,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @Table(name = "employees", indexes = {
         @Index(name = "idx_emp_user", columnList = "user_id"),
-        @Index(name = "idx_emp_status", columnList = "status"),
-        @Index(name = "idx_emp_department", columnList = "department_id"),
-        @Index(name = "idx_emp_position", columnList = "position_id")
+        @Index(name = "idx_emp_status", columnList = "status")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@ToString(exclude = { "user", "leaveRequests", "department", "position" })
+@ToString(exclude = { "user", "leaveRequests" })
 @Filter(name = "tenantFilter", condition = "company_id = :companyId")
 public class Employee extends TenantScopedEntity {
 
@@ -79,19 +77,16 @@ public class Employee extends TenantScopedEntity {
     @Column(name = "status", length = 50)
     private EmployeeStatus status = EmployeeStatus.ACTIVE;
 
-    @ManyToOne
-    @JoinColumn(name = "department_id")
-    private Department department;
 
-    @ManyToOne
-    @JoinColumn(name = "position_id")
-    private Position position;
 
     @Column(name = "base_salary", precision = 15, scale = 2)
     private BigDecimal baseSalary = BigDecimal.ZERO;
 
     @Column(name = "allowance", precision = 15, scale = 2)
     private BigDecimal allowance = BigDecimal.ZERO;
+
+    @Column(name = "leave_balance")
+    private Integer leaveBalance = 12;
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore

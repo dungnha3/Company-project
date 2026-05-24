@@ -8,7 +8,6 @@ const SEARCH_CATEGORIES = [
     { id: 'employees', label: 'Nhân viên', icon: 'fa-users', color: 'text-indigo-500' },
     { id: 'projects', label: 'Dự án', icon: 'fa-folder-open', color: 'text-purple-500' },
     { id: 'issues', label: 'Công việc', icon: 'fa-list-check', color: 'text-green-500' },
-    { id: 'departments', label: 'Phòng ban', icon: 'fa-building', color: 'text-orange-500' },
 ];
 
 const QUICK_ACTIONS = [
@@ -37,7 +36,6 @@ export default function GlobalSearch({ isOpen, onClose }) {
             return {
                 employees: empRes.status === 'fulfilled' ? empRes.value.data : [],
                 projects: [],
-                departments: [],
                 issues: [],
             };
         },
@@ -90,19 +88,6 @@ export default function GlobalSearch({ isOpen, onClose }) {
                 p => p.name,
                 p => `${p.status} • ${p.memberCount || 0} members`,
                 p => `/app/projects/${p.id}`
-            );
-        }
-
-        // Departments
-        if (activeCategory === 'all' || activeCategory === 'departments') {
-            mapItems(
-                searchResults?.departments,
-                'department',
-                'fa-building',
-                'text-orange-500',
-                d => d.name,
-                d => `${d.employeeCount || 0} nhân viên`,
-                d => '/app/hr/departments'
             );
         }
 

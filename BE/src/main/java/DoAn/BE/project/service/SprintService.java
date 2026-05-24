@@ -43,10 +43,8 @@ public class SprintService {
 
     @Transactional
     public SprintDTO createSprint(CreateSprintRequest request, User currentUser) {
-        // Kiểm tra quyền truy cập project
-        if (!accessControlService.canAccessProjects(currentUser)) {
-            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
-        }
+        // Kiểm tra quyền quản lý sprint
+        accessControlService.checkProjectManageSprintsPermission();
 
         log.info("User {} tạo sprint mới cho project {}", currentUser.getUsername(), request.getProjectId());
         Project project = projectRepository.findById(request.getProjectId())
@@ -93,9 +91,7 @@ public class SprintService {
 
     @Transactional(readOnly = true)
     public SprintDTO getSprintById(Long sprintId, User currentUser) {
-        if (!accessControlService.canAccessProjects(currentUser)) {
-            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
-        }
+        accessControlService.checkProjectManageSprintsPermission();
 
         Sprint sprint = sprintRepository.findById(sprintId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
@@ -111,9 +107,7 @@ public class SprintService {
 
     @Transactional(readOnly = true)
     public List<SprintDTO> getProjectSprints(Long projectId, User currentUser) {
-        if (!accessControlService.canAccessProjects(currentUser)) {
-            throw new ForbiddenException("Bạn không có quyền truy cập dự án");
-        }
+        accessControlService.checkProjectManageSprintsPermission();
 
         // Kiểm tra quyền truy cập project
         validateProjectAccess(projectId, currentUser.getUserId());

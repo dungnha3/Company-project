@@ -47,4 +47,18 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
 
     // Check if user owns this timelog
     boolean existsByLogIdAndUser_UserId(Long logId, Long userId);
+
+    // Sum hours by user in a specific project (for TeamTab member stats)
+    @Query("SELECT COALESCE(SUM(t.loggedHours), 0) FROM TimeLog t " +
+            "WHERE t.user.userId = :userId AND t.issue.project.projectId = :projectId")
+    java.math.BigDecimal sumHoursByUserAndProject(
+            @Param("userId") Long userId,
+            @Param("projectId") Long projectId);
+
+    // Sum all hours for a user in a company
+    @Query("SELECT COALESCE(SUM(t.loggedHours), 0) FROM TimeLog t " +
+            "WHERE t.user.userId = :userId AND t.company.companyId = :companyId")
+    java.math.BigDecimal sumHoursByUser(
+            @Param("userId") Long userId,
+            @Param("companyId") Long companyId);
 }

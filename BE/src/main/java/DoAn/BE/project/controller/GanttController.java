@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import DoAn.BE.project.dto.GanttDto;
 import DoAn.BE.project.service.GanttService;
@@ -21,7 +20,6 @@ import java.util.List;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Gantt Chart", description = "Gantt chart visualization and management")
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class GanttController {
 

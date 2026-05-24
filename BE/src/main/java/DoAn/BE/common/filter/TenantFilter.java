@@ -32,22 +32,7 @@ public class TenantFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            // [DUAL WORKSPACE] Check workspace type header first
-            String workspaceType = request.getHeader("X-Workspace-Type");
 
-            if ("PERSONAL".equals(workspaceType)) {
-                // Personal workspace mode - no company context needed
-                if (DoAn.BE.common.util.SecurityUtil.isAuthenticated()) {
-                    Long userId = DoAn.BE.common.util.SecurityUtil.getCurrentUserId();
-                    TenantContext.setPersonalMode(true);
-                    TenantContext.setCurrentUserId(userId);
-                    log.debug("Personal mode set for user {}", userId);
-                }
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // [COMPANY MODE] Lấy companyId từ header
             String companyIdHeader = request.getHeader(DoAn.BE.common.util.AppConstants.HEADER_COMPANY_ID);
 
             if (companyIdHeader != null && !companyIdHeader.isEmpty()) {
@@ -87,12 +72,7 @@ public class TenantFilter extends OncePerRequestFilter {
                             }
                         }
                     } else {
-                        // Case: Unauthenticated request (Public API) but has Company Header?
-                        // Usually Public APIs don't need tenant context unless strictly required.
-                        // For safety, we can allow proceed but WITHOUT context, or set context if we
-                        // trust (Risky).
-                        // Here we choose to NOT set context if not authenticated to prevent data leak,
-                        // unless it's a specific public tenant endpoint (rare).
+                        
                         log.debug("Unauthenticated request with Company ID header. Context not set.");
                     }
 
@@ -106,7 +86,6 @@ public class TenantFilter extends OncePerRequestFilter {
             // Xóa TenantContext sau khi xử lý xong
             TenantContext.clear();
             // Xóa cache của các services để tránh memory leak
-            DoAn.BE.common.service.FeatureFlagService.clearCache();
             DoAn.BE.common.service.AccessControlService.clearCache();
         }
     }

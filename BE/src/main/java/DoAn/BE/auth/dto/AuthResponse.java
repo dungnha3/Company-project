@@ -3,7 +3,7 @@ package DoAn.BE.auth.dto;
 import java.util.List;
 
 import DoAn.BE.company.entity.CompanyRole;
-import DoAn.BE.company.entity.Plan;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +18,7 @@ public class AuthResponse {
     private String tokenType = "Bearer";
     private Long expiresIn; // Thời gian sống của token (seconds)
     private UserInfo user;
-    private PersonalWorkspaceInfo personalWorkspace; // [NEW] Personal workspace info
+
     private List<CompanyDTO> companies; // Danh sách công ty user thuộc về
     private Long selectedCompanyId; // Company đã chọn (nếu có)
     private Boolean requiresTwoFactor; // true nếu cần nhập mã 2FA
@@ -34,18 +34,8 @@ public class AuthResponse {
         private String email;
         private Boolean isActive;
         private Boolean isSystemAdmin; // [SAAS] Flag để Frontend phân biệt System Admin
-        private Plan personalPlan; // [NEW] User's personal subscription plan
-        private Boolean twoFactorEnabled;
-    }
 
-    // [NEW] Thông tin Personal Workspace
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class PersonalWorkspaceInfo {
-        private Long workspaceId;
-        private String name;
-        private Plan plan;
+        private Boolean twoFactorEnabled;
     }
 
     // Thông tin công ty

@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import DoAn.BE.user.entity.User;
-import DoAn.BE.hrm.entity.Department;
+
 
 @Entity
 @Table(name = "projects", indexes = {
@@ -16,8 +16,7 @@ import DoAn.BE.hrm.entity.Department;
         @jakarta.persistence.Index(name = "idx_proj_status", columnList = "status"),
         // Index cho query: findByCreatedBy (User's created projects)
         @jakarta.persistence.Index(name = "idx_proj_createdby", columnList = "created_by"),
-        // Index cho query: findByPhongBan (Department's projects)
-        @jakarta.persistence.Index(name = "idx_proj_department", columnList = "department_id"),
+
         // Index cho query: findByIsActive (Active filter)
         @jakarta.persistence.Index(name = "idx_proj_active", columnList = "is_active")
 })
@@ -60,10 +59,6 @@ public class Project extends TenantScopedEntity {
     @ManyToOne
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
-
-    @ManyToOne
-    @JoinColumn(name = "department_id")
-    private Department department;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;

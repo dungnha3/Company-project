@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useWebSocketStore } from '@shared/stores/websocketStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -32,31 +31,8 @@ export default function NotificationDropdown() {
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { subscribe, unsubscribe } = useWebSocketStore();
-    const { workspaceType } = useWorkspaceStore();
-    const { showToast } = useToast();
+    const workspaceType = useWorkspaceStore((state) => state.workspaceType);
     const isCompanyWorkspace = workspaceType === 'COMPANY';
-
-    // Handle incoming real-time notification
-    const handleRealtimeNotification = useCallback((message) => {
-        // Refresh notification queries
-        queryClient.invalidateQueries(['unread-count']);
-        queryClient.invalidateQueries(['notifications-preview']);
-
-        // Extract notification data from WebSocket message
-        const data = message?.data;
-        const title = data?.title || message?.content || 'Bạn có thông báo mới';
-        const content = data?.content || '';
-
-        // Show toast with actual notification content
-        showToast(
-            content ? `${title}: ${content}` : title,
-            'info'
-        );
-
-        // Play notification sound
-        playNotificationSound();
-    }, [queryClient, showToast]);
 
     // Close on click outside
     useEffect(() => {
@@ -67,15 +43,10 @@ export default function NotificationDropdown() {
         };
         document.addEventListener('mousedown', handleClickOutside);
 
-        // Subscribe to real-time notifications
-        const topic = '/user/queue/notifications';
-        subscribe(topic, handleRealtimeNotification);
-
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
-            unsubscribe(topic);
         };
-    }, [handleRealtimeNotification]);
+    }, []);
 
     const { data: unreadCount = 0 } = useQuery({
         queryKey: ['unread-count'],

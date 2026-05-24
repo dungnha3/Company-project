@@ -3,54 +3,25 @@ package DoAn.BE.common.service;
 import org.springframework.stereotype.Service;
 
 import DoAn.BE.company.entity.CompanyMember;
-import DoAn.BE.company.entity.Plan;
+
 import DoAn.BE.company.entity.UserPermissions;
 
 @Service
 public class PermissionService {
 
-    private final DoAn.BE.company.service.CompanyService companyService;
-
-    public PermissionService(
-            @org.springframework.context.annotation.Lazy DoAn.BE.company.service.CompanyService companyService) {
-        this.companyService = companyService;
-    }
 
     public boolean hasPermission(CompanyMember member, String feature, String action) {
         if (member == null || member.getRoles() == null || member.getPermissions() == null) {
             return false;
         }
 
-        // Owner/Admin luôn có quyền truy cập (Cơ chế an toàn)
         if (member.hasAnyRole(DoAn.BE.company.entity.CompanyRole.OWNER,
                 DoAn.BE.company.entity.CompanyRole.COMPANY_ADMIN)) {
-            // NHƯNG vẫn cần check Plan tier - Admin không thể bypass Plan limits
-            if (!isPlanFeatureEnabled(member.getCompany().getPlan(), feature)) {
-                return false;
-            }
             return true;
         }
 
-        // CẤP ĐỘ 0: KIỂM TRA PLAN TIER (BẮT BUỘC)
-        Plan companyPlan = member.getCompany().getPlan();
-        if (companyPlan == null) {
-            companyPlan = Plan.FREE; // Default to FREE if null
-        }
-        if (!isPlanFeatureEnabled(companyPlan, feature)) {
-            return false;
-        }
 
-        // CẤP ĐỘ 1: KIỂM TRA CẤU HÌNH CÔNG TY (CỜ TÍNH NĂNG)
-        // Lấy cấu hình của công ty từ cache/db
-        DoAn.BE.company.entity.CompanySettings settings = companyService
-                .getSettingsCached(member.getCompany().getCompanyId());
 
-        // Kiểm tra xem tính năng này có được bật cho công ty không
-        if (!isFeatureEnabledForCompany(settings, feature)) {
-            return false;
-        }
-
-        // CẤP ĐỘ 2: KIỂM TRA QUYỀN NGƯỜI DÙNG (CHI TIẾT)
         UserPermissions p = member.getPermissions();
 
         // Kiểm tra explicit permission từ DB trước
@@ -87,52 +58,18 @@ public class PermissionService {
                 return p.isHrCreateEmployee();
             case "HR.DELETE_EMPLOYEE":
                 return p.isHrDeleteEmployee();
-            case "HR.MANAGE_CONTRACTS":
-                return p.isHrManageContracts();
             case "HR.MANAGE_REVIEWS":
                 return p.isHrManageReviews();
-            case "HR.VIEW_DEPARTMENTS":
-                return p.isHrViewDepartments();
-            case "HR.MANAGE_DEPARTMENTS":
-                return p.isHrManageDepartments();
-            case "HR.VIEW_POSITIONS":
-                return p.isHrViewPositions();
-            case "HR.MANAGE_POSITIONS":
-                return p.isHrManagePositions();
+
             case "HR.VIEW_DASHBOARD":
                 return p.isHrViewDashboard();
             case "HR.EXPORT":
                 return p.isHrExport();
-            // Contract
-            case "CONTRACT.VIEW":
-                return p.isContractView();
-            case "CONTRACT.CREATE":
-                return p.isContractCreate();
-            case "CONTRACT.EDIT":
-                return p.isContractEdit();
-            case "CONTRACT.DELETE":
-                return p.isContractDelete();
-            case "CONTRACT.RENEW":
-                return p.isContractRenew();
-            // Salary
-            case "SALARY.VIEW":
-                return p.isSalaryView();
-            case "SALARY.CALCULATE":
-                return p.isSalaryCalculate();
-            case "SALARY.APPROVE":
-                return p.isSalaryApprove();
-            case "SALARY.EXPORT":
-                return p.isSalaryExport();
             // Leave
             case "LEAVE.APPROVE":
                 return p.isLeaveApprove();
             case "LEAVE.VIEW_ALL":
                 return p.isLeaveViewAll();
-            // Attendance
-            case "ATTENDANCE.VIEW_ALL":
-                return p.isAttendanceViewAll();
-            case "ATTENDANCE.EDIT":
-                return p.isAttendanceEdit();
             // Review
             case "REVIEW.VIEW_ALL":
                 return p.isReviewViewAll();
@@ -140,13 +77,9 @@ public class PermissionService {
                 return p.isReviewCreate();
             case "REVIEW.APPROVE":
                 return p.isReviewApprove();
-            // OKR
-            case "OKR.MANAGE":
-                return p.isOkrManage();
-            // Onboarding
-            case "ONBOARDING.MANAGE":
-                return p.isOnboardingManage();
             // Project
+            case "PROJECT.VIEW":
+                return p.isProjectView();
             case "PROJECT.CREATE":
                 return p.isProjectCreate();
             case "PROJECT.MANAGE_ALL":
@@ -178,27 +111,7 @@ public class PermissionService {
                 return p.isCalendarView();
             case "CALENDAR.MANAGE":
                 return p.isCalendarManage();
-            // Chat
-            case "CHAT.CREATE_GROUP":
-                return p.isChatCreateGroup();
-            case "CHAT.SEND_MESSAGE":
-                return p.isChatSendMessage();
-            case "CHAT.SHARE_FILE":
-                return p.isChatShareFile();
-            // Storage
-            case "STORAGE.UPLOAD":
-                return p.isStorageUpload();
-            case "STORAGE.DELETE":
-                return p.isStorageDelete();
-            case "STORAGE.SHARE":
-                return p.isStorageShare();
-            case "STORAGE.MANAGE_FOLDERS":
-                return p.isStorageManageFolders();
-            // AI
-            case "AI.CHAT":
-                return p.isAiChat();
-            case "AI.CREATE_ISSUES":
-                return p.isAiCreateIssues();
+
             default:
                 return null;
         }
@@ -219,88 +132,13 @@ public class PermissionService {
             case "STORAGE.DELETE":
             case "TIMETRACKING.LOG":
                 return true;
+            // PROJECT.VIEW: tất cả thành viên đều có thể xem projects mà họ tham gia
+            case "PROJECT.VIEW":
+                return true;
         }
 
         return false;
     }
 
-    // CẤP ĐỘ 0: Kiểm tra Plan Tier có cho phép feature không
-    // Đây là cấp cao nhất - KHÔNG THỂ BYPASS
-    private boolean isPlanFeatureEnabled(Plan plan, String feature) {
-        if (plan == null) {
-            plan = Plan.FREE;
-        }
 
-        switch (feature) {
-            case "HR":
-            case "SALARY":
-            case "LEAVE":
-            case "ATTENDANCE":
-            case "CONTRACT":
-            case "REVIEW":
-            case "OKR":
-            case "ONBOARDING":
-                return plan.isHrModuleEnabled();
-            case "AI":
-                return plan.isAiModuleEnabled();
-            case "WEBHOOK":
-                return plan.isWebhookEnabled();
-            case "API":
-                return plan.isApiAccessEnabled();
-            case "PROJECT":
-            case "TIMETRACKING":
-            case "ANALYTICS":
-            case "CALENDAR":
-            case "CHAT":
-            case "STORAGE":
-                return true; // Các module cơ bản luôn có
-            default:
-                return true;
-        }
-    }
-
-    // CẤP ĐỘ 1: Kiểm tra Feature Flag của công ty (Admin có thể tắt/bật cho toàn
-    // công ty)
-    private boolean isFeatureEnabledForCompany(DoAn.BE.company.entity.CompanySettings settings, String feature) {
-        if (settings == null) {
-            return isPlanFeatureEnabled(Plan.FREE, feature);
-        }
-
-        switch (feature) {
-            case "HR":
-                return settings.isHrModuleEnabled();
-            case "SALARY":
-                return settings.isHrModuleEnabled() && settings.isSalaryEnabled();
-            case "LEAVE":
-                return settings.isHrModuleEnabled() && settings.isLeaveEnabled();
-            case "ATTENDANCE":
-                return settings.isHrModuleEnabled() && settings.isAttendanceEnabled();
-            case "CONTRACT":
-                return settings.isHrModuleEnabled() && settings.isContractEnabled();
-            case "REVIEW":
-                return settings.isHrModuleEnabled() && settings.isReviewEnabled();
-            case "OKR":
-                return settings.isHrModuleEnabled() && settings.isOkrEnabled();
-            case "ONBOARDING":
-                return settings.isHrModuleEnabled() && settings.isOnboardingEnabled();
-            case "PROJECT":
-                return settings.isProjectModuleEnabled();
-            case "TIMETRACKING":
-                return settings.isProjectModuleEnabled() && settings.isTimeTrackingEnabled();
-            case "ANALYTICS":
-                return settings.isProjectModuleEnabled() && settings.isAnalyticsEnabled();
-            case "CALENDAR":
-                return settings.isCalendarEnabled();
-            case "CHAT":
-                return settings.isChatModuleEnabled();
-            case "STORAGE":
-                return settings.isStorageModuleEnabled();
-            case "AI":
-                return settings.isAiModuleEnabled();
-            case "WEBHOOK":
-                return settings.isWebhookEnabled();
-            default:
-                return true;
-        }
-    }
 }

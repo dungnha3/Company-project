@@ -4,6 +4,7 @@ import DoAn.BE.hrm.dto.ApprovalRequest;
 import DoAn.BE.hrm.dto.LeaveRequestDTO;
 import DoAn.BE.hrm.dto.LeaveRequestRequest;
 import DoAn.BE.hrm.entity.LeaveRequest;
+import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.mapper.LeaveRequestMapper;
 import DoAn.BE.hrm.service.LeaveRequestService;
 import DoAn.BE.user.entity.User;
@@ -20,14 +21,12 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
 @Slf4j
-@FeatureFlag("LEAVE")
 @Transactional(readOnly = true)
 public class LeaveRequestController {
 
@@ -146,6 +145,20 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
+    @GetMapping("/me/balance")
+    public ResponseEntity<Map<String, Object>> getMyLeaveBalance(
+            @AuthenticationPrincipal User currentUser) {
+        Employee employee = leaveRequestService.findEmployeeByUserId(currentUser.getUserId());
+        int usedDays = leaveRequestService.getTotalLeaveDays(employee.getEmployeeId(), LocalDate.now().getYear());
+        Map<String, Object> response = new HashMap<>();
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("year", LocalDate.now().getYear());
+        response.put("usedDays", usedDays);
+        response.put("totalDays", 12);
+        response.put("remainingDays", 12 - usedDays);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/employee/{employeeId}/total-days")
     public ResponseEntity<Map<String, Object>> getTotalLeaveDays(
             @PathVariable Long employeeId,
@@ -168,5 +181,19 @@ public class LeaveRequestController {
         response.put("date", date);
         response.put("isOnLeave", onLeave);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/leave-requests/team-calendar?startDate=&endDate=
+     * Trả về danh sách nghỉ phép đã duyệt trong khoảng thời gian.
+     * Dùng cho CalendarPage — hiển thị availability của team members.
+     */
+    @GetMapping("/team-calendar")
+    public ResponseEntity<java.util.List<LeaveRequestDTO>> getTeamCalendar(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        java.util.List<DoAn.BE.hrm.entity.LeaveRequest> leaves =
+                leaveRequestService.getTeamCalendarLeaves(startDate, endDate);
+        return ResponseEntity.ok(leaveRequestMapper.toDTOList(leaves));
     }
 }

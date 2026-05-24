@@ -45,15 +45,4 @@ public enum NotificationType {
     TASK_ASSIGNED,
     TASK_DUE_SOON,
 
-    // STORAGE
-    STORAGE_UPDATE,
-    STORAGE_QUOTA,
-
-    // CHAT
-    CHAT_MESSAGE,
-    CHAT_ROOM,
-    CHAT_MENTION,
-    CHAT_TASK_MENTION,
-    CHAT_MESSAGE_EDITED,
-    CHAT_MESSAGE_DELETED
 }

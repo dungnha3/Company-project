@@ -2,13 +2,8 @@ package DoAn.BE.project.service;
 
 import DoAn.BE.common.exception.*;
 import DoAn.BE.common.service.AccessControlService;
-import DoAn.BE.hrm.entity.Department;
-import DoAn.BE.hrm.repository.DepartmentRepository;
-import DoAn.BE.chat.entity.ChatRoom;
-import DoAn.BE.chat.entity.ChatRoomMember;
-import DoAn.BE.chat.entity.ChatRoomMemberId;
-import DoAn.BE.chat.repository.ChatRoomRepository;
-import DoAn.BE.chat.repository.ChatRoomMemberRepository;
+
+
 import lombok.extern.slf4j.Slf4j;
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.Project;
@@ -26,7 +21,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,13 +35,10 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final DepartmentRepository departmentRepository;
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomMemberRepository chatRoomMemberRepository;
-    private final ProjectChatIntegrationService projectChatIntegrationService;
-    private final DoAn.BE.storage.service.StorageProjectIntegrationService storageProjectIntegrationService;
+
+
     private final AccessControlService accessControlService;
-    private final DoAn.BE.common.service.QuotaService quotaService;
+
     private final SprintRepository sprintRepository;
     private final IssueRepository issueRepository;
     private final IssueStatusRepository issueStatusRepository;
@@ -59,18 +50,20 @@ public class ProjectService {
         accessControlService.checkProjectCreatePermission();
 
         // [SAAS] Kiểm tra giới hạn gói cước
-        quotaService.validateProjectQuota();
+
 
         log.info("User {} tạo dự án mới: {}", currentUser.getUsername(), request.getName());
+
+        String key = request.getKeyProject();
+        if (key == null || key.trim().isEmpty()) {
+            key = generateProjectKey(request.getName());
+            request.setKeyProject(key);
+        }
 
         if (projectRepository.findByKeyProject(request.getKeyProject()).isPresent()) {
             throw new DuplicateException("Mã dự án đã tồn tại: " + request.getKeyProject());
         }
-        Department department = null;
-        if (request.getPhongbanId() != null) {
-            department = departmentRepository.findById(request.getPhongbanId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng ban"));
-        }
+
 
         // Validate dates
         if (request.getStartDate() != null && request.getEndDate() != null) {
@@ -85,7 +78,7 @@ public class ProjectService {
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
         project.setCreatedBy(currentUser);
-        project.setDepartment(department);
+
         project.setStatus(Project.ProjectStatus.ACTIVE);
         project.setIsActive(true);
 
@@ -95,33 +88,7 @@ public class ProjectService {
         ProjectMember ownerMember = new ProjectMember(project, currentUser, ProjectRole.OWNER);
         projectMemberRepository.save(ownerMember);
 
-        // Auto-create project chat room
-        ChatRoom projectChatRoom = new ChatRoom();
-        projectChatRoom.setName(project.getName());
-        projectChatRoom.setType(ChatRoom.RoomType.PROJECT);
-        projectChatRoom.setProject(project);
-        projectChatRoom.setCreatedBy(currentUser);
-        projectChatRoom.setCreatedAt(LocalDateTime.now());
-        projectChatRoom = chatRoomRepository.save(projectChatRoom);
 
-        // Add creator to chat room as ADMIN
-        ChatRoomMember chatMember = new ChatRoomMember();
-        // Create composite key first
-        ChatRoomMemberId chatMemberId = new ChatRoomMemberId();
-        chatMemberId.setRoomId(projectChatRoom.getRoomId());
-        chatMemberId.setUserId(currentUser.getUserId());
-        chatMember.setId(chatMemberId);
-        chatMember.setChatRoom(projectChatRoom);
-        chatMember.setUser(currentUser);
-        chatMember.setRole(ChatRoomMember.MemberRole.ADMIN);
-        chatMember.setJoinedAt(LocalDateTime.now());
-        chatRoomMemberRepository.save(chatMember);
-
-        log.info("Đã tạo project chat room {} cho project {}", projectChatRoom.getRoomId(), project.getProjectId());
-
-        // Auto-create project storage folder
-        storageProjectIntegrationService.getOrCreateProjectFolder(project, currentUser);
-        log.info("Đã tạo project storage folder cho project {}", project.getProjectId());
 
         ProjectDTO projectDTO = convertToDTO(project);
 
@@ -227,13 +194,7 @@ public class ProjectService {
             Project.ProjectStatus oldStatus = project.getStatus();
             project.setStatus(request.getStatus());
 
-            // Gửi tin nhắn hệ thống nếu trạng thái thay đổi
             if (oldStatus != request.getStatus()) {
-                projectChatIntegrationService.notifyProjectStatusChanged(
-                        project,
-                        oldStatus != null ? oldStatus.toString() : "N/A",
-                        request.getStatus().toString());
-
                 // Publish Event for Status Changed or Completed
                 DoAn.BE.project.event.ProjectEvent.Type eventType = request
                         .getStatus() == Project.ProjectStatus.COMPLETED
@@ -252,11 +213,7 @@ public class ProjectService {
         if (request.getEndDate() != null) {
             project.setEndDate(request.getEndDate());
         }
-        if (request.getPhongbanId() != null) {
-            Department dept = departmentRepository.findById(request.getPhongbanId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng ban"));
-            project.setDepartment(dept);
-        }
+
 
         // Validate ngày tháng
         if (project.getStartDate() != null && project.getEndDate() != null) {
@@ -294,15 +251,7 @@ public class ProjectService {
         project.setStatus(ProjectStatus.CANCELLED); // Set status to CANCELLED as well
         projectRepository.save(project);
 
-        // Lưu trữ chat dự án - set inactive nhưng giữ lịch sử
-        List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
-        if (!projectChats.isEmpty()) {
-            ChatRoom projectChatRoom = projectChats.get(0);
-            // Gửi tin nhắn hệ thống cuối cùng
-            projectChatIntegrationService.postSystemMessage(project,
-                    " Dự án đã được hủy. Chat room sẽ chuyển sang chế độ chỉ đọc.");
-            log.info("Archived project chat room {} for project {}", projectChatRoom.getRoomId(), projectId);
-        }
+
 
         // --- CASCADE SOFT DELETE LOGIC ---
         // 1. Cancel active Sprints
@@ -354,11 +303,45 @@ public class ProjectService {
             dto.setCreatedByName(project.getCreatedBy().getUsername());
         }
 
-        if (project.getDepartment() != null) {
-            dto.setPhongbanId(project.getDepartment().getDepartmentId());
-            dto.setPhongbanName(project.getDepartment().getName());
+
+
+        // Tính tiến độ dự án dựa trên số issue đã hoàn thành
+        if (project.getProjectId() != null) {
+            long totalIssues = issueRepository.countByProject_ProjectId(project.getProjectId());
+            if (totalIssues > 0) {
+                long completedIssues = issueRepository.countCompletedByProject(project.getProjectId());
+                dto.setProgress((int) ((completedIssues * 100) / totalIssues));
+            } else {
+                dto.setProgress(0);
+            }
         }
 
         return dto;
+    }
+
+    private String generateProjectKey(String name) {
+        if (name == null || name.trim().isEmpty()) return "PROJ";
+        String[] words = name.trim().split("\\s+");
+        StringBuilder keyBuilder = new StringBuilder();
+        if (words.length == 1) {
+            keyBuilder.append(words[0].substring(0, Math.min(3, words[0].length())).toUpperCase());
+        } else {
+            for (String word : words) {
+                if (!word.isEmpty() && Character.isLetterOrDigit(word.charAt(0))) {
+                    keyBuilder.append(Character.toUpperCase(word.charAt(0)));
+                }
+            }
+        }
+        String baseKey = keyBuilder.toString();
+        if (baseKey.isEmpty()) baseKey = "PROJ";
+        if (baseKey.length() > 10) baseKey = baseKey.substring(0, 10);
+        
+        String key = baseKey;
+        int counter = 1;
+        while (projectRepository.findByKeyProject(key).isPresent()) {
+            key = baseKey + "-" + counter;
+            counter++;
+        }
+        return key;
     }
 }

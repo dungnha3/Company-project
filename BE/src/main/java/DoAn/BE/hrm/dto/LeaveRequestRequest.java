@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LeaveRequestRequest {
 
-    @NotNull(message = "Employee ID cannot be null")
+    // employeeId nullable — if null, auto-resolve from currentUser
     private Long employeeId;
 
     @NotNull(message = "Leave type cannot be null")
@@ -26,4 +26,8 @@ public class LeaveRequestRequest {
     private LocalDate endDate;
 
     private String reason;
+
+    // Optional: gắn nghỉ phép với dự án
+    private Long projectId;
+    private String projectName;
 }

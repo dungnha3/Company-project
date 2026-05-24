@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { isMenuItemEnabled } from '@shared/utils/featureHelper';
-import { getRequiredPlanForFeature } from '@shared/utils/planHelper';
+
+
 
 /**
  * HR Section Tab Layout Configuration
@@ -9,49 +9,49 @@ import { getRequiredPlanForFeature } from '@shared/utils/planHelper';
  */
 export const HR_TAB_CONFIG = [
     {
-        tabKey: 'manage',
-        tabLabel: 'Quản lý',
-        tabIcon: 'fa-clipboard-list',
+        tabKey: 'dashboard',
+        tabLabel: 'Tổng quan',
+        tabIcon: 'fa-chart-simple',
         items: [
-            { path: '/app/hr/dashboard', icon: 'fa-gauge-high', label: 'Tổng quan', feature: 'hr' },
-            { path: '/app/hr/employees', icon: 'fa-users', label: 'Nhân viên', feature: 'hr' },
-            { path: '/app/hr/departments', icon: 'fa-building', label: 'Phòng ban', feature: 'hr' },
-            { path: '/app/hr/positions', icon: 'fa-briefcase', label: 'Chức vụ', feature: 'hr' },
+            { path: '/app/hr', icon: 'fa-chart-simple', label: 'Dashboard', exact: true },
+        ],
+    },
+    {
+        tabKey: 'manage',
+        tabLabel: 'Nhân viên',
+        tabIcon: 'fa-users',
+        items: [
+            { path: '/app/hr/employees', icon: 'fa-users', label: 'Danh sách nhân viên', feature: 'hr' },
         ],
     },
     {
         tabKey: 'evaluation',
-        tabLabel: 'Đánh giá & Phát triển',
-        tabIcon: 'fa-chart-line',
+        tabLabel: 'Đánh giá',
+        tabIcon: 'fa-star',
         items: [
-            { path: '/app/hr/contracts', icon: 'fa-file-contract', label: 'Hợp đồng', feature: 'contract' },
+            { path: '/app/hr/performance', icon: 'fa-chart-column', label: 'Hiệu suất tổng thể', permission: 'HR.MANAGE_REVIEWS' },
             { path: '/app/hr/reviews', icon: 'fa-star', label: 'Đánh giá', feature: 'review' },
-            { path: '/app/hr/okr', icon: 'fa-bullseye', label: 'OKR/KPI', feature: 'okr' },
-            { path: '/app/hr/onboarding', icon: 'fa-user-plus', label: 'Onboarding', feature: 'onboarding' },
         ],
     },
     {
-        tabKey: 'payroll',
-        tabLabel: 'Chấm công & Lương',
-        tabIcon: 'fa-money-check-dollar',
+        tabKey: 'leave',
+        tabLabel: 'Nghỉ phép',
+        tabIcon: 'fa-calendar-minus',
         items: [
-            { path: '/app/hr/attendance', icon: 'fa-clock', label: 'Chấm công', feature: 'attendance' },
             { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
-            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', permission: 'salaryView' },
         ],
     },
     {
         tabKey: 'advanced',
-        tabLabel: 'Nâng cao',
+        tabLabel: 'Nguồn lực',
         tabIcon: 'fa-chart-area',
         items: [
-            { path: '/app/hr/org-chart', icon: 'fa-sitemap', label: 'Sơ đồ tổ chức', feature: 'orgChart' },
-            { path: '/app/hr/resource-planning', icon: 'fa-calendar-check', label: 'Nguồn lực', feature: 'resourcePlanning' },
+            { path: '/app/hr/resource-planning', icon: 'fa-calendar-check', label: 'Phân bổ nguồn lực', feature: 'resourcePlanning' },
         ],
     },
 ];
 
-const PLAN_LEVELS = { 'FREE': 0, 'STARTER': 1, 'PROFESSIONAL': 2, 'ENTERPRISE': 3 };
+
 
 /**
  * Section Tab Layout — renders tab bar + sub-nav pills in the body area.
@@ -62,7 +62,6 @@ export default function SectionTabLayout({ tabConfig }) {
     const { currentWorkspace, hasPermission } = useWorkspaceStore();
 
     const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['OWNER']);
-    const currentPlan = currentWorkspace?.plan || 'FREE';
     const settings = currentWorkspace?.settings || null;
     const permissions = currentWorkspace?.permissions || null;
 
@@ -84,17 +83,7 @@ export default function SectionTabLayout({ tabConfig }) {
             }
             return true;
         }).map(item => {
-            if (!item.feature) return { ...item, enabled: true };
-
-            const isEnabled = isMenuItemEnabled(item.path, currentPlan, settings, permissions);
-            if (isEnabled) return { ...item, enabled: true };
-
-            let planFeature = item.feature;
-            if (['attendance', 'leave', 'salary', 'contract', 'review', 'okr', 'onboarding', 'resourcePlanning'].includes(item.feature)) planFeature = 'hr';
-            const requiredPlan = getRequiredPlanForFeature(planFeature);
-            const isPlanBlocked = PLAN_LEVELS[currentPlan] < PLAN_LEVELS[requiredPlan];
-
-            return isPlanBlocked ? { ...item, enabled: false } : null;
+            return { ...item, enabled: true };
         }).filter(Boolean);
     };
 
@@ -125,8 +114,8 @@ export default function SectionTabLayout({ tabConfig }) {
                 </div>
             </div>
 
-            {/* Sub-navigation pills for active tab */}
-            {activeTab && (
+            {/* Sub-navigation pills for active tab (show only when multiple items) */}
+            {activeTab && getVisibleItems(activeTab.items).length > 1 && (
                 <div className="section-sub-nav">
                     {getVisibleItems(activeTab.items).map(item => (
                         item.enabled ? (

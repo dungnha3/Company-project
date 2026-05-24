@@ -41,7 +41,7 @@ public class CompanyMemberService {
         // [Kiểm tra quyền: Employee trở lên]
         accessControlService.checkPermission(companyId, CompanyRole.EMPLOYEE);
 
-        return memberRepository.findByCompany_CompanyId(companyId)
+        return memberRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId)
                 .stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -112,7 +112,11 @@ public class CompanyMemberService {
 
         accessControlService.checkPermission(companyId, CompanyRole.COMPANY_ADMIN);
 
-        CompanyMember targetMember = findActiveMember(targetUserId, companyId);
+        // Tìm member bất kể trạng thái active (bao gồm cả pending invite)
+        CompanyMember targetMember = memberRepository
+                .findByUser_UserIdAndCompany_CompanyId(targetUserId, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thành viên"));
+
         if (targetMember.hasAnyRole(CompanyRole.OWNER)) {
             throw new ForbiddenException("Không thể xóa Chủ sở hữu khỏi công ty");
         }
@@ -203,39 +207,17 @@ public class CompanyMemberService {
             case PermissionKeys.HR_EDIT_PROFILE -> p.setHrEditProfile(value);
             case PermissionKeys.HR_CREATE_EMPLOYEE -> p.setHrCreateEmployee(value);
             case PermissionKeys.HR_DELETE_EMPLOYEE -> p.setHrDeleteEmployee(value);
-            case PermissionKeys.HR_MANAGE_CONTRACTS -> p.setHrManageContracts(value);
             case PermissionKeys.HR_MANAGE_REVIEWS -> p.setHrManageReviews(value);
-            case PermissionKeys.HR_VIEW_DEPARTMENTS -> p.setHrViewDepartments(value);
-            case PermissionKeys.HR_MANAGE_DEPARTMENTS -> p.setHrManageDepartments(value);
-            case PermissionKeys.HR_VIEW_POSITIONS -> p.setHrViewPositions(value);
-            case PermissionKeys.HR_MANAGE_POSITIONS -> p.setHrManagePositions(value);
+
             case PermissionKeys.HR_VIEW_DASHBOARD -> p.setHrViewDashboard(value);
             case PermissionKeys.HR_EXPORT -> p.setHrExport(value);
-            // Contract
-            case PermissionKeys.CONTRACT_VIEW -> p.setContractView(value);
-            case PermissionKeys.CONTRACT_CREATE -> p.setContractCreate(value);
-            case PermissionKeys.CONTRACT_EDIT -> p.setContractEdit(value);
-            case PermissionKeys.CONTRACT_DELETE -> p.setContractDelete(value);
-            case PermissionKeys.CONTRACT_RENEW -> p.setContractRenew(value);
-            // Salary
-            case PermissionKeys.SALARY_VIEW -> p.setSalaryView(value);
-            case PermissionKeys.SALARY_CALCULATE -> p.setSalaryCalculate(value);
-            case PermissionKeys.SALARY_APPROVE -> p.setSalaryApprove(value);
-            case PermissionKeys.SALARY_EXPORT -> p.setSalaryExport(value);
             // Leave
             case PermissionKeys.LEAVE_APPROVE -> p.setLeaveApprove(value);
             case PermissionKeys.LEAVE_VIEW_ALL -> p.setLeaveViewAll(value);
-            // Attendance
-            case PermissionKeys.ATTENDANCE_VIEW_ALL -> p.setAttendanceViewAll(value);
-            case PermissionKeys.ATTENDANCE_EDIT -> p.setAttendanceEdit(value);
             // Review
             case PermissionKeys.REVIEW_VIEW_ALL -> p.setReviewViewAll(value);
             case PermissionKeys.REVIEW_CREATE -> p.setReviewCreate(value);
             case PermissionKeys.REVIEW_APPROVE -> p.setReviewApprove(value);
-            // OKR
-            case PermissionKeys.OKR_MANAGE -> p.setOkrManage(value);
-            // Onboarding
-            case PermissionKeys.ONBOARDING_MANAGE -> p.setOnboardingManage(value);
             // Project
             case PermissionKeys.PROJECT_CREATE -> p.setProjectCreate(value);
             case PermissionKeys.PROJECT_MANAGE_ALL -> p.setProjectManageAll(value);
@@ -254,18 +236,9 @@ public class CompanyMemberService {
             // Calendar
             case PermissionKeys.CALENDAR_VIEW -> p.setCalendarView(value);
             case PermissionKeys.CALENDAR_MANAGE -> p.setCalendarManage(value);
-            // Chat
-            case PermissionKeys.CHAT_CREATE_GROUP -> p.setChatCreateGroup(value);
-            case PermissionKeys.CHAT_SEND_MESSAGE -> p.setChatSendMessage(value);
-            case PermissionKeys.CHAT_SHARE_FILE -> p.setChatShareFile(value);
-            // Storage
-            case PermissionKeys.STORAGE_UPLOAD -> p.setStorageUpload(value);
-            case PermissionKeys.STORAGE_DELETE -> p.setStorageDelete(value);
-            case PermissionKeys.STORAGE_SHARE -> p.setStorageShare(value);
-            case PermissionKeys.STORAGE_MANAGE_FOLDERS -> p.setStorageManageFolders(value);
-            // AI
-            case PermissionKeys.AI_CHAT -> p.setAiChat(value);
-            case PermissionKeys.AI_CREATE_ISSUES -> p.setAiCreateIssues(value);
+            // Workspace
+            case PermissionKeys.WORKSPACE_MANAGE_MEMBERS -> p.setWorkspaceManageMembers(value);
+            case PermissionKeys.WORKSPACE_MANAGE_REQUESTS -> p.setWorkspaceManageRequests(value);
 
             default -> throw new BadRequestException("Mã quyền không tồn tại: " + key);
         }
@@ -291,20 +264,14 @@ public class CompanyMemberService {
 
         switch (module.toUpperCase()) {
             case "HR" -> perms.applyHrTemplate(enabled);
-            case "CONTRACT" -> perms.applyContractTemplate(enabled);
-            case "SALARY" -> perms.applySalaryTemplate(enabled);
             case "LEAVE" -> perms.applyLeaveTemplate(enabled);
-            case "ATTENDANCE" -> perms.applyAttendanceTemplate(enabled);
             case "REVIEW" -> perms.applyReviewTemplate(enabled);
-            case "OKR" -> perms.applyOkrTemplate(enabled);
-            case "ONBOARDING" -> perms.applyOnboardingTemplate(enabled);
             case "PROJECT" -> perms.applyProjectTemplate(enabled);
             case "TIMETRACKING" -> perms.applyTimetrackingTemplate(enabled);
             case "ANALYTICS" -> perms.applyAnalyticsTemplate(enabled);
             case "CALENDAR" -> perms.applyCalendarTemplate(enabled);
-            case "CHAT" -> perms.applyChatTemplate(enabled);
-            case "STORAGE" -> perms.applyStorageTemplate(enabled);
-            case "AI" -> perms.applyAiTemplate(enabled);
+            case "WORKSPACE" -> perms.applyWorkspaceTemplate(enabled);
+
             default -> throw new BadRequestException("Module không tồn tại: " + module);
         }
 

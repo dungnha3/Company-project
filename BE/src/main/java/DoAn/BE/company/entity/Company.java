@@ -3,8 +3,6 @@ package DoAn.BE.company.entity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -50,9 +48,7 @@ public class Company extends DoAn.BE.common.entity.BaseEntity {
     @Column(length = 100)
     private String email;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "subscription_plan", length = 20, nullable = false) // 'plan' là từ khóa dành riêng trong SQL Server
-    private Plan plan = Plan.FREE;
+
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;

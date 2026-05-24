@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.service.ProjectDashboardService;
@@ -16,7 +15,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/project-dashboard")
 @RequiredArgsConstructor
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class ProjectDashboardController {
 

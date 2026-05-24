@@ -25,6 +25,7 @@ public class CompanyMemberController {
     }
 
     // Thay đổi vai trò
+    @Transactional
     @PutMapping("/{userId}/role")
     public ResponseEntity<?> changeRole(@PathVariable Long companyId, @PathVariable Long userId,
             @RequestBody Map<String, String> body) {
@@ -44,12 +45,14 @@ public class CompanyMemberController {
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật vai trò thành công"));
     }
 
+    @Transactional
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> removeMember(@PathVariable Long companyId, @PathVariable Long userId) {
         memberService.removeMember(companyId, userId);
         return ResponseEntity.ok().body(Map.of("message", "Đã xóa thành viên khỏi công ty"));
     }
 
+    @Transactional
     @PutMapping("/{userId}/permissions")
     public ResponseEntity<?> updatePermission(
             @PathVariable Long companyId,

@@ -69,6 +69,9 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
         long countByProject_ProjectId(Long projectId);
 
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId AND i.issueStatus.name = 'Done'")
+        long countCompletedByProject(@Param("projectId") Long projectId);
+
         @Query("SELECT DISTINCT i FROM Issue i " +
                         "LEFT JOIN FETCH i.project " +
                         "LEFT JOIN FETCH i.issueStatus " +
@@ -113,4 +116,13 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         long countCompletedBySprint(@Param("sprintId") Long sprintId);
         @Query("SELECT MAX(CAST(SUBSTRING(i.issueKey, LENGTH(i.project.keyProject) + 2) AS long)) FROM Issue i WHERE i.project.projectId = :projectId")
         Long findMaxIssueNumberByProjectId(@Param("projectId") Long projectId);
+
+        // Count issues assigned to a user in a specific project (for TeamTab stats)
+        long countByProject_ProjectIdAndAssignee_UserId(Long projectId, Long userId);
+
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId " +
+               "AND i.assignee.userId = :userId AND i.issueStatus.name = 'Done'")
+        long countCompletedByProjectAndAssignee(
+                @Param("projectId") Long projectId,
+                @Param("userId") Long userId);
 }

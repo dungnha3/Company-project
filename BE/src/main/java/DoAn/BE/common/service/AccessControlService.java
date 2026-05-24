@@ -70,28 +70,8 @@ public class AccessControlService {
         checkDetailedPermission(PermissionKeys.HR_DELETE_EMPLOYEE, "Bạn không có quyền xóa nhân viên");
     }
 
-    public void checkHrContractsPermission() {
-        checkDetailedPermission(PermissionKeys.HR_MANAGE_CONTRACTS, "Bạn không có quyền quản lý hợp đồng");
-    }
-
     public void checkHrReviewsPermission() {
         checkDetailedPermission(PermissionKeys.HR_MANAGE_REVIEWS, "Bạn không có quyền quản lý đánh giá nhân viên");
-    }
-
-    public void checkHrViewDepartmentsPermission() {
-        checkDetailedPermission(PermissionKeys.HR_VIEW_DEPARTMENTS, "Bạn không có quyền xem phòng ban");
-    }
-
-    public void checkHrManageDepartmentsPermission() {
-        checkDetailedPermission(PermissionKeys.HR_MANAGE_DEPARTMENTS, "Bạn không có quyền quản lý phòng ban");
-    }
-
-    public void checkHrViewPositionsPermission() {
-        checkDetailedPermission(PermissionKeys.HR_VIEW_POSITIONS, "Bạn không có quyền xem chức vụ");
-    }
-
-    public void checkHrManagePositionsPermission() {
-        checkDetailedPermission(PermissionKeys.HR_MANAGE_POSITIONS, "Bạn không có quyền quản lý chức vụ");
     }
 
     public void checkHrViewDashboardPermission() {
@@ -102,44 +82,6 @@ public class AccessControlService {
         checkDetailedPermission(PermissionKeys.HR_EXPORT, "Bạn không có quyền xuất dữ liệu HR");
     }
 
-    // --- Contract ---
-    public void checkContractViewPermission() {
-        checkDetailedPermission(PermissionKeys.CONTRACT_VIEW, "Bạn không có quyền xem hợp đồng");
-    }
-
-    public void checkContractCreatePermission() {
-        checkDetailedPermission(PermissionKeys.CONTRACT_CREATE, "Bạn không có quyền tạo hợp đồng");
-    }
-
-    public void checkContractEditPermission() {
-        checkDetailedPermission(PermissionKeys.CONTRACT_EDIT, "Bạn không có quyền sửa hợp đồng");
-    }
-
-    public void checkContractDeletePermission() {
-        checkDetailedPermission(PermissionKeys.CONTRACT_DELETE, "Bạn không có quyền xóa hợp đồng");
-    }
-
-    public void checkContractRenewPermission() {
-        checkDetailedPermission(PermissionKeys.CONTRACT_RENEW, "Bạn không có quyền gia hạn hợp đồng");
-    }
-
-    // --- Salary ---
-    public void checkSalaryViewPermission() {
-        checkDetailedPermission(PermissionKeys.SALARY_VIEW, "Bạn không có quyền xem bảng lương");
-    }
-
-    public void checkSalaryCalculatePermission() {
-        checkDetailedPermission(PermissionKeys.SALARY_CALCULATE, "Bạn không có quyền tính lương");
-    }
-
-    public void checkSalaryApprovePermission() {
-        checkDetailedPermission(PermissionKeys.SALARY_APPROVE, "Bạn không có quyền duyệt bảng lương");
-    }
-
-    public void checkSalaryExportPermission() {
-        checkDetailedPermission(PermissionKeys.SALARY_EXPORT, "Bạn không có quyền xuất dữ liệu lương");
-    }
-
     // --- Leave ---
     public void checkLeaveApprovePermission() {
         checkDetailedPermission(PermissionKeys.LEAVE_APPROVE, "Bạn không có quyền duyệt đơn nghỉ phép");
@@ -147,15 +89,6 @@ public class AccessControlService {
 
     public void checkLeaveViewAllPermission() {
         checkDetailedPermission(PermissionKeys.LEAVE_VIEW_ALL, "Bạn không có quyền xem tất cả đơn nghỉ phép");
-    }
-
-    // --- Attendance ---
-    public void checkAttendanceViewAllPermission() {
-        checkDetailedPermission(PermissionKeys.ATTENDANCE_VIEW_ALL, "Bạn không có quyền xem chấm công toàn bộ");
-    }
-
-    public void checkAttendanceEditPermission() {
-        checkDetailedPermission(PermissionKeys.ATTENDANCE_EDIT, "Bạn không có quyền sửa chấm công");
     }
 
     // --- Review ---
@@ -169,16 +102,6 @@ public class AccessControlService {
 
     public void checkReviewApprovePermission() {
         checkDetailedPermission(PermissionKeys.REVIEW_APPROVE, "Bạn không có quyền duyệt đánh giá");
-    }
-
-    // --- OKR ---
-    public void checkOkrManagePermission() {
-        checkDetailedPermission(PermissionKeys.OKR_MANAGE, "Bạn không có quyền quản lý OKR");
-    }
-
-    // --- Onboarding ---
-    public void checkOnboardingManagePermission() {
-        checkDetailedPermission(PermissionKeys.ONBOARDING_MANAGE, "Bạn không có quyền quản lý onboarding");
     }
 
     // --- Project ---
@@ -243,41 +166,32 @@ public class AccessControlService {
 
     // --- Chat ---
     public void checkChatCreateGroupPermission() {
-        checkDetailedPermission(PermissionKeys.CHAT_CREATE_GROUP, "Bạn không có quyền tạo nhóm chat");
     }
 
     public void checkChatSendMessagePermission() {
-        checkDetailedPermission(PermissionKeys.CHAT_SEND_MESSAGE, "Bạn không có quyền gửi tin nhắn");
     }
 
     public void checkChatShareFilePermission() {
-        checkDetailedPermission(PermissionKeys.CHAT_SHARE_FILE, "Bạn không có quyền chia sẻ file qua chat");
     }
 
     // --- Storage ---
     public void checkStorageUploadPermission() {
-        checkDetailedPermission(PermissionKeys.STORAGE_UPLOAD, "Bạn không có quyền upload file");
     }
 
     public void checkStorageDeletePermission() {
-        checkDetailedPermission(PermissionKeys.STORAGE_DELETE, "Bạn không có quyền xóa file");
     }
 
     public void checkStorageSharePermission() {
-        checkDetailedPermission(PermissionKeys.STORAGE_SHARE, "Bạn không có quyền chia sẻ file");
     }
 
     public void checkStorageManageFoldersPermission() {
-        checkDetailedPermission(PermissionKeys.STORAGE_MANAGE_FOLDERS, "Bạn không có quyền quản lý thư mục");
     }
 
     // --- AI ---
     public void checkAiChatPermission() {
-        checkDetailedPermission(PermissionKeys.AI_CHAT, "Bạn không có quyền sử dụng AI chat");
     }
 
     public void checkAiCreateIssuesPermission() {
-        checkDetailedPermission(PermissionKeys.AI_CREATE_ISSUES, "Bạn không có quyền để AI tạo issues");
     }
 
     // =====================================================================
@@ -357,7 +271,7 @@ public class AccessControlService {
         if (user != null && user.isSystemAdminAccount()) {
             return true;
         }
-        return hasPermission(PermissionKeys.PROJECT_MANAGE_ISSUES);
+        return hasPermission(PermissionKeys.PROJECT_VIEW);
     }
 
     public void checkPermission(Long companyId, CompanyRole requiredRole) {

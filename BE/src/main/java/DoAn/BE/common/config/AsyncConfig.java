@@ -69,8 +69,6 @@ public class AsyncConfig {
         public Runnable decorate(Runnable runnable) {
             // Capture context from calling thread
             Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
-            boolean personalMode = DoAn.BE.common.context.TenantContext.isPersonalMode();
-            Long userId = DoAn.BE.common.context.TenantContext.getCurrentUserId();
             org.springframework.security.core.context.SecurityContext securityContext = org.springframework.security.core.context.SecurityContextHolder
                     .getContext();
 
@@ -79,12 +77,6 @@ public class AsyncConfig {
                     // Apply TenantContext to async thread
                     if (companyId != null) {
                         DoAn.BE.common.context.TenantContext.setCompanyId(companyId);
-                    }
-                    if (personalMode) {
-                        DoAn.BE.common.context.TenantContext.setPersonalMode(true);
-                    }
-                    if (userId != null) {
-                        DoAn.BE.common.context.TenantContext.setCurrentUserId(userId);
                     }
                     // Apply SecurityContext to async thread
                     org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext);

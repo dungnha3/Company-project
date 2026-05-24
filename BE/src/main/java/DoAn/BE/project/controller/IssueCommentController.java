@@ -1,6 +1,5 @@
 package DoAn.BE.project.controller;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.service.IssueCommentService;
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
-@FeatureFlag("PROJECT")
 @Transactional(readOnly = true)
 public class IssueCommentController {
 

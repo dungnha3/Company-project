@@ -2,6 +2,7 @@ package DoAn.BE.timetracking.controller;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.timetracking.dto.CreateTimeLogRequest;
 import DoAn.BE.timetracking.dto.TimeLogDTO;
@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RestController
 @RequestMapping("/api/timelogs")
 @RequiredArgsConstructor
-@FeatureFlag("TIME_TRACKING")
 @Transactional(readOnly = true)
 public class TimeLogController {
 
@@ -97,5 +96,20 @@ public class TimeLogController {
         // No permission check needed — any authenticated project member can view total
         // hours
         return ResponseEntity.ok(timeTrackingService.getTotalHoursByIssue(issueId, currentUser));
+    }
+
+    // GET /api/timelogs/summary/my - My timelog summary
+    @GetMapping("/summary/my")
+    public ResponseEntity<Map<String, Object>> getMyTimelogSummary(
+            @AuthenticationPrincipal User currentUser) {
+        accessControlService.checkTimetrackingLogPermission();
+        return ResponseEntity.ok(timeTrackingService.getMyTimelogSummary(currentUser));
+    }
+
+    // GET /api/timelogs/project/{projectId}/summary - Project timelog aggregation
+    @GetMapping("/project/{projectId}/summary")
+    public ResponseEntity<Map<String, Object>> getProjectTimelogSummary(
+            @PathVariable Long projectId) {
+        return ResponseEntity.ok(timeTrackingService.getProjectTimelogSummary(projectId));
     }
 }

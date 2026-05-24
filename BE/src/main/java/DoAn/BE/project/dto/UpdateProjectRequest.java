@@ -22,5 +22,5 @@ public class UpdateProjectRequest {
     private ProjectStatus status;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Long phongbanId;
+
 }

@@ -14,7 +14,6 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.calendar.dto.*;
 import DoAn.BE.calendar.entity.EventAttendee.ResponseStatus;
 import DoAn.BE.calendar.service.CalendarService;
-import DoAn.BE.common.annotation.FeatureFlag;
 import DoAn.BE.common.service.AccessControlService;
 
 import jakarta.validation.Valid;
@@ -23,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/calendar")
 @RequiredArgsConstructor
-@FeatureFlag("CALENDAR")
 @Transactional(readOnly = true)
 public class CalendarController {
 

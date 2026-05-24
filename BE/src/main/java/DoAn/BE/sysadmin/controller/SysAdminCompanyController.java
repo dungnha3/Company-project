@@ -2,7 +2,6 @@ package DoAn.BE.sysadmin.controller;
 
 import DoAn.BE.company.dto.CompanyDto;
 import DoAn.BE.company.service.CompanyAdminService;
-import DoAn.BE.sysadmin.dto.SysAdminCompanyDto;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -60,16 +59,7 @@ public class SysAdminCompanyController {
         return ResponseEntity.ok(Map.of("message", "Company updated successfully"));
     }
 
-    // [ACTION] Change Plan
-    @PutMapping("/{companyId}/plan")
-    public ResponseEntity<?> changePlan(
-            @PathVariable Long companyId,
-            @RequestParam String plan,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.changePlan(companyId, plan);
-        return ResponseEntity.ok(Map.of("message", "Plan changed successfully"));
-    }
+
 
     // [ACTION] Toggle Status (Active/Suspend)
     @PutMapping("/{companyId}/status")
@@ -93,38 +83,7 @@ public class SysAdminCompanyController {
         return ResponseEntity.ok(Map.of("message", "Company deleted successfully"));
     }
 
-    // [GOD MODE] Update Quota
-    @PutMapping("/{companyId}/quota")
-    public ResponseEntity<?> updateQuota(
-            @PathVariable Long companyId,
-            @RequestBody SysAdminCompanyDto.QuotaUpdateRequest request,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.updateCompanyQuota(companyId, request);
-        return ResponseEntity.ok(Map.of("message", "Company quota updated (Plan overrides applied)"));
-    }
 
-    // [GOD MODE] Update Features
-    @PutMapping("/{companyId}/features")
-    public ResponseEntity<?> updateFeatures(
-            @PathVariable Long companyId,
-            @RequestBody SysAdminCompanyDto.FeatureOverrideRequest request,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.updateCompanyFeatures(companyId, request);
-        return ResponseEntity.ok(Map.of("message", "Company features updated (Plan overrides applied)"));
-    }
-
-    // [SETTINGS] Update Settings (Legacy support + generic settings)
-    @PutMapping("/{companyId}/settings")
-    public ResponseEntity<?> updateSettings(
-            @PathVariable Long companyId,
-            @RequestBody CompanyDto.SettingsUpdateRequest request,
-            Authentication authentication) {
-        checkSysAdmin(authentication);
-        companyAdminService.updateSettingsBySystemAdmin(companyId, request);
-        return ResponseEntity.ok(Map.of("message", "Settings updated successfully"));
-    }
 
     private void checkSysAdmin(Authentication authentication) {
         User user = (User) authentication.getPrincipal();

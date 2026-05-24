@@ -33,6 +33,18 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const [activeTab, setActiveTab] = useState('details'); // details | comments | timelogs
     const [newComment, setNewComment] = useState('');
 
+    // Auto-switch to timelogs tab when timer starts for this issue
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail.issueId === issue?.issueId) {
+                setActiveTab('timelogs');
+                toast.info('Timer đã bắt đầu! Chuyển sang tab Time Logs');
+            }
+        };
+        window.addEventListener('auto-start-timer', handler);
+        return () => window.removeEventListener('auto-start-timer', handler);
+    }, [issue?.issueId]);
+
     // Fetch full issue details
     const { data: fullIssue, isLoading } = useQuery({
         queryKey: ['issue', issue?.issueId],
@@ -96,13 +108,42 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
     });
 
+    // Update full issue mutation
+    const updateIssueMutation = useMutation({
+        mutationFn: async (payload) => {
+            const currentIssue = fullIssue || issue;
+            await apiClient.put(`/api/issues/${issue.issueId}`, {
+                title: currentIssue.title || currentIssue.subject,
+                description: currentIssue.description,
+                statusId: currentIssue.statusId,
+                priority: currentIssue.priority,
+                issueType: currentIssue.issueType,
+                assigneeId: currentIssue.assigneeId,
+                estimatedHours: currentIssue.estimatedHours,
+                actualHours: currentIssue.actualHours,
+                startDate: currentIssue.startDate,
+                dueDate: currentIssue.dueDate,
+                weight: currentIssue.weight,
+                isImportant: currentIssue.isImportant || false,
+                isUrgent: currentIssue.isUrgent || false,
+                ...payload
+            });
+        },
+        onSuccess: () => {
+            toast.success('Đã cập nhật thẻ');
+            queryClient.invalidateQueries(['issue', issue.issueId]);
+            queryClient.invalidateQueries(['myIssues']);
+            onUpdate?.();
+        },
+    });
+
     if (!issue) return null;
 
     const currentIssue = fullIssue || issue;
 
     return (
         <div className="modal-overlay items-start pt-8 overflow-y-auto" onClick={onClose}>
-            <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl mx-4 mb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" className="bg-white rounded-2xl w-full max-w-4xl mx-4 mb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-t-2xl">
                     <div className="flex items-center gap-3">
@@ -110,16 +151,18 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             {currentIssue.issueKey || `#${currentIssue.issueId}`}
                         </span>
                         <span className="text-white/80 text-sm">|</span>
-                        {(() => {
-                            const type = ISSUE_TYPES.find(t => t.value === currentIssue.issueType);
-                            return type ? (
-                                <span className={`${type.color} text-white px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}>
-                                    <i className={`fa-solid ${type.icon} text-[10px]`} />
-                                    {type.label}
-                                </span>
-                            ) : null;
-                        })()}
-                        <span className="text-white font-medium truncate max-w-md">{currentIssue.projectName}</span>
+                        <select
+                            value={currentIssue.issueType || 'TASK'}
+                            onChange={(e) => updateIssueMutation.mutate({ issueType: e.target.value })}
+                            disabled={updateIssueMutation.isPending}
+                            className="bg-transparent text-white font-medium text-sm border-none focus:ring-0 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 appearance-none"
+                            style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
+                        >
+                            {ISSUE_TYPES.map(t => (
+                                <option key={t.value} value={t.value} className="text-gray-900 bg-white">{t.label}</option>
+                            ))}
+                        </select>
+                        <span className="text-white font-medium truncate max-w-md ml-2">{currentIssue.projectName}</span>
                     </div>
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center justify-center">
                         <i className="fa-solid fa-times" />
@@ -138,7 +181,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.statusId || 1}
                                 onChange={(e) => statusMutation.mutate(Number(e.target.value))}
                                 disabled={statusMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
                             >
                                 {STATUSES.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -149,10 +192,16 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         {/* Priority */}
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs text-gray-500 mb-1">Độ ưu tiên</label>
-                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg text-sm">
-                                <i className={`fa-solid ${PRIORITIES.find(p => p.value === currentIssue.priority)?.icon || 'fa-minus'} ${PRIORITIES.find(p => p.value === currentIssue.priority)?.color || 'text-gray-500'}`} />
-                                <span>{PRIORITIES.find(p => p.value === currentIssue.priority)?.label || 'Medium'}</span>
-                            </div>
+                            <select
+                                value={currentIssue.priority || 'MEDIUM'}
+                                onChange={(e) => updateIssueMutation.mutate({ priority: e.target.value })}
+                                disabled={updateIssueMutation.isPending}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                            >
+                                {PRIORITIES.map(p => (
+                                    <option key={p.value} value={p.value}>{p.label}</option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Assignee Dropdown */}
@@ -162,7 +211,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 value={currentIssue.assigneeId || ''}
                                 onChange={(e) => assignMutation.mutate(e.target.value || null)}
                                 disabled={assignMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
                             >
                                 <option value="">-- Chưa giao --</option>
                                 {members.map(m => (
@@ -173,11 +222,23 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             </select>
                         </div>
 
-                        {/* Due Date */}
-                        <div className="flex-1 min-w-[150px]">
-                            <label className="block text-xs text-gray-500 mb-1">Hạn chót</label>
-                            <div className={`px-3 py-2 bg-gray-50 rounded-lg text-sm ${currentIssue.dueDate && new Date(currentIssue.dueDate) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
-                                {currentIssue.dueDate ? formatDate(currentIssue.dueDate) : '—'}
+                        {/* Sprint & Due Date Row */}
+                        <div className="flex flex-wrap gap-4">
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-xs text-gray-500 mb-1">Sprint</label>
+                                <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-sm">
+                                    <i className="fa-solid fa-layer-group text-indigo-400 text-xs" />
+                                    <span className={currentIssue.sprintName ? 'text-gray-700' : 'text-gray-400'}>
+                                        {currentIssue.sprintName || '— Backlog'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-xs text-gray-500 mb-1">Hạn chót</label>
+                                <div className={`px-3 py-2 bg-gray-50 rounded-lg text-sm ${currentIssue.dueDate && new Date(currentIssue.dueDate) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
+                                    {currentIssue.dueDate ? formatDate(currentIssue.dueDate) : '—'}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -298,7 +359,92 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     <span className="text-xs text-gray-500">Đã log</span>
                                     <div className="text-sm font-medium text-gray-900">{currentIssue.loggedHours || 0}h</div>
                                 </div>
+                                <div>
+                                    <span className="text-xs text-gray-500">Thực tế</span>
+                                    <div className="text-sm font-medium text-gray-900">{currentIssue.actualHours != null ? `${currentIssue.actualHours}h` : '—'}</div>
+                                </div>
                             </div>
+
+                            {/* Scoring Coefficients Panel */}
+                            {currentIssue.aiScore != null || currentIssue.humanScore != null || currentIssue.totalScore != null || currentIssue.priorityCoefficient ? (
+                                <div className="pt-4 border-t border-gray-100">
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <i className="fa-solid fa-sliders text-indigo-500" />
+                                        Hệ số & Điểm số
+                                    </h3>
+
+                                    {/* Coefficient bars */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                        {[
+                                            { label: 'Hệ số ưu tiên', key: 'priorityCoefficient', color: 'bg-red-500' },
+                                            { label: 'Hệ số độ phức tạp', key: 'complexityCoefficient', color: 'bg-orange-500' },
+                                            { label: 'Hệ số timeline', key: 'timelineCoefficient', color: 'bg-blue-500' },
+                                            { label: 'Hệ số chất lượng', key: 'qualityCoefficient', color: 'bg-green-500' },
+                                            { label: 'Hệ số rework', key: 'reworkCoefficient', color: 'bg-red-400', warn: true },
+                                        ].map(({ label, key, color, warn }) => {
+                                            const val = currentIssue[key];
+                                            if (val == null) return null;
+                                            const pct = Math.min((Number(val) / 2) * 100, 100);
+                                            return (
+                                                <div key={key} className="bg-gray-50 rounded-lg px-3 py-2">
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <span className="text-xs text-gray-600 font-medium">{label}</span>
+                                                        <span className={`text-xs font-bold ${warn && Number(val) > 0.5 ? 'text-red-500' : 'text-gray-700'}`}>
+                                                            {Number(val).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* AI / Human / Total Score */}
+                                    <div className="grid grid-cols-3 gap-3 mb-3">
+                                        <div className={`rounded-xl px-3 py-2.5 text-center ${currentIssue.aiScore != null ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-50 border border-gray-100'}`}>
+                                            <div className="text-[10px] uppercase tracking-wide text-indigo-400 font-semibold mb-1">AI Score</div>
+                                            <div className={`text-xl font-black ${currentIssue.aiScore != null ? 'text-indigo-600' : 'text-gray-300'}`}>
+                                                {currentIssue.aiScore != null ? Number(currentIssue.aiScore).toFixed(1) : '—'}
+                                            </div>
+                                            {currentIssue.aiScore != null && <div className="text-[9px] text-indigo-300 mt-0.5">/ 10</div>}
+                                        </div>
+                                        <div className={`rounded-xl px-3 py-2.5 text-center ${currentIssue.humanScore != null ? 'bg-purple-50 border border-purple-100' : 'bg-gray-50 border border-gray-100'}`}>
+                                            <div className="text-[10px] uppercase tracking-wide text-purple-400 font-semibold mb-1">Human Score</div>
+                                            <div className={`text-xl font-black ${currentIssue.humanScore != null ? 'text-purple-600' : 'text-gray-300'}`}>
+                                                {currentIssue.humanScore != null ? Number(currentIssue.humanScore).toFixed(1) : '—'}
+                                            </div>
+                                            {currentIssue.humanScore != null && <div className="text-[9px] text-purple-300 mt-0.5">/ 10</div>}
+                                        </div>
+                                        <div className={`rounded-xl px-3 py-2.5 text-center ${currentIssue.totalScore != null ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100' : 'bg-gray-50 border border-gray-100'}`}>
+                                            <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1">Total Score</div>
+                                            <div className={`text-xl font-black ${currentIssue.totalScore != null ? (
+                                                Number(currentIssue.totalScore) >= 8 ? 'text-green-600' :
+                                                Number(currentIssue.totalScore) >= 6 ? 'text-amber-600' : 'text-red-500'
+                                            ) : 'text-gray-300'}`}>
+                                                {currentIssue.totalScore != null ? Number(currentIssue.totalScore).toFixed(1) : '—'}
+                                            </div>
+                                            {currentIssue.totalScore != null && (
+                                                <div className="text-[9px] text-gray-400 mt-0.5">
+                                                    {Number(currentIssue.totalScore) >= 8 ? '⭐ Xuất sắc' :
+                                                     Number(currentIssue.totalScore) >= 6 ? '✓ Tốt' : '⚠ Yếu'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Rework warning if any */}
+                                    {(currentIssue.reworkCount || 0) > 0 && (
+                                        <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                                            <i className="fa-solid fa-rotate-right text-red-400 text-sm" />
+                                            <span className="text-xs text-red-600 font-medium">
+                                                Đã bị rework <strong>{currentIssue.reworkCount} lần</strong> — bị trừ <strong>-{currentIssue.reworkCount * 5}%</strong> điểm
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
 
                             {/* Custom Fields Section */}
                             <CustomFieldsSection
@@ -321,7 +467,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                         value={newComment}
                                         onChange={(e) => setNewComment(e.target.value)}
                                         placeholder="Thêm bình luận..."
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 resize-none"
                                         rows={2}
                                     />
                                     <div className="flex justify-end mt-2">
@@ -540,7 +686,7 @@ function ActivityLogTab({ issueId }) {
                                     {formatDateTime(activity.createdAt)}
                                 </span>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-400">{activity.description}</p>
+                            <p className="text-gray-600">{activity.description}</p>
                             {activity.oldValue && activity.newValue && (
                                 <div className="mt-2 text-xs flex items-center gap-2">
                                     <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded line-through">{activity.oldValue}</span>

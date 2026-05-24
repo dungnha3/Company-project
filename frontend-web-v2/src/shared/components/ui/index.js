@@ -2,7 +2,7 @@
 export { default as DataTable } from './DataTable';
 export { default as ExportButton } from './ExportButton';
 export { default as NotificationDropdown } from './NotificationDropdown';
-export { default as QuotaWarningBanner } from './QuotaWarningBanner';
+
 
 // Phase 3 — New shared UI components
 export { default as StatusBadge } from './StatusBadge';

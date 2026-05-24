@@ -4,7 +4,7 @@ import { useAuthStore } from '@shared/stores/authStore';
 import GoogleLoginButton from '../../components/auth/GoogleLoginButton';
 
 export default function LoginPage() {
-    const [form, setForm] = useState({ username: '', password: '' });
+    const [form, setForm] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -85,9 +85,9 @@ export default function LoginPage() {
                     <div className="mb-8">
                         <Link to="/" className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-                                S
+                                W
                             </div>
-                            <span className="text-2xl font-bold">SaaS Enterprise</span>
+                            <span className="text-2xl font-bold">Workspace Hub</span>
                         </Link>
                     </div>
 
@@ -109,9 +109,9 @@ export default function LoginPage() {
                     <div className="lg:hidden text-center mb-8">
                         <Link to="/" className="inline-flex items-center gap-2">
                             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold">
-                                S
+                                W
                             </div>
-                            <span className="text-xl font-bold text-gray-900">SaaS Enterprise</span>
+                            <span className="text-xl font-bold text-gray-900">Workspace Hub</span>
                         </Link>
                     </div>
 
@@ -137,21 +137,21 @@ export default function LoginPage() {
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-                                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tên đăng nhập
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Email đăng nhập
                                 </label>
                                 <div className="relative">
-                                    <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                                    <i className="fa-solid fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                                     <input
-                                        id="username"
-                                        name="username"
-                                        type="text"
-                                        autoComplete="username"
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        autoComplete="email"
                                         spellCheck={false}
                                         className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                        placeholder="Nhập tên đăng nhập…"
-                                        value={form.username}
-                                        onChange={(e) => setForm({ ...form, username: e.target.value })}
+                                        placeholder="Nhập email của bạn…"
+                                        value={form.email}
+                                        onChange={(e) => setForm({ ...form, email: e.target.value })}
                                         required
                                     />
                                 </div>
@@ -162,7 +162,7 @@ export default function LoginPage() {
                                     <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                                         Mật khẩu
                                     </label>
-                                    <Link to="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
+                                    <Link to="/forgot-password" tabIndex={-1} className="text-sm text-indigo-600 hover:text-indigo-500">
                                         Quên mật khẩu?
                                     </Link>
                                 </div>
@@ -241,7 +241,7 @@ export default function LoginPage() {
 
                     {/* Footer */}
                     <p className="text-center text-xs text-gray-400 mt-6">
-                        Bằng việc đăng nhập, bạn đồng ý với Điều khoản và Chính sách bảo mật của SaaS Enterprise.
+                        Bằng việc đăng nhập, bạn đồng ý với Điều khoản và Chính sách bảo mật của Workspace Hub.
                     </p>
                 </div>
             </div>

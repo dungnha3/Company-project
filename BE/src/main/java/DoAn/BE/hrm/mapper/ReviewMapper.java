@@ -50,13 +50,7 @@ public class ReviewMapper {
                 dto.setAvatar(review.getEmployee().getUser().getAvatarUrl());
             }
 
-            if (review.getEmployee().getDepartment() != null) {
-                dto.setDepartmentName(review.getEmployee().getDepartment().getName());
-            }
 
-            if (review.getEmployee().getPosition() != null) {
-                dto.setPositionName(review.getEmployee().getPosition().getName());
-            }
         }
 
         // Reviewer Info
@@ -64,6 +58,10 @@ public class ReviewMapper {
             dto.setReviewerId(review.getReviewer().getEmployeeId());
             dto.setReviewerName(review.getReviewer().getFullName());
         }
+
+        // Project link
+        dto.setProjectId(review.getProjectId());
+        dto.setProjectName(review.getProjectName());
 
         return dto;
     }

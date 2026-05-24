@@ -5,8 +5,12 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 
 const STATUS_OPTIONS = [
+    { value: 'ACTIVE', label: 'Đang hoạt động' },
     { value: 'PLANNING', label: 'Lập kế hoạch' },
     { value: 'IN_PROGRESS', label: 'Đang thực hiện' },
+    { value: 'ON_HOLD', label: 'Tạm dừng' },
+    { value: 'COMPLETED', label: 'Hoàn thành' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 
 export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
@@ -17,6 +21,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
         startDate: '',
         endDate: '',
         status: 'PLANNING',
+        budget: '',
     });
     const [memberEmail, setMemberEmail] = useState('');
     const [selectedMembers, setSelectedMembers] = useState([]);
@@ -115,6 +120,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             description: form.description || null,
             startDate: form.startDate || null,
             endDate: form.endDate || null,
+            budget: form.budget ? parseFloat(form.budget) : null,
         };
         createMutation.mutate(payload);
     };
@@ -127,6 +133,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             startDate: '',
             endDate: '',
             status: 'PLANNING',
+            budget: '',
         });
         setMemberEmail('');
         setSelectedMembers([]);
@@ -139,7 +146,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
     return (
         <div className="modal-overlay" onClick={handleClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -175,7 +182,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                         name="name"
                                         value={form.name}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
                                         placeholder="VD: Website Redesign"
                                         required
                                     />
@@ -189,7 +196,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                         name="keyProject"
                                         value={form.keyProject}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 uppercase"
                                         placeholder="VD: WEB01"
                                         maxLength={10}
                                         required
@@ -204,7 +211,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                     name="description"
                                     value={form.description}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 resize-none"
                                     placeholder="Mô tả ngắn về dự án..."
                                     rows={3}
                                 />
@@ -218,7 +225,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                         name="startDate"
                                         value={form.startDate}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
                                     />
                                 </div>
                                 <div>
@@ -228,16 +235,31 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                         name="endDate"
                                         value={form.endDate}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngân sách (VND)</label>
+                                    <input
+                                        type="number"
+                                        name="budget"
+                                        value={form.budget}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
+                                        placeholder="0"
+                                        min="0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
                                     <select
                                         name="status"
                                         value={form.status}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
                                     >
                                         {STATUS_OPTIONS.map(opt => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -267,7 +289,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                                         value={memberEmail}
                                         onChange={(e) => { setMemberEmail(e.target.value); setSearchError(''); }}
                                         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchMember())}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 dark:border-gray-600"
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
                                         placeholder="Nhập email thành viên"
                                     />
                                 </div>

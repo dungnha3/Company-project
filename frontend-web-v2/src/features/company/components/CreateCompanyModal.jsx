@@ -62,7 +62,7 @@ export default function CreateCompanyModal({ onClose, onSuccess }) {
                             value={formData.name}
                             onChange={handleChange}
                             className="input"
-                            placeholder="VD: Công ty ABC, Team Marketing..."
+                            placeholder="VD: Team Alpha, My Project..."
                             autoFocus
                         />
                     </div>

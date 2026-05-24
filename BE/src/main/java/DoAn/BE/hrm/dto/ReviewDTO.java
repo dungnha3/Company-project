@@ -21,8 +21,6 @@ public class ReviewDTO {
     private String employeeName;
     private String avatar;
     private String employeeEmail;
-    private String departmentName;
-    private String positionName;
 
     private Long reviewerId;
     private String reviewerName;
@@ -45,6 +43,10 @@ public class ReviewDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private LocalDate completedDate;
+
+    // Project link (optional — dùng khi reviewType = PROJECT)
+    private Long projectId;
+    private String projectName;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

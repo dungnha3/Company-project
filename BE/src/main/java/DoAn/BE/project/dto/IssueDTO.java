@@ -25,6 +25,8 @@ public class IssueDTO {
     private String statusName;
     private String statusColor;
     private Priority priority;
+    private DoAn.BE.project.entity.Issue.IssueType issueType;
+    private Integer orderIndex;
     private Long reporterId;
     private String reporterName;
     private Long assigneeId;
@@ -38,6 +40,7 @@ public class IssueDTO {
     private Boolean isUrgent;
     private Integer eisenhowerQuadrant;
     private LocalDateTime completedAt;
+    private Integer reworkCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isOverdue;

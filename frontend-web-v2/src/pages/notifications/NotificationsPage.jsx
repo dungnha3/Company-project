@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useWebSocketStore } from '@shared/stores/websocketStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -25,17 +24,15 @@ const PERSONAL_NOTIFICATION_TYPES = [
 ];
 
 export default function NotificationsPage() {
+    const isPersonal = false; // Legacy fallback
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const navigate = useNavigate();
-    const { subscribe, unsubscribe } = useWebSocketStore();
-    const { workspaceType } = useWorkspaceStore();
-    const isPersonal = workspaceType === 'PERSONAL';
-
+    
     const [activeTab, setActiveTab] = useState('all');
     const [showPreferences, setShowPreferences] = useState(false);
 
-    const notificationTypes = isPersonal ? PERSONAL_NOTIFICATION_TYPES : COMPANY_NOTIFICATION_TYPES;
+    const notificationTypes = COMPANY_NOTIFICATION_TYPES;
 
     // Fetch notifications
     const { data: notifications = [], isLoading } = useQuery({
@@ -55,7 +52,7 @@ export default function NotificationsPage() {
             // Personal workspace filters
             if (activeTab === 'task') return ['PERSONAL_TASK_REMINDER', 'PERSONAL_TASK_DUE'].includes(n.type);
             if (activeTab === 'invite') return ['WORKSPACE_INVITE', 'INVITE_ACCEPTED'].includes(n.type);
-            if (activeTab === 'system') return ['SYSTEM', 'PLAN_UPGRADED', 'QUOTA_WARNING'].includes(n.type);
+            if (activeTab === 'system') return ['SYSTEM'].includes(n.type);
         } else {
             // Company workspace filters
             if (activeTab === 'task') return ['TASK_ASSIGNED', 'TASK_COMPLETED', 'TASK_COMMENT', 'ISSUE_CREATED', 'ISSUE_UPDATED', 'ISSUE_ASSIGNED', 'ISSUE_OVERDUE'].includes(n.type);
@@ -94,17 +91,6 @@ export default function NotificationsPage() {
         }
     });
 
-    // Real-time subscription
-    useEffect(() => {
-        const topic = '/user/queue/notifications';
-        subscribe(topic, (message) => {
-            queryClient.invalidateQueries(['notifications']);
-            queryClient.invalidateQueries(['unread-count']);
-            showToast('Bạn có thông báo mới', 'info');
-        });
-        return () => unsubscribe(topic);
-    }, []);
-
     const handleNotificationClick = (notification) => {
         if (!notification.isRead) {
             markReadMutation.mutate(notification.notificationId);
@@ -115,7 +101,7 @@ export default function NotificationsPage() {
             'PERSONAL_TASK_REMINDER': '/app/me/tasks',
             'PERSONAL_TASK_DUE': '/app/me/tasks',
             'WORKSPACE_INVITE': '/app/dashboard', // Invites shown in dashboard
-            'QUOTA_WARNING': '/app/company/billing',
+
         } : {
             'TASK_ASSIGNED': `/app/projects/${notification.referenceId}`,
             'LEAVE_APPROVED': '/app/hr/leave-requests',
@@ -489,8 +475,7 @@ function getIconClass(type) {
         'PERSONAL_TASK_DUE': 'fa-solid fa-clock',
         'WORKSPACE_INVITE': 'fa-solid fa-envelope',
         'INVITE_ACCEPTED': 'fa-solid fa-user-check',
-        'QUOTA_WARNING': 'fa-solid fa-exclamation-triangle',
-        'PLAN_UPGRADED': 'fa-solid fa-crown',
+
     };
     return icons[type] || 'fa-solid fa-bell';
 }
@@ -563,8 +548,7 @@ function getTypeLabel(type) {
         'PERSONAL_TASK_DUE': 'Hạn chót',
         'WORKSPACE_INVITE': 'Lời mời',
         'INVITE_ACCEPTED': 'Đã chấp nhận',
-        'QUOTA_WARNING': 'Cảnh báo',
-        'PLAN_UPGRADED': 'Nâng cấp',
+
     };
     return labels[type] || 'Thông báo';
 }

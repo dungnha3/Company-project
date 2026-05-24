@@ -99,11 +99,7 @@
 		<scope>runtime</scope>
 	</dependency>
 	
-	<!-- WebSocket for Chat -->
-	<dependency>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-websocket</artifactId>
-	</dependency>
+
 	
 	<!-- Redis for Caching -->
 	<dependency>
@@ -117,24 +113,9 @@
 		<artifactId>spring-boot-starter-mail</artifactId>
 	</dependency>
 	
-	<!-- Elasticsearch for Full-text Search -->
-	<dependency>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-data-elasticsearch</artifactId>
-	</dependency>
 
-	<!-- Firebase Admin SDK -->
-	<dependency>
-		<groupId>com.google.firebase</groupId>
-		<artifactId>firebase-admin</artifactId>
-		<version>9.2.0</version>
-		<exclusions>
-			<exclusion>
-				<groupId>commons-logging</groupId>
-				<artifactId>commons-logging</artifactId>
-			</exclusion>
-		</exclusions>
-	</dependency>
+
+
 	
 	<!-- Lombok -->
 	<dependency>
@@ -144,11 +125,7 @@
 		<optional>true</optional>
 	</dependency>
 	
-	<!-- Google Gemini API - using WebClient for REST calls -->
-	<dependency>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-webflux</artifactId>
-	</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-tomcat</artifactId>
@@ -164,11 +141,7 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-	<dependency>
-			<groupId>io.minio</groupId>
-			<artifactId>minio</artifactId>
-			<version>8.5.7</version>
-		</dependency>
+
 		
 		<!-- Rate Limiting -->
 		<dependency>
@@ -196,6 +169,18 @@
 			<artifactId>itext-core</artifactId>
 			<version>8.0.2</version>
 			<type>pom</type>
+		</dependency>
+
+		<!-- Google Drive API -->
+		<dependency>
+			<groupId>com.google.api-client</groupId>
+			<artifactId>google-api-client</artifactId>
+			<version>2.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.apis</groupId>
+			<artifactId>google-api-services-drive</artifactId>
+			<version>v3-rev20230822-2.0.0</version>
 		</dependency>
 	</dependencies>
 

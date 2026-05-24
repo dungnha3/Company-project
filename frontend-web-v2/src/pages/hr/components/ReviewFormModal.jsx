@@ -13,14 +13,15 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
     const [formData, setFormData] = useState({
         employeeId: '',
         reviewPeriod: '',
-        reviewType: 'QUARTERLY',
+        reviewType: 'SPRINT_REVIEW',
         technicalScore: '',
         attitudeScore: '',
+        softSkillsScore: '',
         teamworkScore: '',
-        leadershipScore: '',
         comments: '',
         nextGoals: '',
         developmentPlan: '',
+        projectName: '',
     });
 
     // Load employees for dropdown
@@ -35,14 +36,15 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
             setFormData({
                 employeeId: review.employee?.employeeId || review.employeeId || '',
                 reviewPeriod: review.reviewPeriod || '',
-                reviewType: review.reviewType || 'QUARTERLY',
+                reviewType: review.reviewType || 'SPRINT_REVIEW',
                 technicalScore: review.technicalScore ?? '',
                 attitudeScore: review.attitudeScore ?? '',
+                softSkillsScore: review.softSkillsScore ?? '',
                 teamworkScore: review.teamworkScore ?? '',
-                leadershipScore: review.leadershipScore ?? '',
                 comments: review.comments || '',
                 nextGoals: review.nextGoals || '',
                 developmentPlan: review.developmentPlan || '',
+                projectName: review.projectName || '',
             });
         }
     }, [review]);
@@ -83,11 +85,14 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
             reviewType: formData.reviewType,
             technicalScore: formData.technicalScore ? parseFloat(formData.technicalScore) : null,
             attitudeScore: formData.attitudeScore ? parseFloat(formData.attitudeScore) : null,
+            softSkillsScore: formData.softSkillsScore ? parseFloat(formData.softSkillsScore) : null,
             teamworkScore: formData.teamworkScore ? parseFloat(formData.teamworkScore) : null,
-            leadershipScore: formData.leadershipScore ? parseFloat(formData.leadershipScore) : null,
             comments: formData.comments,
             nextGoals: formData.nextGoals,
             developmentPlan: formData.developmentPlan,
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0],
+            projectName: formData.reviewType === 'PROJECT' ? formData.projectName || null : null,
         };
 
         if (isEdit) {
@@ -101,7 +106,7 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
     const employeeList = Array.isArray(employees) ? employees : employees?.content || [];
 
     // Calculate average score
-    const scores = [formData.technicalScore, formData.attitudeScore, formData.teamworkScore, formData.leadershipScore]
+    const scores = [formData.technicalScore, formData.attitudeScore, formData.softSkillsScore, formData.teamworkScore]
         .filter(s => s !== '' && s != null)
         .map(s => parseFloat(s));
     const avgScore = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
@@ -163,20 +168,36 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
                         </div>
 
                         {/* Review Type */}
-                        <div>
-                            <label className="label-required">Loại đánh giá</label>
-                            <select
-                                name="reviewType"
-                                value={formData.reviewType}
-                                onChange={handleChange}
-                                className="input w-full"
-                                required
-                            >
-                                <option value="QUARTERLY">Theo quý</option>
-                                <option value="SEMI_ANNUAL">Nửa năm</option>
-                                <option value="ANNUAL">Cuối năm</option>
-                                <option value="PROBATION">Thử việc</option>
-                            </select>
+                        <div className={formData.reviewType === 'PROJECT' ? 'grid grid-cols-2 gap-4' : ''}>
+                            <div>
+                                <label className="label-required">Loại đánh giá</label>
+                                <select
+                                    name="reviewType"
+                                    value={formData.reviewType}
+                                    onChange={handleChange}
+                                    className="input w-full"
+                                    required
+                                >
+                                    <option value="SPRINT_REVIEW">Sprint Review</option>
+                                    <option value="PROJECT_COMPLETION">Kết thúc dự án</option>
+                                    <option value="PERIODIC">Định kỳ (tháng/quý)</option>
+                                    <option value="PROJECT">Đánh giá theo dự án</option>
+                                    <option value="PROMOTION">Thăng chức</option>
+                                </select>
+                            </div>
+                            {formData.reviewType === 'PROJECT' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tên dự án</label>
+                                    <input
+                                        type="text"
+                                        name="projectName"
+                                        value={formData.projectName}
+                                        onChange={handleChange}
+                                        className="input w-full"
+                                        placeholder="Tên dự án được đánh giá..."
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Score Grid */}
@@ -191,34 +212,10 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <ScoreInput
-                                    label="Chuyên môn"
-                                    name="technicalScore"
-                                    value={formData.technicalScore}
-                                    onChange={handleChange}
-                                    icon="fa-code"
-                                />
-                                <ScoreInput
-                                    label="Thái độ"
-                                    name="attitudeScore"
-                                    value={formData.attitudeScore}
-                                    onChange={handleChange}
-                                    icon="fa-heart"
-                                />
-                                <ScoreInput
-                                    label="Làm việc nhóm"
-                                    name="teamworkScore"
-                                    value={formData.teamworkScore}
-                                    onChange={handleChange}
-                                    icon="fa-users"
-                                />
-                                <ScoreInput
-                                    label="Năng lực lãnh đạo"
-                                    name="leadershipScore"
-                                    value={formData.leadershipScore}
-                                    onChange={handleChange}
-                                    icon="fa-star"
-                                />
+                                <ScoreInput label="Chuyên môn" name="technicalScore" value={formData.technicalScore} onChange={handleChange} icon="fa-code" />
+                                <ScoreInput label="Thái độ" name="attitudeScore" value={formData.attitudeScore} onChange={handleChange} icon="fa-heart" />
+                                <ScoreInput label="Kỹ năng mềm" name="softSkillsScore" value={formData.softSkillsScore} onChange={handleChange} icon="fa-comments" />
+                                <ScoreInput label="Làm việc nhóm" name="teamworkScore" value={formData.teamworkScore} onChange={handleChange} icon="fa-users" />
                             </div>
                         </div>
 

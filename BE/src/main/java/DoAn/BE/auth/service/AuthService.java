@@ -38,8 +38,8 @@ public class AuthService {
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final CompanyMemberRepository companyMemberRepository;
     private final DoAn.BE.audit.service.AuditLogService auditLogService;
-    private final org.springframework.web.reactive.function.client.WebClient webClient;
-    private final DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository;
+    private final org.springframework.web.client.RestTemplate restTemplate;
+
     private final TwoFactorService twoFactorService;
     private final int maxLoginAttempts;
     private final int lockoutDurationMinutes;
@@ -55,8 +55,7 @@ public class AuthService {
             org.springframework.context.ApplicationEventPublisher eventPublisher,
             CompanyMemberRepository companyMemberRepository,
             DoAn.BE.audit.service.AuditLogService auditLogService,
-            org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder,
-            DoAn.BE.user.repository.PersonalWorkspaceRepository personalWorkspaceRepository,
+            org.springframework.boot.web.client.RestTemplateBuilder restTemplateBuilder,
             TwoFactorService twoFactorService,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.max-attempts:5}") int maxLoginAttempts,
             @org.springframework.beans.factory.annotation.Value("${app.security.login.lockout-minutes:15}") int lockoutDurationMinutes,
@@ -73,8 +72,7 @@ public class AuthService {
         this.eventPublisher = eventPublisher;
         this.companyMemberRepository = companyMemberRepository;
         this.auditLogService = auditLogService;
-        this.webClient = webClientBuilder.build();
-        this.personalWorkspaceRepository = personalWorkspaceRepository;
+        this.restTemplate = restTemplateBuilder.build();
         this.twoFactorService = twoFactorService;
         this.maxLoginAttempts = maxLoginAttempts;
         this.lockoutDurationMinutes = lockoutDurationMinutes;
@@ -86,21 +84,21 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
-        if (request == null || request.getUsername() == null || request.getPassword() == null) {
+        if (request == null || request.getEmail() == null || request.getPassword() == null) {
             throw new BadRequestException("Thông tin đăng nhập không được để trống");
         }
-        checkLoginAttempts(request.getUsername(), ipAddress);
-        User user = userService.findByUsername(request.getUsername())
+        checkLoginAttempts(request.getEmail(), ipAddress);
+        User user = userService.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Thông tin đăng nhập không chính xác"));
-        validateUserActive(user, request.getUsername(), ipAddress);
+        validateUserActive(user, request.getEmail(), ipAddress);
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            recordFailedLogin(request.getUsername(), ipAddress, "Mật khẩu không chính xác");
+            recordFailedLogin(request.getEmail(), ipAddress, "Mật khẩu không chính xác");
             throw new UnauthorizedException("Thông tin đăng nhập không chính xác");
         }
 
         // 2FA check — if enabled, return partial response requiring TOTP code
         if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
-            clearFailedAttempts(request.getUsername(), ipAddress);
+            clearFailedAttempts(request.getEmail(), ipAddress);
             String tempToken = jwtService.generateTempToken(user);
             AuthResponse twoFactorResponse = new AuthResponse();
             twoFactorResponse.setRequiresTwoFactor(true);
@@ -108,14 +106,9 @@ public class AuthService {
             return twoFactorResponse;
         }
 
-        clearFailedAttempts(request.getUsername(), ipAddress);
+        clearFailedAttempts(request.getEmail(), ipAddress);
         updateUserLoginStatus(user);
 
-        if (!personalWorkspaceRepository.existsByUser_UserId(user.getUserId())) {
-            DoAn.BE.user.entity.PersonalWorkspace pw = DoAn.BE.user.entity.PersonalWorkspace.createFor(user);
-            personalWorkspaceRepository.save(pw);
-            log.info("Đã tạo Personal Workspace cho user cũ: {}", user.getUsername());
-        }
         sessionService.createSession(user, ipAddress, userAgent);
         List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
 
@@ -369,27 +362,21 @@ public class AuthService {
         if (userService.findByEmail(request.getEmail()).isPresent()) {
             throw new BadRequestException("Email đã được sử dụng");
         }
-        if (userService.findByUsername(request.getUsername()).isPresent()) {
-            throw new BadRequestException("Username đã tồn tại");
-        }
+        
         User newUser = new User();
         newUser.setEmail(request.getEmail());
-        newUser.setUsername(request.getUsername());
+        newUser.setUsername(request.getEmail());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         newUser.setPhoneNumber(request.getPhoneNumber());
         newUser.setIsActive(true);
         newUser.setStatus(User.UserStatus.ACTIVE);
 
         // Set avatar mặc định (Configurable)
-        String avatarUrl = String.format(defaultAvatarUrlPattern, request.getUsername().replace(" ", "+"));
+        String avatarUrl = String.format(defaultAvatarUrlPattern, request.getEmail().replace(" ", "+"));
         newUser.setAvatarUrl(avatarUrl);
 
         newUser = userService.save(newUser);
         log.info("Đã tạo tài khoản mới: {}", newUser.getUsername());
-        DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
-                .createFor(newUser);
-        personalWorkspaceRepository.save(personalWorkspace);
-        log.info("Đã tạo Personal Workspace cho user: {}", newUser.getUsername());
         updateUserLoginStatus(newUser);
         sessionService.createSession(newUser, ipAddress, userAgent);
         List<CompanyMember> memberships = List.of();
@@ -406,8 +393,19 @@ public class AuthService {
         return txTemplate.execute(status -> {
             User user = userService.findByEmail(email).orElseGet(() -> createGoogleUser(email, picture));
 
+            // Shadow user (PENDING_ACTIVATION) đăng nhập Google lần đầu → kích hoạt
             if (!user.getIsActive()) {
-                throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+                if (user.getStatus() == User.UserStatus.PENDING_ACTIVATION) {
+                    user.setIsActive(true);
+                    user.setStatus(User.UserStatus.ACTIVE);
+                    if (picture != null && (user.getAvatarUrl() == null || user.getAvatarUrl().isBlank())) {
+                        user.setAvatarUrl(picture);
+                    }
+                    userService.save(user);
+                    log.info("Đã kích hoạt shadow user {} qua Google Login", user.getEmail());
+                } else {
+                    throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+                }
             }
             updateUserLoginStatus(user);
             sessionService.createSession(user, ipAddress, userAgent);
@@ -439,10 +437,6 @@ public class AuthService {
         newUser.setStatus(User.UserStatus.ACTIVE);
         newUser.setAvatarUrl(picture);
         newUser = userService.save(newUser);
-        DoAn.BE.user.entity.PersonalWorkspace personalWorkspace = DoAn.BE.user.entity.PersonalWorkspace
-                .createFor(newUser);
-        personalWorkspaceRepository.save(personalWorkspace);
-        log.info("Đã tạo Personal Workspace cho Google user: {}", newUser.getEmail());
 
         return newUser;
     }
@@ -461,17 +455,9 @@ public class AuthService {
         userInfo.setEmail(user.getEmail());
         userInfo.setIsActive(user.getIsActive());
         userInfo.setIsSystemAdmin(user.isSystemAdminAccount()); // [SAAS] System Admin flag
-        userInfo.setPersonalPlan(user.getPersonalPlan()); // [NEW] Personal plan
+        // Personal plan check is removed
         userInfo.setTwoFactorEnabled(Boolean.TRUE.equals(user.getTwoFactorEnabled()));
         response.setUser(userInfo);
-        personalWorkspaceRepository.findByUser_UserId(user.getUserId())
-                .ifPresent(pw -> {
-                    AuthResponse.PersonalWorkspaceInfo pwInfo = new AuthResponse.PersonalWorkspaceInfo();
-                    pwInfo.setWorkspaceId(pw.getWorkspaceId());
-                    pwInfo.setName(pw.getName());
-                    pwInfo.setPlan(user.getPersonalPlan());
-                    response.setPersonalWorkspace(pwInfo);
-                });
         List<AuthResponse.CompanyDTO> companies = memberships.stream()
                 .map(m -> new AuthResponse.CompanyDTO(
                         m.getCompany().getCompanyId(),
@@ -632,12 +618,12 @@ public class AuthService {
     }
 
     private java.util.Map<String, Object> verifyGoogleToken(String idToken) {
-        java.util.Map<String, Object> googleUser = webClient.get()
-                .uri(this.googleTokenInfoUrl + "?id_token=" + idToken)
-                .retrieve()
-                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<java.util.Map<String, Object>>() {
-                })
-                .block();
+        java.util.Map<String, Object> googleUser = restTemplate.exchange(
+                this.googleTokenInfoUrl + "?id_token=" + idToken,
+                org.springframework.http.HttpMethod.GET,
+                null,
+                new org.springframework.core.ParameterizedTypeReference<java.util.Map<String, Object>>() {}
+        ).getBody();
 
         if (googleUser == null || googleUser.get("email") == null) {
             throw new BadRequestException("Google token không hợp lệ");

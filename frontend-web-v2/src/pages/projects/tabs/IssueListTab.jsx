@@ -74,7 +74,53 @@ function IssueRow({ issue, onClick }) {
                     <span className="text-gray-400 text-sm">Chưa giao</span>
                 )}
             </td>
+            {/* Score cells */}
+            <ScoreCell value={issue.aiScore} color="text-indigo-600" bg="bg-indigo-50" />
+            <ScoreCell value={issue.humanScore} color="text-purple-600" bg="bg-purple-50" />
+            <ScoreCell value={issue.totalScore} color={issue.totalScore >= 8 ? 'text-green-600' : issue.totalScore >= 6 ? 'text-amber-600' : 'text-red-500'} bg="bg-gray-50" bold />
+            <CoeffCell value={issue.priorityCoefficient} color="text-red-600" />
+            <CoeffCell value={issue.timelineCoefficient} color="text-blue-600" />
+            <CoeffCell value={issue.complexityCoefficient} color="text-purple-600" />
+            <CoeffCell value={issue.qualityCoefficient} color="text-green-600" />
+            <ReworkCell count={issue.reworkCount} />
         </tr>
+    );
+}
+
+// ─── Score Cell ───────────────────────────────────────────────────────────
+function ScoreCell({ value, color, bg, bold }) {
+    if (value == null) return <td className="px-6 py-4 text-center text-gray-300">—</td>;
+    return (
+        <td className="px-6 py-4 text-center">
+            <span className={`inline-flex items-center justify-center min-w-[36px] px-1.5 py-0.5 rounded-md text-xs font-semibold ${color} ${bg} ${bold ? 'font-black' : ''}`}>
+                {Number(value).toFixed(1)}
+            </span>
+        </td>
+    );
+}
+
+// ─── Coefficient Cell ─────────────────────────────────────────────────────
+function CoeffCell({ value, color }) {
+    if (value == null) return <td className="px-6 py-4 text-center text-gray-300">—</td>;
+    return (
+        <td className="px-6 py-4 text-center">
+            <span className={`text-xs font-bold ${color}`} title={`Hệ số: ${Number(value).toFixed(2)}`}>
+                {Number(value).toFixed(1)}
+            </span>
+        </td>
+    );
+}
+
+// ─── Rework Cell ──────────────────────────────────────────────────────────
+function ReworkCell({ count }) {
+    if (!count || count === 0) return <td className="px-6 py-4 text-center text-gray-300">—</td>;
+    return (
+        <td className="px-6 py-4 text-center">
+            <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold bg-red-100 text-red-600" title={`Rework ${count} lần (-${count * 5}%)`}>
+                <i className="fa-solid fa-rotate-right text-[9px]" />
+                {count}
+            </span>
+        </td>
     );
 }
 
@@ -84,23 +130,27 @@ export default function IssueListTab({ projectId }) {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterPriority, setFilterPriority] = useState('');
     const [filterAssignee, setFilterAssignee] = useState('');
+    const [page, setPage] = useState(0);
+    const [pageSize] = useState(15);
     const queryClient = useQueryClient();
 
-    // Fetch project issues
-    const { data: issuesData, isLoading } = useQuery({
-        queryKey: ['project-issues', projectId],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(projectId))).data,
+    // Fetch all issues (client-side filter + pagination)
+    const { data: allIssuesRaw = [], isLoading } = useQuery({
+        queryKey: ['project-issues-all', projectId],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(projectId), { params: { size: 1000 } });
+            const d = res.data;
+            return Array.isArray(d) ? d : (d?.content || []);
+        },
     });
 
-    const allIssues = issuesData?.content || [];
-
-    // Extract unique filter options from data
-    const statusOptions = [...new Set(allIssues.map(i => i.statusName).filter(Boolean))];
-    const priorityOptions = [...new Set(allIssues.map(i => i.priority).filter(Boolean))];
-    const assigneeOptions = [...new Set(allIssues.map(i => i.assigneeName).filter(Boolean))];
+    // Extract unique filter options from all data
+    const statusOptions = [...new Set(allIssuesRaw.map(i => i.statusName).filter(Boolean))];
+    const priorityOptions = [...new Set(allIssuesRaw.map(i => i.priority).filter(Boolean))];
+    const assigneeOptions = [...new Set(allIssuesRaw.map(i => i.assigneeName).filter(Boolean))];
 
     // Apply filters
-    const issues = allIssues.filter(issue => {
+    const filteredIssues = allIssuesRaw.filter(issue => {
         if (search && !issue.title?.toLowerCase().includes(search.toLowerCase()) &&
             !issue.issueKey?.toLowerCase().includes(search.toLowerCase())) return false;
         if (filterStatus && issue.statusName !== filterStatus) return false;
@@ -109,13 +159,24 @@ export default function IssueListTab({ projectId }) {
         return true;
     });
 
+    const totalElements = filteredIssues.length;
+    const totalPages = Math.max(1, Math.ceil(totalElements / pageSize));
+    const paginatedIssues = filteredIssues.slice(page * pageSize, (page + 1) * pageSize);
+
     const hasFilters = search || filterStatus || filterPriority || filterAssignee;
+
+    // Reset to page 0 whenever filters change
+    const handleFilterChange = (setter) => (val) => {
+        setter(val);
+        setPage(0);
+    };
 
     const clearFilters = () => {
         setSearch('');
         setFilterStatus('');
         setFilterPriority('');
         setFilterAssignee('');
+        setPage(0);
     };
 
     const handleCloseModal = () => {
@@ -127,8 +188,22 @@ export default function IssueListTab({ projectId }) {
 
     return (
         <div className="space-y-4">
-            {/* Toolbar with Filters */}
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+            {/* Header + Filters */}
+            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm space-y-3">
+                {/* Toolbar header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-list-check text-gray-400 text-sm" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Danh sách công việc</p>
+                            <p className="text-[10px] text-gray-500">{allIssuesRaw.length} công việc</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filters row */}
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
@@ -137,7 +212,7 @@ export default function IssueListTab({ projectId }) {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                             placeholder="Tìm theo tên hoặc mã..."
                         />
                     </div>
@@ -145,8 +220,8 @@ export default function IssueListTab({ projectId }) {
                     {/* Status Filter */}
                     <select
                         value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        onChange={handleFilterChange(setFilterStatus)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                     >
                         <option value="">Tất cả trạng thái</option>
                         {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -155,8 +230,8 @@ export default function IssueListTab({ projectId }) {
                     {/* Priority Filter */}
                     <select
                         value={filterPriority}
-                        onChange={(e) => setFilterPriority(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        onChange={handleFilterChange(setFilterPriority)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                     >
                         <option value="">Tất cả ưu tiên</option>
                         {priorityOptions.map(p => <option key={p} value={p}>{priorityLabels[p] || p}</option>)}
@@ -165,8 +240,8 @@ export default function IssueListTab({ projectId }) {
                     {/* Assignee Filter */}
                     <select
                         value={filterAssignee}
-                        onChange={(e) => setFilterAssignee(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        onChange={handleFilterChange(setFilterAssignee)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
                     >
                         <option value="">Tất cả người thực hiện</option>
                         {assigneeOptions.map(a => <option key={a} value={a}>{a}</option>)}
@@ -186,40 +261,48 @@ export default function IssueListTab({ projectId }) {
 
                 {/* Result count */}
                 <div className="text-gray-500 text-sm">
-                    Hiển thị {issues.length}{hasFilters ? ` / ${allIssues.length}` : ''} công việc
+                    Hiển thị {paginatedIssues.length}{hasFilters ? ` / ${totalElements}` : ` / ${allIssuesRaw.length}`} công việc
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100">
+                        <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Task</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Ưu tiên</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Hạn chót</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Người thực hiện</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Task</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trạng thái</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Ưu tiên</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Hạn chót</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Người thực hiện</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="AI Score">AI</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="Human Score">Human</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="Total Score">Total</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-indigo-500 uppercase" title="Priority Coefficient">P</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-blue-500 uppercase" title="Timeline Coefficient">T</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-purple-500 uppercase" title="Complexity Coefficient">C</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-green-500 uppercase" title="Quality Coefficient">Q</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase" title="Rework Count">RW</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan="13" className="px-6 py-12 text-center text-gray-500">
                                         <i className="fa-solid fa-spinner fa-spin text-xl text-indigo-500" />
                                         <p className="mt-2">Đang tải...</p>
                                     </td>
                                 </tr>
-                            ) : issues.length === 0 ? (
+                            ) : paginatedIssues.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan="13" className="px-6 py-12 text-center text-gray-500">
                                         <i className="fa-solid fa-inbox text-4xl text-gray-300 mb-3" />
                                         <p className="font-medium">Không có task nào</p>
-                                        <p className="text-sm mt-1">Các task của dự án sẽ xuất hiện ở đây</p>
+                                        <p className="text-sm mt-1">{hasFilters ? 'Không có task nào phù hợp với bộ lọc' : 'Các task của dự án sẽ xuất hiện ở đây'}</p>
                                     </td>
                                 </tr>
                             ) : (
-                                issues.map((issue) => (
+                                paginatedIssues.map((issue) => (
                                     <IssueRow
                                         key={issue.issueId}
                                         issue={issue}
@@ -231,6 +314,50 @@ export default function IssueListTab({ projectId }) {
                     </table>
                 </div>
             </div>
+
+            {/* Pagination */}
+            {(totalPages > 1 || totalElements > pageSize) && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-sm text-gray-500">
+                        Hiển thị <span className="font-medium text-gray-700">{page * pageSize + 1}</span>
+                        –<span className="font-medium text-gray-700">{Math.min((page + 1) * pageSize, totalElements)}</span>
+                        {' '}trong <span className="font-medium text-gray-700">{totalElements}</span> công việc
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                            disabled={page === 0}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <i className="fa-solid fa-chevron-left text-xs" />
+                        </button>
+                        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                            let pageNum = i;
+                            if (totalPages > 7) {
+                                if (page <= 3) pageNum = i;
+                                else if (page >= totalPages - 3) pageNum = totalPages - 7 + i;
+                                else pageNum = page - 3 + i;
+                            }
+                            return (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => setPage(pageNum)}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${page === pageNum ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+                                >
+                                    {pageNum + 1}
+                                </button>
+                            );
+                        })}
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                            disabled={page >= totalPages - 1}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <i className="fa-solid fa-chevron-right text-xs" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Issue Detail Modal */}
             {selectedIssue && (

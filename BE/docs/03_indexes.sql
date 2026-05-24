@@ -49,9 +49,7 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_employees_company' A
     CREATE NONCLUSTERED INDEX idx_employees_company ON [dbo].[employees](company_id);
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_employees_department' AND object_id = OBJECT_ID(N'[dbo].[employees]'))
-    CREATE NONCLUSTERED INDEX idx_employees_department ON [dbo].[employees](department_id);
-GO
+
 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_employees_user' AND object_id = OBJECT_ID(N'[dbo].[employees]'))
     CREATE NONCLUSTERED INDEX idx_employees_user ON [dbo].[employees](user_id);
@@ -126,23 +124,7 @@ GO
 PRINT N'✅ Created indexes for NOTIFICATIONS table';
 GO
 
--- =====================================================
--- 7. ATTENDANCES TABLE INDEXES
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_attendances_employee' AND object_id = OBJECT_ID(N'[dbo].[attendances]'))
-    CREATE NONCLUSTERED INDEX idx_attendances_employee ON [dbo].[attendances](employee_id);
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_attendances_date' AND object_id = OBJECT_ID(N'[dbo].[attendances]'))
-    CREATE NONCLUSTERED INDEX idx_attendances_date ON [dbo].[attendances](employee_id, attendance_date);
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_attendances_company_date' AND object_id = OBJECT_ID(N'[dbo].[attendances]'))
-    CREATE NONCLUSTERED INDEX idx_attendances_company_date ON [dbo].[attendances](company_id, attendance_date);
-GO
-
-PRINT N'✅ Created indexes for ATTENDANCES table';
-GO
 
 -- =====================================================
 -- 8. LEAVE_REQUESTS TABLE INDEXES
@@ -162,37 +144,7 @@ GO
 PRINT N'✅ Created indexes for LEAVE_REQUESTS table';
 GO
 
--- =====================================================
--- 9. MESSAGES TABLE INDEXES
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_messages_room' AND object_id = OBJECT_ID(N'[dbo].[messages]'))
-    CREATE NONCLUSTERED INDEX idx_messages_room ON [dbo].[messages](room_id);
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_messages_room_created' AND object_id = OBJECT_ID(N'[dbo].[messages]'))
-    CREATE NONCLUSTERED INDEX idx_messages_room_created ON [dbo].[messages](room_id, created_at DESC);
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_messages_sender' AND object_id = OBJECT_ID(N'[dbo].[messages]'))
-    CREATE NONCLUSTERED INDEX idx_messages_sender ON [dbo].[messages](sender_id);
-GO
-
-PRINT N'✅ Created indexes for MESSAGES table';
-GO
-
--- =====================================================
--- 10. SALARIES TABLE INDEXES
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_salaries_employee' AND object_id = OBJECT_ID(N'[dbo].[salaries]'))
-    CREATE NONCLUSTERED INDEX idx_salaries_employee ON [dbo].[salaries](employee_id);
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_salaries_period' AND object_id = OBJECT_ID(N'[dbo].[salaries]'))
-    CREATE NONCLUSTERED INDEX idx_salaries_period ON [dbo].[salaries](company_id, [month], [year]);
-GO
-
-PRINT N'✅ Created indexes for SALARIES table';
-GO
 
 -- =====================================================
 -- 11. ISSUE_ACTIVITIES TABLE INDEXES
@@ -222,15 +174,7 @@ GO
 PRINT N'✅ Created indexes for SPRINTS table';
 GO
 
--- =====================================================
--- 13. CHAT_ROOMS TABLE INDEXES
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_chat_rooms_company' AND object_id = OBJECT_ID(N'[dbo].[chat_rooms]'))
-    CREATE NONCLUSTERED INDEX idx_chat_rooms_company ON [dbo].[chat_rooms](company_id);
-GO
 
-PRINT N'✅ Created indexes for CHAT_ROOMS table';
-GO
 
 -- =====================================================
 -- 14. PROJECT_MEMBERS TABLE INDEXES
@@ -257,30 +201,47 @@ PRINT N'=====================================================';
 GO
 
 -- =====================================================
--- 15. INTEGRATIONS TABLE INDEXES (NEW)
+-- 15. PERFORMANCE REVIEWS INDEXES (NEW)
 -- =====================================================
-IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'integrations')
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'reviews')
 BEGIN
-    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_integrations_company' AND object_id = OBJECT_ID(N'[dbo].[integrations]'))
-        CREATE NONCLUSTERED INDEX idx_integrations_company ON [dbo].[integrations](company_id);
-    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_integrations_type' AND object_id = OBJECT_ID(N'[dbo].[integrations]'))
-        CREATE NONCLUSTERED INDEX idx_integrations_type ON [dbo].[integrations](integration_type);
-    PRINT N'✅ Created indexes for INTEGRATIONS table';
+    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_reviews_employee' AND object_id = OBJECT_ID(N'[dbo].[reviews]'))
+        CREATE NONCLUSTERED INDEX idx_reviews_employee ON [dbo].[reviews](employee_id, project_id);
+    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_reviews_period' AND object_id = OBJECT_ID(N'[dbo].[reviews]'))
+        CREATE NONCLUSTERED INDEX idx_reviews_period ON [dbo].[reviews](review_period);
+    PRINT N'✅ Created indexes for REVIEWS table';
 END
 GO
 
 -- =====================================================
--- 16. PERSONAL_TASKS TABLE INDEXES (NEW)
+-- 16. RESOURCE ALLOCATIONS INDEXES (NEW)
 -- =====================================================
-IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'personal_tasks')
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'resource_allocations')
 BEGIN
-    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_pt_workspace' AND object_id = OBJECT_ID(N'[dbo].[personal_tasks]'))
-        CREATE NONCLUSTERED INDEX idx_pt_workspace ON [dbo].[personal_tasks](workspace_id);
-    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_pt_status' AND object_id = OBJECT_ID(N'[dbo].[personal_tasks]'))
-        CREATE NONCLUSTERED INDEX idx_pt_status ON [dbo].[personal_tasks](workspace_id, [status]);
-    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_pt_due' AND object_id = OBJECT_ID(N'[dbo].[personal_tasks]'))
-        CREATE NONCLUSTERED INDEX idx_pt_due ON [dbo].[personal_tasks](workspace_id, due_date);
-    PRINT N'✅ Created indexes for PERSONAL_TASKS table';
+    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_resource_allocations_emp' AND object_id = OBJECT_ID(N'[dbo].[resource_allocations]'))
+        CREATE NONCLUSTERED INDEX idx_resource_allocations_emp ON [dbo].[resource_allocations](employee_id, project_id);
+    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_resource_allocations_date' AND object_id = OBJECT_ID(N'[dbo].[resource_allocations]'))
+        CREATE NONCLUSTERED INDEX idx_resource_allocations_date ON [dbo].[resource_allocations](start_date, end_date);
+    PRINT N'✅ Created indexes for RESOURCE_ALLOCATIONS table';
+END
+GO
+
+-- =====================================================
+-- 16B. PROJECT EXPENSES AND PHASES INDEXES (NEW)
+-- =====================================================
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'project_expenses')
+BEGIN
+    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_project_expenses_proj' AND object_id = OBJECT_ID(N'[dbo].[project_expenses]'))
+        CREATE NONCLUSTERED INDEX idx_project_expenses_proj ON [dbo].[project_expenses](project_id, expense_date);
+    PRINT N'✅ Created indexes for PROJECT_EXPENSES table';
+END
+GO
+
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'project_phases')
+BEGIN
+    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_project_phases_proj' AND object_id = OBJECT_ID(N'[dbo].[project_phases]'))
+        CREATE NONCLUSTERED INDEX idx_project_phases_proj ON [dbo].[project_phases](project_id);
+    PRINT N'✅ Created indexes for PROJECT_PHASES table';
 END
 GO
 

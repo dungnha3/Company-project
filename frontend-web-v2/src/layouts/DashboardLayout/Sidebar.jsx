@@ -1,323 +1,225 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '@shared/stores/uiStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useAuthStore } from '@shared/stores/authStore';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
+import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import CompanySwitcher from './CompanySwitcher';
-import { isMenuItemEnabled } from '@shared/utils/featureHelper';
-import { getRequiredPlanForFeature } from '@shared/utils/planHelper';
 
-/**
- * Hybrid NAV_CONFIG
- * - HR: single link → body tabs (SectionTabLayout handles sub-items)
- * - All other sections: inline items in sidebar
- */
 export const NAV_CONFIG = [
-    {
-        key: 'overview',
-        title: 'Tổng quan',
-        roles: ['*'],
-        items: [
-            { path: '/app', icon: 'fa-house', label: 'Dashboard', exact: true },
-        ],
-    },
-    {
-        key: 'personal-workspace',
-        title: 'Không gian cá nhân',
-        roles: ['*'],
-        personalOnly: true,
-        items: [
-            { path: '/app/me/tasks', icon: 'fa-list-check', label: 'Tasks cá nhân' },
-            { path: '/app/me/storage', icon: 'fa-folder-open', label: 'Tài liệu cá nhân' },
-            { path: '/app/me/personal-calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân' },
-        ],
-    },
     {
         key: 'personal',
         title: 'Cá nhân',
-        roles: ['*'],
         items: [
-            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi', companyOnly: true },
-            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân', feature: 'calendar', companyOnly: true },
-            { path: '/app/me/timelogs', icon: 'fa-stopwatch', label: 'Chấm công (Logs)', feature: 'timeTracking', companyOnly: true },
+            { path: '/app/me', icon: 'fa-house', label: 'Dashboard', exact: true },
+            { path: '/app/me/issues', icon: 'fa-list-check', label: 'Công việc của tôi' },
+            { path: '/app/me/timelogs', icon: 'fa-clock', label: 'Nhật ký giờ làm' },
+            { path: '/app/me/calendar', icon: 'fa-calendar-days', label: 'Lịch cá nhân' },
+            { path: '/app/me/performance', icon: 'fa-chart-line', label: 'Hiệu suất' },
+        ],
+    },
+    {
+        key: 'project',
+        title: 'Quản lý Dự án',
+        items: [
+            { path: '/app/projects', icon: 'fa-cubes', label: 'Dự án & Kanban' },
         ],
     },
     {
         key: 'hr',
-        title: 'Nhân sự (HR)',
-        permission: 'hrViewList',
-        feature: 'hr',
-        companyOnly: true,
+        title: 'Nhân sự & HR',
         items: [
-            // Single entry point → body tabs handle 13 sub-items
-            { path: '/app/hr/dashboard', icon: 'fa-users-gear', label: 'Nhân sự (HR)', feature: 'hr', matchPrefix: '/app/hr' },
+            { path: '/app/hr', icon: 'fa-chart-simple', label: 'Dashboard', exact: true },
+            { path: '/app/hr/employees', icon: 'fa-address-book', label: 'Danh bạ nhân viên' },
+            { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Quản lý nghỉ phép' },
+            { path: '/app/hr/performance', icon: 'fa-star', label: 'Đánh giá KPI', permission: 'HR.MANAGE_PERFORMANCE' },
         ],
     },
     {
-        key: 'payroll',
-        title: 'Chấm công & Lương',
-        feature: 'hr',
-        companyOnly: true,
-        // Only show for users WITHOUT full HR access (those with hrViewList see everything in HR body tabs)
-        hideIfPermission: 'hrViewList',
+        key: 'settings',
+        title: 'Quản trị',
         items: [
-            { path: '/app/hr/attendance', icon: 'fa-clock', label: 'Chấm công', feature: 'attendance' },
-            { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
-            { path: '/app/hr/salaries', icon: 'fa-money-bill-wave', label: 'Bảng lương', feature: 'salary', permission: 'salaryView' },
-        ],
-    },
-    {
-        key: 'workspace-tools',
-        title: 'Dự án & Công cụ',
-        roles: ['*'],
-        companyOnly: true,
-        items: [
-            { path: '/app/projects', icon: 'fa-folder-open', label: 'Dự án', feature: 'project' },
-            { path: '/app/reports', icon: 'fa-chart-bar', label: 'Báo cáo', feature: 'project' },
-            { path: '/app/storage', icon: 'fa-folder', label: 'Tài liệu chung', feature: 'storage' },
-            { path: '/app/chat', icon: 'fa-comments', label: 'Trò chuyện', feature: 'chat' },
-            { path: '/app/notifications', icon: 'fa-bell', label: 'Thông báo' },
-        ],
-    },
-    {
-        key: 'company',
-        title: 'Quản trị Workspace',
-        roles: ['OWNER', 'COMPANY_ADMIN'],
-        companyOnly: true,
-        items: [
-            { path: '/app/company/dashboard', icon: 'fa-building', label: 'Tổng quan' },
-            { path: '/app/company/activity', icon: 'fa-history', label: 'Nhật ký hoạt động' },
-            { path: '/app/billing', icon: 'fa-credit-card', label: 'Gói & Thanh toán' },
-            { path: '/app/company/settings', icon: 'fa-cog', label: 'Cài đặt chung' },
+            { path: '/app/company/settings', icon: 'fa-gear', label: 'Cài đặt Workspace', permission: 'PROJECT.MANAGE_ALL' },
         ],
     },
 ];
 
-// Feature display names for upgrade prompt
-const FEATURE_NAMES = {
-    'hr': 'Nhân sự (HR)',
-    'project': 'Dự án',
-    'chat': 'Trò chuyện',
-    'storage': 'Tài liệu',
-    'attendance': 'Chấm công',
-    'leave': 'Nghỉ phép',
-    'salary': 'Bảng lương',
-    'contract': 'Hợp đồng',
-    'review': 'Đánh giá',
-    'okr': 'OKR/KPI',
-    'skillsMatrix': 'Ma trận kỹ năng',
-    'onboarding': 'Onboarding',
-    'resourcePlanning': 'Quản lý nguồn lực',
-    'orgChart': 'Sơ đồ tổ chức',
-    'timeTracking': 'Time Tracking',
-    'calendar': 'Lịch',
-    'ai': 'AI Assistant',
-};
-
-const PLAN_LEVELS = { 'FREE': 0, 'STARTER': 1, 'PROFESSIONAL': 2, 'ENTERPRISE': 3 };
-
 export default function Sidebar() {
     const { sidebarCollapsed, toggleSidebar } = useUIStore();
-    const { currentWorkspace, hasPermission } = useWorkspaceStore();
+    const { currentWorkspace } = useWorkspaceStore();
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
     const location = useLocation();
-    const [upgradeModal, setUpgradeModal] = useState(null);
+    const { canAccess, hasPermission } = useAccessControl();
+    const { data: myIssuesForAlert = [] } = useQuery({
+        queryKey: ['sidebar-my-issues-alert'],
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data;
+                return response?.content || response || [];
+            } catch {
+                return [];
+            }
+        },
+    });
+
+    const lateReviewCount = myIssuesForAlert.filter((issue) => {
+        if (issue.statusName !== 'Review') return false;
+        const baseDate = issue.updatedAt || issue.createdAt;
+        const ts = baseDate ? new Date(baseDate).getTime() : NaN;
+        if (!ts || Number.isNaN(ts)) return false;
+        const elapsedHours = (Date.now() - ts) / (1000 * 60 * 60);
+        return elapsedHours >= 48;
+    }).length;
 
     if (user?.isSystemAdmin) return null;
 
-    const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['OWNER']);
-    const currentPlan = currentWorkspace?.plan || 'FREE';
-    const settings = currentWorkspace?.settings || null;
-    const permissions = currentWorkspace?.permissions || null;
-    const isPersonalWorkspace = currentWorkspace?.type === 'PERSONAL';
+    // Lọc menu theo quyền và cờ tính năng
+    const visibleSections = NAV_CONFIG.map(section => {
+        // Kiểm tra Feature Toggle của cả section (Ví dụ: tắt HR module thì ẩn cả section)
 
-    // Filter sections and items
-    const visibleSections = NAV_CONFIG.filter(section => {
-        if (section.companyOnly && isPersonalWorkspace) return false;
-        if (section.personalOnly && !isPersonalWorkspace) return false;
-
-        // hideIfPermission: hide section if user HAS this permission (e.g., payroll hidden if user has full HR access)
-        if (section.hideIfPermission && hasPermission(section.hideIfPermission)) return false;
-
-        // Permission-based visibility (preferred)
-        if (section.permission) return hasPermission(section.permission);
-
-        // Role-based visibility (kept for admin-only sections)
-        if (section.roles) {
-            if (section.roles.includes('*')) return true;
-            return section.roles.some(r => currentRoles.includes(r));
-        }
-
-        return true;
-    }).map(section => ({
-        ...section,
-        items: section.items
-            .map(item => {
-                if (item.companyOnly && isPersonalWorkspace) return null;
-                // Permission-based item visibility
-                if (item.permission && !hasPermission(item.permission)) return null;
-                // Legacy role-based item visibility
-                if (item.roles && !item.roles.includes('*') && !item.roles.some(r => currentRoles.includes(r))) return null;
-
-                if (item.feature) {
-                    let planFeature = item.feature;
-                    if (['attendance', 'leave', 'salary', 'contract', 'review', 'okr', 'onboarding', 'resourcePlanning'].includes(item.feature)) planFeature = 'hr';
-
-                    const isFullyEnabled = isMenuItemEnabled(item.path, currentPlan, settings, permissions);
-                    if (isFullyEnabled) return { ...item, enabled: true };
-
-                    const requiredPlan = getRequiredPlanForFeature(planFeature);
-                    const isPlanBlocked = PLAN_LEVELS[currentPlan] < PLAN_LEVELS[requiredPlan];
-                    return isPlanBlocked ? { ...item, enabled: false } : null;
+        const items = section.items.filter(item => {
+            // Kiểm tra Permission cụ thể của từng item
+            if (item.permission && !canAccess({ permission: item.permission })) {
+                // Special case for Settings: If user can manage requests or members, also show settings
+                if (item.path === '/app/company/settings') {
+                    if (hasPermission('WORKSPACE.MANAGE_REQUESTS') || hasPermission('WORKSPACE.MANAGE_MEMBERS')) return true;
                 }
+                return false;
+            }
+            return true;
+        });
 
-                return { ...item, enabled: true };
-            })
-            .filter(Boolean),
-    })).filter(section => section.items.length > 0);
+        if (items.length === 0) return null;
 
-    const handleDisabledClick = (item, e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const featureName = FEATURE_NAMES[item.feature] || item.label;
-        const requiredPlan = getRequiredPlanForFeature(item.feature === 'hr' ? 'hr' : item.feature);
-        setUpgradeModal({ feature: item.feature, name: featureName, requiredPlan });
-    };
-
-    const closeUpgradeModal = () => setUpgradeModal(null);
+        return { ...section, items };
+    }).filter(Boolean);
 
     const isItemActive = (item) => {
         if (item.exact) return location.pathname === item.path;
-        if (item.matchPrefix) return location.pathname.startsWith(item.matchPrefix);
         return location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     };
 
     return (
-        <aside className={`sidebar fixed top-0 left-0 h-screen z-40 ${sidebarCollapsed ? 'collapsed' : ''}`}>
-            {/* Toggle Button */}
-            <button
-                onClick={toggleSidebar}
-                className="absolute -right-3 top-6 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-gray-400 hover:text-primary transition-colors"
-            >
-                <i className={`fa-solid ${sidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'} text-xs`} />
-            </button>
-
-            {/* Company Switcher */}
-            <div className="p-4 border-b border-gray-100">
-                <CompanySwitcher collapsed={sidebarCollapsed} />
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4">
-                {visibleSections.map(section => (
-                    <div key={section.key} className="menu-section">
-                        {!sidebarCollapsed && (
-                            <div className="menu-title">{section.title}</div>
-                        )}
-                        {section.items.map(item => (
-                            item.enabled ? (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    end={item.exact}
-                                    className={() => `menu-item ${isItemActive(item) ? 'active' : ''}`}
-                                    title={item.label}
-                                >
-                                    <i className={`fa-solid ${item.icon}`} />
-                                    {!sidebarCollapsed && <span>{item.label}</span>}
-                                </NavLink>
-                            ) : (
-                                <button
-                                    key={item.path}
-                                    onClick={(e) => handleDisabledClick(item, e)}
-                                    className="menu-item w-full opacity-50 cursor-not-allowed hover:bg-gray-50"
-                                    title={`${item.label} - Cần nâng cấp gói`}
-                                >
-                                    <i className={`fa-solid ${item.icon} text-gray-400`} />
-                                    {!sidebarCollapsed && (
-                                        <>
-                                            <span className="text-gray-400">{item.label}</span>
-                                            <i className="fa-solid fa-lock text-[10px] text-gray-400 ml-auto" />
-                                        </>
-                                    )}
-                                </button>
-                            )
-                        ))}
+        <aside
+            className={`
+                fixed top-0 left-0 z-40 h-screen transition-all duration-300 ease-in-out
+                ${sidebarCollapsed ? 'w-20' : 'w-[260px]'}
+                bg-white border-r border-gray-100 flex flex-col shadow-sm
+            `}
+        >
+            {/* Header / Logo */}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100/50 bg-white/50 backdrop-blur-xl">
+                {!sidebarCollapsed && (
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                            <i className="fa-solid fa-layer-group text-sm"></i>
+                        </div>
+                        <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">
+                            Workspace
+                        </span>
                     </div>
-                ))}
-            </nav>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-gray-100 space-y-2">
-                {isPersonalWorkspace && currentPlan === 'FREE' && !sidebarCollapsed && (
-                    <NavLink
-                        to="/app/billing"
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 text-violet-600 text-sm hover:from-violet-100 hover:to-purple-100 transition-all group"
-                    >
-                        <i className="fa-solid fa-sparkles text-xs group-hover:animate-pulse" />
-                        <span className="font-medium">Nâng cấp PRO</span>
-                        <i className="fa-solid fa-arrow-right text-xs ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </NavLink>
                 )}
-                <NavLink to="/app/me/profile" className="menu-item" title="Cài đặt">
-                    <i className="fa-solid fa-gear" />
-                    {!sidebarCollapsed && <span>Cài đặt</span>}
-                </NavLink>
                 <button
-                    onClick={logout}
-                    className="menu-item w-full text-red-500 hover:bg-red-50 hover:text-red-600"
-                    title="Đăng xuất"
+                    onClick={toggleSidebar}
+                    className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-indigo-50 flex items-center justify-center text-gray-500 hover:text-indigo-600 transition-colors mx-auto"
                 >
-                    <i className="fa-solid fa-right-from-bracket" />
-                    {!sidebarCollapsed && <span>Đăng xuất</span>}
+                    <i className={`fa-solid ${sidebarCollapsed ? 'fa-chevron-right' : 'fa-bars'}`}></i>
                 </button>
             </div>
 
-            {/* Upgrade Modal */}
-            {upgradeModal && (
-                <div className="modal-overlay">
-                    <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-fade-in">
-                        <div className="p-6 text-center">
-                            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
-                                <i className="fa-solid fa-crown text-2xl text-indigo-600" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-800 mb-2">
-                                Nâng cấp để mở khóa
-                            </h3>
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600 mb-3">
-                                <i className={`fa-solid ${isPersonalWorkspace ? 'fa-user' : 'fa-building'} text-xs`} />
-                                {isPersonalWorkspace ? 'Personal Workspace' : (currentWorkspace?.name || 'Company Workspace')}
-                            </div>
-                            <p className="text-gray-600 mb-4">
-                                Tính năng <strong className="text-indigo-600">{upgradeModal.name}</strong> yêu cầu gói{' '}
-                                <span className="font-semibold text-purple-600">{upgradeModal.requiredPlan}</span> trở lên.
-                            </p>
-                            <p className="text-sm text-gray-500 mb-6">
-                                Nâng cấp workspace này để trải nghiệm đầy đủ tính năng!
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={closeUpgradeModal}
-                                    className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
-                                >
-                                    Để sau
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        closeUpgradeModal();
-                                        navigate('/app/billing');
-                                    }}
-                                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
-                                >
-                                    <i className="fa-solid fa-arrow-up-right-from-square mr-2" />
-                                    Nâng cấp
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            {/* Workspace Switcher */}
+            {!sidebarCollapsed && (
+                <div className="p-3 border-b border-gray-100/50 bg-gray-50/30">
+                    <CompanySwitcher />
                 </div>
             )}
+
+            {/* Navigation Links */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4 px-3 space-y-6">
+                {visibleSections.map((section, idx) => (
+                    <div key={idx} className="space-y-1">
+                        {!sidebarCollapsed && section.title && (
+                            <h3 className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                                {section.title}
+                            </h3>
+                        )}
+                        {section.items.map((item, itemIdx) => (
+                            <NavLink
+                                key={itemIdx}
+                                to={item.path}
+                                className={() => `
+                                    relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group
+                                    ${isItemActive(item)
+                                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'
+                                    }
+                                `}
+                                title={sidebarCollapsed ? item.label : ''}
+                            >
+                                <div className={`
+                                    w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+                                    ${isItemActive(item) ? 'bg-indigo-100/50 text-indigo-600' : 'bg-white text-gray-400 group-hover:text-gray-600 group-hover:bg-white border border-gray-100 shadow-sm'}
+                                `}>
+                                    <i className={`fa-solid ${item.icon}`}></i>
+                                </div>
+                                {!sidebarCollapsed && (
+                                    <span className="flex-1 truncate flex items-center gap-2">
+                                        <span>{item.label}</span>
+                                        {item.path === '/app/me/issues' && lateReviewCount > 0 && (
+                                            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                                                {lateReviewCount}
+                                            </span>
+                                        )}
+                                    </span>
+                                )}
+                                {sidebarCollapsed && item.path === '/app/me/issues' && lateReviewCount > 0 && (
+                                    <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                        {lateReviewCount}
+                                    </span>
+                                )}
+                            </NavLink>
+                        ))}
+                    </div>
+                ))}
+            </div>
+
+            {/* User Profile Footer */}
+            <div className="p-3 border-t border-gray-100 bg-white">
+                <div className="flex flex-col gap-1">
+                    <button
+                        onClick={() => navigate('/app/me/profile')}
+                        className={`flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                    >
+                        <img
+                            src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName}&background=6366f1&color=fff`}
+                            alt="avatar"
+                            className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+                        />
+                        {!sidebarCollapsed && (
+                            <div className="flex-1 min-w-0 text-left">
+                                <p className="text-sm font-bold text-gray-900 truncate">{user?.fullName}</p>
+                                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                            </div>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={logout}
+                        className={`flex items-center gap-3 p-2 rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                        title="Đăng xuất"
+                    >
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center">
+                            <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                        </div>
+                        {!sidebarCollapsed && (
+                            <span className="text-sm font-medium">Đăng xuất</span>
+                        )}
+                    </button>
+                </div>
+            </div>
         </aside>
     );
 }

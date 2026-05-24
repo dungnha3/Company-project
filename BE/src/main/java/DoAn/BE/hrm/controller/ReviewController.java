@@ -22,10 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 @RestController
 @RequestMapping("/api/reviews")
-@FeatureFlag("REVIEW")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReviewController {
@@ -120,6 +118,27 @@ public class ReviewController {
             @AuthenticationPrincipal User currentUser) {
         String reason = body.get("reason");
         Review review = reviewService.rejectReview(id, reason, currentUser);
+        return ResponseEntity.ok(reviewMapper.toDTO(review));
+    }
+
+    /**
+     * GET /api/reviews/project/{projectId}
+     * Lấy tất cả đánh giá gắn với một dự án cụ thể.
+     */
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<ReviewDTO>> getReviewsByProject(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal User currentUser) {
+        List<Review> reviews = reviewService.getReviewsByProject(projectId);
+        return ResponseEntity.ok(reviewMapper.toDTOList(reviews));
+    }
+
+    @PostMapping("/quick-score/{issueId}")
+    public ResponseEntity<ReviewDTO> quickScoreAndCompleteIssue(
+            @PathVariable Long issueId,
+            @Valid @RequestBody ReviewRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        Review review = reviewService.quickScoreAndCompleteIssue(issueId, request, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
     }
 }

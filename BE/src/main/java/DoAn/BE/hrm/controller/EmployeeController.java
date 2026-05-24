@@ -21,13 +21,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import DoAn.BE.common.annotation.FeatureFlag;
 import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
-@FeatureFlag("HR")
 @Transactional(readOnly = true)
 public class EmployeeController {
 
@@ -61,6 +59,8 @@ public class EmployeeController {
 
     @GetMapping("/page")
     public ResponseEntity<Page<EmployeeDTO>> getEmployeesPage(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "fullName") String sortBy,
@@ -80,11 +80,20 @@ public class EmployeeController {
         if (!validSortFields.contains(sortBy)) {
             sortBy = "fullName";
         }
+        
+        EmployeeStatus empStatus = null;
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+            try {
+                empStatus = EmployeeStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid status string, ignore it
+            }
+        }
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Employee> employeePage = employeeService.getAllEmployeesPage(pageable);
+        Page<Employee> employeePage = employeeService.getAllEmployeesPage(search, empStatus, pageable);
         Page<EmployeeDTO> dtoPage = employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser));
 
         return ResponseEntity.ok(dtoPage);
@@ -119,23 +128,7 @@ public class EmployeeController {
         return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
     }
 
-    @GetMapping("/department/{departmentId}")
-    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByDepartment(
-            @PathVariable Long departmentId,
-            Pageable pageable,
-            @AuthenticationPrincipal User currentUser) {
-        Page<Employee> employeePage = employeeService.getEmployeesByDepartment(departmentId, pageable);
-        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
-    }
 
-    @GetMapping("/position/{positionId}")
-    public ResponseEntity<Page<EmployeeDTO>> getEmployeesByPosition(
-            @PathVariable Long positionId,
-            Pageable pageable,
-            @AuthenticationPrincipal User currentUser) {
-        Page<Employee> employeePage = employeeService.getEmployeesByPosition(positionId, pageable);
-        return ResponseEntity.ok(employeePage.map(nv -> employeeMapper.toDTO(nv, currentUser)));
-    }
 
     @GetMapping("/search")
     public ResponseEntity<Page<EmployeeDTO>> searchEmployees(

@@ -28,8 +28,9 @@ apiClient.interceptors.request.use(
                     config.headers['X-Workspace-Type'] = state.workspaceType;
                 }
                 // If in company context, also add company ID
-                if (state?.workspaceType === 'COMPANY' && state?.currentWorkspace?.id) {
-                    config.headers['X-Company-Id'] = state.currentWorkspace.id;
+                const compId = state?.currentWorkspace?.companyId || state?.currentWorkspace?.id;
+                if (state?.workspaceType === 'COMPANY' && compId) {
+                    config.headers['X-Company-Id'] = compId;
                 }
             } catch (e) {
                 console.warn('Failed to parse workspace storage', e);
@@ -61,18 +62,7 @@ apiClient.interceptors.response.use(
             }
         }
 
-        // Handle Quota Exceeded (400 with quota info)
-        if (error.response?.status === 400) {
-            const message = error.response?.data?.message || '';
-            if (message.includes('quota') || message.includes('limit') || message.includes('exceeded')) {
-                console.warn('[Quota Exceeded]', message);
-                // Dispatch custom event for UI to show toast
-                window.dispatchEvent(new CustomEvent('quota-exceeded', {
-                    detail: { message }
-                }));
-                return Promise.reject(error);
-            }
-        }
+
 
         // If 401 and haven't tried refresh yet
         // SKIP if the request is for login (let the component handle the error)

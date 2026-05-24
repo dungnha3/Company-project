@@ -15,17 +15,14 @@ export function useFeatureEnabled(featureKey) {
     const { currentWorkspace, workspaceType } = useWorkspaceStore();
     const settings = currentWorkspace?.settings;
 
-    // Personal workspace: no company features, only personal-scoped features
-    if (workspaceType === 'PERSONAL' || !settings) {
+    // Guard clause for missing settings
+    if (!settings) {
         return { isEnabled: false, isLoading: false };
     }
 
     const featureMap = {
         hr: settings.hrModuleEnabled,
         project: settings.projectModuleEnabled,
-        chat: settings.chatModuleEnabled,
-        storage: settings.storageModuleEnabled,
-        ai: settings.aiModuleEnabled,
         attendance: settings.hrModuleEnabled && settings.attendanceEnabled,
         leave: settings.hrModuleEnabled && settings.leaveEnabled,
         salary: settings.hrModuleEnabled && settings.salaryEnabled,
@@ -51,8 +48,7 @@ export function useFeatureEnabled(featureKey) {
  * Hook to get current quota usage for the workspace
  */
 export function useQuotaUsage() {
-    const { workspaceType } = useWorkspaceStore();
-    const isCompanyWorkspace = workspaceType === 'COMPANY';
+    // Since everything is now a Company Workspace, we just rely on useWorkspaceStore directly
 
     return useQuery({
         queryKey: ['quota-usage'],
@@ -61,7 +57,7 @@ export function useQuotaUsage() {
             return res.data;
         },
         staleTime: 60000, // 1 minute
-        enabled: isCompanyWorkspace, // Only fetch for Company Workspace
+        enabled: true, // Always fetch for current company
     });
 }
 
@@ -106,12 +102,10 @@ export function useQuotaCheck(quotaType) {
  * Hook to get user permissions in current workspace
  */
 export function usePermissions() {
-    const { currentWorkspace, workspaceType, hasPermission } = useWorkspaceStore();
+    const { currentWorkspace, hasPermission } = useWorkspaceStore();
 
     // Get roles array (with fallback for backward compatibility)
-    const roles = workspaceType === 'PERSONAL'
-        ? ['OWNER']
-        : (currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']));
+    const roles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
 
     const primaryRole = roles[0] || 'MEMBER';
     const hasRole = (...checkRoles) => checkRoles.some(r => roles.includes(r));

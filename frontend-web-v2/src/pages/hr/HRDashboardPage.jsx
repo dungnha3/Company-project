@@ -1,356 +1,442 @@
+import { useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
-import { formatDate } from '@shared/utils/formatters';
 
 export default function HRDashboardPage() {
     const navigate = useNavigate();
+    const [period, setPeriod] = useState('all');
     const { hasPermission } = useWorkspaceStore();
 
-    const canViewHR = hasPermission('hrViewList');
-
-    // Fetch employees for charts and lists
-    const { data: employees, isLoading: loadingEmployees } = useQuery({
-        queryKey: ['employees-dashboard'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.EMPLOYEES.LIST)).data,
-        enabled: canViewHR,
-        retry: false,
-    });
-
-    // Fetch Dashboard Stats (Server-side aggregation for accurate counts)
-    const { data: dashboardStats } = useQuery({
-        queryKey: ['hr-dashboard-stats'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.HR_DASHBOARD.STATS)).data,
-        enabled: canViewHR,
-        retry: false,
-    });
-
-    // Fetch pending leave requests (requires leave management permission)
-    const canViewLeave = hasPermission('hrManageLeave') || hasPermission('leaveView');
-    const { data: leaveRequests } = useQuery({
-        queryKey: ['pending-leaves-dashboard'],
+    // Fetch employees
+    const { data: employeesData = {}, isLoading: loadingEmp } = useQuery({
+        queryKey: ['employees', 'page', 0, 20, 'ACTIVE'],
         queryFn: async () => {
-            const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, { params: { status: 'PENDING' } });
-            return response.data?.content || response.data || [];
+            try {
+                const res = await apiClient.get(ENDPOINTS.EMPLOYEES.PAGE, {
+                    params: { page: 0, size: 20, status: 'ACTIVE' }
+                });
+                return res.data || {};
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch employees:', e.message);
+                return {};
+            }
         },
-        enabled: canViewHR && canViewLeave,
         retry: false,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // Fetch leave calendar
+    const { data: leavesData = [], isLoading: loadingLeaves } = useQuery({
+        queryKey: ['leaves', 'team-calendar'],
+        queryFn: async () => {
+            try {
+                const today = new Date();
+                const start = today.toISOString().split('T')[0];
+                const end = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.TEAM_CALENDAR, {
+                    params: { startDate: start, endDate: end }
+                });
+                return Array.isArray(res.data) ? res.data : [];
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch leaves:', e.message);
+                return [];
+            }
+        },
+        retry: false,
+        staleTime: 5 * 60 * 1000,
     });
 
     // Fetch pending reviews
-    const { data: pendingReviews } = useQuery({
-        queryKey: ['pending-reviews-dashboard'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.REVIEWS.PENDING)).data,
-        enabled: hasPermission('salaryView'),
+    const { data: pendingReviews = [], isLoading: loadingReviews } = useQuery({
+        queryKey: ['reviews', 'pending'],
+        queryFn: async () => {
+            try {
+                const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
+                return Array.isArray(res.data) ? res.data : [];
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch pending reviews:', e.message);
+                return [];
+            }
+        },
+        enabled: hasPermission('reviewApprove'),
         retry: false,
+        staleTime: 5 * 60 * 1000,
     });
 
-    // Fetch today's attendance (retained for detailed report if needed)
-    const { data: attendance } = useQuery({
-        queryKey: ['attendance-today'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ATTENDANCE.REPORT)).data,
-        enabled: canViewHR,
+    // Fetch projects
+    const { data: projects = [], isLoading: loadingProjects } = useQuery({
+        queryKey: ['projects', 'list'],
+        queryFn: async () => {
+            try {
+                const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
+                return Array.isArray(res.data) ? res.data : (res.data?.content || []);
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch projects:', e.message);
+                return [];
+            }
+        },
         retry: false,
+        staleTime: 2 * 60 * 1000,
     });
 
-    // Calculate stats
-    const employeeList = Array.isArray(employees) ? employees : employees?.content || [];
-    const leaveList = Array.isArray(leaveRequests) ? leaveRequests : leaveRequests?.content || [];
-    const reviewList = Array.isArray(pendingReviews) ? pendingReviews : pendingReviews?.content || [];
-
-    const stats = {
-        // Use server-side stats if available, otherwise fallback (likely inaccurate for large sets)
-        totalEmployees: dashboardStats?.totalEmployees ?? (employees?.totalElements || employeeList.length),
-        activeEmployees: dashboardStats?.activeEmployees ?? employeeList.filter(e => e.status === 'ACTIVE').length,
-        onLeave: dashboardStats?.onLeave ?? employeeList.filter(e => e.status === 'ON_LEAVE').length,
-        pendingLeaves: dashboardStats?.pendingLeaves ?? (leaveRequests?.totalElements || leaveList.length),
-        pendingReviews: dashboardStats?.pendingReviews ?? (pendingReviews?.totalElements || reviewList.length),
-        checkedIn: dashboardStats?.checkedIn ?? attendance?.checkedIn ?? 0,
-    };
-
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">HR Dashboard</h1>
-                <p className="text-gray-500 text-sm">Tổng quan quản lý nhân sự</p>
-            </div>
-
-            {/* Main Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <StatCard
-                    label="Tổng nhân viên"
-                    value={stats.totalEmployees}
-                    icon="fa-users"
-                    color="bg-gradient-to-br from-indigo-500 to-indigo-600"
-                    loading={loadingEmployees}
-                />
-                <StatCard
-                    label="Đang làm việc"
-                    value={stats.activeEmployees}
-                    icon="fa-user-check"
-                    color="bg-gradient-to-br from-green-500 to-green-600"
-                    loading={loadingEmployees}
-                />
-                <StatCard
-                    label="Đang nghỉ phép"
-                    value={stats.onLeave}
-                    icon="fa-user-clock"
-                    color="bg-gradient-to-br from-yellow-500 to-orange-500"
-                    loading={loadingEmployees}
-                />
-                <StatCard
-                    label="Đơn nghỉ chờ duyệt"
-                    value={stats.pendingLeaves}
-                    icon="fa-file-lines"
-                    color="bg-gradient-to-br from-orange-500 to-red-500"
-                    badge={stats.pendingLeaves > 0}
-                />
-                <StatCard
-                    label="Đánh giá chờ duyệt"
-                    value={stats.pendingReviews}
-                    icon="fa-clipboard-check"
-                    color="bg-gradient-to-br from-purple-500 to-purple-600"
-                    badge={stats.pendingReviews > 0}
-                />
-                <StatCard
-                    label="Check-in hôm nay"
-                    value={stats.checkedIn}
-                    icon="fa-fingerprint"
-                    color="bg-gradient-to-br from-teal-500 to-cyan-600"
-                />
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-4">
-                    <i className="fa-solid fa-bolt text-yellow-500 mr-2" />
-                    Thao tác nhanh
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <QuickActionCard
-                        icon="fa-user-plus"
-                        label="Tạo hồ sơ NV"
-                        description="Tạo hồ sơ nhân viên mới"
-                        color="bg-indigo-500"
-                        onClick={() => navigate('/app/hr/employees')}
-                    />
-                    <QuickActionCard
-                        icon="fa-file-signature"
-                        label="Duyệt đơn nghỉ"
-                        description={`${stats.pendingLeaves} đơn đang chờ`}
-                        color="bg-orange-500"
-                        onClick={() => navigate('/app/hr/leave-requests')}
-                        badge={stats.pendingLeaves > 0}
-                    />
-                    <QuickActionCard
-                        icon="fa-chart-line"
-                        label="Đánh giá nhân viên"
-                        description="Tạo và quản lý đánh giá"
-                        color="bg-purple-500"
-                        onClick={() => navigate('/app/reviews')}
-                    />
-                    <QuickActionCard
-                        icon="fa-money-bill-wave"
-                        label="Bảng lương"
-                        description="Xem và tính lương"
-                        color="bg-green-500"
-                        onClick={() => navigate('/app/hr/salaries')}
-                    />
-                </div>
-            </div>
-
-            {/* Two Column Layout */}
-            <div className="grid md:grid-cols-2 gap-6">
-                {/* Pending Leave Requests */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-gray-800">
-                            <i className="fa-solid fa-clock text-orange-500 mr-2" />
-                            Đơn nghỉ phép mới nhất
-                        </h2>
-                        <button
-                            onClick={() => navigate('/app/hr/leave-requests')}
-                            className="text-sm text-primary hover:underline"
-                        >
-                            Xem tất cả →
-                        </button>
-                    </div>
-                    <div className="space-y-3">
-                        {leaveList.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400">
-                                <i className="fa-solid fa-inbox text-3xl mb-2" />
-                                <p>Không có đơn nào đang chờ duyệt</p>
-                            </div>
-                        ) : (
-                            leaveList.slice(0, 5).map((leave, i) => (
-                                <div key={leave.leaveRequestId || i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                            {(leave.employee?.fullName || 'U').charAt(0)}
-                                        </div>
-                                        <div>
-                                            <div className="font-medium text-gray-900">{leave.employee?.fullName || 'Unknown'}</div>
-                                            <div className="text-xs text-gray-500">
-                                                {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium">
-                                        {leave.leaveType}
-                                    </span>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                {/* Department Distribution */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">
-                        <i className="fa-solid fa-building text-indigo-500 mr-2" />
-                        Phân bố nhân sự theo phòng ban
-                    </h2>
-                    <DepartmentChart employees={employeeList} />
-                </div>
-            </div>
-
-            {/* Employee Status Overview */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-4">
-                    <i className="fa-solid fa-chart-pie text-purple-500 mr-2" />
-                    Trạng thái nhân viên
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <StatusCard
-                        label="Đang làm việc"
-                        count={employeeList.filter(e => e.status === 'ACTIVE').length}
-                        total={employeeList.length}
-                        color="bg-green-500"
-                    />
-                    <StatusCard
-                        label="Tạm nghỉ"
-                        count={employeeList.filter(e => e.status === 'ON_LEAVE').length}
-                        total={employeeList.length}
-                        color="bg-yellow-500"
-                    />
-                    <StatusCard
-                        label="Đã nghỉ việc"
-                        count={employeeList.filter(e => e.status === 'RESIGNED').length}
-                        total={employeeList.length}
-                        color="bg-red-500"
-                    />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function StatCard({ label, value, icon, color, loading, badge }) {
-    return (
-        <div className="relative bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-            {badge && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-            )}
-            <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white mb-3`}>
-                <i className={`fa-solid ${icon} text-lg`} />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-                {loading ? <span className="animate-pulse">...</span> : value}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">{label}</p>
-        </div>
-    );
-}
-
-function QuickActionCard({ icon, label, description, color, onClick, badge }) {
-    return (
-        <button
-            onClick={onClick}
-            className="relative text-left p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all group"
-        >
-            {badge && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            )}
-            <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center text-white mb-3 group-hover:scale-110 transition-transform`}>
-                <i className={`fa-solid ${icon}`} />
-            </div>
-            <h3 className="font-semibold text-gray-800">{label}</h3>
-            <p className="text-xs text-gray-500 mt-1">{description}</p>
-        </button>
-    );
-}
-
-function DepartmentChart({ employees }) {
-    // Group by department
-    const deptCounts = {};
-    employees.forEach(emp => {
-        const deptName = emp.department?.name || 'Chưa phân phòng';
-        deptCounts[deptName] = (deptCounts[deptName] || 0) + 1;
+    // Fetch performance data
+    const { data: allPerfData = [], isLoading: loadingPerf } = useQuery({
+        queryKey: ['performance', 'all-comparisons', period],
+        queryFn: async () => {
+            try {
+                const activeProjects = (projects || []).slice(0, 5);
+                const calls = activeProjects.map(async (p) => {
+                    const pid = p.projectId || p.id;
+                    try {
+                        const res = await apiClient.get(`/api/hr/performance-comparison/projects/${pid}`);
+                        return { projectId: pid, projectName: p.name, rankings: res.data || [] };
+                    } catch {
+                        return { projectId: pid, projectName: p.name, rankings: [] };
+                    }
+                });
+                return Promise.all(calls);
+            } catch (e) {
+                console.warn('[HRDashboard] Failed to fetch performance data:', e.message);
+                return [];
+            }
+        },
+        enabled: (projects || []).length > 0,
+        retry: false,
+        staleTime: 5 * 60 * 1000,
     });
 
-    const entries = Object.entries(deptCounts).sort((a, b) => b[1] - a[1]);
-    const total = employees.length || 1;
-    const colors = ['bg-indigo-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
+    // Derived data
+    const employees = (() => {
+        if (Array.isArray(employeesData)) return employeesData;
+        if (employeesData && employeesData.content && Array.isArray(employeesData.content)) return employeesData.content;
+        return [];
+    })();
+    const activeCount = employees.length;
+    const onLeaveCount = Array.isArray(leavesData) ? leavesData.filter(l => l.status === 'APPROVED').length : 0;
+    const pendingLeaveCount = Array.isArray(leavesData) ? leavesData.filter(l => l.status === 'PENDING').length : 0;
 
-    if (entries.length === 0) {
+    // Top performers
+    const { topPerformers, atRiskEmployees, companyAvgPerf } = useMemo(() => {
+        const perfData = allPerfData || [];
+        const map = {};
+        for (const project of perfData) {
+            for (const perf of (project.rankings || [])) {
+                const key = perf.userId || perf.employeeId;
+                if (!key) continue;
+                if (!map[key]) {
+                    map[key] = { ...perf, projects: [], avgPerf: 0, totalPerf: 0, count: 0 };
+                }
+                map[key].projects.push(project.projectName);
+                map[key].totalPerf += Number(perf.totalPerformanceScore || 0);
+                map[key].count += 1;
+            }
+        }
+
+        const withAvg = Object.values(map).map(item => ({
+            ...item,
+            avgPerf: item.totalPerf / Math.max(item.count, 1),
+        })).sort((a, b) => b.avgPerf - a.avgPerf);
+
+        const top = withAvg.slice(0, 5);
+        const atRisk = withAvg.filter(item => item.avgPerf < 6.5).slice(0, 5);
+        const avgPerf = withAvg.length > 0 ? withAvg.reduce((s, i) => s + i.avgPerf, 0) / withAvg.length : 0;
+
+        return { topPerformers: top, atRiskEmployees: atRisk, companyAvgPerf: avgPerf };
+    }, [allPerfData]);
+
+    // Chart data
+    const projectPerfChart = useMemo(() => {
+        const perfData = allPerfData || [];
+        return perfData
+            .filter(p => p.rankings?.length > 0)
+            .map(p => {
+                const avg = p.rankings.reduce((s, r) => s + Number(r.totalPerformanceScore || 0), 0) / Math.max(p.rankings.length, 1);
+                return { name: p.projectName?.substring(0, 15), 'Hiệu suất TB': Number(avg.toFixed(1)) };
+            });
+    }, [allPerfData]);
+
+    // Upcoming leaves
+    const upcomingLeaves = useMemo(() => {
+        if (!Array.isArray(leavesData)) return [];
+        return leavesData.filter(l => l.status === 'APPROVED').slice(0, 5);
+    }, [leavesData]);
+
+    const isLoading = loadingEmp || loadingLeaves || loadingReviews || loadingPerf || loadingProjects;
+
+    if (isLoading) {
         return (
-            <div className="text-center py-8 text-gray-400">
-                <i className="fa-solid fa-building text-3xl mb-2" />
-                <p>Chưa có dữ liệu phòng ban</p>
+            <div className="p-8 flex items-center justify-center">
+                <div className="loading-spinner" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-3">
-            {entries.slice(0, 6).map(([name, count], i) => {
-                const percent = Math.round((count / total) * 100);
-                return (
-                    <div key={name} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                            <span className="font-medium text-gray-700">{name}</span>
-                            <span className="text-gray-500">{count} ({percent}%)</span>
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 shadow-sm">
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-900">HR Dashboard</h2>
+                    <p className="text-sm text-gray-500 mt-1">Tổng quan nhân sự và hiệu suất</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500 font-medium">Chu kỳ:</span>
+                    <select
+                        value={period}
+                        onChange={e => setPeriod(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 bg-white text-gray-700 text-sm rounded-lg focus:outline-none focus:border-gray-300"
+                    >
+                        <option value="all">Toàn thời gian</option>
+                        <option value="12">12 tháng gần nhất</option>
+                        <option value="6">6 tháng gần nhất</option>
+                        <option value="3">3 tháng gần nhất</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Key Metrics - Clean minimal cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-users text-gray-400 text-sm" />
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full ${colors[i % colors.length]} rounded-full transition-all duration-500`}
-                                style={{ width: `${percent}%` }}
-                            />
+                        <div>
+                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Nhân sự</p>
+                            <p className="text-[10px] text-gray-400">đang hoạt động</p>
                         </div>
                     </div>
-                );
-            })}
+                    <p className="text-2xl font-semibold text-gray-900">{activeCount}</p>
+                </div>
+
+                <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-umbrella-beach text-gray-400 text-sm" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Nghỉ phép</p>
+                            <p className="text-[10px] text-gray-400">đang nghỉ hôm nay</p>
+                        </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900">{onLeaveCount}</p>
+                </div>
+
+                <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-clipboard-check text-gray-400 text-sm" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Chờ duyệt</p>
+                            <p className="text-[10px] text-gray-400">đơn nghỉ phép</p>
+                        </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900">{pendingLeaveCount}</p>
+                </div>
+
+                <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i className="fa-solid fa-chart-line text-gray-400 text-sm" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Hiệu suất TB</p>
+                            <p className="text-[10px] text-gray-400">điểm trung bình</p>
+                        </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900">{companyAvgPerf.toFixed(1)}</p>
+                </div>
+            </div>
+
+            {/* Two columns: Top Performers + At Risk */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top Performers */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-medium text-gray-900">Top performers</h3>
+                        <Link to="/app/hr/performance" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">Xem tất cả →</Link>
+                    </div>
+                    <div className="p-5">
+                        {topPerformers.length === 0 ? (
+                            <div className="text-center py-8">
+                                <i className="fa-solid fa-users text-2xl text-gray-300 mb-2" />
+                                <p className="text-xs text-gray-500">Chưa có dữ liệu</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {topPerformers.map((perf, i) => (
+                                    <PerformerRow key={perf.userId || perf.employeeId || i} perf={perf} rank={i + 1} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* At Risk */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-medium text-gray-900">Nhân sự cần chú ý</h3>
+                        <Link to="/app/hr/performance" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">Chi tiết →</Link>
+                    </div>
+                    <div className="p-5">
+                        {atRiskEmployees.length === 0 ? (
+                            <div className="text-center py-8">
+                                <i className="fa-solid fa-check-circle text-3xl text-green-300 mb-2" />
+                                <p className="text-xs text-gray-500">Tất cả nhân sự đều hoạt động tốt</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {atRiskEmployees.map((perf, i) => (
+                                    <PerformerRow key={perf.userId || perf.employeeId || i} perf={perf} rank={null} atRisk />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Performance Chart */}
+            {projectPerfChart.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                    <h3 className="font-medium text-gray-900 mb-4 pb-3 border-b border-gray-100">Hiệu suất theo dự án</h3>
+                    <div style={{ height: '250px' }} className="min-h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={projectPerfChart}>
+                                <XAxis dataKey="name" fontSize={11} tick={{ fill: '#374151', fontWeight: 500 }} />
+                                <YAxis domain={[0, 10]} fontSize={11} tick={{ fill: '#374151', fontWeight: 500 }} />
+                                <Tooltip formatter={(v) => [v + ' điểm']} />
+                                <Bar dataKey="Hiệu suất TB" fill="#374151" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
+            {/* Two columns: Upcoming Leaves + Pending Reviews */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Upcoming Leaves */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-medium text-gray-900">Nghỉ phép sắp tới</h3>
+                        <Link to="/app/hr/leave-requests" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">Quản lý →</Link>
+                    </div>
+                    <div className="p-5">
+                        {upcomingLeaves.length === 0 ? (
+                            <div className="text-center py-6">
+                                <i className="fa-solid fa-calendar text-2xl text-gray-300 mb-2" />
+                                <p className="text-xs text-gray-500">Không có lịch nghỉ sắp tới</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {upcomingLeaves.map((leave, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <span className="w-7 h-7 rounded bg-gray-100 text-gray-600 font-medium text-xs flex items-center justify-center">{i + 1}</span>
+                                            <div>
+                                                <p className="font-medium text-gray-800 text-sm">{leave.employeeName || leave.employee?.fullName || 'Nhân viên'}</p>
+                                                <p className="text-[10px] text-gray-400">{leave.startDate} → {leave.endDate}</p>
+                                            </div>
+                                        </div>
+                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">{leave.leaveType || 'Nghỉ phép'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Pending Reviews */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-medium text-gray-900">Đánh giá chờ duyệt</h3>
+                        <Link to="/app/hr/reviews" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">Quản lý →</Link>
+                    </div>
+                    <div className="p-5">
+                        {pendingReviews.length === 0 ? (
+                            <div className="text-center py-6">
+                                <i className="fa-solid fa-check-circle text-3xl text-green-300 mb-2" />
+                                <p className="text-xs text-gray-500">Không có đánh giá nào chờ duyệt</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {pendingReviews.slice(0, 5).map((review, i) => (
+                                    <div key={review.reviewId || i} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 font-medium text-sm flex items-center justify-center">
+                                                {(review.employeeName || '?').charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-800 text-sm">{review.employeeName || 'Nhân viên'}</p>
+                                                <p className="text-[10px] text-gray-400">{review.reviewPeriod || review.period || 'Chưa xác định'}</p>
+                                            </div>
+                                        </div>
+                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">{review.reviewType || 'Đánh giá'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <QuickLink icon="fa-users" label="Nhân sự" to="/app/hr/employees" />
+                <QuickLink icon="fa-umbrella-beach" label="Nghỉ phép" to="/app/hr/leave-requests" />
+                <QuickLink icon="fa-chart-line" label="Hiệu suất" to="/app/hr/performance" />
+                <QuickLink icon="fa-clipboard-list" label="Đánh giá" to="/app/hr/reviews" />
+            </div>
         </div>
     );
 }
 
-function StatusCard({ label, count, total, color }) {
-    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+function PerformerRow({ perf, rank, atRisk = false }) {
+    const score = perf.avgPerf || perf.totalPerformanceScore || 0;
+    const scoreColor = score >= 9 ? 'text-green-600' : score >= 8 ? 'text-gray-700' : score >= 6.5 ? 'text-gray-600' : 'text-red-600';
+    const rankColors = { 1: 'text-amber-500', 2: 'text-gray-400', 3: 'text-orange-400' };
 
     return (
-        <div className="text-center p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-            <div className="relative w-16 h-16 mx-auto mb-2">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--color-border)" strokeWidth="2" />
-                    <circle
-                        cx="18"
-                        cy="18"
-                        r="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeDasharray={`${percent} 100`}
-                        className={color.replace('bg-', 'text-')}
-                    />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm font-bold text-gray-700">{count}</span>
+        <div className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+            {rank && (
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium ${rankColors[rank] || 'text-gray-400'}`}>
+                    {rank <= 3 ? (
+                        <i className={`fa-solid ${rank === 1 ? 'fa-trophy' : rank === 2 ? 'fa-medal' : 'fa-award'}`} />
+                    ) : rank}
                 </div>
+            )}
+            {!rank && atRisk && (
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-red-500">
+                    <i className="fa-solid fa-exclamation" />
+                </div>
+            )}
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{perf.employeeName || perf.userName || '?'}</p>
+                <p className="text-[10px] text-gray-400 truncate">
+                    {(perf.projects || []).slice(0, 2).join(', ')}
+                    {(perf.projects || []).length > 2 ? ` +${perf.projects.length - 2}` : ''}
+                </p>
             </div>
-            <p className="text-xs text-gray-600">{label}</p>
+            <div className="text-right">
+                <p className={`text-sm font-medium ${scoreColor}`}>{score.toFixed(1)}</p>
+                <p className="text-[10px] text-gray-400">{perf.completedTasks || 0} tasks</p>
+            </div>
         </div>
+    );
+}
+
+function QuickLink({ icon, label, to }) {
+    return (
+        <Link
+            to={to}
+            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all"
+        >
+            <i className={`fa-solid ${icon} text-lg text-gray-400`} />
+            <span className="font-medium text-sm text-gray-700">{label}</span>
+        </Link>
     );
 }

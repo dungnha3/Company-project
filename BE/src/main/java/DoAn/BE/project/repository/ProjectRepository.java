@@ -15,10 +15,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
-    // [SAAS] Đếm số dự án của công ty check limit
     long countByCompany_CompanyId(Long companyId);
 
-    // [SAAS] Lấy danh sách dự án của công ty (SysAdmin)
     List<Project> findByCompany_CompanyId(Long companyId);
     List<Project> findByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 
@@ -30,21 +28,17 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByStatus(Project.ProjectStatus status);
 
-    // [OPTIMIZED: Fetch project with members to avoid N+1]
     @EntityGraph(attributePaths = { "createdBy", "members" })
     @Query("SELECT p FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")
     List<Project> findByCompanyIdWithMembers(@Param("companyId") Long companyId);
 
-    // [PAGINATED: For large datasets]
     @Query("SELECT p FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")
     Page<Project> findByCompanyIdPaged(@Param("companyId") Long companyId, Pageable pageable);
 
-    // [OPTIMIZED: Get single project with all relations]
     @EntityGraph(attributePaths = { "createdBy", "members", "members.user" })
     @Query("SELECT p FROM Project p WHERE p.projectId = :projectId")
     Optional<Project> findByIdWithDetails(@Param("projectId") Long projectId);
-
-    // [COUNT: For pagination]
+    
     @Query("SELECT COUNT(p) FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")
     long countByCompanyId(@Param("companyId") Long companyId);
 }

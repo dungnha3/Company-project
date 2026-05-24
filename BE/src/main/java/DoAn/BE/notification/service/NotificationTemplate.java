@@ -46,20 +46,6 @@ public enum NotificationTemplate {
     HR_ATTENDANCE_REMINDER(NotificationType.HR_ATTENDANCE_REMINDER, "Nhắc nhở chấm công",
             "Bạn chưa check-out hôm nay!"),
 
-    // CHAT
-
-    CHAT_NEW_MESSAGE(NotificationType.CHAT_MESSAGE, "Tin nhắn mới từ %s", "%s"),
-    CHAT_MEMBER_JOINED(NotificationType.CHAT_ROOM, "Thành viên mới", "%s đã tham gia phòng chat"),
-    CHAT_MEMBER_LEFT(NotificationType.CHAT_ROOM, "Thành viên rời khỏi", "%s đã rời khỏi phòng chat"),
-    CHAT_ROOM_UPDATED(NotificationType.CHAT_ROOM, "Phòng chat được cập nhật", "Phòng chat đã được cập nhật: %s"),
-    CHAT_ADDED_TO_ROOM(NotificationType.CHAT_ROOM, "Bạn được thêm vào phòng chat", "%s đã thêm bạn vào phòng \"%s\""),
-    CHAT_MESSAGE_REPLIED(NotificationType.CHAT_MESSAGE, "%s đã trả lời tin nhắn của bạn", "%s"),
-    CHAT_ROLE_CHANGED(NotificationType.CHAT_ROOM, "Quyền của bạn đã thay đổi",
-            "%s đã thay đổi quyền của bạn thành %s trong phòng \"%s\""),
-    CHAT_MENTION(NotificationType.CHAT_MENTION, "Bạn được nhắc đến", "%s đã nhắc đến bạn: %s"),
-    CHAT_TASK_MENTION(NotificationType.CHAT_TASK_MENTION, "Đã đề cập %s", "Tin nhắn có liên kết đến %s"),
-    CHAT_MESSAGE_EDITED(NotificationType.CHAT_MESSAGE_EDITED, "Tin nhắn đã được sửa", "%s đã sửa tin nhắn"),
-    CHAT_MESSAGE_DELETED(NotificationType.CHAT_MESSAGE_DELETED, "Tin nhắn đã bị xóa", "%s đã xóa tin nhắn"),
 
     // HR - LEAVE & CONTRACT
     HR_LEAVE_REQUEST_SUBMITTED(NotificationType.HR_LEAVE_REQUEST_CREATED, "📋 Đơn nghỉ phép cần duyệt",
@@ -97,9 +83,8 @@ public enum NotificationTemplate {
     PROJECT_ROLE_CHANGED(NotificationType.PROJECT_UPDATE, "Vai trò trong dự án thay đổi",
             "Vai trò của bạn trong dự án \"%s\" đã thay đổi thành: %s"),
     TASK_ASSIGNED(NotificationType.TASK_ASSIGNED, "Công việc mới", "Bạn được giao việc: %s"),
-    TASK_DUE_SOON(NotificationType.TASK_DUE_SOON, "Sắp đến hạn", "Công việc %s sẽ hết hạn vào %s"),
-    // CHAT
-    CHAT_MESSAGE(NotificationType.CHAT_MESSAGE, "Tin nhắn mới", "%s: %s");
+    TASK_DUE_SOON(NotificationType.TASK_DUE_SOON, "Sắp đến hạn", "Công việc %s sẽ hết hạn vào %s");
+
 
     private final NotificationType type;
     private final String titlePattern;

@@ -13,13 +13,9 @@ import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.hrm.dto.EmployeeRequest;
-import DoAn.BE.hrm.entity.Position;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Employee.EmployeeStatus;
-import DoAn.BE.hrm.entity.Department;
-import DoAn.BE.hrm.repository.PositionRepository;
 import DoAn.BE.hrm.repository.EmployeeRepository;
-import DoAn.BE.hrm.repository.DepartmentRepository;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,8 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
-    private final DepartmentRepository departmentRepository;
-    private final PositionRepository positionRepository;
+
     private final AccessControlService accessControlService;
 
     @Transactional(readOnly = true)
@@ -80,14 +75,13 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Employee> getAllEmployeesPage(Pageable pageable) {
+    public Page<Employee> getAllEmployeesPage(String keyword, EmployeeStatus status, Pageable pageable) {
         accessControlService.checkHrViewPermission();
-        // ALL companies
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (companyId == null) {
             return Page.empty(pageable);
         }
-        return employeeRepository.findByCompanyId(companyId, pageable);
+        return employeeRepository.findByCompanyIdWithFilters(companyId, keyword, status, pageable);
     }
 
     public Employee createEmployee(EmployeeRequest request, User currentUser) {
@@ -127,17 +121,7 @@ public class EmployeeService {
         employee.setBaseSalary(request.getBaseSalary() != null ? request.getBaseSalary() : java.math.BigDecimal.ZERO);
         employee.setAllowance(request.getAllowance() != null ? request.getAllowance() : java.math.BigDecimal.ZERO);
 
-        if (request.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
-            employee.setDepartment(department);
-        }
 
-        if (request.getPositionId() != null) {
-            Position position = positionRepository.findById(request.getPositionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
-            employee.setPosition(position);
-        }
 
         // TenantScopedEntity.prePersistTenant() will auto-set company from
         // TenantContext
@@ -176,17 +160,7 @@ public class EmployeeService {
             employee.setIdCard(request.getIdCard());
         }
 
-        if (request.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
-            employee.setDepartment(department);
-        }
 
-        if (request.getPositionId() != null) {
-            Position position = positionRepository.findById(request.getPositionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
-            employee.setPosition(position);
-        }
 
         return employeeRepository.save(employee);
     }
@@ -215,25 +189,7 @@ public class EmployeeService {
         return employeeRepository.findByStatusAndCompany_CompanyId(status, companyId, pageable);
     }
 
-    @Transactional(readOnly = true)
-    public List<Employee> getEmployeesByDepartment(Long departmentId) {
-        return employeeRepository.findByDepartment_DepartmentId(departmentId);
-    }
 
-    @Transactional(readOnly = true)
-    public Page<Employee> getEmployeesByDepartment(Long departmentId, Pageable pageable) {
-        return employeeRepository.findByDepartment_DepartmentId(departmentId, pageable);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Employee> getEmployeesByPosition(Long positionId) {
-        return employeeRepository.findByPosition_PositionId(positionId);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<Employee> getEmployeesByPosition(Long positionId, Pageable pageable) {
-        return employeeRepository.findByPosition_PositionId(positionId, pageable);
-    }
 
     @Transactional(readOnly = true)
     public List<Employee> searchEmployees(String keyword) {

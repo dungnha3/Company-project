@@ -23,10 +23,16 @@ public class LeaveRequestMapper {
         if (leaveRequest.getEmployee() != null) {
             dto.setEmployeeId(leaveRequest.getEmployee().getEmployeeId());
             dto.setEmployeeName(leaveRequest.getEmployee().getFullName());
-            // Get avatar from linked User
+
+            // Nested employee object for frontend
+            LeaveRequestDTO.EmployeeInfo empInfo = new LeaveRequestDTO.EmployeeInfo();
+            empInfo.setEmployeeId(leaveRequest.getEmployee().getEmployeeId());
+            empInfo.setFullName(leaveRequest.getEmployee().getFullName());
             if (leaveRequest.getEmployee().getUser() != null) {
+                empInfo.setAvatarUrl(leaveRequest.getEmployee().getUser().getAvatarUrl());
                 dto.setAvatarUrl(leaveRequest.getEmployee().getUser().getAvatarUrl());
             }
+            dto.setEmployee(empInfo);
         }
 
         // Leave Info
@@ -45,8 +51,11 @@ public class LeaveRequestMapper {
         dto.setApprovedAt(leaveRequest.getApprovedAt());
         dto.setApprovalNote(leaveRequest.getApprovalNote());
 
-        dto.setCreatedAt(leaveRequest.getCreatedAt());
+        // Project link
+        dto.setProjectId(leaveRequest.getProjectId());
+        dto.setProjectName(leaveRequest.getProjectName());
 
+        dto.setCreatedAt(leaveRequest.getCreatedAt());
         return dto;
     }
 

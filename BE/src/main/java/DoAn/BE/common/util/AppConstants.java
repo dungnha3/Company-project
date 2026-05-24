@@ -12,7 +12,8 @@ public class AppConstants {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
-            "/v3/api-docs.yaml"
+            "/v3/api-docs.yaml",
+            "/api/storage/oauth2/callback"
     };
 
     private AppConstants() {

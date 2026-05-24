@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
-import DoAn.BE.common.service.FeatureFlagService;
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.hrm.dto.LeaveRequestRequest;
 import DoAn.BE.hrm.entity.LeaveRequest;
@@ -16,6 +15,8 @@ import DoAn.BE.hrm.entity.LeaveRequest.LeaveStatus;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.repository.LeaveRequestRepository;
 import DoAn.BE.hrm.repository.EmployeeRepository;
+import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.entity.Issue;
 import DoAn.BE.user.entity.User;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,28 +30,34 @@ public class LeaveRequestService {
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final EmployeeRepository employeeRepository;
-    private final FeatureFlagService featureFlagService;
-    private final AccessControlService accessControlService;
+        private final AccessControlService accessControlService;
     private final ApplicationEventPublisher eventPublisher;
+    private final IssueRepository issueRepository;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
             EmployeeRepository employeeRepository,
-            FeatureFlagService featureFlagService,
             AccessControlService accessControlService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            IssueRepository issueRepository) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
-        this.featureFlagService = featureFlagService;
         this.accessControlService = accessControlService;
         this.eventPublisher = eventPublisher;
+        this.issueRepository = issueRepository;
     }
 
     public LeaveRequest createLeaveRequest(LeaveRequestRequest request, User currentUser) {
-        featureFlagService.requireLeaveFeature();
+        log.info("User {} creating leave request", currentUser.getUsername());
 
-        log.info("User {} creating leave request for employee ID: {}", currentUser.getUsername(),
-                request.getEmployeeId());
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
+        // Auto-resolve employeeId from currentUser if not provided
+        Long employeeId = request.getEmployeeId();
+        if (employeeId == null) {
+            Employee currentEmployee = employeeRepository.findByUser_UserId(currentUser.getUserId())
+                    .orElseThrow(() -> new BadRequestException("Bạn chưa có hồ sơ nhân viên. Liên hệ HR để được tạo."));
+            employeeId = currentEmployee.getEmployeeId();
+        }
+
+        Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
         if (employee.getUser() == null || !employee.getUser().getUserId().equals(currentUser.getUserId())) {
             // Check if user has HR leave approval permission (managers can create for
@@ -84,6 +91,9 @@ public class LeaveRequestService {
         leaveRequest.setEndDate(request.getEndDate());
         leaveRequest.setReason(request.getReason());
         leaveRequest.setStatus(LeaveRequest.LeaveStatus.PENDING);
+        // Optional project link
+        leaveRequest.setProjectId(request.getProjectId());
+        leaveRequest.setProjectName(request.getProjectName());
 
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
@@ -234,8 +244,35 @@ public class LeaveRequestService {
         }
 
         leaveRequest.approve(currentUser, note);
+        
+        if (leaveRequest.getLeaveType() == LeaveRequest.LeaveType.ANNUAL) {
+            Employee emp = leaveRequest.getEmployee();
+            if (emp.getLeaveBalance() != null) {
+                emp.setLeaveBalance(emp.getLeaveBalance() - leaveRequest.getTotalDays());
+                employeeRepository.save(emp);
+            }
+        }
+        
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
         log.info("Leave request approved by {}", currentUser.getUsername());
+
+        // AUTO-SHIFT DEADLINES FOR OPEN ISSUES
+        if (leaveRequest.getEmployee().getUser() != null) {
+            Long userId = leaveRequest.getEmployee().getUser().getUserId();
+            long daysToShift = java.time.temporal.ChronoUnit.DAYS.between(leaveRequest.getStartDate(), leaveRequest.getEndDate()) + 1;
+            
+            List<Issue> activeIssues = issueRepository.findByAssignee_UserId(userId);
+            for (Issue issue : activeIssues) {
+                if (!issue.isDone() && issue.getDueDate() != null) {
+                    // If deadline falls inside leave OR after leave (because leave delayed their work)
+                    if (!issue.getDueDate().isBefore(leaveRequest.getStartDate())) {
+                        issue.setDueDate(issue.getDueDate().plusDays(daysToShift));
+                        issueRepository.save(issue);
+                        log.info("Auto-shifted deadline for issue {} by {} days due to leave", issue.getIssueKey(), daysToShift);
+                    }
+                }
+            }
+        }
 
         // Publish Event
         eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.LEAVE_APPROVED,
@@ -275,6 +312,11 @@ public class LeaveRequestService {
         return leaveRequestRepository.findByStatusAndCompanyId(status, companyId, pageable);
     }
 
+    public Employee findEmployeeByUserId(Long userId) {
+        return employeeRepository.findByUser_UserId(userId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy hồ sơ nhân viên của bạn"));
+    }
+
     public int getTotalLeaveDays(Long employeeId, int year) {
         List<LeaveRequest> leaveRequests = leaveRequestRepository.findApprovedByEmployeeAndYear(employeeId, year);
         return leaveRequests.stream()
@@ -285,5 +327,16 @@ public class LeaveRequestService {
 
     public boolean isOnLeave(Long employeeId, LocalDate date) {
         return leaveRequestRepository.isEmployeeOnLeave(employeeId, date);
+    }
+
+    /**
+     * Lấy danh sách nghỉ phép đã duyệt trong khoảng thời gian
+     * Dùng cho Calendar — hiển thị availability của team members.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List<LeaveRequest> getTeamCalendarLeaves(LocalDate startDate, LocalDate endDate) {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) return java.util.Collections.emptyList();
+        return leaveRequestRepository.findApprovedInDateRangeByCompany(startDate, endDate, companyId);
     }
 }

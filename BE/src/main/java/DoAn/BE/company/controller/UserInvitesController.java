@@ -59,6 +59,7 @@ public class UserInvitesController {
     // Chấp nhận lời mời tham gia công ty
     // POST /api/invites/accept
     // /
+    @Transactional
     @PostMapping("/accept")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> acceptInvite(@RequestBody Map<String, Long> request) {
@@ -103,6 +104,7 @@ public class UserInvitesController {
     // Từ chối/hủy lời mời
     // DELETE /api/invites/{inviteId}
     // /
+    @Transactional
     @DeleteMapping("/{inviteId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> declineInvite(@PathVariable Long inviteId) {

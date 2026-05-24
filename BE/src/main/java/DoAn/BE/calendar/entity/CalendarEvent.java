@@ -61,6 +61,9 @@ public class CalendarEvent {
     @Column(name = "recurrence_rule", length = 255)
     private String recurrenceRule; // RRULE format for recurring events
 
+    @Column(name = "color_code", length = 7)
+    private String colorCode; // Hex color code (e.g., #FF5733)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;

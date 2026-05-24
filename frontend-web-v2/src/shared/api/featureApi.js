@@ -143,3 +143,13 @@ export const webhookApi = {};
  * Automation API Service (deprecated)
  */
 export const automationApi = {};
+
+/**
+ * Issue API Service
+ */
+export const issueApi = {
+    getMyIssues: async () => {
+        const response = await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES);
+        return response.data;
+    },
+};

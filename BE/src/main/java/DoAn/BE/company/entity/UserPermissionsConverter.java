@@ -10,7 +10,8 @@ import jakarta.persistence.Converter;
 @Converter(autoApply = false)
 public class UserPermissionsConverter implements AttributeConverter<UserPermissions, String> {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     public String convertToDatabaseColumn(UserPermissions attribute) {

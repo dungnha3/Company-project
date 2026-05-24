@@ -1,10 +1,6 @@
 package DoAn.BE.project.service;
 
-import DoAn.BE.chat.entity.ChatRoom;
-import DoAn.BE.chat.entity.ChatRoomMember;
-import DoAn.BE.chat.entity.ChatRoomMemberId;
-import DoAn.BE.chat.repository.ChatRoomMemberRepository;
-import DoAn.BE.chat.repository.ChatRoomRepository;
+import DoAn.BE.project.dto.UpdateProjectMemberRequest;
 import DoAn.BE.common.exception.*;
 import DoAn.BE.project.dto.AddMemberRequest;
 import DoAn.BE.project.dto.ProjectMemberDTO;
@@ -13,7 +9,7 @@ import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.entity.ProjectMember.ProjectRole;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.ProjectRepository;
-import DoAn.BE.storage.service.StorageProjectIntegrationService;
+import DoAn.BE.timetracking.repository.TimeLogRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,10 +32,8 @@ public class ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomMemberRepository chatRoomMemberRepository;
-    private final StorageProjectIntegrationService storageProjectIntegrationService;
     private final DoAn.BE.project.repository.IssueRepository issueRepository;
+    private final TimeLogRepository timeLogRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // Kiểm tra user có quyền truy cập dự án không
@@ -86,11 +79,7 @@ public class ProjectMemberService {
         ProjectMember projectMember = new ProjectMember(project, newMember, request.getRole());
         projectMember = projectMemberRepository.save(projectMember);
 
-        // Sync with chat room
-        syncMemberToChat(project, newMember, request.getRole());
 
-        // Create project folder
-        createProjectFolderForMember(project, newMember);
 
         // Publish Event for Member Added
         eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
@@ -134,8 +123,7 @@ public class ProjectMemberService {
         // Unassign issues from this member in this project (Ghost Cleanup)
         issueRepository.unassignByProjectMember(projectId, memberId);
 
-        // Remove from chat
-        removeMemberFromChat(project, memberId);
+
 
         // Publish Event for Member Removed
         eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
@@ -192,80 +180,144 @@ public class ProjectMemberService {
     }
 
     // Lấy danh sách thành viên dự án
-    // /
     @Transactional(readOnly = true)
     public List<ProjectMemberDTO> getProjectMembers(Long projectId, Long userId) {
         validateProjectAccess(projectId, userId);
 
         List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
         return members.stream()
-                .map(this::convertToMemberDTO)
+                .map(m -> convertToMemberDTOWithStats(m, projectId))
                 .collect(Collectors.toList());
+    }
+
+    // Cập nhật thông tin HR mở rộng của member (position, allocation, billing...)
+    @Transactional
+    public ProjectMemberDTO updateMemberInfo(Long projectId, Long memberId,
+            UpdateProjectMemberRequest req, Long userId) {
+        validateProjectManagement(projectId, userId);
+
+        ProjectMember member = projectMemberRepository
+                .findByProject_ProjectIdAndUser_UserId(projectId, memberId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thành viên trong dự án"));
+
+        if (req.getPosition() != null)          member.setPosition(req.getPosition());
+        if (req.getAllocationRate() != null)     member.setAllocationRate(req.getAllocationRate());
+        if (req.getMemberStatus() != null)      member.setMemberStatus(req.getMemberStatus());
+        if (req.getJoinDate() != null)          member.setJoinDate(req.getJoinDate());
+        if (req.getLeaveDate() != null)         member.setLeaveDate(req.getLeaveDate());
+        if (req.getYearsOfExperience() != null) member.setYearsOfExperience(req.getYearsOfExperience());
+        if (req.getBillingRate() != null)       member.setBillingRate(req.getBillingRate());
+        if (req.getSkillNotes() != null)        member.setSkillNotes(req.getSkillNotes());
+
+        member = projectMemberRepository.save(member);
+        log.info("Updated member info for user {} in project {}", memberId, projectId);
+        return convertToMemberDTOWithStats(member, projectId);
     }
 
     // ===== Private helper methods =====
 
-    private void syncMemberToChat(Project project, User newMember, ProjectRole role) {
-        List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
-        if (!projectChats.isEmpty()) {
-            ChatRoom chatRoom = projectChats.get(0);
 
-            boolean alreadyInChat = chatRoomMemberRepository
-                    .existsByChatRoom_RoomIdAndUser_UserId(chatRoom.getRoomId(), newMember.getUserId());
-
-            if (!alreadyInChat) {
-                ChatRoomMember chatMember = new ChatRoomMember();
-                ChatRoomMemberId chatMemberId = new ChatRoomMemberId();
-                chatMemberId.setRoomId(chatRoom.getRoomId());
-                chatMemberId.setUserId(newMember.getUserId());
-                chatMember.setId(chatMemberId);
-                chatMember.setChatRoom(chatRoom);
-                chatMember.setUser(newMember);
-                chatMember.setRole(role == ProjectRole.OWNER || role == ProjectRole.MANAGER
-                        ? ChatRoomMember.MemberRole.ADMIN
-                        : ChatRoomMember.MemberRole.MEMBER);
-                chatMember.setJoinedAt(LocalDateTime.now());
-                chatRoomMemberRepository.save(chatMember);
-
-                log.info("Added user {} to project chat room {}", newMember.getUserId(), chatRoom.getRoomId());
-            }
-        }
-    }
-
-    private void removeMemberFromChat(Project project, Long memberId) {
-        List<ChatRoom> projectChats = chatRoomRepository.findByProject(project);
-        if (!projectChats.isEmpty()) {
-            ChatRoom chatRoom = projectChats.get(0);
-            chatRoomMemberRepository.findByChatRoom_RoomIdAndUser_UserId(chatRoom.getRoomId(), memberId)
-                    .ifPresent(chatMember -> {
-                        chatRoomMemberRepository.delete(chatMember);
-                        log.info("Removed user {} from project chat room {}", memberId, chatRoom.getRoomId());
-                    });
-        }
-    }
-
-    private void createProjectFolderForMember(Project project, User member) {
-        try {
-            storageProjectIntegrationService.getOrCreateProjectFolder(project, member);
-            log.info("Created project folder for member {} in project {}", member.getUserId(), project.getProjectId());
-        } catch (Exception e) {
-            log.error("Failed to create project folder: {}", e.getMessage());
-        }
-    }
 
     private ProjectMemberDTO convertToMemberDTO(ProjectMember member) {
+        return convertToMemberDTOWithStats(member, member.getProject() != null ? member.getProject().getProjectId() : null);
+    }
+
+    private ProjectMemberDTO convertToMemberDTOWithStats(ProjectMember member, Long projectId) {
         ProjectMemberDTO dto = new ProjectMemberDTO();
         dto.setId(member.getId());
 
         if (member.getUser() != null) {
             dto.setUserId(member.getUser().getUserId());
             dto.setUsername(member.getUser().getUsername());
+            dto.setFullName(member.getUser().getFullName());
             dto.setEmail(member.getUser().getEmail());
             dto.setAvatarUrl(member.getUser().getAvatarUrl());
         }
 
         dto.setRole(member.getRole());
         dto.setJoinedAt(member.getCreatedAt());
+
+        // HR extended fields
+        dto.setPosition(member.getPosition());
+        dto.setAllocationRate(member.getAllocationRate());
+        dto.setMemberStatus(member.getMemberStatus());
+        dto.setJoinDate(member.getJoinDate());
+        dto.setLeaveDate(member.getLeaveDate());
+        dto.setYearsOfExperience(member.getYearsOfExperience());
+        dto.setBillingRate(member.getBillingRate());
+        dto.setSkillNotes(member.getSkillNotes());
+
+        // Computed stats (only when projectId is available)
+        if (projectId != null && member.getUser() != null) {
+            Long uid = member.getUser().getUserId();
+            dto.setTotalIssues(issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid));
+            dto.setCompletedIssues(issueRepository.countCompletedByProjectAndAssignee(projectId, uid));
+            java.math.BigDecimal hours = timeLogRepository.sumHoursByUserAndProject(uid, projectId);
+            dto.setTotalLoggedHours(hours != null ? hours.doubleValue() : 0.0);
+        }
+
         return dto;
+    }
+    // ===== Resource Planning — Module 5 =====
+
+    /**
+     * Trả về toàn bộ resource overview: mỗi user + tất cả dự án đang tham gia.
+     * Tính tổng allocationRate, detect overload (>100%).
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<DoAn.BE.project.dto.ResourceOverviewDTO> getResourceOverview() {
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) return java.util.Collections.emptyList();
+
+        List<ProjectMember> members = projectMemberRepository.findActiveByCompany(companyId);
+
+        // Group by userId
+        java.util.Map<Long, List<ProjectMember>> byUser = members.stream()
+                .collect(Collectors.groupingBy(m -> m.getUser().getUserId()));
+
+        return byUser.entrySet().stream()
+                .map(entry -> {
+                    List<ProjectMember> userMembers = entry.getValue();
+                    ProjectMember first = userMembers.get(0);
+
+                    DoAn.BE.project.dto.ResourceOverviewDTO dto = new DoAn.BE.project.dto.ResourceOverviewDTO();
+                    dto.setUserId(first.getUser().getUserId());
+                    dto.setFullName(first.getUser().getFullName());
+                    dto.setEmail(first.getUser().getEmail());
+                    dto.setAvatarUrl(first.getUser().getAvatarUrl());
+
+                    // Build project slots
+                    List<DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot> slots = userMembers.stream()
+                            .map(m -> {
+                                DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot slot =
+                                        new DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot();
+                                slot.setProjectId(m.getProject().getProjectId());
+                                slot.setProjectName(m.getProject().getName());
+                                slot.setRole(m.getRole() != null ? m.getRole().name() : null);
+                                slot.setPosition(m.getPosition());
+                                slot.setAllocationRate(m.getAllocationRate());
+                                slot.setMemberStatus(m.getMemberStatus() != null ? m.getMemberStatus().name() : null);
+                                // Time logged for this project
+                                java.math.BigDecimal hours = timeLogRepository.sumHoursByUserAndProject(
+                                        m.getUser().getUserId(), m.getProject().getProjectId());
+                                slot.setTotalLoggedHours(hours != null ? hours.doubleValue() : 0.0);
+                                return slot;
+                            })
+                            .collect(Collectors.toList());
+
+                    dto.setProjects(slots);
+
+                    // Total allocation
+                    int total = slots.stream()
+                            .mapToInt(s -> s.getAllocationRate() != null ? s.getAllocationRate() : 0)
+                            .sum();
+                    dto.setTotalAllocation(total);
+                    dto.setOverloaded(total > 100);
+
+                    return dto;
+                })
+                .sorted(java.util.Comparator.comparing(
+                        DoAn.BE.project.dto.ResourceOverviewDTO::getTotalAllocation).reversed())
+                .collect(Collectors.toList());
     }
 }

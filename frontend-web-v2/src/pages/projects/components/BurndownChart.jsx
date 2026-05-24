@@ -1,195 +1,140 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate } from '@shared/utils/formatters';
 
 /**
- * Sprint Burndown Chart Component
- * Shows ideal vs actual progress over sprint duration
+ * Sprint Progress Overview — SIMPLIFIED
+ * Hiển thị: tổng issues, đã xong, còn lại, tiến độ %, milestone dates
+ * KHÔNG dùng burndown chart — quá khó hiểu với người thường
  */
-export default function BurndownChart({ sprintId, sprintName }) {
-    const { data: burndown, isLoading, error } = useQuery({
+export default function SprintOverview({ sprintId, sprintName }) {
+    const { data: burndown, isLoading } = useQuery({
         queryKey: ['burndown', sprintId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECT_DASHBOARD.BURNDOWN(sprintId))).data,
         enabled: !!sprintId,
     });
 
-    // Calculate chart dimensions and scales
-    const chartData = useMemo(() => {
-        if (!burndown?.burndownData?.length) return null;
-
-        const data = burndown.burndownData;
-        const maxIssues = burndown.totalIssues || Math.max(...data.map(d => d.remainingIssues)) || 1;
-        const width = 100; // percentage-based
-        const height = 200;
-        const padding = { top: 20, right: 20, bottom: 40, left: 40 };
-        const chartWidth = width;
-        const chartHeight = height - padding.top - padding.bottom;
-
-        // Safe x calculation: avoid division by zero when only 1 data point
-        const getX = (i) => data.length <= 1 ? 50 : (i / (data.length - 1)) * 100;
-        const getY = (value) => ((maxIssues - value) / maxIssues) * chartHeight;
-
-        // Generate path for ideal line
-        const idealPath = data.map((point, i) => {
-            const x = getX(i);
-            const y = getY(point.idealRemaining ?? 0);
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y + padding.top}`;
-        }).join(' ');
-
-        // Generate path for actual line
-        const actualPath = data.map((point, i) => {
-            const x = getX(i);
-            const y = getY(point.remainingIssues ?? 0);
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y + padding.top}`;
-        }).join(' ');
-
-        return {
-            data,
-            maxIssues,
-            idealPath,
-            actualPath,
-            chartHeight,
-            padding,
-            getX,
-        };
-    }, [burndown]);
-
     if (isLoading) {
         return (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
-                <div className="flex items-center justify-center h-48">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-center h-32">
                     <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
                 </div>
             </div>
         );
     }
 
-    if (error || !chartData) {
+    if (!burndown) {
         return (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <div className="text-center py-8 text-gray-400">
                     <i className="fa-solid fa-chart-line text-3xl mb-2" />
-                    <p>Chưa có dữ liệu burndown</p>
+                    <p>Chưa có dữ liệu sprint</p>
                 </div>
             </div>
         );
     }
 
-    const { data, maxIssues, idealPath, actualPath, chartHeight, padding, getX } = chartData;
+    const total = burndown.totalIssues || 0;
+    const completed = burndown.burndownData?.length > 0
+        ? burndown.burndownData[burndown.burndownData.length - 1].completedIssues
+        : 0;
+    const remaining = total - completed;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // Sprint date range
+    const firstDay = burndown.burndownData?.[0];
+    const lastDay = burndown.burndownData?.[burndown.burndownData.length - 1];
+    const sprintDays = burndown.burndownData?.length || 0;
+
+    // Status color
+    let status, statusEmoji, statusBg;
+    if (pct >= 80) { status = 'Sắp xong!'; statusEmoji = '🚀'; statusBg = 'bg-green-50 border-green-200 text-green-700'; }
+    else if (pct >= 50) { status = 'Đang làm tốt'; statusEmoji = '💪'; statusBg = 'bg-blue-50 border-blue-200 text-blue-700'; }
+    else if (pct > 0) { status = 'Cần đẩy nhanh'; statusEmoji = '⚡'; statusBg = 'bg-amber-50 border-amber-200 text-amber-700'; }
+    else { status = 'Chưa bắt đầu'; statusEmoji = '⏳'; statusBg = 'bg-gray-50 border-gray-200 text-gray-600'; }
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
                 <div>
-                    <h3 className="font-bold text-gray-900">Burndown Chart</h3>
-                    <p className="text-sm text-gray-500">{sprintName || 'Sprint'}</p>
+                    <h3 className="font-bold text-gray-900">{sprintName || 'Sprint'}</h3>
+                    <p className="text-sm text-gray-500">
+                        {firstDay ? `${formatDate(firstDay.date)} → ${formatDate(lastDay?.date)}` : 'Chưa có ngày'}
+                        {sprintDays > 0 && <span className="ml-2">({sprintDays} ngày)</span>}
+                    </p>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-0.5 bg-gray-400" />
-                        <span className="text-gray-500">Ideal</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-0.5 bg-indigo-500" />
-                        <span className="text-gray-500">Actual</span>
-                    </div>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${statusBg}`}>
+                    <span>{statusEmoji}</span>
+                    <span>{status}</span>
                 </div>
             </div>
 
-            {/* SVG Chart */}
-            <div className="relative" style={{ height: '220px' }}>
-                <svg width="100%" height="100%" viewBox="0 0 100 220" preserveAspectRatio="none" className="overflow-visible">
-                    {/* Grid lines */}
-                    {[0, 25, 50, 75, 100].map((percent) => (
-                        <line
-                            key={percent}
-                            x1="0%"
-                            y1={padding.top + (percent / 100) * chartHeight}
-                            x2="100%"
-                            y2={padding.top + (percent / 100) * chartHeight}
-                            stroke="var(--color-border)"
-                            strokeWidth="0.5"
-                        />
-                    ))}
+            {/* Stats 3 ô */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="text-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="text-3xl font-black text-indigo-600">{total}</div>
+                    <div className="text-[11px] text-gray-500 mt-0.5">Tổng issues</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-xl border border-green-100">
+                    <div className="text-3xl font-black text-green-600">{completed}</div>
+                    <div className="text-[11px] text-green-600 mt-0.5">Đã xong</div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded-xl border border-orange-100">
+                    <div className="text-3xl font-black text-orange-500">{remaining}</div>
+                    <div className="text-[11px] text-orange-500 mt-0.5">Còn lại</div>
+                </div>
+            </div>
 
-                    {/* Ideal line (dashed) */}
-                    <path
-                        d={idealPath}
-                        fill="none"
-                        stroke="var(--color-text-muted)"
-                        strokeWidth="2"
-                        strokeDasharray="4 2"
-                        vectorEffect="non-scaling-stroke"
+            {/* Progress bar */}
+            <div className="mb-2">
+                <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                    <span>Tiến độ sprint</span>
+                    <span className="font-bold text-indigo-600">{pct}%</span>
+                </div>
+                <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                            pct >= 80 ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                            pct >= 50 ? 'bg-gradient-to-r from-indigo-400 to-purple-500' :
+                            pct > 0   ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+                                        'bg-gray-300'
+                        }`}
+                        style={{ width: `${pct}%` }}
                     />
-
-                    {/* Actual line */}
-                    <path
-                        d={actualPath}
-                        fill="none"
-                        stroke="var(--color-accent)"
-                        strokeWidth="2.5"
-                        vectorEffect="non-scaling-stroke"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-
-                    {/* Data points */}
-                    {data.map((point, i) => {
-                        const x = getX(i);
-                        const remaining = point.remainingIssues ?? 0;
-                        const y = ((maxIssues - remaining) / maxIssues) * chartHeight + padding.top;
-                        return (
-                            <circle
-                                key={i}
-                                cx={`${x}%`}
-                                cy={y}
-                                r="4"
-                                fill="var(--color-accent)"
-                                stroke="white"
-                                strokeWidth="2"
-                            />
-                        );
-                    })}
-                </svg>
-
-                {/* Y-axis labels */}
-                <div className="absolute left-0 top-0 bottom-0 w-8 flex flex-col justify-between text-xs text-gray-400 py-5">
-                    <span>{maxIssues}</span>
-                    <span>{Math.round(maxIssues / 2)}</span>
-                    <span>0</span>
-                </div>
-
-                {/* X-axis labels */}
-                <div className="absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-400">
-                    {data.filter((_, i) => i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)).map((point, i) => (
-                        <span key={i}>
-                            {formatDate(point.date, { day: 'numeric', month: 'short' })}
-                        </span>
-                    ))}
                 </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
-                <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{burndown.totalIssues}</div>
-                    <div className="text-xs text-gray-500">Tổng issues</div>
-                </div>
-                <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                        {data.length > 0 ? data[data.length - 1].completedIssues : 0}
-                    </div>
-                    <div className="text-xs text-gray-500">Đã hoàn thành</div>
-                </div>
-                <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-500">
-                        {data.length > 0 ? data[data.length - 1].remainingIssues : 0}
-                    </div>
-                    <div className="text-xs text-gray-500">Còn lại</div>
-                </div>
+            {/* Milestone markers */}
+            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                <span>Bắt đầu</span>
+                <span>50%</span>
+                <span>100%</span>
             </div>
+
+            {/* Daily log summary */}
+            {burndown.burndownData && burndown.burndownData.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Nhật ký hoàn thành</p>
+                    <div className="flex gap-1 items-end h-12">
+                        {burndown.burndownData.slice(-14).map((day, i) => {
+                            const h = total > 0 ? (day.completedIssues / total) * 100 : 0;
+                            return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${formatDate(day.date)}: +${day.completedIssues} hoàn thành`}>
+                                    <span className="text-[8px] text-gray-400">{day.completedIssues}</span>
+                                    <div
+                                        className="w-full rounded-sm bg-indigo-400 min-h-[2px]"
+                                        style={{ height: `${Math.max(h, 2)}%` }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className="text-[9px] text-gray-400 text-center mt-1">14 ngày gần nhất</p>
+                </div>
+            )}
         </div>
     );
 }

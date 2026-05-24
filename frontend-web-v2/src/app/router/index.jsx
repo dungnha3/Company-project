@@ -5,6 +5,7 @@ import { lazy, Suspense } from 'react';
 import DashboardLayout from '@layouts/DashboardLayout';
 import AuthLayout from '@layouts/AuthLayout';
 import SectionTabLayout, { HR_TAB_CONFIG } from '@layouts/SectionTabLayout';
+import SystemAdminLayout from '@layouts/SystemAdminLayout';
 
 // Guards
 import { AccessControlGuard } from './guards/AccessControlGuard';
@@ -27,52 +28,38 @@ const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
 
 // HR pages
 const EmployeesPage = lazy(() => import('@pages/hr/EmployeesPage'));
-const EmployeeDetailPage = lazy(() => import('@pages/hr/EmployeeDetailPage'));
-const DepartmentsPage = lazy(() => import('@pages/hr/DepartmentsPage'));
-const PositionsPage = lazy(() => import('@pages/hr/PositionsPage'));
+
 const ProjectsPage = lazy(() => import('@pages/projects/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('@pages/projects/ProjectDetailPage'));
-const AttendancePage = lazy(() => import('@pages/hr/AttendancePage'));
 const LeaveRequestsPage = lazy(() => import('@pages/hr/LeaveRequestsPage'));
-const SalariesPage = lazy(() => import('@pages/hr/SalariesPage'));
-const ContractsPage = lazy(() => import('@pages/hr/ContractsPage'));
 const ReviewsPage = lazy(() => import('@pages/hr/ReviewsPage'));
-const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
-const OrgChartPage = lazy(() => import('@pages/hr/OrgChartPage'));
-const OKRPage = lazy(() => import('@pages/hr/OKRPage'));
-const HROnboardingPage = lazy(() => import('@pages/hr/OnboardingPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
+const PerformanceOverviewPage = lazy(() => import('@pages/hr/PerformanceOverviewPage'));
+const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
 
 // Project pages
 const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
 
-// Personal Workspace pages
-const PersonalTasksPage = lazy(() => import('@pages/personal/PersonalTasksPage'));
-const PersonalStoragePage = lazy(() => import('@pages/personal/PersonalStoragePage'));
-const PersonalCalendarPage = lazy(() => import('@pages/personal/PersonalCalendarPage'));
-const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
-const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
 
 // New feature pages
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
-const MyTimelogsPage = lazy(() => import('@pages/timelogs/MyTimelogsPage'));
+const MyPerformancePage = lazy(() => import('@pages/hr/MyPerformancePage'));
+const MyWorkPage = lazy(() => import('@pages/personal/MyWorkPage'));
+const MyTimelogsPage = lazy(() => import('@pages/personal/MyTimelogsPage'));
+
+const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
+const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
 
 
-const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPage'));
-const CompanyDashboardPage = lazy(() => import('@pages/company/CompanyDashboardPage'));
 const ActivityLogPage = lazy(() => import('@pages/company/ActivityLogPage'));
-const BillingPage = lazy(() => import('@pages/company/BillingPage'));
+const CompanySettingsPage = lazy(() => import('@pages/company/CompanySettingsPage'));
 
 // Other pages
 const ProfilePage = lazy(() => import('@pages/profile/ProfilePage'));
-const ChatPage = lazy(() => import('@pages/chat/ChatPage'));
 const NotificationsPage = lazy(() => import('@pages/notifications/NotificationsPage'));
-const StoragePage = lazy(() => import('@pages/storage/StoragePage'));
 
-// System Admin
-const SystemAdminLayout = lazy(() => import('@layouts/SystemAdminLayout'));
+// System Admin pages
 const AdminCompaniesPage = lazy(() => import('@pages/admin/AdminCompaniesPage'));
-const AdminCompanyDetailPage = lazy(() => import('@pages/admin/AdminCompanyDetailPage'));
 const AdminUsersPage = lazy(() => import('@pages/admin/AdminUsersPage'));
 const AdminAnalyticsPage = lazy(() => import('@pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = lazy(() => import('@pages/admin/AdminSettingsPage'));
@@ -104,32 +91,301 @@ const router = createBrowserRouter([
     },
 
 
-    // System Admin Routes
+    // Onboarding (New Company Setup)
     {
-        path: '/admin',
+        path: '/onboarding',
         element: (
             <AccessControlGuard requireAuth={true}>
-                <SystemAdminGuard>
-                    <Suspense fallback={<PageLoader />}>
-                        <SystemAdminLayout />
-                    </Suspense>
-                </SystemAdminGuard>
+                <OnboardingPage />
+            </AccessControlGuard>
+        ),
+    },
+
+    // Protected routes - require auth + company
+    {
+        path: '/app',
+        element: (
+            <AccessControlGuard requireAuth={true} requireCompany={true}>
+                <DashboardLayout />
             </AccessControlGuard>
         ),
         children: [
+            // Redirect root /app to Projects (or My Issues if preferred)
+            {
+                index: true,
+                element: <Navigate to="/app/projects" replace />,
+            },
+
+            // Personal Work Hub (/app/me)
+            {
+                path: 'me',
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyWorkPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'issues',
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyIssuesPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'timelogs',
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyTimelogsPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'calendar',
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <CalendarPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'profile',
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <ProfilePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'performance',
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyPerformancePage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                ]
+            },
+
+            // HR Module (/app/hr)
+            {
+                path: 'hr',
+                element: (
+                    <AccessControlGuard
+                        requireAuth={true}
+                        requireCompany={true}
+                    >
+                        <SectionTabLayout
+                            tabConfig={HR_TAB_CONFIG}
+                            title="Nhân sự (HR)"
+                            icon="fa-users-gear"
+                        />
+                    </AccessControlGuard>
+                ),
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <HRDashboardPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'employees',
+                        element: (
+                            <AccessControlGuard
+                                requiredPermission="HR.VIEW_LIST"
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <EmployeesPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+
+
+                    {
+                        path: 'leave-requests',
+                        element: (
+                            <AccessControlGuard>
+                                <Suspense fallback={<PageLoader />}>
+                                    <LeaveRequestsPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'reviews',
+                        element: (
+                            <AccessControlGuard
+                                requiredPermission="HR.MANAGE_REVIEWS"
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReviewsPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'performance',
+                        element: (
+                            <AccessControlGuard
+                                requiredPermission="HR.MANAGE_REVIEWS"
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <PerformanceOverviewPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'resource-planning',
+                        element: (
+                            <AccessControlGuard
+                                requiredPermission="PROJECT.MANAGE_ALL"
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <ResourcePlanningPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                ]
+            },
+
+            // Project Module
+            {
+                path: 'projects',
+                element: (
+                    <AccessControlGuard>
+                        <Suspense fallback={<PageLoader />}>
+                            <ProjectsPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+            {
+                path: 'projects/:id',
+                element: (
+                    <AccessControlGuard>
+                        <Suspense fallback={<PageLoader />}>
+                            <ProjectDetailPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+            {
+                path: 'projects/:projectId/analytics',
+                element: (
+                    <AccessControlGuard>
+                        <Suspense fallback={<PageLoader />}>
+                            <AnalyticsPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+
+            // Reports
+            {
+                path: 'reports',
+                element: (
+                    <AccessControlGuard>
+                        <Suspense fallback={<PageLoader />}>
+                            <ReportsPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+
+            // Company Module
+            {
+                path: 'company',
+                element: (
+                    <AccessControlGuard
+                        requireAuth={true}
+                        requireCompany={true}
+                    >
+                        <Outlet />
+                    </AccessControlGuard>
+                ),
+                children: [
+                    {
+                        path: 'activity',
+                        element: (
+                            <AccessControlGuard
+                                requireAuth={true}
+                                requireCompany={true}
+                                allowedRoles={['OWNER', 'COMPANY_ADMIN']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <ActivityLogPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                    {
+                        path: 'settings',
+                        element: (
+                            <AccessControlGuard
+                                requireAuth={true}
+                                requireCompany={true}
+                                allowedRoles={['OWNER', 'COMPANY_ADMIN']}
+                            >
+                                <Suspense fallback={<PageLoader />}>
+                                    <CompanySettingsPage />
+                                </Suspense>
+                            </AccessControlGuard>
+                        ),
+                    },
+                ]
+            },
+
+            // Common pages
+
+            {
+                path: 'notifications',
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <NotificationsPage />
+                    </Suspense>
+                ),
+            },
+        ],
+    },
+
+    // System Admin routes
+    {
+        path: '/admin',
+        element: (
+            <SystemAdminGuard>
+                <SystemAdminLayout />
+            </SystemAdminGuard>
+        ),
+        children: [
+            {
+                index: true,
+                element: <Navigate to="/admin/companies" replace />,
+            },
             {
                 path: 'companies',
                 element: (
                     <Suspense fallback={<PageLoader />}>
                         <AdminCompaniesPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'companies/:id',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <AdminCompanyDetailPage />
                     </Suspense>
                 ),
             },
@@ -156,443 +412,6 @@ const router = createBrowserRouter([
                         <AdminSettingsPage />
                     </Suspense>
                 ),
-            },
-            {
-                index: true,
-                element: <Navigate to="companies" replace />,
-            }
-        ],
-    },
-
-    // Onboarding (New Company Setup)
-    {
-        path: '/onboarding',
-        element: (
-            <AccessControlGuard requireAuth={true}>
-                <OnboardingPage />
-            </AccessControlGuard>
-        ),
-    },
-
-    // Protected routes - require auth + company
-    {
-        path: '/app',
-        element: (
-            <AccessControlGuard requireAuth={true}>
-                <DashboardLayout />
-            </AccessControlGuard>
-        ),
-        children: [
-            // Dashboard
-            {
-                index: true,
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <DashboardPage />
-                    </Suspense>
-                ),
-            },
-
-            // Personal Workspace (/app/me)
-            {
-                path: 'me',
-                children: [
-                    {
-                        path: 'tasks',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <PersonalTasksPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'issues',
-                        element: (
-                            <AccessControlGuard requiredFeature="project">
-                                <Suspense fallback={<PageLoader />}>
-                                    <MyIssuesPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'timelogs',
-                        element: (
-                            <AccessControlGuard requiredFeature="timeTracking">
-                                <Suspense fallback={<PageLoader />}>
-                                    <MyTimelogsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'calendar',
-                        element: (
-                            <AccessControlGuard requiredFeature="calendar">
-                                <Suspense fallback={<PageLoader />}>
-                                    <CalendarPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'personal-calendar',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <PersonalCalendarPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'storage',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <PersonalStoragePage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'profile',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <ProfilePage />
-                            </Suspense>
-                        ),
-                    },
-                ]
-            },
-
-            // HR Module (/app/hr)
-            {
-                path: 'hr',
-                element: (
-                    <AccessControlGuard
-                        requireAuth={true}
-                        requireCompany={true}
-                    >
-                        <SectionTabLayout
-                            tabConfig={HR_TAB_CONFIG}
-                            title="Nhân sự (HR)"
-                            icon="fa-users-gear"
-                        />
-                    </AccessControlGuard>
-                ),
-                children: [
-                    {
-                        path: 'dashboard',
-                        element: (
-                            <AccessControlGuard requiredPermission="hrViewList">
-                                <Suspense fallback={<PageLoader />}>
-                                    <HRDashboardPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'employees',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="hr"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <EmployeesPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'employees/:id',
-                        element: (
-                            <Suspense fallback={<PageLoader />}>
-                                <EmployeeDetailPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'departments',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="hr"
-                                requiredPermission="hrViewDepartments"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <DepartmentsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'positions',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="hr"
-                                requiredPermission="hrViewPositions"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <PositionsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'attendance',
-                        element: (
-                            <AccessControlGuard requiredFeature="attendance">
-                                <Suspense fallback={<PageLoader />}>
-                                    <AttendancePage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'leave-requests',
-                        element: (
-                            <AccessControlGuard requiredFeature="leave">
-                                <Suspense fallback={<PageLoader />}>
-                                    <LeaveRequestsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'salaries',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="salary"
-                                requiredPermission="salaryView"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <SalariesPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'contracts',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="contract"
-                                requiredPermission="contractView"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <ContractsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'reviews',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="review"
-                                requiredPermission="hrManageReviews"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <ReviewsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'org-chart',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="orgChart"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <OrgChartPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'okr',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="okr"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <OKRPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'onboarding',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="onboarding"
-                                requiredPermission="hrViewList"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <OnboardingPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'resource-planning',
-                        element: (
-                            <AccessControlGuard
-                                requiredFeature="resourcePlanning"
-                                requiredPermission="projectManageAll"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <ResourcePlanningPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                ]
-            },
-
-            // Project Module
-            {
-                path: 'projects',
-                element: (
-                    <AccessControlGuard requiredFeature="project">
-                        <Suspense fallback={<PageLoader />}>
-                            <ProjectsPage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-            {
-                path: 'projects/:id',
-                element: (
-                    <AccessControlGuard requiredFeature="project">
-                        <Suspense fallback={<PageLoader />}>
-                            <ProjectDetailPage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-            {
-                path: 'projects/:projectId/analytics',
-                element: (
-                    <AccessControlGuard requiredFeature="analytics">
-                        <Suspense fallback={<PageLoader />}>
-                            <AnalyticsPage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-
-            // Reports
-            {
-                path: 'reports',
-                element: (
-                    <AccessControlGuard requiredFeature="project">
-                        <Suspense fallback={<PageLoader />}>
-                            <ReportsPage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-
-            // Company Module
-            {
-                path: 'company',
-                element: (
-                    <AccessControlGuard
-                        requireAuth={true}
-                        requireCompany={true}
-                    >
-                        <Outlet />
-                    </AccessControlGuard>
-                ),
-                children: [
-                    {
-                        path: 'dashboard',
-                        element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
-                                <Suspense fallback={<PageLoader />}>
-                                    <CompanyDashboardPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'activity',
-                        element: (
-                            <AccessControlGuard
-                                requireAuth={true}
-                                requireCompany={true}
-                                allowedRoles={['OWNER', 'COMPANY_ADMIN']}
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <ActivityLogPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'billing',
-                        element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
-                                <Suspense fallback={<PageLoader />}>
-                                    <BillingPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'settings',
-                        element: (
-                            <AccessControlGuard allowedRoles={['OWNER', 'COMPANY_ADMIN']}>
-                                <Suspense fallback={<PageLoader />}>
-                                    <CompanySettingsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                ]
-            },
-
-            // Common pages
-            {
-                path: 'chat',
-                element: (
-                    <AccessControlGuard requiredFeature="chat">
-                        <Suspense fallback={<PageLoader />}>
-                            <ChatPage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-            {
-                path: 'notifications',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <NotificationsPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'billing',
-                element: (
-                    <Suspense fallback={<PageLoader />}>
-                        <BillingPage />
-                    </Suspense>
-                ),
-            },
-            {
-                path: 'storage',
-                element: (
-                    <AccessControlGuard requiredFeature="storage">
-                        <Suspense fallback={<PageLoader />}>
-                            <StoragePage />
-                        </Suspense>
-                    </AccessControlGuard>
-                ),
-            },
-            // Settings Redirect (Legacy/Cleanup)
-            {
-                path: 'settings/workspace',
-                element: <Navigate to="/app/company/settings" replace />
             },
         ],
     },

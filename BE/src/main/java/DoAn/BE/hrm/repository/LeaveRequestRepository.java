@@ -36,6 +36,16 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
                         "AND :date BETWEEN lr.startDate AND lr.endDate")
         boolean isEmployeeOnLeave(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
 
+        @Query("SELECT COUNT(lr) > 0 FROM LeaveRequest lr WHERE lr.employee.user.userId = :userId " +
+                        "AND lr.status = 'APPROVED' " +
+                        "AND :date BETWEEN lr.startDate AND lr.endDate")
+        boolean isUserOnLeave(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+        @Query("SELECT COUNT(lr) > 0 FROM LeaveRequest lr WHERE lr.employee.user.userId = :userId " +
+                        "AND lr.status = 'APPROVED' " +
+                        "AND ((:startDate BETWEEN lr.startDate AND lr.endDate) OR (:endDate BETWEEN lr.startDate AND lr.endDate) OR (lr.startDate BETWEEN :startDate AND :endDate))")
+        boolean hasOverlappingLeaveByUser(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
         long countByStatus(LeaveStatus status);
 
         List<LeaveRequest> findByApprover_UserId(Long approverId);
@@ -63,17 +73,29 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         org.springframework.data.domain.Page<LeaveRequest> findAllRequests(
                         org.springframework.data.domain.Pageable pageable);
 
-        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.company.companyId = :companyId ORDER BY lr.createdAt DESC")
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.company.companyId = :companyId")
         org.springframework.data.domain.Page<LeaveRequest> findByCompanyId(@Param("companyId") Long companyId,
                         org.springframework.data.domain.Pageable pageable);
 
-        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.startDate BETWEEN :startDate AND :endDate AND lr.employee.company.companyId = :companyId ORDER BY lr.startDate DESC")
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.startDate BETWEEN :startDate AND :endDate AND lr.employee.company.companyId = :companyId")
         org.springframework.data.domain.Page<LeaveRequest> findByStartDateBetweenAndEmployee_CompanyId(
                         @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
                         @Param("companyId") Long companyId, org.springframework.data.domain.Pageable pageable);
 
-        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = :status AND lr.employee.company.companyId = :companyId ORDER BY lr.createdAt DESC")
+        @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = :status AND lr.employee.company.companyId = :companyId")
         org.springframework.data.domain.Page<LeaveRequest> findByStatusAndCompanyId(
                         @Param("status") LeaveStatus status, @Param("companyId") Long companyId,
                         org.springframework.data.domain.Pageable pageable);
+
+        // Lấy nghỉ phép đã duyệt trong khoảng ngày (cho Calendar team)
+        @EntityGraph(attributePaths = { "employee", "employee.user", "approver" })
+        @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = 'APPROVED' " +
+               "AND lr.employee.company.companyId = :companyId " +
+               "AND lr.startDate <= :endDate AND lr.endDate >= :startDate " +
+               "ORDER BY lr.startDate ASC")
+        java.util.List<LeaveRequest> findApprovedInDateRangeByCompany(
+                        @Param("startDate") java.time.LocalDate startDate,
+                        @Param("endDate") java.time.LocalDate endDate,
+                        @Param("companyId") Long companyId);
 }
