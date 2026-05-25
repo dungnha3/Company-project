@@ -88,24 +88,37 @@ public class SecurityConfig {
 
         // (conflicts with allowCredentials)
         @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:4200,http://localhost:5173}")
-        private List<String> allowedOrigins;
+        private String allowedOrigins;
 
         @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")
-        private List<String> allowedMethods;
+        private String allowedMethods;
 
         @Value("${cors.allowed-headers:*}")
-        private List<String> allowedHeaders;
+        private String allowedHeaders;
 
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                // Configurable CORS policies
-                // Default in app.properties:
-                // http://localhost:3000,http://localhost:4200,http://localhost:5173
-                configuration.setAllowedOrigins(allowedOrigins);
-                configuration.setAllowedMethods(allowedMethods);
-                configuration.setAllowedHeaders(allowedHeaders);
+                // Configurable CORS policies with robust manual parsing to support spaces and clear formatting
+                if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {
+                        for (String origin : allowedOrigins.split(",")) {
+                                configuration.addAllowedOrigin(origin.trim());
+                        }
+                }
+
+                if (allowedMethods != null && !allowedMethods.trim().isEmpty()) {
+                        for (String method : allowedMethods.split(",")) {
+                                configuration.addAllowedMethod(method.trim());
+                        }
+                }
+
+                if (allowedHeaders != null && !allowedHeaders.trim().isEmpty()) {
+                        for (String header : allowedHeaders.split(",")) {
+                                configuration.addAllowedHeader(header.trim());
+                        }
+                }
+
                 configuration.setAllowCredentials(true);
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
