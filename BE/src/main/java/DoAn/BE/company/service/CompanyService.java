@@ -15,6 +15,7 @@ import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanySettings;
 import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.company.entity.UserPermissions;
 import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -114,6 +115,7 @@ public class CompanyService {
         owner.setCompany(company);
         owner.setUser(currentUser);
         owner.getRoles().add(CompanyRole.OWNER);
+        owner.setPermissions(UserPermissions.defaultFor(CompanyRole.OWNER)); // Set full permissions for owner
         owner.setIsActive(true);
         owner.setJoinedAt(java.time.LocalDateTime.now());
         companyMemberRepository.save(owner);
@@ -146,8 +148,21 @@ public class CompanyService {
         resp.setLogoUrl(company.getLogoUrl());
         resp.setAddress(company.getAddress());
 
+        List<String> rolesList = member.getRoles().stream()
+                .map(Enum::name)
+                .collect(Collectors.toList());
+        resp.setRoles(rolesList);
         resp.setRole(member.getRoles().stream().findFirst().map(Enum::name).orElse(null));
-        resp.setPermissions(member.getPermissions());
+
+        boolean isOwnerOrAdmin = member.hasAnyRole(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN);
+        // Nếu là owner/admin mà chưa có permissions trong DB, trả về full permissions
+        UserPermissions perms = member.getPermissions();
+        if (perms == null && isOwnerOrAdmin) {
+            perms = UserPermissions.defaultFor(
+                member.hasAnyRole(CompanyRole.OWNER) ? CompanyRole.OWNER : CompanyRole.COMPANY_ADMIN
+            );
+        }
+        resp.setPermissions(perms);
         resp.setOwner(member.hasAnyRole(CompanyRole.OWNER));
         resp.setIsActive(company.getIsActive());
         return resp;
@@ -163,6 +178,27 @@ public class CompanyService {
         if (req.getAddress() != null) {
             company.setAddress(req.getAddress());
         }
+    }
+
+    @Transactional
+    public void updateReviewSettings(Long companyId, DoAn.BE.company.dto.ReviewSettingsDTO dto) {
+        if (companyId == null) {
+            throw new BadRequestException("ID công ty không được để trống");
+        }
+        accessControlService.checkPermission(companyId, DoAn.BE.company.entity.CompanyRole.OWNER,
+                DoAn.BE.company.entity.CompanyRole.COMPANY_ADMIN);
+
+        CompanySettings settings = companySettingsRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cài đặt cho công ty: " + companyId));
+
+        settings.setAutoReviewEnabled(dto.isAutoReviewEnabled());
+        if (dto.getReviewCycleType() != null) {
+            settings.setReviewCycleType(dto.getReviewCycleType());
+        }
+
+        companySettingsRepository.save(settings);
+        log.info("Updated review settings for company {}: autoReview={}, cycle={}",
+                companyId, dto.isAutoReviewEnabled(), dto.getReviewCycleType());
     }
 
 

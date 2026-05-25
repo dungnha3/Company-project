@@ -176,7 +176,7 @@ export default function HRDashboardPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-full mx-auto p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <div>

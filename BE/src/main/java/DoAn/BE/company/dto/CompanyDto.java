@@ -1,7 +1,8 @@
 package DoAn.BE.company.dto;
 
-
 import lombok.Data;
+
+import java.util.List;
 
 public class CompanyDto {
 
@@ -12,8 +13,10 @@ public class CompanyDto {
         private String logoUrl;
         private String address;
 
+        @com.fasterxml.jackson.annotation.JsonProperty("isOwner")
         private boolean isOwner; // Helper for frontend
-        private String role; // Current user's role
+        private String role; // Current user's primary role (single string, for backward compat)
+        private List<String> roles; // All roles (array, matches CompanyMember.roles)
         private DoAn.BE.company.entity.UserPermissions permissions; // [NEW] Granular permissions
         private Boolean isActive; // [SAAS] For System Admin UI
     }
@@ -35,5 +38,4 @@ public class CompanyDto {
         private String address;
     }
 
-    
 }

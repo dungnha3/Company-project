@@ -275,6 +275,10 @@ public class AccessControlService {
     }
 
     public void checkPermission(Long companyId, CompanyRole requiredRole) {
+        checkPermission(companyId, new CompanyRole[]{ requiredRole });
+    }
+
+    public void checkPermission(Long companyId, CompanyRole... requiredRoles) {
         User user = getCurrentUser();
         if (user == null) {
             throw new ForbiddenException("Vui lòng đăng nhập");
@@ -291,7 +295,14 @@ public class AccessControlService {
             return;
         }
 
-        if (!member.hasAnyRole(requiredRole)) {
+        boolean hasRole = false;
+        for (CompanyRole role : requiredRoles) {
+            if (member.hasAnyRole(role)) {
+                hasRole = true;
+                break;
+            }
+        }
+        if (!hasRole) {
             throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này");
         }
     }

@@ -153,6 +153,7 @@ export const useWorkspaceStore = create(
                     workspaces: [],
                     currentWorkspace: null,
                     workspaceType: 'COMPANY',
+                    hasFetched: false,
                     error: null
                 });
             },
@@ -169,7 +170,8 @@ export const useWorkspaceStore = create(
             hasRole: (...allowedRoles) => {
                 const { currentWorkspace } = get();
                 const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
-                return allowedRoles.some(role => userRoles.includes(role));
+                if (allowedRoles.some(role => userRoles.includes(role))) return true;
+                return false;
             },
 
             // Permission check helper
@@ -177,11 +179,8 @@ export const useWorkspaceStore = create(
                 const { currentWorkspace } = get();
                 if (!currentWorkspace) return false;
 
-                // Owner/Admin bypass
-                const userRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : []);
-                if (userRoles.includes('OWNER') || userRoles.includes('COMPANY_ADMIN')) return true;
+                if (currentWorkspace.isOwner) return true;
 
-                // Check user permissions object
                 const perms = currentWorkspace.permissions;
                 if (!perms) return false;
 

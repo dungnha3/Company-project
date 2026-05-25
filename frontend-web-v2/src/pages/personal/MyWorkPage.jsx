@@ -72,15 +72,25 @@ export default function MyWorkPage() {
         };
     }, [myIssues, todayTimelogs]);
 
-    // Issues for today section
+    // Issues to show: in progress + upcoming due (not just today)
     const todaysIssues = useMemo(() => {
         return myIssues
             .filter(issue => {
-                if (!issue.dueDate) return false;
-                const due = issue.dueDate.split('T')[0];
-                return due === TODAY_STR;
+                const status = (issue.status || '').toLowerCase();
+                const isActive = status.includes('progress') || status.includes('review');
+                const isUpcoming = issue.dueDate && issue.dueDate.split('T')[0] >= TODAY_STR;
+                return isActive || isUpcoming;
             })
-            .slice(0, 5);
+            .sort((a, b) => {
+                // In Progress first, then by dueDate
+                const aStatus = (a.status || '').toLowerCase();
+                const bStatus = (b.status || '').toLowerCase();
+                const aActive = aStatus.includes('progress') ? 0 : 1;
+                const bActive = bStatus.includes('progress') ? 0 : 1;
+                if (aActive !== bActive) return aActive - bActive;
+                return (a.dueDate || '').localeCompare(b.dueDate || '');
+            })
+            .slice(0, 8);
     }, [myIssues]);
 
     // Performance scores
@@ -112,7 +122,7 @@ export default function MyWorkPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-5">
+        <div className="space-y-5">
             {/* Header Banner - Clean white card */}
             <div className="flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-4">
@@ -141,12 +151,12 @@ export default function MyWorkPage() {
                 </div>
             </div>
 
-            {/* Quick Stats - Clean minimal cards */}
+            {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricBox title="Đến hạn hôm nay" value={todayMetrics.dueToday} subtitle="tasks" icon="fa-clock" iconColor="text-gray-500" />
-                <MetricBox title="Đã hoàn thành" value={todayMetrics.doneToday} subtitle="tasks" icon="fa-check-circle" iconColor="text-gray-500" />
+                <MetricBox title="Đã hoàn thành" value={todayMetrics.doneToday} subtitle="hôm nay" icon="fa-check-circle" iconColor="text-gray-500" />
+                <MetricBox title="Tasks đang làm" value={myIssues.filter(i => (i.status || '').toLowerCase().includes('progress')).length} subtitle="tasks" icon="fa-spinner" iconColor="text-gray-500" />
                 <MetricBox title="Giờ làm hôm nay" value={todayMetrics.hoursToday.toFixed(1)} subtitle="giờ" icon="fa-hourglass-half" iconColor="text-gray-500" />
-                <MetricBox title="Tasks đang làm" value={myIssues.filter(i => i.status === 'IN_PROGRESS').length} subtitle="tasks" icon="fa-spinner" iconColor="text-gray-500" />
             </div>
 
             {/* Main Content */}
@@ -158,7 +168,7 @@ export default function MyWorkPage() {
                         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="font-medium text-gray-900 flex items-center gap-2">
                                 <i className="fa-solid fa-list-check text-gray-400" />
-                                Công việc đến hạn hôm nay
+                                Công việc đang thực hiện
                             </h3>
                             <Link to="/app/me/issues" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Xem tất cả →
@@ -187,18 +197,14 @@ export default function MyWorkPage() {
                                 <i className="fa-solid fa-clock text-gray-400" />
                                 Nhật ký làm việc hôm nay
                             </h3>
-                            <Link to="/app/me/timelogs" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                                Xem tất cả →
-                            </Link>
+                            <span className="text-xs text-gray-400">Tự động</span>
                         </div>
                         <div className="p-5">
                             {todayTimelogs.length === 0 ? (
                                 <div className="text-center py-8">
                                     <i className="fa-solid fa-clock-rotate-left text-2xl text-gray-300 mb-2" />
                                     <p className="font-medium text-gray-500 text-sm">Chưa có nhật ký nào hôm nay</p>
-                                    <Link to="/app/me/timelogs" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium mt-1 inline-block">
-                                        Bắt đầu log thời gian
-                                    </Link>
+                                    <p className="text-xs text-gray-400 mt-1">Nhật ký được tự động ghi khi hoàn thành task</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
@@ -206,9 +212,7 @@ export default function MyWorkPage() {
                                         <TimeLogRow key={log.logId} log={log} />
                                     ))}
                                     {todayTimelogs.length > 5 && (
-                                        <Link to="/app/me/timelogs" className="block text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium py-2">
-                                            +{todayTimelogs.length - 5} entries khác
-                                        </Link>
+                                        <p className="text-center text-sm text-gray-400 py-2">+{todayTimelogs.length - 5} entries khác</p>
                                     )}
                                 </div>
                             )}

@@ -218,6 +218,41 @@ export function fireAutoStartTimer(issue) {
     }));
 }
 
+// ── Auto-complete event (fired when task is dragged/updated to Done status) ────
+// Automatically stops the running timer for this issue and saves the time log
+export async function fireTaskCompleted(issueId) {
+    const { isRunning, issueId: timerIssueId, stopTimer, computeDeduction } = useTimerStore.getState();
+
+    // Only auto-log if the timer is running for THIS issue
+    if (!isRunning || timerIssueId !== issueId) return;
+
+    const result = stopTimer();
+    if (!result || result.rawSeconds < 60) return;
+
+    const now = Date.now();
+    const deduction = computeDeduction(
+        result.startTime || (now - result.rawSeconds * 1000),
+        now
+    );
+    const netSeconds = Math.max(0, result.rawSeconds - deduction);
+    const hours = netSeconds / 3600;
+    const breakNote = deduction > 0 ? ` (đã trừ ${Math.round(deduction / 60)}m nghỉ)` : '';
+
+    try {
+        const { timelogApi } = await import('@shared/api/featureApi');
+        await timelogApi.logTime({
+            issueId: result.issueId,
+            loggedHours: Math.max(0.25, Math.round(hours * 100) / 100),
+            workDate: new Date().toISOString().split('T')[0],
+            description: `Timer (auto-stop: task hoàn thành)${breakNote}`,
+        });
+        // Notify UI to refresh time logs
+        window.dispatchEvent(new CustomEvent('timelog-updated', { detail: { issueId } }));
+    } catch (err) {
+        console.error('[timerStore] Failed to auto-log on task complete:', err);
+    }
+}
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 export function formatElapsed(s) {
     const h = Math.floor(s / 3600);

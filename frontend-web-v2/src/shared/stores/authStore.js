@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { useWorkspaceStore } from './workspaceStore';
 
 export const useAuthStore = create(
     persist(
@@ -203,6 +204,10 @@ export const useAuthStore = create(
                 // refreshToken is cleared by backend via Set-Cookie with maxAge=0
                 localStorage.removeItem('expiresAt');
                 localStorage.removeItem('workspace-storage'); // Clear stale workspace data
+                
+                // Clear in-memory workspace store state to prevent stale hasFetched redirect bugs
+                useWorkspaceStore.getState().clearWorkspace();
+
                 set({
                     user: null,
                     accessToken: null,

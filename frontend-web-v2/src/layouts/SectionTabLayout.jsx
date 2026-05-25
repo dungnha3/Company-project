@@ -41,14 +41,6 @@ export const HR_TAB_CONFIG = [
             { path: '/app/hr/leave-requests', icon: 'fa-calendar-minus', label: 'Nghỉ phép', feature: 'leave' },
         ],
     },
-    {
-        tabKey: 'advanced',
-        tabLabel: 'Nguồn lực',
-        tabIcon: 'fa-chart-area',
-        items: [
-            { path: '/app/hr/resource-planning', icon: 'fa-calendar-check', label: 'Phân bổ nguồn lực', feature: 'resourcePlanning' },
-        ],
-    },
 ];
 
 

@@ -32,7 +32,11 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        quickScoreMutation.mutate(form);
+        quickScoreMutation.mutate({
+            performanceScore: form.performanceScore,
+            reworkCount: form.reworkCount,
+            reviewerNote: form.reviewerNote,
+        });
     };
 
     if (!issue) return null;

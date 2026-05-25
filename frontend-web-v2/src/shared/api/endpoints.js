@@ -90,6 +90,7 @@ export const ENDPOINTS = {
         UPDATE: (id) => `/api/companies/${id}`,
         DELETE: (id) => `/api/companies/${id}`,
         SETTINGS: (id) => `/api/companies/${id}/settings`,
+        REVIEW_SETTINGS: (id) => `/api/companies/${id}/settings/review`,
 
         // Members
         MEMBERS: (companyId) => `/api/companies/${companyId}/members`,
@@ -228,6 +229,8 @@ export const ENDPOINTS = {
         APPROVE: (id) => `/api/reviews/${id}/approve`,
         REJECT: (id) => `/api/reviews/${id}/reject`,
         QUICK_SCORE: (issueId) => `/api/reviews/quick-score/${issueId}`,
+        BULK_CREATE: '/api/reviews/bulk',
+        NEEDING_REVIEW: '/api/reviews/needing-review',
     },
 
     // OKR (Objectives and Key Results)

@@ -42,7 +42,7 @@ GO
 IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'company_members')
 BEGIN
     -- hr_a: EMPLOYEE + custom HR & Project permissions
-    UPDATE cm SET cm.permissions = '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true}'
+    UPDATE cm SET cm.permissions = '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true,"reviewViewAll":true,"reviewCreate":true,"reviewApprove":true}'
     FROM company_members cm JOIN users u ON cm.user_id = u.user_id
     WHERE u.username = 'hr_a' AND cm.company_id = 1;
 
@@ -119,25 +119,22 @@ END
 GO
 
 -- =====================================================
--- 2. COMPANIES (4 g�i kh�c nhau)
+-- 2. COMPANIES (4 gi khc nhau)
 -- =====================================================
-DECLARE @pw2 VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
-
 IF NOT EXISTS (SELECT 1 FROM companies WHERE slug = 'tech-corp')
 BEGIN
     SET IDENTITY_INSERT companies ON;
-    INSERT INTO companies (company_id, name, description, slug, is_active, email, phone, address, created_at, updated_at) VALUES
-        (1, N'Tech Corp',         N'C�ng ty c�ng ngh?? h�ng ???u',       'tech-corp',     1, 'info@techcorp.vn',    '0901234567', N'123 Nguy??n Hu??, Q1, HCM',     GETDATE(), GETDATE()),
-        (2, N'Startup Hub',       N'C�ng ty kh??i nghi??p s�ng t?o',     'startup-hub',   1, 'info@startuphub.vn',  '0902345678', N'456 L� T? Tr?ng, Q3, HCM',    GETDATE(), GETDATE()),
-        (3, N'Small Biz',         N'Doanh nghi??p nh?',                 'small-biz',     1, 'info@smallbiz.vn',    '0903456789', N'789 Tr?n H?ng ??o, Q5, HCM',  GETDATE(), GETDATE()),
-        (4, N'Free Trial Co',     N'C�ng ty d�ng th?',                  'free-trial',    1, 'info@freetrial.vn',   '0904567890', N'321 Hai B� Tr?ng, Q1, HCM',   GETDATE(), GETDATE());
+    INSERT INTO companies (company_id, name, description, slug, is_active, email, phone, address, subscription_plan, created_at, updated_at) VALUES
+        (1, N'Tech Corp',         N'Cng ty cng ngh?? hng ???u',       'tech-corp',     1, 'info@techcorp.vn',    '0901234567', N'123 Nguy??n Hu??, Q1, HCM',     'ENTERPRISE', GETDATE(), GETDATE()),
+        (2, N'Startup Hub',       N'Cng ty kh??i nghi??p sng t?o',     'startup-hub',   1, 'info@startuphub.vn',  '0902345678', N'456 L T? Tr?ng, Q3, HCM',    'PROFESSIONAL', GETDATE(), GETDATE()),
+        (3, N'Small Biz',         N'Doanh nghi??p nh?',                 'small-biz',     1, 'info@smallbiz.vn',    '0903456789', N'789 Tr?n H?ng ??o, Q5, HCM',  'STARTER', GETDATE(), GETDATE()),
+        (4, N'Free Trial Co',     N'Cng ty dng th?',                  'free-trial',    1, 'info@freetrial.vn',   '0904567890', N'321 Hai B Tr?ng, Q1, HCM',   'FREE', GETDATE(), GETDATE());
     SET IDENTITY_INSERT companies OFF;
     PRINT N'??? Created 4 companies: ENTERPRISE, PROFESSIONAL, STARTER, FREE';
 END
 GO
 
--- =====================================================
--- 3. COMPANY MEMBERS + ROLES
+-- -- 3. COMPANY MEMBERS + ROLES
 -- =====================================================
 IF NOT EXISTS (SELECT 1 FROM company_members WHERE company_id = 1)
 BEGIN
@@ -156,7 +153,7 @@ BEGIN
 
     -- hr_a ??? EMPLOYEE + custom HR & Project permissions
     SELECT @uid = user_id FROM users WHERE username = 'hr_a';
-    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true}', GETDATE(), GETDATE());
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageContracts":true,"hrManageReviews":true,"hrViewDepartments":true,"hrManageDepartments":true,"hrViewPositions":true,"hrManagePositions":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectManageIssues":true,"projectViewDashboard":true,"reviewViewAll":true,"reviewCreate":true,"reviewApprove":true}', GETDATE(), GETDATE());
     INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
 
     -- acc_a ??? EMPLOYEE (default permissions)
@@ -180,65 +177,7 @@ BEGIN
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 1, 1, GETDATE(), '{}', GETDATE(), GETDATE());
     INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid AND company_id = 1;
 
-    PRINT N'??? Created all company members and roles';
-END
-GO
-
--- =====================================================
--- FIX: ??M B?O full_emp LU?N ???C T?O (CH?Y SAU KHI users ?? ?)
--- T�ch ri�ng ra KH?NG trong IF NOT EXISTS ??lu?n ch?y
--- =====================================================
-DECLARE @pw_full VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
-DECLARE @uid_full BIGINT;
-
--- T?o user full_emp n?u chua c?
-IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'full_emp')
-BEGIN
-    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at)
-    VALUES ('full_emp', @pw_full, 'fullemp@companya.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=FE&background=ec4899&color=fff&size=128', GETDATE(), GETDATE());
-    PRINT N'??? Created full_emp user';
-END
-ELSE
-BEGIN
-    -- C?p nh?t password cho full_emp n?u ?? c?
-    UPDATE users
-    SET password_hash = @pw_full,
-        email = 'fullemp@companya.com',
-        is_active = 1,
-        [status] = 'ACTIVE',
-        updated_at = GETDATE()
-    WHERE username = 'full_emp';
-END
-
-SELECT @uid_full = user_id FROM users WHERE username = 'full_emp';
-
--- Th�m full_emp v�o Tech Corp (company_id = 1) n?u chua c?
-IF NOT EXISTS (SELECT 1 FROM company_members WHERE user_id = @uid_full AND company_id = 1)
-BEGIN
-    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
-    VALUES (@uid_full, 1, 1, GETDATE(), '{"workspaceManageMembers":true,"workspaceManageRequests":true,"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageReviews":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectDelete":true,"projectManageAll":true,"projectManageIssues":true,"projectManageSprints":true,"projectManagePhases":true,"projectResourcePlanning":true,"projectViewDashboard":true,"projectExport":true,"timetrackingLog":true,"timetrackingViewAll":true,"leaveApprove":true,"leaveViewAll":true,"analyticsView":true,"calendarView":true,"calendarManage":true}', GETDATE(), GETDATE());
-
-    INSERT INTO company_member_roles (member_id, [role])
-    SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid_full AND company_id = 1;
-
-    PRINT N'??? Added full_emp to Tech Corp (company_id=1)';
-END
-ELSE
-BEGIN
-    PRINT N'full_emp da co trong Tech Corp roi';
-END
-
--- T?o employee record cho full_emp n?u chua c?
-IF NOT EXISTS (SELECT 1 FROM employees WHERE user_id = @uid_full)
-BEGIN
-    INSERT INTO employees (user_id, company_id, full_name, id_card, date_of_birth, gender, hire_date, [status], base_salary, allowance, created_at, updated_at)
-    VALUES (@uid_full, 1, N'NV full_emp', '012345678999', DATEADD(year, -25, GETDATE()), 'MALE', DATEADD(month, -6, GETDATE()), 'ACTIVE', 25000000, 2000000, GETDATE(), GETDATE());
-    PRINT N'??? Created employee record for full_emp';
-END
-GO
-
--- =====================================================
--- 4. COMPANY SETTINGS (current schema)
+    -- Company B (PROFESSIONAL) - 6 members
     SELECT @uid = user_id FROM users WHERE username = 'owner_b';
     INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at) VALUES (@uid, 2, 1, GETDATE(), '{}', GETDATE(), GETDATE());
     INSERT INTO company_member_roles (member_id, [role]) SELECT id, 'OWNER' FROM company_members WHERE user_id = @uid AND company_id = 2;
@@ -294,27 +233,143 @@ END
 GO
 
 -- =====================================================
+-- FIX: ??M B?O full_emp LU?N ???C T?O (CH?Y SAU KHI users ?? ?)
+-- Tch ring ra KH?NG trong IF NOT EXISTS ??lu?n ch?y
+-- =====================================================
+DECLARE @pw_full VARCHAR(100) = '$2a$10$AlsxFCJZEN21Uf4a5VIpgey09u7LsnmVYvti93p0h89comm///RwO';
+DECLARE @uid_full BIGINT;
+
+-- T?o user full_emp n?u chua c?
+IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'full_emp')
+BEGIN
+    INSERT INTO users (username, password_hash, email, is_active, is_deleted, is_online, is_system_admin, [status], avatar_data, created_at, updated_at)
+    VALUES ('full_emp', @pw_full, 'fullemp@companya.com', 1, 0, 0, 0, 'ACTIVE', 'https://ui-avatars.com/api/?name=FE&background=ec4899&color=fff&size=128', GETDATE(), GETDATE());
+    PRINT N'??? Created full_emp user';
+END
+ELSE
+BEGIN
+    -- C?p nh?t password cho full_emp n?u ?? c?
+    UPDATE users
+    SET password_hash = @pw_full,
+        email = 'fullemp@companya.com',
+        is_active = 1,
+        [status] = 'ACTIVE',
+        updated_at = GETDATE()
+    WHERE username = 'full_emp';
+END
+
+SELECT @uid_full = user_id FROM users WHERE username = 'full_emp';
+
+-- Thm full_emp vo Tech Corp (company_id = 1) n?u chua c?
+IF NOT EXISTS (SELECT 1 FROM company_members WHERE user_id = @uid_full AND company_id = 1)
+BEGIN
+    INSERT INTO company_members (user_id, company_id, is_active, joined_at, permissions, created_at, updated_at)
+    VALUES (@uid_full, 1, 1, GETDATE(), '{"workspaceManageMembers":true,"workspaceManageRequests":true,"hrViewList":true,"hrEditProfile":true,"hrCreateEmployee":true,"hrDeleteEmployee":true,"hrManageReviews":true,"hrViewDashboard":true,"hrExport":true,"projectCreate":true,"projectDelete":true,"projectManageAll":true,"projectManageIssues":true,"projectManageSprints":true,"projectManagePhases":true,"projectResourcePlanning":true,"projectViewDashboard":true,"projectExport":true,"timetrackingLog":true,"timetrackingViewAll":true,"leaveApprove":true,"leaveViewAll":true,"analyticsView":true,"calendarView":true,"calendarManage":true,"reviewViewAll":true,"reviewCreate":true,"reviewApprove":true}', GETDATE(), GETDATE());
+
+    INSERT INTO company_member_roles (member_id, [role])
+    SELECT id, 'EMPLOYEE' FROM company_members WHERE user_id = @uid_full AND company_id = 1;
+
+    PRINT N'??? Added full_emp to Tech Corp (company_id=1)';
+END
+ELSE
+BEGIN
+    PRINT N'full_emp da co trong Tech Corp roi';
+END
+
+-- T?o employee record cho full_emp n?u chua c?
+IF NOT EXISTS (SELECT 1 FROM employees WHERE user_id = @uid_full)
+BEGIN
+    INSERT INTO employees (user_id, company_id, full_name, id_card, date_of_birth, gender, hire_date, [status], base_salary, allowance, created_at, updated_at)
+    VALUES (@uid_full, 1, N'NV full_emp', '012345678999', DATEADD(year, -25, GETDATE()), 'MALE', DATEADD(month, -6, GETDATE()), 'ACTIVE', 25000000, 2000000, GETDATE(), GETDATE());
+    PRINT N'??? Created employee record for full_emp';
+END
+GO
+
+-- =====================================================
 -- 4. COMPANY SETTINGS (current schema)
 -- =====================================================
 -- Feature toggle columns were removed from company_settings.
+-- Dynamically drop any obsolete columns that are not present in the current Java entity model to prevent insertion failures.
+DECLARE @colName NVARCHAR(100);
+DECLARE col_cursor CURSOR FOR
+    SELECT name 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('company_settings')
+      AND name NOT IN ('company_id', 'google_drive_access_token', 'google_drive_refresh_token', 'drive_folder_id', 'created_at', 'updated_at');
+
+OPEN col_cursor;
+FETCH NEXT FROM col_cursor INTO @colName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Drop default constraints associated with the column first, if any
+    DECLARE @constName NVARCHAR(200);
+    DECLARE const_cursor CURSOR FOR
+        SELECT d.name 
+        FROM sys.default_constraints d 
+        JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+        WHERE d.parent_object_id = OBJECT_ID('company_settings') AND c.name = @colName;
+        
+    OPEN const_cursor;
+    FETCH NEXT FROM const_cursor INTO @constName;
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        EXEC('ALTER TABLE company_settings DROP CONSTRAINT [' + @constName + ']');
+        FETCH NEXT FROM const_cursor INTO @constName;
+    END
+    CLOSE const_cursor;
+    DEALLOCATE const_cursor;
+
+    -- Drop the column
+    EXEC('ALTER TABLE company_settings DROP COLUMN [' + @colName + ']');
+    PRINT N'Dropped obsolete column ' + @colName + ' from company_settings';
+
+    FETCH NEXT FROM col_cursor INTO @colName;
+END
+
+CLOSE col_cursor;
+DEALLOCATE col_cursor;
+
+-- Add missing columns for review settings (if not exist)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('company_settings') AND name = 'auto_review_enabled')
+BEGIN
+    ALTER TABLE company_settings ADD auto_review_enabled BIT DEFAULT 0;
+    UPDATE company_settings SET auto_review_enabled = 0 WHERE auto_review_enabled IS NULL;
+    ALTER TABLE company_settings ALTER COLUMN auto_review_enabled BIT NOT NULL;
+    PRINT N'Added auto_review_enabled column';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('company_settings') AND name = 'review_cycle_type')
+BEGIN
+    ALTER TABLE company_settings ADD review_cycle_type NVARCHAR(20) DEFAULT N'QUARTERLY';
+    UPDATE company_settings SET review_cycle_type = N'QUARTERLY' WHERE review_cycle_type IS NULL;
+    PRINT N'Added review_cycle_type column';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('company_settings') AND name = 'last_review_auto_create')
+BEGIN
+    ALTER TABLE company_settings ADD last_review_auto_create NVARCHAR(50);
+    PRINT N'Added last_review_auto_create column';
+END
+
 -- Keep one settings row per company for storage integrations/config.
 IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 1)
-    INSERT INTO company_settings (company_id, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
-    VALUES (1, NULL, NULL, NULL, GETDATE(), GETDATE());
+    INSERT INTO company_settings (company_id, auto_review_enabled, review_cycle_type, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
+    VALUES (1, 0, N'QUARTERLY', NULL, NULL, NULL, GETDATE(), GETDATE());
 
 IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 2)
-    INSERT INTO company_settings (company_id, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
-    VALUES (2, NULL, NULL, NULL, GETDATE(), GETDATE());
+    INSERT INTO company_settings (company_id, auto_review_enabled, review_cycle_type, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
+    VALUES (2, 0, N'QUARTERLY', NULL, NULL, NULL, GETDATE(), GETDATE());
 
 IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 3)
-    INSERT INTO company_settings (company_id, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
-    VALUES (3, NULL, NULL, NULL, GETDATE(), GETDATE());
+    INSERT INTO company_settings (company_id, auto_review_enabled, review_cycle_type, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
+    VALUES (3, 0, N'QUARTERLY', NULL, NULL, NULL, GETDATE(), GETDATE());
 
 IF NOT EXISTS (SELECT 1 FROM company_settings WHERE company_id = 4)
-    INSERT INTO company_settings (company_id, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
-    VALUES (4, NULL, NULL, NULL, GETDATE(), GETDATE());
+    INSERT INTO company_settings (company_id, auto_review_enabled, review_cycle_type, google_drive_access_token, google_drive_refresh_token, drive_folder_id, created_at, updated_at)
+    VALUES (4, 0, N'QUARTERLY', NULL, NULL, NULL, GETDATE(), GETDATE());
 
-PRINT N'? Created company settings for 4 companies';
+PRINT N'??? Created company settings for 4 companies';
 GO
 
 -- =====================================================
@@ -355,5 +410,41 @@ PRINT N'  pm_a        ??? EMPLOYEE + PM permissions @ Tech Corp';
 PRINT N'  full_emp    ??? EMPLOYEE + ALL permissions @ Tech Corp';
 PRINT N'  multi_user  ??? EMPLOYEE @ Tech Corp + EMPLOYEE @ Startup Hub';
 PRINT N'';
+-- =====================================================
+-- FIX LEGACY STORAGE SCHEMA (Ensure files table columns)
+-- =====================================================
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('files') AND name = 'file_path')
+BEGIN
+    ALTER TABLE files ALTER COLUMN file_path NVARCHAR(MAX) NULL;
+    PRINT N'Altered file_path column to allow NULLs in files table';
+END
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('files') AND name = 'filename')
+BEGIN
+    ALTER TABLE files ALTER COLUMN filename NVARCHAR(MAX) NULL;
+    PRINT N'Altered filename column to allow NULLs in files table';
+END
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('files') AND name = 'original_filename')
+BEGIN
+    ALTER TABLE files ALTER COLUMN original_filename NVARCHAR(MAX) NULL;
+    PRINT N'Altered original_filename column to allow NULLs in files table';
+END
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('files') AND name = 'owner_id')
+BEGIN
+    ALTER TABLE files ALTER COLUMN owner_id BIGINT NULL;
+    PRINT N'Altered owner_id column to allow NULLs in files table';
+END
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('files') AND name = 'is_deleted')
+BEGIN
+    ALTER TABLE files ALTER COLUMN is_deleted BIT NULL;
+    PRINT N'Altered is_deleted column to allow NULLs in files table';
+END
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('files') AND name = 'is_public')
+BEGIN
+    ALTER TABLE files ALTER COLUMN is_public BIT NULL;
+    PRINT N'Altered is_public column to allow NULLs in files table';
+END
+GO
+
 PRINT N'???? Ti?p theo: Ch?y 02_seed_data.sql';
 GO
+

@@ -133,14 +133,14 @@ export default function PerformanceOverviewPage() {
 
     if (loadingProjects || loadingRankings) {
         return (
-            <div className="max-w-7xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+            <div className="flex items-center justify-center min-h-[400px]">
                 <i className="fa-solid fa-spinner fa-spin text-3xl text-gray-400" />
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

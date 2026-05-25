@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,6 +55,7 @@ public class Company extends DoAn.BE.common.entity.BaseEntity {
     private Boolean isActive = true;
 
     @OneToOne(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("company")
     private CompanySettings settings;
     @Override
     public boolean equals(Object o) {

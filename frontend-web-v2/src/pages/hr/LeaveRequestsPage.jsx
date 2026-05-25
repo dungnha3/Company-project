@@ -26,7 +26,7 @@ export default function LeaveRequestsPage() {
     const pendingCount = (typeof pendingData === 'number') ? pendingData : 0;
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-full mx-auto p-6 space-y-6">
             <div className="flex justify-between items-center bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">

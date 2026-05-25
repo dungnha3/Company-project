@@ -109,7 +109,10 @@ export function AccessControlGuard({
         const currentRoles = currentWorkspace?.roles || (currentWorkspace?.role ? [currentWorkspace.role] : ['MEMBER']);
         const hasRequiredRole = allowedRoles.some(r => currentRoles.includes(r));
 
-        if (!hasRequiredRole) {
+        // Bypass role check if user has workspace administrative permissions (e.g. full_emp)
+        const hasWorkspacePermission = hasPermission('WORKSPACE.MANAGE_MEMBERS') || hasPermission('WORKSPACE.MANAGE_REQUESTS');
+
+        if (!hasRequiredRole && !hasWorkspacePermission) {
             return (
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="card text-center max-w-md">

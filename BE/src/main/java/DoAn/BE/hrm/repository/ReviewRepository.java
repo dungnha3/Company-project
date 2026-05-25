@@ -22,6 +22,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         List<Review> findByEmployee_EmployeeIdOrderByCreatedAtDesc(Long employeeId);
 
         @EntityGraph(attributePaths = { "employee", "reviewer" })
+        @Query("SELECT r FROM Review r WHERE r.employee.user.userId = :userId ORDER BY r.createdAt DESC")
+        List<Review> findByEmployee_User_UserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
+
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByReviewer_EmployeeIdOrderByCreatedAtDesc(Long reviewerId);
 
         List<Review> findByReviewPeriodOrderByCreatedAtDesc(String reviewPeriod);
@@ -42,7 +46,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                         @Param("reviewType") ReviewType reviewType);
 
 
-        @EntityGraph(attributePaths = { "employee", "reviewer" })
+        @EntityGraph(attributePaths = { "employee", "employee.company", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.status = 'PENDING' ORDER BY r.createdAt ASC")
         List<Review> findPendingApproval();
 
@@ -52,14 +56,17 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         @Query("SELECT r.rating, COUNT(r) FROM Review r WHERE YEAR(r.completedDate) = :year GROUP BY r.rating")
         List<Object[]> countByRatingAndYear(@Param("year") int year);
 
-        @Query(value = "SELECT e.* FROM employees e " +
+        @Query(value = "SELECT e.employee_id, e.full_name, p.name as position_name, d.name as department_name " +
+                        "FROM employees e " +
+                        "LEFT JOIN positions p ON e.position_id = p.position_id " +
+                        "LEFT JOIN departments d ON e.department_id = d.department_id " +
                         "WHERE e.status = 'ACTIVE' " +
                         "AND e.company_id = :#{T(DoAn.BE.common.context.TenantContext).getCompanyId()} " +
                         "AND NOT EXISTS (SELECT 1 FROM reviews r " +
                         "WHERE r.employee_id = e.employee_id " +
                         "AND r.review_period = :reviewPeriod " +
                         "AND r.review_type = :reviewType)", nativeQuery = true)
-        List<Object[]> findEmployeesNeedEvaluation(@Param("reviewPeriod") String reviewPeriod,
+        List<Object[]> findEmployeesNeedingReview(@Param("reviewPeriod") String reviewPeriod,
                         @Param("reviewType") String reviewType);
 
         @EntityGraph(attributePaths = { "employee", "reviewer" })

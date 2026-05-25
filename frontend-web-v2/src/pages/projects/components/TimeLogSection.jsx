@@ -136,25 +136,58 @@ function DailyChart({ logs }) {
     ), 1);
 
     return (
-        <div className="grid grid-cols-7 gap-1 mb-4">
-            {last7.map((date, i) => {
-                const dayLogs = logs.filter(l => l.workDate === date);
-                const total = dayLogs.reduce((s, l) => s + (l.loggedHours || 0), 0);
-                const height = maxH > 0 ? Math.max((total / maxH) * 48, total > 0 ? 4 : 0) : 0;
-                const isToday = i === 6;
-                return (
-                    <div key={date} className="flex flex-col items-center gap-1">
-                        <span className="text-[10px] text-slate-400">{total > 0 ? `${total.toFixed(1)}h` : ''}</span>
-                        <div
-                            className={`w-full rounded-sm transition-all ${isToday ? 'bg-indigo-400' : total > 0 ? 'bg-indigo-200' : 'bg-slate-200'}`}
-                            style={{ height: `${Math.max(height, 2)}px` }}
-                        />
-                        <span className={`text-[10px] ${isToday ? 'text-indigo-600 font-semibold' : 'text-slate-400'}`}>
-                            {new Date(date).toLocaleDateString('vi-VN', { weekday: 'short' }).replace('.', '')}
-                        </span>
-                    </div>
-                );
-            })}
+        <div className="bg-gray-50/60 rounded-2xl p-4 border border-gray-100 mb-4 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nhật ký 7 ngày qua</span>
+                <span className="text-[10px] text-gray-400 font-semibold">Giờ làm / ngày</span>
+            </div>
+            <div className="grid grid-cols-7 gap-2.5 h-24 items-end">
+                {last7.map((date, i) => {
+                    const dayLogs = logs.filter(l => l.workDate === date);
+                    const total = dayLogs.reduce((s, l) => s + (l.loggedHours || 0), 0);
+                    const height = maxH > 0 ? (total / maxH) * 56 : 0; // max bar height 56px
+                    const isToday = i === 6;
+
+                    return (
+                        <div key={date} className="flex flex-col items-center group h-full justify-end">
+                            {/* Hour label on top */}
+                            <div className="h-5 flex items-center justify-center mb-1">
+                                {total > 0 && (
+                                    <span className="text-[9px] font-bold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 shadow-sm animate-in zoom-in duration-200">
+                                        {total.toFixed(1)}h
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Bar container for proper bottom alignment */}
+                            <div className="w-full flex justify-center items-end h-14">
+                                <div
+                                    className={`w-6 rounded-t-md transition-all duration-300 cursor-pointer ${
+                                        isToday
+                                            ? 'bg-gradient-to-t from-emerald-500 to-teal-400 shadow-lg shadow-emerald-500/20 hover:scale-110'
+                                            : total > 0
+                                                ? 'bg-gradient-to-t from-indigo-600 to-indigo-400 shadow-md hover:from-indigo-500 hover:to-indigo-300 hover:scale-110'
+                                                : 'bg-gray-200 hover:bg-gray-300'
+                                    }`}
+                                    style={{ height: `${total > 0 ? Math.max(height, 6) : 4}px` }}
+                                    title={total > 0 ? `${total.toFixed(1)} giờ làm việc` : 'Không ghi nhận'}
+                                />
+                            </div>
+
+                            {/* Day label */}
+                            <span className={`text-[10px] mt-2 tracking-wide uppercase transition-colors duration-200 ${
+                                isToday
+                                    ? 'text-emerald-500 font-extrabold'
+                                    : total > 0
+                                        ? 'text-indigo-600 font-bold'
+                                        : 'text-gray-400 group-hover:text-gray-500'
+                            }`}>
+                                {new Date(date).toLocaleDateString('vi-VN', { weekday: 'short' }).replace('.', '')}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -241,7 +274,8 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
 
     if (loading) {
         return (
-            <div className="bg-slate-800 rounded-xl p-4 text-center text-slate-400 text-sm">
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 text-center text-gray-400 text-sm shadow-sm">
+                <i className="fa-solid fa-spinner fa-spin mr-2 text-indigo-500" />
                 Đang tải time logs...
             </div>
         );
@@ -256,37 +290,39 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
     }, {});
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-5">
             {/* Mini timer (only if this issue is active) */}
             <MiniTimer issueId={issueId} onLogComplete={loadTimelogs} />
 
-                {/* Summary bar */}
-            <div className="bg-slate-800 rounded-xl p-4">
+            {/* Summary bar */}
+            <div className="bg-white border border-gray-150/80 shadow-sm rounded-2xl p-5">
                 {/* Time Tracking Breakdown */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <i className="fa-solid fa-clock text-indigo-400" />
-                        <span className="text-white font-semibold text-sm">Time Tracking</span>
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <i className="fa-solid fa-clock text-indigo-500 text-sm" />
+                        </div>
+                        <span className="text-gray-800 font-bold text-sm">Time Tracking</span>
                     </div>
                 </div>
 
                 {/* Estimated / Logged / Remaining pills */}
-                <div className="flex gap-2 mb-3">
-                    <div className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Estimated</div>
-                        <div className="text-indigo-300 font-bold text-base">
+                <div className="flex gap-2.5 mb-4">
+                    <div className="flex-1 bg-gray-50/50 border border-gray-100 rounded-xl px-3 py-2.5 text-center">
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Estimated</div>
+                        <div className="text-gray-700 font-extrabold text-base">
                             {formatNumber(estimatedHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
                         </div>
                     </div>
-                    <div className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Logged</div>
-                        <div className={`font-bold text-base ${totalHours > estimatedHours ? 'text-red-400' : 'text-green-400'}`}>
+                    <div className="flex-1 bg-gray-50/50 border border-gray-100 rounded-xl px-3 py-2.5 text-center">
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Logged</div>
+                        <div className={`font-extrabold text-base ${totalHours > estimatedHours ? 'text-red-500' : 'text-green-600'}`}>
                             {formatNumber(totalHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
                         </div>
                     </div>
-                    <div className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Remaining</div>
-                        <div className={`font-bold text-base ${remaining < 0 ? 'text-red-400' : 'text-amber-400'}`}>
+                    <div className="flex-1 bg-gray-50/50 border border-gray-100 rounded-xl px-3 py-2.5 text-center">
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Remaining</div>
+                        <div className={`font-extrabold text-base ${remaining < 0 ? 'text-red-500' : 'text-amber-500'}`}>
                             {formatNumber(Math.max(0, (estimatedHours || 0) - totalHours), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
                         </div>
                     </div>
@@ -294,21 +330,21 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
 
                 {/* Progress bar with percentage */}
                 {estimatedHours > 0 && (
-                    <div className="relative mb-3">
-                        <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="relative mb-4">
+                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${
-                                    progress > 100 ? 'bg-gradient-to-r from-amber-500 to-red-500'
-                                    : progress > 80 ? 'bg-gradient-to-r from-yellow-500 to-amber-500'
-                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                                    progress > 100 ? 'bg-gradient-to-r from-amber-500 to-red-500 shadow-sm'
+                                    : progress > 80 ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-sm'
+                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm'
                                 }`}
                                 style={{ width: `${Math.min(progress, 100)}%` }}
                             />
                         </div>
                         {/* Percentage overlay */}
-                        <div className="flex justify-end mt-1">
-                            <span className={`text-[10px] font-semibold ${
-                                progress > 100 ? 'text-red-400' : progress > 80 ? 'text-amber-400' : 'text-slate-400'
+                        <div className="flex justify-end mt-1.5">
+                            <span className={`text-[10px] font-bold ${
+                                progress > 100 ? 'text-red-500' : progress > 80 ? 'text-amber-500' : 'text-gray-400'
                             }`}>
                                 {progress > 100 ? `+${(progress - 100).toFixed(0)}% quá giờ` : `${progress.toFixed(0)}% hoàn thành`}
                             </span>
@@ -322,15 +358,15 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
                 {/* Log button */}
                 <button
                     onClick={() => setShowForm(!showForm)}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                     <i className={`fa-solid ${showForm ? 'fa-minus' : 'fa-plus'}`} />
-                    {showForm ? 'Hủy' : '+ Log Time nhanh'}
+                    {showForm ? 'Hủy ghi nhận' : 'Ghi nhận giờ làm'}
                 </button>
 
                 {/* Quick log form */}
                 {showForm && (
-                    <form onSubmit={handleSubmit} className="mt-3 pt-3 border-t border-slate-700 space-y-3">
+                    <form onSubmit={handleSubmit} className="mt-4 pt-4 border-t border-gray-100 space-y-3.5">
                         <div className="flex gap-2">
                             <input
                                 type="number"
@@ -341,29 +377,29 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
                                 value={formData.loggedHours}
                                 onChange={(e) => setFormData({ ...formData, loggedHours: e.target.value })}
                                 required
-                                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                                className="flex-1 px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                             />
                             <input
                                 type="date"
                                 value={formData.workDate}
                                 onChange={(e) => setFormData({ ...formData, workDate: e.target.value })}
                                 required
-                                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                                className="flex-1 px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-850 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                             />
                         </div>
                         <textarea
-                            placeholder="Mô tả (tùy chọn)"
+                            placeholder="Mô tả công việc (tùy chọn)..."
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 resize-none"
+                            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                             rows={2}
                         />
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full py-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white rounded-lg font-semibold text-sm transition-colors"
+                            className="w-full py-2 bg-indigo-500 hover:bg-indigo-650 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-colors shadow-sm"
                         >
-                            {submitting ? 'Đang lưu...' : 'Lưu'}
+                            {submitting ? 'Đang lưu...' : 'Lưu lại'}
                         </button>
                     </form>
                 )}
@@ -371,36 +407,41 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
 
             {/* Log history grouped by date */}
             {timelogs.length > 0 ? (
-                <div className="bg-slate-800 rounded-xl p-4 space-y-4">
-                    <h4 className="text-slate-300 text-sm font-semibold uppercase tracking-wide">Lịch sử log</h4>
+                <div className="bg-white border border-gray-150/80 shadow-sm rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <i className="fa-solid fa-history text-indigo-500 text-xs" />
+                        </div>
+                        <h4 className="text-gray-800 text-sm font-bold uppercase tracking-wider">Lịch sử ghi nhận giờ làm</h4>
+                    </div>
                     {Object.entries(grouped)
                         .sort(([a], [b]) => new Date(b) - new Date(a))
                         .map(([date, dayLogs]) => {
                             const dayTotal = dayLogs.reduce((s, l) => s + (l.loggedHours || 0), 0);
                             const isToday = date === new Date().toISOString().split('T')[0];
                             return (
-                                <div key={date}>
+                                <div key={date} className="space-y-2">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-xs font-semibold ${isToday ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                        <span className={`text-xs font-bold tracking-wide ${isToday ? 'text-indigo-600' : 'text-gray-400'}`}>
                                             {isToday ? 'Hôm nay' : formatDate(date)}
                                         </span>
-                                        <span className="text-xs text-slate-500">{formatNumber(dayTotal, { minimumFractionDigits: 1 })}h</span>
+                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-200/50">{formatNumber(dayTotal, { minimumFractionDigits: 1 })}h tổng cộng</span>
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-2">
                                         {dayLogs.map(log => (
-                                            <div key={log.logId} className="flex items-center gap-3 p-2.5 bg-slate-700/60 rounded-lg group">
-                                                <span className="text-indigo-400 font-mono text-sm font-semibold min-w-[40px]">
+                                            <div key={log.logId} className="flex items-center gap-3 p-3 bg-gray-50/50 hover:bg-gray-50 border border-gray-100/70 hover:border-gray-200/60 rounded-xl group transition-all duration-200">
+                                                <span className="text-indigo-600 font-mono text-xs font-extrabold min-w-[48px] bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/60 text-center shadow-sm">
                                                     {formatNumber(log.loggedHours, { minimumFractionDigits: 1 })}h
                                                 </span>
-                                                <span className="text-slate-300 text-sm flex-1 truncate">
-                                                    {log.description || <span className="text-slate-500 italic">Không có mô tả</span>}
+                                                <span className="text-gray-700 text-sm flex-1 truncate">
+                                                    {log.description || <span className="text-gray-400 italic text-xs">Không có mô tả chi tiết</span>}
                                                 </span>
-                                                <span className="text-slate-500 text-xs min-w-[60px] text-right">
-                                                    {log.userName}
+                                                <span className="text-gray-500 text-[10px] min-w-[70px] text-right font-bold bg-white px-2.5 py-1 rounded-full border border-gray-200/80 shadow-sm">
+                                                    {log.userName || 'Thành viên'}
                                                 </span>
                                                 <button
                                                     onClick={() => handleDelete(log.logId)}
-                                                    className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all p-1"
+                                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
                                                     title="Xóa"
                                                 >
                                                     <i className="fa-solid fa-trash text-xs" />
@@ -413,10 +454,12 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
                         })}
                 </div>
             ) : (
-                <div className="bg-slate-800 rounded-xl p-8 text-center">
-                    <i className="fa-solid fa-clock text-3xl text-slate-600 mb-2" />
-                    <p className="text-slate-400 text-sm">Chưa có time log nào cho issue này</p>
-                    <p className="text-slate-500 text-xs mt-1">Kéo issue sang "In Progress" hoặc dùng nút Log Time</p>
+                <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-8 text-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-3 border border-gray-100 shadow-sm">
+                        <i className="fa-solid fa-clock text-xl text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 text-sm font-semibold">Chưa có time log nào cho issue này</p>
+                    <p className="text-gray-400 text-xs mt-1">Kéo issue sang "In Progress" hoặc dùng nút để ghi nhận.</p>
                 </div>
             )}
         </div>

@@ -12,6 +12,8 @@ import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.timetracking.repository.TimeLogRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
+import DoAn.BE.hrm.repository.EmployeeRepository;
+import DoAn.BE.hrm.entity.Employee;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class ProjectMemberService {
     private final UserRepository userRepository;
     private final DoAn.BE.project.repository.IssueRepository issueRepository;
     private final TimeLogRepository timeLogRepository;
+    private final EmployeeRepository employeeRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // Kiểm tra user có quyền truy cập dự án không
@@ -261,7 +264,8 @@ public class ProjectMemberService {
     // ===== Resource Planning — Module 5 =====
 
     /**
-     * Trả về toàn bộ resource overview: mỗi user + tất cả dự án đang tham gia.
+     * Trả về toàn bộ resource overview: tất cả nhân viên trong công ty
+     * + các dự án đang tham gia (nếu có).
      * Tính tổng allocationRate, detect overload (>100%).
      */
     @Transactional(readOnly = true)
@@ -269,24 +273,29 @@ public class ProjectMemberService {
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         if (companyId == null) return java.util.Collections.emptyList();
 
+        // Lấy tất cả nhân viên active trong công ty (bao gồm cả chưa có project)
+        List<Employee> employees = employeeRepository.findByStatusAndCompany_CompanyId(
+                Employee.EmployeeStatus.ACTIVE, companyId);
+
+        // Lấy tất cả project members trong công ty
         List<ProjectMember> members = projectMemberRepository.findActiveByCompany(companyId);
 
-        // Group by userId
-        java.util.Map<Long, List<ProjectMember>> byUser = members.stream()
+        // Group project members by userId
+        java.util.Map<Long, List<ProjectMember>> membersByUser = members.stream()
                 .collect(Collectors.groupingBy(m -> m.getUser().getUserId()));
 
-        return byUser.entrySet().stream()
-                .map(entry -> {
-                    List<ProjectMember> userMembers = entry.getValue();
-                    ProjectMember first = userMembers.get(0);
-
+        return employees.stream()
+                .map(emp -> {
                     DoAn.BE.project.dto.ResourceOverviewDTO dto = new DoAn.BE.project.dto.ResourceOverviewDTO();
-                    dto.setUserId(first.getUser().getUserId());
-                    dto.setFullName(first.getUser().getFullName());
-                    dto.setEmail(first.getUser().getEmail());
-                    dto.setAvatarUrl(first.getUser().getAvatarUrl());
+                    User user = emp.getUser();
+                    dto.setUserId(user.getUserId());
+                    dto.setFullName(emp.getFullName());
+                    dto.setEmail(user.getEmail());
+                    dto.setAvatarUrl(user.getAvatarUrl());
 
-                    // Build project slots
+                    // Lấy các project slots cho user này
+                    List<ProjectMember> userMembers = membersByUser.getOrDefault(user.getUserId(), java.util.Collections.emptyList());
+
                     List<DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot> slots = userMembers.stream()
                             .map(m -> {
                                 DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot slot =
@@ -303,7 +312,7 @@ public class ProjectMemberService {
                                 slot.setTotalLoggedHours(hours != null ? hours.doubleValue() : 0.0);
                                 return slot;
                             })
-                            .collect(Collectors.toList());
+                            .collect(java.util.stream.Collectors.toList());
 
                     dto.setProjects(slots);
 
@@ -318,6 +327,6 @@ public class ProjectMemberService {
                 })
                 .sorted(java.util.Comparator.comparing(
                         DoAn.BE.project.dto.ResourceOverviewDTO::getTotalAllocation).reversed())
-                .collect(Collectors.toList());
+                .collect(java.util.stream.Collectors.toList());
     }
 }

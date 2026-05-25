@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
-import DataTable from '@shared/components/ui/DataTable';
 import { formatDate } from '@shared/utils/formatters';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import CreateProjectModal from './components/CreateProjectModal';
@@ -13,7 +12,6 @@ export default function ProjectsPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { hasPermission } = useWorkspaceStore();
-    const [viewMode, setViewMode] = useState('list');
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [showIssueModal, setShowIssueModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +41,7 @@ export default function ProjectsPage() {
     });
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-full mx-auto p-6 space-y-6">
             {/* Header - Clean white card */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -56,20 +54,6 @@ export default function ProjectsPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <div className="bg-gray-100 p-1 rounded-lg flex">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <i className="fa-solid fa-list text-xs" /> List
-                        </button>
-                        <button
-                            onClick={() => setViewMode('card')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${viewMode === 'card' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <i className="fa-solid fa-grid-2 text-xs" /> Card
-                        </button>
-                    </div>
                     {hasPermission('projectManageIssues') && (
                         <button
                             onClick={() => setShowIssueModal(true)}
@@ -111,11 +95,7 @@ export default function ProjectsPage() {
                     <div className="loading-spinner" />
                 </div>
             ) : (
-                viewMode === 'list' ? (
-                    <ProjectListView projects={filtered} navigate={navigate} />
-                ) : (
-                    <ProjectCardView projects={filtered} navigate={navigate} />
-                )
+                <ProjectCardView projects={filtered} navigate={navigate} />
             )}
 
             {/* Modals */}
@@ -133,77 +113,6 @@ export default function ProjectsPage() {
     );
 }
 
-function ProjectListView({ projects, navigate }) {
-    const columns = [
-        {
-            header: 'Tên dự án',
-            accessorKey: 'name',
-            cell: (row) => (
-                <div>
-                    <div className="font-medium text-gray-900">{row.name}</div>
-                    <div className="text-xs text-gray-500 truncate max-w-xs">{row.description}</div>
-                </div>
-            )
-        },
-        {
-            header: 'Trạng thái',
-            accessorKey: 'status',
-            cell: (row) => <StatusBadge status={row.status} />
-        },
-        {
-            header: 'Tiến độ',
-            accessorKey: 'progress',
-            cell: (row) => (
-                <div className="w-full max-w-[140px]">
-                    <div className="flex justify-between text-xs mb-1 text-gray-500">
-                        <span>{row.progress || 0}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                        <div className="bg-gray-400 h-1.5 rounded-full" style={{ width: `${row.progress || 0}%` }}></div>
-                    </div>
-                </div>
-            )
-        },
-        {
-            header: 'Ngày bắt đầu',
-            accessorKey: 'startDate',
-            cell: (row) => <span className="text-gray-600">{row.startDate ? formatDate(row.startDate) : '---'}</span>
-        },
-        {
-            header: 'Thời hạn',
-            accessorKey: 'endDate',
-            cell: (row) => <span className="text-gray-600">{row.endDate ? formatDate(row.endDate) : '---'}</span>
-        },
-        {
-            header: '',
-            accessorKey: 'actions',
-            cell: (row) => (
-                <div className="flex justify-end gap-2">
-                    <button
-                        onClick={() => navigate(`/app/projects/${row.projectId}`)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
-                    >
-                        <i className="fa-solid fa-arrow-right" />
-                    </button>
-                </div>
-            )
-        }
-    ];
-
-    if (!projects?.length) {
-        return (
-            <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm">
-                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-xl flex items-center justify-center mb-4">
-                    <i className="fa-solid fa-folder-open text-2xl text-gray-400" />
-                </div>
-                <h3 className="text-base font-medium text-gray-700 mb-2">Chưa có dự án nào</h3>
-                <p className="text-sm text-gray-400">Bắt đầu quản lý công việc bằng cách tạo dự án đầu tiên.</p>
-            </div>
-        );
-    }
-
-    return <DataTable columns={columns} data={projects || []} />;
-}
 
 function ProjectCardView({ projects, navigate }) {
     if (!projects?.length) {

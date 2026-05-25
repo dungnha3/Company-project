@@ -213,7 +213,7 @@ export default function CalendarPage() {
     const navigateHandler = () => { if (viewMode === 'month') return navigateMonth; if (viewMode === 'week') return navigateWeek; return navigateDay; };
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-full mx-auto p-6 space-y-6">
             {/* Header Banner - Clean white card */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-3">

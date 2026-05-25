@@ -27,12 +27,12 @@ const VIEW_MODES = [
 
 const STATUS_ORDER = ['To Do', 'In Progress', 'Review', 'Done'];
 
-// Minimalist status colors - subtle indicators
-const STATUS_COLORS = {
-    'To Do':       { dot: 'bg-gray-400' },
-    'In Progress': { dot: 'bg-indigo-500' },
-    'Review':      { dot: 'bg-amber-500' },
-    'Done':        { dot: 'bg-green-500' },
+// Unified status column styles matching ProjectBoard
+const COLUMN_STYLES = {
+    'To Do':       { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' },
+    'In Progress': { bg: 'bg-blue-50/60 border border-blue-100', dot: 'bg-indigo-500', marker: 'bg-indigo-200' },
+    'Review':      { bg: 'bg-amber-50/60 border border-amber-100', dot: 'bg-amber-500', marker: 'bg-amber-200' },
+    'Done':        { bg: 'bg-emerald-50/60 border border-emerald-100', dot: 'bg-green-500', marker: 'bg-emerald-200' },
 };
 
 const BACKWARD_MOVES = {
@@ -264,7 +264,7 @@ export default function MyIssuesPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-full mx-auto p-6 space-y-6">
             {/* Header Banner - Clean white card */}
             <div className="flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -342,7 +342,6 @@ export default function MyIssuesPage() {
                             <KanbanColumn
                                 key={statusName}
                                 title={statusName}
-                                dotColor={STATUS_COLORS[statusName].dot}
                                 issues={byStatus[statusName]}
                                 onIssueClick={handleIssueClick}
                                 onSubmit={setSubmitIssue}
@@ -436,22 +435,23 @@ function StatMini({ icon, label, value, highlight }) {
 }
 
 // ─── Kanban Column - Minimalist ────────────────────────────────────────────
-function KanbanColumn({ title, dotColor, issues, onIssueClick, onSubmit }) {
+function KanbanColumn({ title, issues, onIssueClick, onSubmit }) {
     const { setNodeRef, isOver } = useDroppable({ id: title });
+    const colStyle = COLUMN_STYLES[title] || COLUMN_STYLES['To Do'];
 
     return (
         <div className={`
-            flex-shrink-0 w-80 flex flex-col rounded-xl max-h-full transition-all
-            ${isOver ? 'shadow-md' : ''}
-            bg-gray-50/50 border border-gray-100
+            flex-shrink-0 w-80 flex flex-col rounded-xl max-h-full transition-all duration-200
+            ${colStyle.bg}
+            ${isOver ? 'ring-2 ring-indigo-400 scale-[1.01] shadow-lg' : ''}
         `}>
-            {/* Column Header - Clean, no background color */}
-            <div className="px-4 py-3 flex items-center justify-between rounded-t-xl">
+            {/* Column Header */}
+            <div className="px-4 py-3 flex items-center justify-between rounded-t-xl bg-white/60 backdrop-blur-sm sticky top-0 z-10 font-bold border-b border-gray-100/50">
                 <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-                    <span className="text-sm font-medium text-gray-700">{title}</span>
+                    <span className={`w-2.5 h-2.5 rounded-full ${colStyle.marker}`} />
+                    <span className="text-sm font-semibold text-gray-700">{title}</span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-white text-gray-500 shadow-sm border border-gray-100">
                     {issues.length}
                 </span>
             </div>
@@ -459,12 +459,12 @@ function KanbanColumn({ title, dotColor, issues, onIssueClick, onSubmit }) {
             {/* Cards */}
             <div
                 ref={setNodeRef}
-                className={`flex-1 p-3 overflow-y-auto custom-scrollbar space-y-2 min-h-[120px] transition-colors
-                    ${isOver ? 'bg-gray-100' : ''}`}
+                className={`flex-1 p-3 overflow-y-auto custom-scrollbar space-y-2.5 min-h-[120px] transition-colors duration-200
+                    ${isOver ? 'bg-indigo-100/40' : ''}`}
             >
                 {issues.length === 0 ? (
                     <div className={`h-full flex items-center justify-center text-xs border-2 border-dashed rounded-xl py-10 transition-colors
-                        ${isOver ? 'border-gray-300 text-gray-400 bg-gray-100' : 'border-gray-200 text-gray-400'}`}>
+                        ${isOver ? 'border-indigo-300 text-indigo-400 bg-indigo-50/50' : 'border-gray-200 text-gray-400'}`}>
                         Kéo task vào đây
                     </div>
                 ) : (
@@ -502,28 +502,42 @@ function DraggableIssueCard({ issue, onClick, onSubmit }) {
 
 // ─── Mini burndown bar for a task card ─────────────────────────────────────────
 function MiniBurndown({ issue }) {
-    const est = issue.estimatedHours;
-    const log = issue.loggedHours ?? 0;
-    if (!est || est <= 0) return null;
+    const estimated = Number(issue.estimatedHours) || 0;
+    const actual = Number(issue.loggedHours ?? issue.actualHours ?? 0);
+    if (estimated <= 0 && actual <= 0) return null;
 
-    const progress = Math.min((log / est) * 100, 100);
-    const remaining = Math.max(est - log, 0);
-    const isOver = log > est;
+    const progressPct = estimated > 0 && actual > 0 ? Math.min((actual / estimated) * 100, 100) : null;
+    const isOverEstimate = estimated > 0 && actual > estimated;
 
     return (
         <div className="mt-2 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px] text-gray-400">Time</span>
-                <span className={`text-[9px] font-medium ${isOver ? 'text-red-500' : 'text-gray-500'}`}>
-                    {log.toFixed(1)}h / {est.toFixed(1)}h
+            <div className="flex items-center justify-between text-[10px] mb-1">
+                <span className="text-gray-400 flex items-center gap-1">
+                    <i className="fa-solid fa-fire-flame-curved text-[8px]" />
+                    {estimated}h ước tính
                 </span>
+                {actual > 0 && (
+                    <span className={`font-semibold flex items-center gap-1 ${isOverEstimate ? 'text-red-500' : 'text-teal-600'}`}>
+                        <i className="fa-solid fa-clock text-[8px]" />
+                        {actual.toFixed(1)}h thực tế
+                    </span>
+                )}
             </div>
-            <div className="relative h-1 bg-gray-200 rounded-full">
-                <div
-                    className={`absolute left-0 top-0 h-full rounded-full transition-all ${isOver ? 'bg-red-400' : 'bg-gray-400'}`}
-                    style={{ width: `${Math.min(progress, 100)}%` }}
-                />
-            </div>
+            {progressPct !== null && (
+                <div className="relative">
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all ${isOverEstimate ? 'bg-red-400' : 'bg-teal-400'}`}
+                            style={{ width: `${Math.min(progressPct, 100)}%` }}
+                        />
+                    </div>
+                    {isOverEstimate && (
+                        <span className="absolute right-0 top-[-2.5px] text-[8px] text-red-500 font-bold">
+                            +{(actual - estimated).toFixed(1)}h
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -582,30 +596,38 @@ function IssueCard({ issue, onClick, onSubmit }) {
 
     const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
 
+    const highlightClasses = isBoth
+        ? 'border-l-4 border-l-red-500 ring-2 ring-red-200 bg-gradient-to-r from-red-50/80 via-white to-orange-50/60 shadow-md shadow-red-100/50'
+        : isUrgent
+            ? 'border-l-4 border-l-red-400 bg-red-50/40 ring-1 ring-red-100'
+            : isImportant
+                ? 'border-l-4 border-l-purple-400 bg-purple-50/40 ring-1 ring-purple-100'
+                : '';
+
     return (
         <div
             onDoubleClick={onClick}
-            className={`bg-white p-3 rounded-lg border border-gray-100 hover:shadow-sm transition-all cursor-grab active:cursor-grabbing group`}
+            className={`bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${highlightClasses}`}
         >
             {/* Priority + badges row */}
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${getPriorityColor(issue.priority)}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getPriorityColor(issue.priority)}`}>
                         {issue.priority || 'MEDIUM'}
                     </span>
                     {isBoth && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-700">
-                            <i className="fa-solid fa-fire text-[8px]" />
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-sm">
+                            <i className="fa-solid fa-fire text-[8px]" /> Làm ngay
                         </span>
                     )}
                     {isImportant && !isBoth && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">
-                            <i className="fa-solid fa-star text-[8px]" />
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                            <i className="fa-solid fa-star text-[8px]" /> Quan trọng
                         </span>
                     )}
                     {isUrgent && !isBoth && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-700">
-                            <i className="fa-solid fa-bolt text-[8px]" />
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">
+                            <i className="fa-solid fa-bolt text-[8px]" /> Khẩn cấp
                         </span>
                     )}
                 </div>
@@ -621,17 +643,15 @@ function IssueCard({ issue, onClick, onSubmit }) {
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] text-gray-400 font-mono">{issue.issueKey}</span>
-                    {issue.estimatedHours != null && issue.estimatedHours > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-600">
-                            {Number(issue.estimatedHours) % 1 === 0
-                                ? Number(issue.estimatedHours)
-                                : Number(issue.estimatedHours).toFixed(1)}h
-                        </span>
-                    )}
                     {issue.dueDate && (
-                        <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-medium
-                            ${isOverdue ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium
+                            ${isOverdue
+                                ? 'bg-red-50 text-red-600 ring-1 ring-red-200'
+                                : 'bg-gray-50 text-gray-500'
+                            }`}
+                        >
                             <i className={`fa-solid fa-calendar-day text-[8px] ${isOverdue ? 'text-red-500' : 'text-gray-400'}`} />
+                            {new Date(issue.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                         </span>
                     )}
                     {reworkCount > 0 && (
@@ -643,11 +663,14 @@ function IssueCard({ issue, onClick, onSubmit }) {
                 </div>
                 <div className="flex items-center gap-1.5">
                     {issue.assigneeName ? (
-                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[10px] font-medium" title={issue.assigneeName}>
+                        <div
+                            className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold ring-2 ring-white"
+                            title={issue.assigneeName}
+                        >
                             {issue.assigneeName.charAt(0).toUpperCase()}
                         </div>
                     ) : (
-                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">
+                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px] ring-2 ring-white">
                             <i className="fa-solid fa-user text-[8px]" />
                         </div>
                     )}
@@ -704,9 +727,13 @@ function ReviewSlaChip({ issue }) {
     return <span className="inline-flex items-center gap-1 text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-check text-[8px]" />SLA OK</span>;
 }
 
-// ─── Priority Color - Minimalist Subtle ─────────────────────────────────
-function getPriorityColor(p) {
-    return { CRITICAL: 'bg-red-50 text-red-700', HIGH: 'bg-amber-50 text-amber-700', LOW: 'bg-gray-100 text-gray-600' }[p] || 'bg-gray-100 text-gray-600';
+function getPriorityColor(priority) {
+    switch (priority) {
+        case 'CRITICAL': return 'bg-red-100 text-red-700';
+        case 'HIGH': return 'bg-orange-100 text-orange-700';
+        case 'LOW': return 'bg-gray-100 text-gray-700';
+        default: return 'bg-indigo-50 text-indigo-700'; // MEDIUM
+    }
 }
 
 // ─── Loading ──────────────────────────────────────────────────────────────

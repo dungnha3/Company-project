@@ -269,6 +269,55 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    public void sendWorkspaceJoinApprovedEmail(String email, String fullName, String companyName) {
+        if (!emailEnabled || mailSender == null) {
+            log.info("Email không được bật, bỏ qua gửi email duyệt vào công ty đến {}", email);
+            return;
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Yêu cầu tham gia công ty đã được duyệt: " + companyName);
+
+            String workspaceUrl = baseUrl + "/app";
+
+            StringBuilder html = new StringBuilder();
+            html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
+            html.append("<style>");
+            html.append(
+                    "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background-color: #007bff; color: white; padding: 20px; text-align: center; }");
+            html.append(".content { padding: 20px; }");
+            html.append(
+                    ".footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666; }");
+            html.append(
+                    ".btn { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }");
+            html.append("</style></head><body>");
+
+            html.append("<div class='header'><h2>🎉 Bạn đã được duyệt vào công ty!</h2></div>");
+            html.append("<div class='content'>");
+            html.append("<p>Kính gửi <strong>").append(fullName).append("</strong>,</p>");
+            html.append("<p>Yêu cầu tham gia công ty/workspace <strong>\"").append(companyName).append("\"</strong> của bạn đã được quản trị viên duyệt.</p>");
+            html.append("<p>Bây giờ bạn đã có thể truy cập vào workspace và bắt đầu làm việc.</p>");
+            html.append("<p><a href='").append(workspaceUrl).append("' class='btn'>Truy cập Workspace</a></p>");
+            html.append("</div>");
+
+            html.append("<div class='footer'>");
+            html.append("<p>Email này được gửi tự động từ hệ thống DACN. Vui lòng không trả lời email này.</p>");
+            html.append("</div></body></html>");
+
+            helper.setText(html.toString(), true);
+            mailSender.send(message);
+            log.info("Đã gửi email thông báo duyệt vào công ty '{}' đến {}", companyName, email);
+
+        } catch (MessagingException e) {
+            log.error("Lỗi gửi email duyệt vào công ty đến {}: {}", email, e.getMessage());
+        }
+    }
+
     private String buildEmailContent(Notification notification) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 

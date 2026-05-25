@@ -4,6 +4,7 @@ import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.hrm.dto.QuickScoreRequest;
 import DoAn.BE.hrm.dto.ReviewRequest;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Review;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -119,21 +121,38 @@ public class ReviewService {
     }
 
     public List<Review> getAllReviews(User currentUser) {
-        accessControlService.checkReviewViewAllPermission();
-        // companies
-        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
-        if (companyId == null) {
-            return java.util.Collections.emptyList();
+        // Nếu có quyền VIEW_ALL: trả về tất cả review của công ty
+        try {
+            accessControlService.checkReviewViewAllPermission();
+            Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+            if (companyId == null) {
+                return java.util.Collections.emptyList();
+            }
+            return reviewRepository.findByCompanyId(companyId);
+        } catch (ForbiddenException ignored) {
+            // Fallback: user thường chỉ xem được reviews của chính mình
         }
-        return reviewRepository.findByCompanyId(companyId);
+        return reviewRepository.findByEmployee_User_UserIdOrderByCreatedAtDesc(currentUser.getUserId());
     }
 
     public Page<Review> getAllReviewsPage(Pageable pageable, User currentUser) {
-        accessControlService.checkReviewViewAllPermission();
-        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
-        if (companyId == null)
-            return Page.empty(pageable);
-        return reviewRepository.findByCompanyId(companyId, pageable);
+        try {
+            accessControlService.checkReviewViewAllPermission();
+            Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+            if (companyId == null)
+                return Page.empty(pageable);
+            return reviewRepository.findByCompanyId(companyId, pageable);
+        } catch (ForbiddenException ignored) {
+            // Fallback: user thường chỉ xem được reviews của chính mình
+        }
+        // Trả về list của chính user dưới dạng Page
+        List<Review> myReviews = reviewRepository
+                .findByEmployee_User_UserIdOrderByCreatedAtDesc(currentUser.getUserId());
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), myReviews.size());
+        List<Review> pageContent = start >= myReviews.size() ? java.util.Collections.emptyList()
+                : myReviews.subList(start, end);
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, myReviews.size());
     }
 
     public Review updateReview(Long id, ReviewRequest request, User currentUser) {
@@ -290,7 +309,7 @@ public class ReviewService {
     }
 
     @Transactional
-    public Review quickScoreAndCompleteIssue(Long issueId, ReviewRequest request, User currentUser) {
+    public Review quickScoreAndCompleteIssue(Long issueId, QuickScoreRequest request, User currentUser) {
         // 1. Check permissions
         accessControlService.checkProjectManageIssuesPermission();
 
@@ -306,38 +325,58 @@ public class ReviewService {
         Employee employee = employeeRepository.findByUser_UserId(issue.getAssignee().getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("Người được giao chưa có hồ sơ nhân sự"));
 
-        // 4. Create Review
-        Review review = new Review();
-        review.setEmployee(employee);
-        
+        // 4. Find Reviewer
         Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
         Employee reviewer = null;
         if (companyId != null) {
-            reviewer = employeeRepository.findByUser_UserIdAndCompany_CompanyId(currentUser.getUserId(), companyId).orElse(null);
+            reviewer = employeeRepository.findByUser_UserIdAndCompany_CompanyId(currentUser.getUserId(), companyId)
+                    .orElse(null);
         }
         if (reviewer == null) {
             reviewer = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
         }
+
+        // 5. Map quick score to review scores:
+        // performanceScore (1-10) -> used as all 4 sub-scores for simplicity
+        // reworkCount -> recorded in comments
+        BigDecimal perf = request.getPerformanceScore();
+        BigDecimal weightTechnical = new BigDecimal("0.4");
+        BigDecimal weightAttitude = new BigDecimal("0.3");
+        BigDecimal weightSoftSkills = new BigDecimal("0.2");
+        BigDecimal weightTeamwork = new BigDecimal("0.1");
+
+        StringBuilder sb = new StringBuilder();
+        if (request.getReviewerNote() != null && !request.getReviewerNote().isBlank()) {
+            sb.append(request.getReviewerNote()).append("\n\n");
+        }
+        if (request.getReworkCount() != null && request.getReworkCount() > 0) {
+            sb.append("Rework count: ").append(request.getReworkCount()).append(" lần");
+        }
+        String combinedComments = sb.length() > 0 ? sb.toString() : "Quick review from Kanban board";
+
+        Review review = new Review();
+        review.setEmployee(employee);
         review.setReviewer(reviewer);
-        
-        review.setReviewPeriod("Quick Review - " + issue.getIssueKey());
+        review.setReviewPeriod("Quick - " + issue.getIssueKey());
         review.setReviewType(ReviewType.PROJECT);
         review.setProjectId(issue.getProject().getProjectId());
         review.setProjectName(issue.getProject().getName());
         review.setStartDate(LocalDate.now());
         review.setEndDate(LocalDate.now());
 
-        review.setTechnicalScore(request.getTechnicalScore());
-        review.setAttitudeScore(request.getAttitudeScore());
-        review.setSoftSkillsScore(request.getSoftSkillsScore());
-        review.setTeamworkScore(request.getTeamworkScore());
-        review.setComments(request.getComments() != null ? request.getComments() : "Quick review from Kanban board");
-        review.setStatus(ReviewStatus.APPROVED); // Automatically approved
+        // Set individual scores using the same performance score for all 4 dimensions
+        review.setTechnicalScore(perf);
+        review.setAttitudeScore(perf);
+        review.setSoftSkillsScore(perf);
+        review.setTeamworkScore(perf);
+
+        review.setComments(combinedComments);
+        review.setStatus(ReviewStatus.APPROVED);
         review.setCompletedDate(LocalDate.now());
 
         review = reviewRepository.save(review);
 
-        // 5. Update Issue status to Done
+        // 6. Update Issue status to Done
         IssueStatus doneStatus = issueStatusRepository.findByName("Done")
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái Done"));
         issue.changeStatus(doneStatus);
@@ -348,5 +387,114 @@ public class ReviewService {
                 review, currentUser.getUserId(), "Quick Review for " + employee.getFullName()));
 
         return review;
+    }
+
+    /**
+     * Bulk create review drafts for multiple employees at once.
+     * Auto-assigns reviewers: uses the manager field on employee if available,
+     * otherwise falls back to the current user as reviewer.
+     */
+    @Transactional
+    public DoAn.BE.hrm.dto.BulkReviewResponse bulkCreateReviews(
+            DoAn.BE.hrm.dto.BulkReviewRequest request, User currentUser) {
+
+        accessControlService.checkReviewCreatePermission();
+
+        log.info("User {} bulk creating reviews for {} employees, period: {}, type: {}",
+                currentUser.getUsername(), request.getEmployeeIds().size(),
+                request.getReviewPeriod(), request.getReviewType());
+
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+
+        // Resolve current user as reviewer
+        Employee currentReviewer = null;
+        if (companyId != null) {
+            currentReviewer = employeeRepository.findByUser_UserIdAndCompany_CompanyId(
+                    currentUser.getUserId(), companyId).orElse(null);
+        }
+        if (currentReviewer == null) {
+            currentReviewer = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
+        }
+
+        int createdCount = 0;
+        int skippedCount = 0;
+        java.util.ArrayList<String> createdNames = new java.util.ArrayList<>();
+        java.util.ArrayList<String> skippedNames = new java.util.ArrayList<>();
+        java.util.ArrayList<String> errors = new java.util.ArrayList<>();
+
+        for (Long employeeId : request.getEmployeeIds()) {
+            try {
+                Employee employee = employeeRepository.findById(employeeId).orElse(null);
+                if (employee == null) {
+                    errors.add("Employee ID " + employeeId + " not found");
+                    continue;
+                }
+
+                // Check if review already exists
+                java.util.Optional<Review> existing = reviewRepository.findByEmployeeAndPeriodAndType(
+                        employeeId, request.getReviewPeriod(), request.getReviewType());
+                if (existing.isPresent()) {
+                    skippedNames.add(employee.getFullName());
+                    skippedCount++;
+                    continue;
+                }
+
+                // Determine reviewer: current user is the reviewer for bulk operations
+                Employee reviewer = currentReviewer;
+
+                Review review = new Review();
+                review.setEmployee(employee);
+                review.setReviewer(reviewer);
+                review.setReviewPeriod(request.getReviewPeriod());
+                review.setReviewType(request.getReviewType());
+                review.setStartDate(request.getStartDate() != null ? request.getStartDate() : LocalDate.now());
+                review.setEndDate(request.getEndDate() != null ? request.getEndDate() : LocalDate.now());
+                if (request.getProjectId() != null) {
+                    review.setProjectId(request.getProjectId());
+                    review.setProjectName(request.getProjectName());
+                }
+
+                reviewRepository.save(review);
+                createdNames.add(employee.getFullName());
+                createdCount++;
+
+            } catch (Exception e) {
+                log.error("Error creating review for employee ID {}: {}", employeeId, e.getMessage());
+                errors.add("Error for employee ID " + employeeId + ": " + e.getMessage());
+            }
+        }
+
+        log.info("Bulk review created: {} new, {} skipped, {} errors",
+                createdCount, skippedCount, errors.size());
+
+        return DoAn.BE.hrm.dto.BulkReviewResponse.builder()
+                .totalRequested(request.getEmployeeIds().size())
+                .createdCount(createdCount)
+                .skippedCount(skippedCount)
+                .createdNames(createdNames)
+                .skippedNames(skippedNames)
+                .errors(errors)
+                .build();
+    }
+
+    /**
+     * Get list of active employees who need evaluation for a given period.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List<DoAn.BE.hrm.dto.EmployeeSimpleDTO> findEmployeesNeedingReview(
+            String reviewPeriod, String reviewType) {
+        accessControlService.checkReviewCreatePermission();
+
+        java.util.List<Object[]> results = reviewRepository.findEmployeesNeedingReview(reviewPeriod, reviewType);
+        java.util.List<DoAn.BE.hrm.dto.EmployeeSimpleDTO> employees = new java.util.ArrayList<>();
+        for (Object[] row : results) {
+            DoAn.BE.hrm.dto.EmployeeSimpleDTO dto = new DoAn.BE.hrm.dto.EmployeeSimpleDTO();
+            dto.setEmployeeId(((Number) row[0]).longValue());
+            dto.setFullName((String) row[1]);
+            dto.setPositionName((String) row[2]);
+            dto.setDepartmentName((String) row[3]);
+            employees.add(dto);
+        }
+        return employees;
     }
 }

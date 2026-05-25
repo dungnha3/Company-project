@@ -86,5 +86,32 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.getSettingsCached(companyId));
     }
 
+    @GetMapping("/{companyId}/settings/review")
+    public ResponseEntity<?> getReviewSettings(@PathVariable Long companyId) {
+        Long contextCompanyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (contextCompanyId == null || !contextCompanyId.equals(companyId)) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Bạn không có quyền xem cài đặt công ty này");
+        }
+        DoAn.BE.company.entity.CompanySettings settings = companyService.getSettingsCached(companyId);
+        DoAn.BE.company.dto.ReviewSettingsDTO dto = new DoAn.BE.company.dto.ReviewSettingsDTO();
+        // Boolean (nullable) → boolean (primitive): dùng null-safe check tránh NPE
+        dto.setAutoReviewEnabled(Boolean.TRUE.equals(settings.getAutoReviewEnabled()));
+        dto.setReviewCycleType(settings.getReviewCycleType() != null ? settings.getReviewCycleType() : "QUARTERLY");
+        dto.setLastReviewAutoCreate(settings.getLastReviewAutoCreate());
+        return ResponseEntity.ok(dto);
+    }
+
+    @PutMapping("/{companyId}/settings/review")
+    public ResponseEntity<?> updateReviewSettings(
+            @PathVariable Long companyId,
+            @RequestBody DoAn.BE.company.dto.ReviewSettingsDTO dto) {
+        Long contextCompanyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (contextCompanyId == null || !contextCompanyId.equals(companyId)) {
+            throw new DoAn.BE.common.exception.ForbiddenException("Bạn không có quyền cập nhật cài đặt công ty này");
+        }
+        companyService.updateReviewSettings(companyId, dto);
+        return ResponseEntity.ok(java.util.Map.of("message", "Cập nhật cài đặt review thành công"));
+    }
+
 
 }

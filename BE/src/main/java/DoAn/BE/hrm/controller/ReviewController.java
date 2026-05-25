@@ -1,5 +1,9 @@
 package DoAn.BE.hrm.controller;
 
+import DoAn.BE.hrm.dto.BulkReviewRequest;
+import DoAn.BE.hrm.dto.BulkReviewResponse;
+import DoAn.BE.hrm.dto.EmployeeSimpleDTO;
+import DoAn.BE.hrm.dto.QuickScoreRequest;
 import DoAn.BE.hrm.dto.ReviewDTO;
 import DoAn.BE.hrm.dto.ReviewRequest;
 import DoAn.BE.hrm.entity.Review;
@@ -136,9 +140,34 @@ public class ReviewController {
     @PostMapping("/quick-score/{issueId}")
     public ResponseEntity<ReviewDTO> quickScoreAndCompleteIssue(
             @PathVariable Long issueId,
-            @Valid @RequestBody ReviewRequest request,
+            @Valid @RequestBody QuickScoreRequest request,
             @AuthenticationPrincipal User currentUser) {
         Review review = reviewService.quickScoreAndCompleteIssue(issueId, request, currentUser);
         return ResponseEntity.ok(reviewMapper.toDTO(review));
+    }
+
+    /**
+     * POST /api/reviews/bulk
+     * Bulk create review drafts for multiple employees.
+     */
+    @PostMapping("/bulk")
+    public ResponseEntity<BulkReviewResponse> bulkCreateReviews(
+            @Valid @RequestBody BulkReviewRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        BulkReviewResponse response = reviewService.bulkCreateReviews(request, currentUser);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/reviews/needing-review?reviewPeriod=Q2-2026&reviewType=PERIODIC
+     * Get list of active employees who need a review for a given period.
+     */
+    @GetMapping("/needing-review")
+    public ResponseEntity<List<EmployeeSimpleDTO>> getEmployeesNeedingReview(
+            @RequestParam String reviewPeriod,
+            @RequestParam String reviewType,
+            @AuthenticationPrincipal User currentUser) {
+        List<EmployeeSimpleDTO> employees = reviewService.findEmployeesNeedingReview(reviewPeriod, reviewType);
+        return ResponseEntity.ok(employees);
     }
 }
