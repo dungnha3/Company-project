@@ -4,11 +4,10 @@
 services:
   - type: web
     name: be-backend
-    env: java
+    env: docker
     region: singapore
     plan: free
-    buildCommand: cd BE && mvn package -DskipTests -B
-    startCommand: java -jar BE/target/BE-0.0.1-SNAPSHOT.war
+    dockerfilePath: ./BE/Dockerfile
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
@@ -16,5 +15,3 @@ services:
         value: true
       - key: DDL_AUTO
         value: validate
-      - key: JAVA_VERSION
-        value: 21
