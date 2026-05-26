@@ -28,12 +28,11 @@ public class ProjectPhaseController {
         return ResponseEntity.ok(projectPhaseService.getPhasesByProject(projectId, user.getUserId()));
     }
 
-    // Conflict with GanttController.getGanttData (same path
-    // /api/projects/{projectId}/gantt)
-    // Please use GanttController for full Gantt functionality
-    // @GetMapping("/{projectId}/gantt")
-    public ResponseEntity<DoAn.BE.project.dto.GanttChartDTO> getGanttChart(@PathVariable Long projectId) {
-        return ResponseEntity.ok(projectPhaseService.getGanttChartData(projectId));
+    @GetMapping("/phases/{phaseId}")
+    public ResponseEntity<ProjectPhaseDTO.Response> getPhaseById(
+            @PathVariable Long phaseId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(projectPhaseService.getPhaseById(phaseId, user.getUserId()));
     }
 
     @PostMapping("/{projectId}/phases")

@@ -68,16 +68,17 @@ export default function CalendarPage() {
         else setCurrentMonth(new Date());
     };
 
-    // ── Load events
+    // ── Load events (query 3 months before to include past events)
     useEffect(() => { loadEvents(); }, [currentMonth, currentWeek, currentDay, viewMode]);
 
     const loadEvents = async () => {
         try {
             setLoading(true);
             let start, end;
+            // Query 3 months before current month to show historical events
             if (viewMode === 'month') {
-                start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59);
+                start = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 3, 1);
+                end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0, 23, 59, 59);
             } else if (viewMode === 'week') {
                 const weekStart = getWeekStart(currentWeek);
                 start = weekStart;

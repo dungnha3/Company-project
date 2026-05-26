@@ -3,10 +3,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import ScoreSuggestionPanel from '@components/smart-assistant/ScoreSuggestionPanel';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function QuickReviewModal({ issue, onClose, onSuccess }) {
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useAccessControl();
+    const canCreateReview = hasPermission('REVIEW.CREATE');
 
     const [form, setForm] = useState({
         performanceScore: 5,
@@ -66,6 +70,12 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Điểm chất lượng (1-10) <span className="text-red-500">*</span>
+                                <span className="ml-2">
+                                    <ScoreSuggestionPanel
+                                        issueId={issue.issueId}
+                                        onApply={(score) => setForm(prev => ({ ...prev, performanceScore: Math.round(score) }))}
+                                    />
+                                </span>
                             </label>
                             <div className="flex items-center gap-3">
                                 <input
@@ -113,8 +123,8 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={quickScoreMutation.isPending}
-                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm"
+                            disabled={!canCreateReview || quickScoreMutation.isPending}
+                            className={`px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm ${!canCreateReview ? 'cursor-not-allowed' : ''}`}
                         >
                             {quickScoreMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-check" />}
                             Chấm điểm & Done

@@ -147,7 +147,7 @@ function MyLeaveRequests() {
     const { data: requests = [], isLoading } = useQuery({
         queryKey: ['my-leave-requests'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.LIST, {
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_REQUESTS, {
                 params: { size: 100, sort: 'createdAt,desc' }
             });
             return res.data?.content || res.data || [];
@@ -881,11 +881,15 @@ function LeaveCalendar() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
+    // Query a wider range: 3 months back to 1 month ahead to capture events from past months
+    const rangeStart = new Date(year, month - 3, 1);
+    const rangeEnd = new Date(year, month + 2, 0);
+
     const { data: leaveRequests = [] } = useQuery({
         queryKey: ['leave-calendar', month, year],
         queryFn: async () => {
-            const startDate = firstDay.toISOString().split('T')[0];
-            const endDate = lastDay.toISOString().split('T')[0];
+            const startDate = rangeStart.toISOString().split('T')[0];
+            const endDate = rangeEnd.toISOString().split('T')[0];
             const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.TEAM_CALENDAR, {
                 params: { startDate, endDate },
             });

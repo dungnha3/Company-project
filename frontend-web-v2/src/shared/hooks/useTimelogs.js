@@ -153,20 +153,3 @@ export const useTimelogSummary = (period = 'week') => {
         staleTime: 1 * 60 * 1000,
     });
 };
-
-/**
- * Hook for timelog by date range
- */
-export const useTimelogsByDateRange = (startDate, endDate) => {
-    return useQuery({
-        queryKey: ['timelogs', 'date-range', startDate, endDate],
-        queryFn: async () => {
-            const response = await apiClient.get('/api/timelogs/date-range', {
-                params: { startDate, endDate }
-            });
-            return response.data;
-        },
-        enabled: !!startDate && !!endDate,
-        staleTime: 1 * 60 * 1000,
-    });
-};

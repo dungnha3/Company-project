@@ -1,9 +1,10 @@
 package DoAn.BE.project.entity;
 
-import DoAn.BE.common.entity.BaseEntity;
+import DoAn.BE.common.entity.TenantScopedEntity;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Filter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -14,7 +15,8 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public class ProjectExpense extends BaseEntity {
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class ProjectExpense extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

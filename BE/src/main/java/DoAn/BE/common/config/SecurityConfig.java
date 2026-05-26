@@ -4,11 +4,12 @@ import DoAn.BE.auth.filter.JwtAuthenticationFilter;
 import DoAn.BE.common.filter.RateLimitingFilter;
 import DoAn.BE.common.filter.SecurityHeadersFilter;
 import DoAn.BE.common.filter.TenantFilter;
+import DoAn.BE.common.filter.XssSanitizingFilter;
+import DoAn.BE.common.filter.PerformanceMonitorFilter;
 import DoAn.BE.common.util.AppConstants;
 import DoAn.BE.company.entity.CompanyRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -48,6 +49,12 @@ public class SecurityConfig {
         @Autowired
         private SecurityHeadersFilter securityHeadersFilter;
 
+        @Autowired
+        private XssSanitizingFilter xssSanitizingFilter;
+
+        @Autowired
+        private PerformanceMonitorFilter performanceMonitorFilter;
+
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
@@ -78,6 +85,8 @@ public class SecurityConfig {
                                                 .anyRequest().authenticated())
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
+                                .addFilterBefore(xssSanitizingFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(performanceMonitorFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(securityHeadersFilter, RateLimitingFilter.class)
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

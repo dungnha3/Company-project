@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAuthStore } from '@shared/stores/authStore';
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState([]);
@@ -9,6 +10,8 @@ export default function AdminUsersPage() {
     const [pagination, setPagination] = useState({ page: 0, size: 20, totalPages: 0, totalElements: 0 });
     const [search, setSearch] = useState('');
     const toast = useToast();
+    const { user } = useAuthStore();
+    const canManageUsers = user?.roles?.includes('SYSTEM_ADMIN');
 
     const fetchUsers = async (page = 0, keyword = '') => {
         setLoading(true);
@@ -173,7 +176,7 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-center gap-2">
-                                                {!user.isSystemAdminAccount && (
+                                                {!user.isSystemAdminAccount && canManageUsers && (
                                                     <>
                                                         <button
                                                             onClick={() => handleToggleStatus(user.userId, user.isActive)}
@@ -194,6 +197,9 @@ export default function AdminUsersPage() {
                                                             Reset MK
                                                         </button>
                                                     </>
+                                                )}
+                                                {!user.isSystemAdminAccount && !canManageUsers && (
+                                                    <span className="text-xs text-gray-400 italic">Chỉ xem</span>
                                                 )}
                                             </div>
                                         </td>

@@ -34,6 +34,7 @@ export default function InteractivePlannerTab({ projectId }) {
     const toast = useToast();
     const { hasPermission } = useAccessControl();
     const canManageGoals = hasPermission('PROJECT.MANAGE_PHASES');
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     // Fetch issues
     const { data: issuesRaw = [], isLoading: isIssuesLoading } = useQuery({
@@ -203,6 +204,7 @@ export default function InteractivePlannerTab({ projectId }) {
 
     const handleDropQuadrant = (e, quadrantId) => {
         e.preventDefault();
+        if (!canManageIssues) return;
         const idStr = e.dataTransfer.getData('text/plain');
         const issueId = Number(idStr);
         if (!issueId) return;
@@ -221,11 +223,11 @@ export default function InteractivePlannerTab({ projectId }) {
 
     const handleDropMonth = (e, month) => {
         e.preventDefault();
+        if (!canManageIssues) return;
         const idStr = e.dataTransfer.getData('text/plain');
         const issueId = Number(idStr);
         if (!issueId) return;
 
-        // Set due date to the last day of that month
         const lastDay = new Date(filterYear, month, 0).getDate();
         const dueDate = `${filterYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
@@ -493,10 +495,10 @@ export default function InteractivePlannerTab({ projectId }) {
                                                     ${goal.isCompleted ? 'border-green-150 bg-green-50/20 text-green-700' : 'border-gray-100 bg-gray-50'}`}
                                             >
                                                 <button
-                                                    onClick={() => toggleGoalMutation.mutate(goal.goalId)}
-                                                    disabled={toggleGoalMutation.isPending}
+                                                    onClick={() => canManageGoals && toggleGoalMutation.mutate(goal.goalId)}
+                                                    disabled={!canManageGoals || toggleGoalMutation.isPending}
                                                     className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors
-                                                        ${goal.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-500'}`}
+                                                        ${goal.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed'}`}
                                                 >
                                                     {goal.isCompleted && <i className="fa-solid fa-check text-[7px]" />}
                                                 </button>

@@ -4,6 +4,7 @@ import DoAn.BE.hrm.entity.Review;
 import DoAn.BE.hrm.entity.Review.Rating;
 import DoAn.BE.hrm.entity.Review.ReviewStatus;
 import DoAn.BE.hrm.entity.Review.ReviewType;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -82,4 +83,30 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.projectId = :projectId ORDER BY r.createdAt DESC")
         List<Review> findByProjectId(@Param("projectId") Long projectId);
+
+        // Smart Assistant: Lấy điểm TB theo employee (đã approved)
+        @Query("SELECT AVG(r.totalScore) FROM Review r " +
+               "WHERE r.employee.employeeId = :empId " +
+               "AND r.status = 'APPROVED'")
+        BigDecimal getAverageScoreByEmployee(@Param("empId") Long employeeId);
+
+        // Smart Assistant: Lấy điểm TB kỹ thuật theo employee
+        @Query("SELECT AVG(r.technicalScore) FROM Review r " +
+               "WHERE r.employee.employeeId = :empId " +
+               "AND r.status = 'APPROVED'")
+        BigDecimal getAverageTechnicalScore(@Param("empId") Long employeeId);
+
+        // Smart Assistant: Lấy QuickScore reviews của employee trong kỳ
+        @Query("SELECT r FROM Review r " +
+               "WHERE r.employee.employeeId = :empId " +
+               "AND r.reviewPeriod LIKE 'Quick-%' " +
+               "AND r.status = 'APPROVED'")
+        List<Review> getQuickScoreReviews(@Param("empId") Long employeeId);
+
+        // Smart Assistant: Lấy reviews đã approved của employee
+        @Query("SELECT r FROM Review r " +
+               "WHERE r.employee.employeeId = :empId " +
+               "AND r.status = 'APPROVED' " +
+               "ORDER BY r.createdAt DESC")
+        List<Review> findApprovedReviewsByEmployee(@Param("empId") Long employeeId);
 }

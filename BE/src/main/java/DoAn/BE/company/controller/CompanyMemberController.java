@@ -69,4 +69,22 @@ public class CompanyMemberController {
         memberService.updatePermission(companyId, userId, permissionKey, enabled);
         return ResponseEntity.ok().body(Map.of("message", "Cập nhật quyền hạn thành công"));
     }
+
+    @Transactional
+    @PutMapping("/{userId}/permissions/batch")
+    public ResponseEntity<?> applyModuleTemplate(
+            @PathVariable Long companyId,
+            @PathVariable Long userId,
+            @RequestBody Map<String, Object> body) {
+
+        String module = (String) body.get("module");
+        Boolean enabled = (Boolean) body.get("enabled");
+
+        if (module == null || enabled == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "module và enabled là bắt buộc"));
+        }
+
+        memberService.applyModuleTemplate(companyId, userId, module, enabled);
+        return ResponseEntity.ok().body(Map.of("message", "Cập nhật module quyền hạn thành công"));
+    }
 }

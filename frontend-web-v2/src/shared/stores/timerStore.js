@@ -201,14 +201,6 @@ export const useTimerStore = create((set, get) => ({
             return null;
         }
     },
-
-    // ── Track recent issues ───────────────────────────────────────────────────
-    addRecentIssue: (issue) => {
-        set(state => {
-            const filtered = state.recentIssues.filter(i => i.issueId !== issue.issueId);
-            return { recentIssues: [issue, ...filtered].slice(0, 5) };
-        });
-    },
 }));
 
 // ── Auto-start event (fired by ProjectBoard when dragging to In Progress) ─────

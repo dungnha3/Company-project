@@ -201,7 +201,6 @@ public class PerformanceService {
         }
 
         // Aggregate across all projects
-        List<PerformanceRankingDTO> rankings = new ArrayList<>();
         List<ProjectMember> allMemberships = projectMemberRepository.findByUser_UserId(currentUser.getUserId());
 
         int totalCompleted = 0;

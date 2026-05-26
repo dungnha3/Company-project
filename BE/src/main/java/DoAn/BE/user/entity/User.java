@@ -49,6 +49,9 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "username", nullable = false, length = 50, unique = true, columnDefinition = "NVARCHAR(50)")
     private String username;
 
+    @Column(name = "full_name", length = 100, columnDefinition = "NVARCHAR(100)")
+    private String fullName;
+
     @Column(name = "password_hash", nullable = false, length = 255)
     @JsonIgnore
     private String passwordHash;
@@ -183,7 +186,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
 
     // --- Helper methods for Firebase Sync ---
     public String getFullName() {
-        return this.username;
+        return (fullName != null && !fullName.isBlank()) ? fullName : username;
     }
 
     @JsonIgnore

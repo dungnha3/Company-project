@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const ACCEPTED_TYPES = [
     'image/*', 'application/pdf', 'application/msword',
@@ -36,6 +37,8 @@ function getFileIcon(contentType, name) {
 export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
     const fileInputRef = useRef(null);
     const [note, setNote] = useState('');
     const [attachedFiles, setAttachedFiles] = useState([]);
@@ -444,9 +447,9 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                             return (
                                 <button
                                     onClick={handleConfirm}
-                                    disabled={!note.trim() || submitMutation.isPending || isUploading || needsFile}
-                                    className="px-6 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
-                                    title={needsFile ? 'Phải đính kèm ít nhất 1 file minh chứng' : ''}
+                                    disabled={!canManageIssues || !note.trim() || submitMutation.isPending || isUploading || needsFile}
+                                    className={`px-6 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2 ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
+                                    title={needsFile ? 'Phải đính kèm ít nhất 1 file minh chứng' : !canManageIssues ? 'Bạn không có quyền nộp task' : ''}
                                 >
                                     {submitMutation.isPending ? (
                                         <><i className="fa-solid fa-spinner fa-spin text-xs" />Đang nộp...</>

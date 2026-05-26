@@ -114,16 +114,6 @@ export function formatCurrency(amount, currency = 'VND', locale = defaultLocale)
     }).format(amount);
 }
 
-export default {
-    formatDate,
-    formatTime,
-    formatDateTime,
-    formatRelativeTime,
-    formatNumber,
-    formatCurrency,
-    formatBytes,
-};
-
 /**
  * Format bytes to human readable string
  * @param {number} bytes - The bytes to format

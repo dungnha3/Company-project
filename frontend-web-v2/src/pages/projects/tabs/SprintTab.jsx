@@ -7,6 +7,7 @@ import { formatDate } from '@shared/utils/formatters';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import SprintOverview from '../components/BurndownChart';
 import IssueDetailModal from '../components/IssueDetailModal';
+import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
 
 // ─── Constants ─────────────────────────────────────────────────────────
 const SPRINT_STATUS = {
@@ -83,9 +84,14 @@ export default function SprintTab({ projectId }) {
             {view === 'timeline' && (
                 <TimelineView projectId={projectId} />
             )}
+
+            <SmartAssistantFAB projectId={projectId} />
         </div>
     );
 }
+
+// ─── FAB already imported at top ───────────────────────────────────────────
+// Duplicate removed below
 
 // ─── Sprint View ───────────────────────────────────────────────────────
 function SprintView({ projectId }) {
@@ -96,6 +102,7 @@ function SprintView({ projectId }) {
     const toast = useToast();
     const { hasPermission } = useAccessControl();
     const canManageSprints = hasPermission('PROJECT.MANAGE_SPRINTS');
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     const { data: sprints = [], isLoading } = useQuery({
         queryKey: ['sprints', projectId],
@@ -198,6 +205,7 @@ function SprintView({ projectId }) {
                                 onAddIssue={() => setShowAddIssueModal(activeSprint.sprintId)}
                                 onRemoveIssue={(issueId) => removeMutation.mutate({ sprintId: activeSprint.sprintId, issueId })}
                                 removePending={removeMutation.isPending}
+                                readOnly={!canManageIssues}
                             />
                         )}
                     </div>
@@ -245,6 +253,7 @@ function SprintView({ projectId }) {
                                         onAddIssue={() => setShowAddIssueModal(sprint.sprintId)}
                                         onRemoveIssue={(issueId) => removeMutation.mutate({ sprintId: sprint.sprintId, issueId })}
                                         removePending={removeMutation.isPending}
+                                        readOnly={!canManageIssues}
                                     />
                                 )}
                             </div>
@@ -860,7 +869,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
     const toast = useToast();
 
     const createMutation = useMutation({
-        mutationFn: async (data) => (await apiClient.post(ENDPOINTS.SPRINTS.LIST, { ...data, projectId })).data,
+        mutationFn: async (data) => (await apiClient.post(ENDPOINTS.SPRINTS.CREATE, { ...data, projectId })).data,
         onSuccess: () => { toast.success('Tạo sprint thành công!'); onSuccess(); },
         onError: (err) => { toast.error('Lỗi: ' + (err.response?.data?.message || err.message)); },
     });

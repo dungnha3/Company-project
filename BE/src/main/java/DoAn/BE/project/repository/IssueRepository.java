@@ -120,9 +120,22 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         // Count issues assigned to a user in a specific project (for TeamTab stats)
         long countByProject_ProjectIdAndAssignee_UserId(Long projectId, Long userId);
 
+        // Count unassigned issues in a project (for TeamTab "Unassigned" group)
+        long countByProject_ProjectIdAndAssignee_IsNull(Long projectId);
+
         @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId " +
                "AND i.assignee.userId = :userId AND i.issueStatus.name = 'Done'")
         long countCompletedByProjectAndAssignee(
                 @Param("projectId") Long projectId,
                 @Param("userId") Long userId);
+
+        // Smart Assistant: Tổng weight active theo assignee
+        @Query("SELECT COALESCE(SUM(i.weight), 0) FROM Issue i " +
+               "WHERE i.assignee.userId = :userId " +
+               "AND i.issueStatus.name <> 'Done'")
+        Integer sumActiveWeightByAssignee(@Param("userId") Long userId);
+
+        // Smart Assistant: Issue chưa giao trong project
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        List<Issue> findByProject_ProjectIdAndAssigneeIsNull(Long projectId);
 }

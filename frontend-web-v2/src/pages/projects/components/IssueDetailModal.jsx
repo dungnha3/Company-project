@@ -5,6 +5,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import TimeLogSection from './TimeLogSection';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUSES = [
     { value: 1, label: 'Chờ xử lý', color: 'bg-gray-100 text-gray-700' },
@@ -33,6 +34,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const [activeTab, setActiveTab] = useState('details'); // details | comments | activity
     const [newComment, setNewComment] = useState('');
     const [timelogKey, setTimelogKey] = useState(0); // Increment to force TimeLogSection refresh
+
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     // Listen for timelog-updated events (e.g. from auto-stop on task completion)
     useEffect(() => {
@@ -153,9 +157,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         <span className="text-white/80 text-sm">|</span>
                         <select
                             value={currentIssue.issueType || 'TASK'}
-                            onChange={(e) => updateIssueMutation.mutate({ issueType: e.target.value })}
-                            disabled={updateIssueMutation.isPending}
-                            className="bg-transparent text-white font-medium text-sm border-none focus:ring-0 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 appearance-none"
+                            onChange={(e) => canManageIssues && updateIssueMutation.mutate({ issueType: e.target.value })}
+                            disabled={!canManageIssues || updateIssueMutation.isPending}
+                            className={`bg-transparent text-white font-medium text-sm border-none focus:ring-0 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 appearance-none ${!canManageIssues ? 'opacity-50' : ''}`}
                             style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
                         >
                             {ISSUE_TYPES.map(t => (
@@ -179,9 +183,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <select
                                 value={currentIssue.statusId || 1}
-                                onChange={(e) => statusMutation.mutate(Number(e.target.value))}
-                                disabled={statusMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                                onChange={(e) => canManageIssues && statusMutation.mutate(Number(e.target.value))}
+                                disabled={!canManageIssues || statusMutation.isPending}
+                                className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
                                 {STATUSES.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -194,9 +198,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <label className="block text-xs text-gray-500 mb-1">Độ ưu tiên</label>
                             <select
                                 value={currentIssue.priority || 'MEDIUM'}
-                                onChange={(e) => updateIssueMutation.mutate({ priority: e.target.value })}
-                                disabled={updateIssueMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                                onChange={(e) => canManageIssues && updateIssueMutation.mutate({ priority: e.target.value })}
+                                disabled={!canManageIssues || updateIssueMutation.isPending}
+                                className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
                                 {PRIORITIES.map(p => (
                                     <option key={p.value} value={p.value}>{p.label}</option>
@@ -209,9 +213,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <label className="block text-xs text-gray-500 mb-1">Người thực hiện</label>
                             <select
                                 value={currentIssue.assigneeId || ''}
-                                onChange={(e) => assignMutation.mutate(e.target.value || null)}
-                                disabled={assignMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                                onChange={(e) => canManageIssues && assignMutation.mutate(e.target.value || null)}
+                                disabled={!canManageIssues || assignMutation.isPending}
+                                className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
                                 <option value="">-- Chưa giao --</option>
                                 {members.map(m => (
@@ -446,17 +450,35 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             ) : null}
 
                             {/* Custom Fields Section */}
-                            <CustomFieldsSection
-                                projectId={currentIssue.projectId}
-                                issueId={currentIssue.issueId}
-                                initialValues={currentIssue.customFieldValues || {}}
-                            />
+                            {canManageIssues ? (
+                                <CustomFieldsSection
+                                    projectId={currentIssue.projectId}
+                                    issueId={currentIssue.issueId}
+                                    initialValues={currentIssue.customFieldValues || {}}
+                                />
+                            ) : (
+                                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                    <div className="text-sm font-medium text-gray-500 mb-2">Custom Fields</div>
+                                    {Object.keys(currentIssue.customFieldValues || {}).length > 0 ? (
+                                        <div className="space-y-1">
+                                            {Object.entries(currentIssue.customFieldValues).map(([key, val]) => (
+                                                <div key={key} className="text-sm text-gray-600">
+                                                    <span className="font-medium">{key}:</span> {String(val ?? '')}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-400 italic">Không có custom fields</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {activeTab === 'comments' && (
                         <div className="space-y-4">
                             {/* Add Comment */}
+                            {canManageIssues ? (
                             <div className="flex gap-3">
                                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
                                     U
@@ -480,6 +502,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     </div>
                                 </div>
                             </div>
+                            ) : (
+                                <div className="text-center py-3 text-sm text-gray-400 italic">Bạn không có quyền bình luận</div>
+                            )}
 
                             {/* Comments List */}
                             <div className="space-y-3 pt-4 border-t border-gray-100">

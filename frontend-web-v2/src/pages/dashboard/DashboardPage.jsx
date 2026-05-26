@@ -37,9 +37,9 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
     });
 
     // Count tasks by status
-    const todoTasks = myTasks.filter(t => t.status === 'TODO' || t.status === 'BACKLOG').length;
-    const inProgressTasks = myTasks.filter(t => t.status === 'IN_PROGRESS').length;
-    const completedTasks = myTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
+    const todoTasks = myTasks.filter(t => t.statusName === 'To Do' || t.statusName === 'BACKLOG').length;
+    const inProgressTasks = myTasks.filter(t => t.statusName === 'In Progress').length;
+    const completedTasks = myTasks.filter(t => t.statusName === 'Done' || t.statusName === 'COMPLETED').length;
 
     return (
         <div className="max-w-full mx-auto p-6 space-y-5">
@@ -230,10 +230,10 @@ const TaskItem = memo(function TaskItem({ task }) {
             <div className={`w-2 h-2 rounded-full shrink-0 ${task.priority === 'HIGH' ? 'bg-red-500' : task.priority === 'MEDIUM' ? 'bg-orange-500' : 'bg-green-500'}`} />
             <div className="flex-1 min-w-0">
                 <span className="font-medium color-main text-sm block truncate">{task.title}</span>
-                <span className="text-[10px] color-slate block">{task.projectName || 'Project'}</span>
+                <span className="text-[10px] color-slate block">{task.projectName || task.project?.name || 'Project'}</span>
             </div>
             <span className={`text-[10px] font-bold px-2 py-1 rounded shrink-0 ${priorityColors[task.priority] || 'bg-gray-100 text-gray-600'}`}>
-                {task.status || 'TODO'}
+                {task.statusName || 'TODO'}
             </span>
         </Link>
     );

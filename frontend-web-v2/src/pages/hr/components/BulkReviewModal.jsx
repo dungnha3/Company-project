@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const REVIEW_TYPES = [
     { value: 'PERIODIC', label: 'Định kỳ (tháng/quý)' },
@@ -15,6 +16,8 @@ const REVIEW_TYPES = [
 export default function BulkReviewModal({ isOpen, onClose }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const { hasPermission } = useAccessControl();
+    const canManageReviews = hasPermission('HR.MANAGE_REVIEWS');
 
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
@@ -91,6 +94,7 @@ export default function BulkReviewModal({ isOpen, onClose }) {
     };
 
     const handleCreate = () => {
+        if (!canManageReviews) return;
         if (selectedIds.size === 0) {
             showToast('Vui lòng chọn ít nhất một nhân viên', 'warning');
             return;
@@ -316,7 +320,7 @@ export default function BulkReviewModal({ isOpen, onClose }) {
                         {step === 2 && (
                             <button
                                 onClick={handleCreate}
-                                disabled={selectedIds.size === 0 || bulkMutation.isPending}
+                                disabled={!canManageReviews || selectedIds.size === 0 || bulkMutation.isPending}
                                 className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-40"
                             >
                                 {bulkMutation.isPending ? (

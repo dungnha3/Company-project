@@ -145,6 +145,16 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestMapper.toDTO(leaveRequest));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<org.springframework.data.domain.Page<LeaveRequestDTO>> getMyLeaveRequests(
+            @AuthenticationPrincipal User currentUser,
+            org.springframework.data.domain.Pageable pageable) {
+        Employee employee = leaveRequestService.findEmployeeByUserId(currentUser.getUserId());
+        org.springframework.data.domain.Page<LeaveRequest> leaveRequests =
+            leaveRequestService.getLeaveRequestsByEmployeePaged(employee.getEmployeeId(), currentUser, pageable);
+        return ResponseEntity.ok(leaveRequests.map(leaveRequestMapper::toDTO));
+    }
+
     @GetMapping("/me/balance")
     public ResponseEntity<Map<String, Object>> getMyLeaveBalance(
             @AuthenticationPrincipal User currentUser) {

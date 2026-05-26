@@ -99,7 +99,7 @@ public class SysAdminUserController {
 
         // Send email
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
-            // TODO: Replace with password reset link flow
+            // Note: Replace with password reset link flow
             log.warn("[SECURITY] Plain password sent via email for user {}. Implement reset-link flow.",
                     user.getUsername());
             emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), newPassword);

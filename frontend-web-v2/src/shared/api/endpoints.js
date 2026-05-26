@@ -40,21 +40,8 @@ export const ENDPOINTS = {
         COUNT_ONLINE: '/api/users/count/online',
     },
 
-    // Company Admin (quản trị viên công ty — role ADMIN trong CompanyRole)
-    COMPANY_ADMIN: {
-        COMPANIES: '/api/sysadmin/companies',
-        COMPANY_DETAILS: (id) => `/api/sysadmin/companies/${id}`,
-        USERS: '/api/users',
-    },
-
-    // Public Files (no auth required — PublicStorageController)
-    PUBLIC_FILES: {
-        DOWNLOAD: (fileId) => `/api/public/files/${fileId}/download`,
-    },
-
     // System Admin (God Mode)
     SYSADMIN: {
-        COMPANIES: '/api/sysadmin/companies',
         COMPANY_DETAILS: (id) => `/api/sysadmin/companies/${id}`,
         COMPANY_PLAN: (id) => `/api/sysadmin/companies/${id}/plan`,
         COMPANY_STATUS: (id) => `/api/sysadmin/companies/${id}/status`,
@@ -77,9 +64,6 @@ export const ENDPOINTS = {
             USERS: (companyId) => `/api/sysadmin/tenants/${companyId}/users`,
             PROJECTS: (companyId) => `/api/sysadmin/tenants/${companyId}/projects`,
         },
-
-        // Users Management
-        USERS: '/api/sysadmin/users',
     },
 
     // Companies
@@ -88,7 +72,6 @@ export const ENDPOINTS = {
         BY_ID: (id) => `/api/companies/${id}`,
         CREATE: '/api/companies',
         UPDATE: (id) => `/api/companies/${id}`,
-        DELETE: (id) => `/api/companies/${id}`,
         SETTINGS: (id) => `/api/companies/${id}/settings`,
         REVIEW_SETTINGS: (id) => `/api/companies/${id}/settings/review`,
 
@@ -96,6 +79,7 @@ export const ENDPOINTS = {
         MEMBERS: (companyId) => `/api/companies/${companyId}/members`,
         MEMBER_REMOVE: (companyId, userId) => `/api/companies/${companyId}/members/${userId}`,
         MEMBER_PERMISSIONS: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/permissions`,
+        MEMBER_PERMISSIONS_BATCH: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/permissions/batch`,
         MEMBER_ROLE: (companyId, userId) => `/api/companies/${companyId}/members/${userId}/role`,
     },
 
@@ -314,7 +298,7 @@ export const ENDPOINTS = {
 
     // Sprints
     SPRINTS: {
-        LIST: '/api/sprints',
+        CREATE: '/api/sprints',
         BY_ID: (id) => `/api/sprints/${id}`,
         BY_PROJECT: (projectId) => `/api/sprints/project/${projectId}`,
         START: (id) => `/api/sprints/${id}/start`,
@@ -332,9 +316,7 @@ export const ENDPOINTS = {
         BY_SPRINT: (sprintId) => `/api/issues/sprint/${sprintId}`,
         MY_ISSUES: '/api/issues/my-issues',
         MY_REPORTED: '/api/issues/my-reported',
-        UPDATE_STATUS: (id) => `/api/issues/${id}/status`,
         UPDATE_STATUS_TO: (id, statusId) => `/api/issues/${id}/status/${statusId}`,
-        ASSIGN: (id) => `/api/issues/${id}/assign`,
     },
 
     // Issue Statuses (Kanban columns)
@@ -413,19 +395,28 @@ export const ENDPOINTS = {
     CUSTOM_FIELDS: {
         BY_PROJECT: (projectId) => `/api/projects/${projectId}/custom-fields`,
         CREATE: (projectId) => `/api/projects/${projectId}/custom-fields`,
-        UPDATE: (id) => `/api/projects/custom-fields/${id}`, // Assuming /api/projects/custom-fields/{id} based on other patterns or /api/custom-fields/{id}
-        DELETE: (id) => `/api/projects/custom-fields/${id}`,
-        // Values usually handled within Issue update or specific endpoint
+        // Values handled within Issue update or specific endpoint
         ISSUE_VALUES: (issueId) => `/api/issues/${issueId}/custom-fields`,
     },
 
     // Performance (HR individual performance — matches BE PerformanceController)
     PERFORMANCE: {
         MY_STATS: '/api/hr/performance/my-stats',
-        MY_TIMELOG: '/api/timelogs/my',
-        MY_OKRS: '/api/okrs/my',
         COMPARISON_ME: '/api/hr/performance-comparison/me',
         COMPARISON_BY_PROJECT: (projectId) => `/api/hr/performance-comparison/projects/${projectId}`,
+    },
+
+    // Smart Assistant (Module 5)
+    SMART_ASSISTANT: {
+        BASE: '/api/smart-assistant',
+        SUMMARY: (projectId, sprintId) => `/api/smart-assistant?action=summary&projectId=${projectId}${sprintId ? `&sprintId=${sprintId}` : ''}`,
+        TASK_ASSIGNMENT: (projectId) => `/api/smart-assistant?action=task-assignment&projectId=${projectId}`,
+        SCORE_SUGGESTION_ISSUE: (issueId) => `/api/smart-assistant?action=score-suggestion&issueId=${issueId}`,
+        SCORE_SUGGESTION_EMPLOYEE: (employeeId, reviewPeriod) => `/api/smart-assistant?action=score-suggestion&employeeId=${employeeId}&reviewPeriod=${encodeURIComponent(reviewPeriod)}`,
+        SPRINT_HEALTH: (sprintId) => `/api/smart-assistant?action=sprint-health&sprintId=${sprintId}`,
+        WORKLOAD: (projectId) => `/api/smart-assistant?action=workload&projectId=${projectId}`,
+        PROJECT_RISK: (projectId) => `/api/smart-assistant?action=project-risk&projectId=${projectId}`,
+        BATCH_ASSIGN: '/api/smart-assistant/assign',
     },
 
     // Storage (Google Drive Integration)

@@ -142,5 +142,4 @@ public class CompanyAdminService {
             company.setAddress(req.getAddress());
         }
     }
-
-    }
+}

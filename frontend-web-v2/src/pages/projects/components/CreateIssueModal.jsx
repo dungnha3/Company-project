@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
@@ -36,6 +37,8 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
     });
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     // Fetch projects
     const { data: projects = [] } = useQuery({
@@ -401,8 +404,8 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                         </button>
                         <button
                             type="submit"
-                            disabled={createMutation.isPending}
-                            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:from-indigo-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            disabled={!canManageIssues || createMutation.isPending}
+                            className={`px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:from-indigo-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2 ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
                         >
                             {createMutation.isPending ? (
                                 <>

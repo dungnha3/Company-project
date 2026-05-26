@@ -4,15 +4,9 @@ package DoAn.BE.hrm.controller;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.hrm.dto.PerformanceDashboardDTO;
 import DoAn.BE.hrm.dto.PerformanceRankingDTO;
-import DoAn.BE.hrm.dto.SalaryProposalDTO;
-import DoAn.BE.hrm.dto.SalaryProposalRequest;
 import DoAn.BE.hrm.service.PerformanceService;
-import DoAn.BE.hrm.service.SalaryProposalService;
 import DoAn.BE.user.entity.User;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +19,6 @@ import java.util.List;
 public class HRPerformanceController {
 
     private final PerformanceService performanceService;
-    private final SalaryProposalService salaryProposalService;
 
     // --- Performance Dashboard (aggregated) ---
 
@@ -59,33 +52,5 @@ public class HRPerformanceController {
     public ResponseEntity<List<PerformanceRankingDTO>> getProjectPerformanceRanking(
             @PathVariable Long projectId) {
         return ResponseEntity.ok(performanceService.getProjectPerformanceRanking(projectId));
-    }
-
-    // --- Salary Proposals ---
-
-    @PostMapping("/proposals")
-    public ResponseEntity<SalaryProposalDTO> createProposal(
-            @Valid @RequestBody SalaryProposalRequest request,
-            @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(salaryProposalService.createProposal(request, currentUser));
-    }
-
-    @GetMapping("/proposals")
-    public ResponseEntity<Page<SalaryProposalDTO>> getCompanyProposals(Pageable pageable) {
-        return ResponseEntity.ok(salaryProposalService.getCompanyProposals(TenantContext.getCompanyId(), pageable));
-    }
-
-    @PostMapping("/proposals/{proposalId}/approve")
-    public ResponseEntity<SalaryProposalDTO> approveProposal(
-            @PathVariable Long proposalId,
-            @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(salaryProposalService.approveProposal(proposalId, currentUser));
-    }
-
-    @PostMapping("/proposals/{proposalId}/reject")
-    public ResponseEntity<SalaryProposalDTO> rejectProposal(
-            @PathVariable Long proposalId,
-            @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(salaryProposalService.rejectProposal(proposalId, currentUser));
     }
 }

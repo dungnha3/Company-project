@@ -251,27 +251,6 @@ public class AuthController {
                 .body(response);
     }
 
-    @GetMapping("/validate")
-    public ResponseEntity<Map<String, Object>> validateToken(@RequestParam String token) {
-        try {
-            boolean valid = authService.validateToken(token);
-            Map<String, Object> response = new HashMap<>();
-            response.put("valid", valid);
-            response.put("message", valid ? "Token hợp lệ" : "Token không hợp lệ");
-
-            if (valid) {
-                return ResponseEntity.ok(response);
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-            }
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("valid", false);
-            response.put("message", "Token không hợp lệ: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
-    }
-
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(
             @Valid @RequestBody DoAn.BE.auth.dto.ForgotPasswordRequest request) {

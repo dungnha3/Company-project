@@ -1,7 +1,11 @@
 package DoAn.BE.hrm.entity;
 
+import DoAn.BE.common.entity.TenantScopedEntity;
+import DoAn.BE.hrm.entity.Employee;
+import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Filter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -15,7 +19,8 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public class Review extends DoAn.BE.common.entity.BaseEntity {
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class Review extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

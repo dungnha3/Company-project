@@ -29,7 +29,7 @@ export default function AnalyticsPage() {
     const [selectedSprintId, setSelectedSprintId] = useState(null);
 
     // Fetch projects only if there is no projectId in URL (accessed via general sidebar)
-    const { data: myProjects = [] } = useQuery({
+    const { data: myProjects = [], isLoading: projectsLoading } = useQuery({
         queryKey: ['my-projects-for-analytics'],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
@@ -134,13 +134,22 @@ export default function AnalyticsPage() {
                 )}
             </div>
 
-            {!selectedProjectId ? (
+            {!paramProjectId && projectsLoading ? (
+                <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400 bg-white rounded-2xl border border-gray-100 shadow-sm py-20">
+                    <div className="loading-spinner mb-4" />
+                    <p className="text-sm font-semibold text-gray-600">Đang tải danh sách dự án...</p>
+                </div>
+            ) : !selectedProjectId ? (
                 <div className="card p-12 text-center bg-white border border-gray-100 rounded-2xl shadow-sm">
                     <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner border border-gray-100">
                         <i className="fa-solid fa-chart-line" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">Chưa chọn dự án</h3>
-                    <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed">Vui lòng chọn một dự án từ danh sách thả xuống ở góc phải để xem báo cáo thống kê chi tiết.</p>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">Chưa có dự án</h3>
+                    <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed">
+                        {myProjects.length === 0
+                            ? 'Bạn chưa tham gia dự án nào. Hãy tạo hoặc tham gia một dự án để xem thống kê.'
+                            : 'Vui lòng chọn một dự án từ danh sách thả xuống ở góc phải để xem báo cáo thống kê chi tiết.'}
+                    </p>
                 </div>
             ) : loading ? (
                 <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400 bg-white rounded-2xl border border-gray-100 shadow-sm py-20">

@@ -4,10 +4,14 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatNumber } from '@shared/utils/formatters';
+import ScoreSuggestionPanel from '@components/smart-assistant/ScoreSuggestionPanel';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function ReviewFormModal({ isOpen, onClose, review }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const { hasPermission } = useAccessControl();
+    const canManageReviews = hasPermission('HR.MANAGE_REVIEWS');
     const isEdit = !!review;
 
     const [formData, setFormData] = useState({
@@ -211,6 +215,32 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
                                 </div>
                             </div>
 
+                            {/* AI Suggestion Panel */}
+                            {formData.employeeId && formData.reviewPeriod && (
+                                <ScoreSuggestionPanel
+                                    employeeId={parseInt(formData.employeeId)}
+                                    reviewPeriod={formData.reviewPeriod}
+                                    onApply={(scores) => {
+                                        const toStr = (v) => {
+                                            if (v == null) return '7.0';
+                                            if (typeof v === 'number') return v.toFixed(1);
+                                            return String(v);
+                                        };
+                                        if (typeof scores === 'number') {
+                                            setFormData(prev => ({ ...prev, technicalScore: toStr(scores) }));
+                                        } else {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                technicalScore: toStr(scores.technicalScore),
+                                                attitudeScore: toStr(scores.attitudeScore),
+                                                softSkillsScore: toStr(scores.softSkillsScore),
+                                                teamworkScore: toStr(scores.teamworkScore),
+                                            }));
+                                        }
+                                    }}
+                                />
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <ScoreInput label="Chuyên môn" name="technicalScore" value={formData.technicalScore} onChange={handleChange} icon="fa-code" />
                                 <ScoreInput label="Thái độ" name="attitudeScore" value={formData.attitudeScore} onChange={handleChange} icon="fa-heart" />
@@ -264,7 +294,7 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
                         <button type="button" onClick={onClose} className="btn-ghost">
                             Hủy
                         </button>
-                        <button type="submit" disabled={isPending} className="btn-primary">
+                        <button type="submit" disabled={!canManageReviews || isPending} className={`btn-primary ${!canManageReviews ? 'opacity-50 cursor-not-allowed' : ''}`}>
                             {isPending ? (
                                 <><i className="fa-solid fa-spinner fa-spin mr-2" /> Đang xử lý...</>
                             ) : isEdit ? (

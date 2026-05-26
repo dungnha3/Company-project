@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAuthStore } from '@shared/stores/authStore';
 
 export default function AdminCompaniesPage() {
     const [companies, setCompanies] = useState([]);
@@ -9,6 +10,8 @@ export default function AdminCompaniesPage() {
     const [pagination, setPagination] = useState({ page: 0, size: 20, totalPages: 0, totalElements: 0 });
     const [search, setSearch] = useState('');
     const toast = useToast();
+    const { user } = useAuthStore();
+    const canManageCompanies = user?.roles?.includes('SYSTEM_ADMIN');
 
     const fetchCompanies = async (page = 0) => {
         setLoading(true);
@@ -137,24 +140,31 @@ export default function AdminCompaniesPage() {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleToggleStatus(company.companyId, company.isActive)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                                        company.isActive
-                                                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                                            : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                    }`}
-                                                >
-                                                    <i className={`fa-solid ${company.isActive ? 'fa-pause' : 'fa-play'} mr-1`} />
-                                                    {company.isActive ? 'Tạm ngưng' : 'Kích hoạt'}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(company.companyId)}
-                                                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                                                >
-                                                    <i className="fa-solid fa-trash mr-1" />
-                                                    Xóa
-                                                </button>
+                                                {canManageCompanies && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleToggleStatus(company.companyId, company.isActive)}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                                                company.isActive
+                                                                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                            }`}
+                                                        >
+                                                            <i className={`fa-solid ${company.isActive ? 'fa-pause' : 'fa-play'} mr-1`} />
+                                                            {company.isActive ? 'Tạm ngưng' : 'Kích hoạt'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(company.companyId)}
+                                                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                                        >
+                                                            <i className="fa-solid fa-trash mr-1" />
+                                                            Xóa
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {!canManageCompanies && (
+                                                    <span className="text-xs text-gray-400 italic">Chỉ xem</span>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

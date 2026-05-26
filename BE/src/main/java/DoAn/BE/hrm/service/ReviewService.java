@@ -340,10 +340,6 @@ public class ReviewService {
         // performanceScore (1-10) -> used as all 4 sub-scores for simplicity
         // reworkCount -> recorded in comments
         BigDecimal perf = request.getPerformanceScore();
-        BigDecimal weightTechnical = new BigDecimal("0.4");
-        BigDecimal weightAttitude = new BigDecimal("0.3");
-        BigDecimal weightSoftSkills = new BigDecimal("0.2");
-        BigDecimal weightTeamwork = new BigDecimal("0.1");
 
         StringBuilder sb = new StringBuilder();
         if (request.getReviewerNote() != null && !request.getReviewerNote().isBlank()) {
