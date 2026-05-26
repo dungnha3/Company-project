@@ -1,0 +1,38 @@
+# Ignore unnecessary files for Docker builds
+# Backend (BE)
+target/
+*.class
+*.jar
+*.war
+*.log
+.git/
+.gitignore
+**/.git/
+**/node_modules/
+**/node_modules
+*.md
+README*
+docs/
+Dockerfile
+docker-compose*.yml
+render.yaml
+.dockerignore
+
+# Frontend
+frontend-web-v2/node_modules/
+frontend-web-v2/dist/
+frontend-web-v2/.git/
+frontend-web-v2/.env*
+frontend-web-v2/*.log
+frontend-web-v2/vite.config.js.timestamp-*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db

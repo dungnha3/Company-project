@@ -1,0 +1,20 @@
+# Render Blueprint - Auto-deploy Backend
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: be-backend
+    env: java
+    region: singapore
+    plan: free
+    buildCommand: cd BE && mvn package -DskipTests -B
+    startCommand: java -jar BE/target/BE-0.0.1-SNAPSHOT.war
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - key: RENDER
+        value: true
+      - key: DDL_AUTO
+        value: validate
+      - key: JAVA_VERSION
+        value: 21

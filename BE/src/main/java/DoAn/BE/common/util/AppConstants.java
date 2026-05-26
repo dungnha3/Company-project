@@ -13,7 +13,9 @@ public class AppConstants {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/v3/api-docs.yaml",
-            "/api/storage/oauth2/callback"
+            "/api/storage/oauth2/callback",
+            // Actuator health check (for CI/CD)
+            "/actuator/**"
     };
 
     private AppConstants() {

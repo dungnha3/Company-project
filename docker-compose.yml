@@ -1,0 +1,46 @@
+# =====================================================
+# Docker Compose - Production Stack
+# =====================================================
+
+services:
+  # Backend API
+  be-backend:
+    build:
+      context: ./BE
+      dockerfile: Dockerfile
+    container_name: be-backend
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DDL_AUTO=validate
+      - RENDER=true
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+  # Frontend Web
+  fe-web:
+    build:
+      context: ./frontend-web-v2
+      dockerfile: Dockerfile
+    container_name: fe-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      be-backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
