@@ -78,7 +78,7 @@ public class InviteService {
             org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                     .getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof DoAn.BE.user.entity.User currentUser) {
-                CompanyMember caller = memberRepository.findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(
+                CompanyMember caller = memberRepository.findActiveMemberWithRoles(
                         currentUser.getUserId(), companyId)
                         .orElseThrow(() -> new BadRequestException("Không tìm thấy thành viên"));
                 if (!caller.hasAnyRole(CompanyRole.OWNER)) {
@@ -102,6 +102,7 @@ public class InviteService {
         member.getRoles().add(role);
         member.setPermissions(UserPermissions.defaultFor(role));
         member.setInvitedAt(LocalDateTime.now());
+        member.setJoinedAt(LocalDateTime.now()); // Satisfy NOT NULL constraint
         // invite.
         member.setIsActive(false);
 
@@ -119,6 +120,7 @@ public class InviteService {
         member.getRoles().add(role);
         member.setPermissions(UserPermissions.defaultFor(role));
         member.setInvitedAt(LocalDateTime.now());
+        member.setJoinedAt(LocalDateTime.now()); // Satisfy NOT NULL constraint
         member.setIsActive(false);
 
         memberRepository.save(member);

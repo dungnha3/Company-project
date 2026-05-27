@@ -115,6 +115,11 @@ public class IssueService {
 
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
 
+        // Notify the assignee by email when an issue is created with one already set
+        if (issue.getAssignee() != null) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+        }
+
         return convertToDTO(issue);
     }
 
@@ -247,6 +252,7 @@ public class IssueService {
         String oldTitle = issue.getTitle();
         String oldPriority = issue.getPriority() != null ? issue.getPriority().name() : null;
         String oldAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
+        Long oldAssigneeId = issue.getAssignee() != null ? issue.getAssignee().getUserId() : null;
         String oldDueDate = issue.getDueDate() != null ? issue.getDueDate().toString() : null;
         String oldStatusName = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : null;
 
@@ -337,6 +343,13 @@ public class IssueService {
         }
 
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
+
+        // Publish ASSIGNED event only when assignee is genuinely changed
+        boolean assigneeChanged = request.getAssigneeId() != null
+                && !request.getAssigneeId().equals(oldAssigneeId);
+        if (assigneeChanged) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+        }
 
         return convertToDTO(issue);
     }

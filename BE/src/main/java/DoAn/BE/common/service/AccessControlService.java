@@ -47,7 +47,7 @@ public class AccessControlService {
         }
 
         return memberRepository
-                .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+                .findActiveMemberWithRoles(user.getUserId(), companyId)
                 .orElse(null);
     }
 
@@ -258,7 +258,7 @@ public class AccessControlService {
         }
 
         CompanyMember member = memberRepository
-                .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+                .findActiveMemberWithRoles(user.getUserId(), companyId)
                 .orElseThrow(() -> new ForbiddenException("Bạn không phải là thành viên của công ty này"));
 
         if (isCompanyAdminOrOwner(member)) {
