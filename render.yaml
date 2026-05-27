@@ -1,6 +1,6 @@
 database:
-  name: company_project
-  databaseName: company_project
+  name: company-project-db
+  databaseName: company_project_db
   plan: free
 
 services:
