@@ -53,7 +53,7 @@ public class TimeLog {
     @Column(name = "work_date", nullable = false)
     private LocalDate workDate;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "created_at", nullable = false)

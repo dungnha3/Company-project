@@ -32,7 +32,7 @@ public class SalaryProposal extends TenantScopedEntity {
     @Column(name = "proposed_salary", precision = 15, scale = 2, nullable = false)
     private BigDecimal proposedSalary;
 
-    @Column(name = "reason", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
     @Enumerated(EnumType.STRING)

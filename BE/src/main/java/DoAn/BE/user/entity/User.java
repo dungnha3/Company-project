@@ -46,23 +46,23 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(name = "username", nullable = false, length = 50, unique = true, columnDefinition = "NVARCHAR(50)")
+    @Column(name = "username", nullable = false, length = 50, unique = true)
     private String username;
 
-    @Column(name = "full_name", length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(name = "full_name", length = 100)
     private String fullName;
 
     @Column(name = "password_hash", nullable = false, length = 255)
     @JsonIgnore
     private String passwordHash;
 
-    @Column(name = "email", unique = true, length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(name = "email", unique = true, length = 100)
     private String email;
 
-    @Column(name = "phone_number", length = 15, columnDefinition = "NVARCHAR(15)")
+    @Column(name = "phone_number", length = 15)
     private String phoneNumber;
 
-    @Column(name = "avatar_data", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "avatar_data", columnDefinition = "TEXT")
     private String avatarUrl;
 
     @Builder.Default
@@ -88,7 +88,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "last_seen")
     private LocalDateTime lastSeen;
 
-    @Column(name = "fcm_token", length = 500, columnDefinition = "NVARCHAR(500)")
+    @Column(name = "fcm_token", length = 500, columnDefinition = "TEXT")
     @JsonIgnore
     private String fcmToken;
 

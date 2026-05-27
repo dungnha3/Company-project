@@ -23,7 +23,7 @@ public class ProjectGoal {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(nullable = false, length = 500, columnDefinition = "NVARCHAR(500)")
+    @Column(nullable = false, length = 500, columnDefinition = "TEXT")
     private String title;
 
     @Column(name = "month_value", nullable = false)

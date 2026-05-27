@@ -26,10 +26,10 @@ public class Sprint extends DoAn.BE.common.entity.BaseEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String goal;
 
     @Column(name = "start_date")

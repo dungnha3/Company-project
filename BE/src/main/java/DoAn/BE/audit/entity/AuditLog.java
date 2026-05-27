@@ -71,7 +71,7 @@ public class AuditLog {
     private String userAgent;
 
     // Lý do (optional, cho các hành động nhạy cảm)
-    @Column(columnDefinition = "NVARCHAR(1000)")
+    @Column(columnDefinition = "TEXT")
     private String reason;
 
     // Mức độ nghiêm trọng (INFO, WARNING, CRITICAL)

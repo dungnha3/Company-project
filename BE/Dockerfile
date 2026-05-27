@@ -1,5 +1,6 @@
 # =====================================================
 # Multi-stage Dockerfile - Optimized for Docker Layer Caching
+# Build context: repo root (Render default)
 # =====================================================
 
 # Build stage
@@ -25,7 +26,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy the built artifact
-COPY --from=builder /app/target/BE-0.0.1-SNAPSHOT.war app.war
+COPY --from=builder /app/target/BE-0.0.1-SNAPSHOT.jar app.jar
 
 # Create non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
@@ -33,5 +34,5 @@ USER appuser
 
 EXPOSE 8080
 
-# JVM optimizations for containers
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-XX:+UseG1GC", "-jar", "app.war"]
+# JVM optimizations for tight 512MB RAM containers on Render (Optimized GC and JIT compilation)
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70.0", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1", "-jar", "app.jar"]
