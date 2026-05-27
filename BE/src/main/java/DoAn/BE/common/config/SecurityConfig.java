@@ -23,6 +23,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -111,9 +113,19 @@ public class SecurityConfig {
 
                 // Configurable CORS policies with robust manual parsing to support spaces and clear formatting
                 if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {
+                    // Use patterns for wildcard support with credentials
+                    if ("*".equals(allowedOrigins.trim())) {
+                        configuration.setAllowedOriginPatterns(List.of("*"));
+                    } else {
                         for (String origin : allowedOrigins.split(",")) {
-                                configuration.addAllowedOrigin(origin.trim());
+                            String trimmed = origin.trim();
+                            if (trimmed.contains("*")) {
+                                configuration.setAllowedOriginPatterns(List.of(trimmed));
+                            } else {
+                                configuration.addAllowedOrigin(trimmed);
+                            }
                         }
+                    }
                 }
 
                 if (allowedMethods != null && !allowedMethods.trim().isEmpty()) {
