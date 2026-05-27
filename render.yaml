@@ -1,10 +1,13 @@
-# Render Blueprint - Su dung Docker de build va cache layers
+database:
+  name: company_project
+  databaseName: company_project
+  plan: free
+
 services:
   - type: web
     name: be-backend
-    env: docker
+    runtime: docker
     dockerfilePath: ./BE/Dockerfile
-    dockerCommand: java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -jar app.war
     healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
@@ -13,20 +16,3 @@ services:
         value: validate
       - key: RENDER
         value: "true"
-      # Database
-      - key: DB_URL
-        sync: false
-      - key: DB_USERNAME
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
-      # Security
-      - key: JWT_SECRET
-        sync: false
-      - key: ENCRYPTION_KEY
-        sync: false
-      # CORS
-      - key: CORS_ALLOWED_ORIGINS
-        sync: false
-      - key: FRONTEND_URL
-        sync: false
