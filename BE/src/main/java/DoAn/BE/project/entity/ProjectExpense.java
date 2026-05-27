@@ -28,7 +28,7 @@ public class ProjectExpense extends TenantScopedEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(name = "expense_name", nullable = false, length = 200, columnDefinition = "NVARCHAR(200)")
+    @Column(name = "expense_name", nullable = false, length = 200)
     private String expenseName;
 
     @Column(name = "amount", precision = 15, scale = 2, nullable = false)
@@ -37,10 +37,10 @@ public class ProjectExpense extends TenantScopedEntity {
     @Column(name = "expense_date", nullable = false)
     private LocalDate expenseDate;
 
-    @Column(name = "category", length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(name = "category", length = 100)
     private String category;
 
-    @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)

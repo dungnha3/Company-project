@@ -60,13 +60,13 @@ public class Review extends TenantScopedEntity {
     @Column(name = "rating", length = 20)
     private Rating rating;
 
-    @Column(name = "comments", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "comments", columnDefinition = "TEXT")
     private String comments;
 
-    @Column(name = "next_goals", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "next_goals", columnDefinition = "TEXT")
     private String nextGoals;
 
-    @Column(name = "development_plan", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "development_plan", columnDefinition = "TEXT")
     private String developmentPlan;
 
     @Enumerated(EnumType.STRING)

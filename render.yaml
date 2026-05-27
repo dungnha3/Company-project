@@ -8,6 +8,7 @@ services:
     name: be-backend
     runtime: docker
     dockerfilePath: ./BE/Dockerfile
+    dockerContext: ./BE
     healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE

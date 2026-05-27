@@ -39,10 +39,10 @@ public class IssueCustomField {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @Column(nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(length = 255)
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -52,7 +52,7 @@ public class IssueCustomField {
     // JSON options for SELECT/MULTI_SELECT types
     // Format: ["Option 1", "Option 2", "Option 3"]
     // /
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String options;
 
     @Column(name = "is_required")
@@ -67,7 +67,7 @@ public class IssueCustomField {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "default_value", columnDefinition = "NVARCHAR(500)")
+    @Column(name = "default_value", columnDefinition = "TEXT")
     private String defaultValue;
 
     @OneToMany(mappedBy = "customField", cascade = CascadeType.ALL, orphanRemoval = true)

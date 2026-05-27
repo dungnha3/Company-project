@@ -47,7 +47,7 @@ public class Employee extends TenantScopedEntity {
     @JsonIgnore
     private DoAn.BE.company.entity.CompanyMember companyMember;
 
-    @Column(name = "full_name", nullable = false, length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
     @Column(name = "id_card", unique = true, length = 200) // Increased for encrypted data
@@ -62,7 +62,7 @@ public class Employee extends TenantScopedEntity {
     @Column(name = "gender", nullable = false, length = 10)
     private Gender gender;
 
-    @Column(name = "address", length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(name = "address", length = 255)
     private String address;
 
     @Column(name = "phone", length = 200) // Increased for encrypted data

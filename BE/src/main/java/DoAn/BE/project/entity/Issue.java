@@ -49,13 +49,13 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @JoinColumn(name = "phase_id")
     private ProjectPhase phase; // Giai đoạn (Waterfall)
 
-    @Column(name = "issue_key", nullable = false, unique = true, length = 20, columnDefinition = "NVARCHAR(20)")
+    @Column(name = "issue_key", nullable = false, unique = true, length = 20)
     private String issueKey; // VD: PROJ-001, PROJ-002
 
-    @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)

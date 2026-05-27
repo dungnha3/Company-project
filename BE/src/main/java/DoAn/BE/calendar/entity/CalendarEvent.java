@@ -31,10 +31,10 @@ public class CalendarEvent {
     @Column(name = "event_id")
     private Long eventId;
 
-    @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "start_time", nullable = false)
@@ -52,7 +52,7 @@ public class CalendarEvent {
     @Column(name = "event_type", length = 20)
     private EventType eventType = EventType.MEETING;
 
-    @Column(length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(length = 255)
     private String location;
 
     @Column(name = "meeting_link", length = 500)

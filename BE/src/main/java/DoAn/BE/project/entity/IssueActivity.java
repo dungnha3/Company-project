@@ -34,16 +34,16 @@ public class IssueActivity {
     @Column(name = "activity_type", nullable = false, length = 50)
     private ActivityType activityType;
 
-    @Column(name = "field_name", length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(name = "field_name", length = 100)
     private String fieldName;
 
-    @Column(name = "old_value", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "old_value", columnDefinition = "TEXT")
     private String oldValue;
 
-    @Column(name = "new_value", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "created_at")

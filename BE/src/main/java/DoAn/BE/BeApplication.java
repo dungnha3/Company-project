@@ -10,6 +10,12 @@ import org.springframework.context.annotation.FilterType;
 public class BeApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(BeApplication.class, args);
+		try {
+			SpringApplication.run(BeApplication.class, args);
+		} catch (Throwable e) {
+			System.err.println("=== FATAL STARTUP EXCEPTION ===");
+			e.printStackTrace(System.err);
+			System.exit(1);
+		}
 	}
 }
