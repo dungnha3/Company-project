@@ -12,33 +12,56 @@ env:
 
 jobs:
   # =====================================================
-  # Job 1: Backend - Build & Upload Artifact
+  # Job 1: Backend - Build & Push Docker Image to GHCR
   # =====================================================
-  backend-build:
-    name: Backend Build (Java ${{ env.JAVA_VERSION }})
+  backend-build-and-push:
+    name: Backend Build & Push to GHCR
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
 
-      - name: Build Backend
-        run: cd BE && mvn package -DskipTests -B
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Upload WAR artifact
-        uses: actions/upload-artifact@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          name: backend-war
-          path: BE/target/BE-0.0.1-SNAPSHOT.war
-          retention-days: 1
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./BE
+          file: ./BE/Dockerfile
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Dung' || github.ref == 'refs/heads/master') }}
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/be-backend:latest
+            ghcr.io/${{ env.OWNER_LC }}/be-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Render Deploy Webhook
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Dung' || github.ref == 'refs/heads/master') && secrets.RENDER_DEPLOY_HOOK != ''
+        run: |
+          echo "Triggering Render Deploy Hook..."
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
 
   # =====================================================
   # Job 2: Frontend - Build
@@ -75,40 +98,6 @@ jobs:
           name: frontend-dist
           path: frontend-web-v2/dist
           retention-days: 1
-
-  # =====================================================
-  # Job 3: Deploy Backend to Render (Auto-Deploy via render.yaml)
-  # =====================================================
-  deploy-backend:
-    name: Deploy Backend to Render
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: backend-build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Dung' || github.ref == 'refs/heads/master')
-    environment: production
-
-    steps:
-      - name: Download WAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-war
-          path: ./dist
-
-      - name: Deploy to Render via Blueprint
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          echo "Deploying via render.yaml (Docker layers cached on Render)..."
-          RESPONSE=$(curl -s -X POST "https://api.render.com/v1/blueprints" \
-            -H "Authorization: Bearer $RENDER_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "serviceName": "be-backend",
-              "repo": "'$GITHUB_REPOSITORY'",
-              "branch": "'$GITHUB_REF_NAME'",
-              "dry": false
-            }')
-          echo "Deployment triggered: $RESPONSE"
 
   # =====================================================
   # Job 4: Deploy Frontend to Vercel
