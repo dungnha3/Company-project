@@ -1295,21 +1295,23 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 <div className="flex items-center gap-2 flex-wrap">
                     {issue.statusName === 'Review' && <ReviewSlaChip issue={issue} />}
                 </div>
-                {canManageIssues && issue.statusName !== 'Done' ? (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            window.dispatchEvent(new CustomEvent('submit-issue-kanban', { detail: { issue } }));
-                        }}
-                        className="px-2.5 py-1 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-[10px] font-medium transition-colors"
-                    >
-                        Nộp
-                    </button>
-                ) : canManageIssues ? (
-                    <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
-                        <i className="fa-solid fa-check mr-1 text-[8px]" />
-                    </span>
-                ) : null}
+                {canManageIssues && (
+                    issue.statusName !== 'Done' ? (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                window.dispatchEvent(new CustomEvent('submit-issue-kanban', { detail: { issue } }));
+                            }}
+                            className="px-2.5 py-1 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-[10px] font-medium transition-colors"
+                        >
+                            Nộp
+                        </button>
+                    ) : (
+                        <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
+                            <i className="fa-solid fa-check mr-1 text-[8px]" />
+                        </span>
+                    )
+                )}
             </div>
         </div>
     );
