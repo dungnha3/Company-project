@@ -141,6 +141,29 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
     });
 
+    // Delete issue mutation
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            await apiClient.delete(`/api/issues/${issue.issueId}`);
+        },
+        onSuccess: () => {
+            toast.success('Đã xóa công việc');
+            queryClient.invalidateQueries(['projectIssues']);
+            queryClient.invalidateQueries(['projectBacklog']);
+            queryClient.invalidateQueries(['sprintIssues']);
+            queryClient.invalidateQueries(['myIssues']);
+            onUpdate?.();
+            onClose();
+        },
+        onError: () => toast.error('Lỗi khi xóa công việc')
+    });
+
+    const handleDelete = () => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa công việc này không? Mọi dữ liệu liên quan sẽ bị xóa vĩnh viễn.')) {
+            deleteMutation.mutate();
+        }
+    };
+
     if (!issue) return null;
 
     const currentIssue = fullIssue || issue;
@@ -555,7 +578,19 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                    <div>
+                        {canManageIssues && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={deleteMutation.isPending}
+                                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <i className="fa-solid fa-trash-can" />
+                                {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa công việc'}
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={onClose}
                         className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

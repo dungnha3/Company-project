@@ -85,7 +85,7 @@ export default function SprintTab({ projectId }) {
                 <TimelineView projectId={projectId} />
             )}
 
-            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
+            <SmartAssistantFAB project={null} projectId={projectId} />
         </div>
     );
 }
