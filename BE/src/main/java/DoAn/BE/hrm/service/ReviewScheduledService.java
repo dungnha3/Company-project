@@ -4,14 +4,12 @@ import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.entity.CompanySettings;
 import DoAn.BE.company.repository.CompanyRepository;
-import DoAn.BE.hrm.dto.BulkReviewRequest;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Review;
 import DoAn.BE.hrm.entity.Review.ReviewStatus;
 import DoAn.BE.hrm.entity.Review.ReviewType;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.repository.ReviewRepository;
-import DoAn.BE.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -31,7 +28,6 @@ public class ReviewScheduledService {
     private final CompanyRepository companyRepository;
     private final EmployeeRepository employeeRepository;
     private final ReviewRepository reviewRepository;
-    private final ReviewService reviewService;
 
     /**
      * Chạy vào ngày 1 hàng tháng lúc 9h sáng.
@@ -79,10 +75,12 @@ public class ReviewScheduledService {
             ReviewType reviewType = inferReviewType(settings.getReviewCycleType());
 
             // Lấy tất cả employee active chưa có review cho kỳ này
-            List<Object[]> employeesNeedingReview = reviewRepository.findEmployeesNeedingReview(currentPeriod, reviewType.name());
+            List<Object[]> employeesNeedingReview = reviewRepository.findEmployeesNeedingReview(currentPeriod,
+                    reviewType.name());
 
             if (employeesNeedingReview.isEmpty()) {
-                log.info("Công ty {}: Không có nhân viên nào cần đánh giá cho kỳ {}", company.getCompanyId(), currentPeriod);
+                log.info("Công ty {}: Không có nhân viên nào cần đánh giá cho kỳ {}", company.getCompanyId(),
+                        currentPeriod);
                 settings.setLastReviewAutoCreate(currentPeriod);
                 return;
             }
@@ -95,7 +93,8 @@ public class ReviewScheduledService {
             for (Employee employee : activeEmployees) {
                 var existing = reviewRepository.findByEmployeeAndPeriodAndType(
                         employee.getEmployeeId(), currentPeriod, reviewType);
-                if (existing.isPresent()) continue;
+                if (existing.isPresent())
+                    continue;
 
                 Review review = new Review();
                 review.setEmployee(employee);
@@ -143,7 +142,8 @@ public class ReviewScheduledService {
     }
 
     private ReviewType inferReviewType(String cycleType) {
-        if ("MONTHLY".equals(cycleType)) return ReviewType.PERIODIC;
+        if ("MONTHLY".equals(cycleType))
+            return ReviewType.PERIODIC;
         return ReviewType.PERIODIC;
     }
 
@@ -158,7 +158,8 @@ public class ReviewScheduledService {
                 String[] parts = period.split("-");
                 return LocalDate.of(Integer.parseInt(parts[1]), Integer.parseInt(parts[0]), 1);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return LocalDate.now();
     }
 }

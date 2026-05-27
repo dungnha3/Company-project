@@ -191,6 +191,31 @@ export default function ScoreSuggestionPanel({ issueId, employeeId, reviewPeriod
                             >
                                 Áp dụng tất cả →
                             </button>
+
+                            <div className="relative">
+                                <select
+                                    onChange={(e) => {
+                                        const field = e.target.value;
+                                        if (!field) return;
+                                        const fieldMap = {
+                                            'technicalScore': suggestion.suggestedScores.technicalScore,
+                                            'attitudeScore': suggestion.suggestedScores.attitudeScore,
+                                            'softSkillsScore': suggestion.suggestedScores.softSkillsScore,
+                                            'teamworkScore': suggestion.suggestedScores.teamworkScore,
+                                        };
+                                        handleApply({ [field]: fieldMap[field] });
+                                        e.target.value = '';
+                                    }}
+                                    className="w-full py-2 px-3 border border-amber-200 bg-white text-gray-600 rounded-lg text-sm hover:bg-amber-50 transition-colors cursor-pointer"
+                                    defaultValue=""
+                                >
+                                    <option value="">Chỉ áp dụng 1 tiêu chí ▼</option>
+                                    <option value="technicalScore">Chuyên môn ({suggestion.suggestedScores.technicalScore})</option>
+                                    <option value="attitudeScore">Thái độ ({suggestion.suggestedScores.attitudeScore})</option>
+                                    <option value="softSkillsScore">Kỹ năng mềm ({suggestion.suggestedScores.softSkillsScore})</option>
+                                    <option value="teamworkScore">Làm việc nhóm ({suggestion.suggestedScores.teamworkScore})</option>
+                                </select>
+                            </div>
                         </div>
                     )}
                 </>

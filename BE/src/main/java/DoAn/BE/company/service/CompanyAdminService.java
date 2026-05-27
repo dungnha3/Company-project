@@ -1,6 +1,5 @@
 package DoAn.BE.company.service;
 
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +35,6 @@ public class CompanyAdminService {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySettingsRepository companySettingsRepository;
 
-
     @Transactional(readOnly = true)
     public List<CompanyDto.CompanyResponse> getAllCompanies() {
         return companyRepository.findAll()
@@ -44,6 +42,7 @@ public class CompanyAdminService {
                 .map(this::mapCompanyToResponse)
                 .collect(Collectors.toList());
     }
+
     @Transactional(readOnly = true)
     public Page<CompanyDto.CompanyResponse> getAllCompaniesPaged(Pageable pageable) {
         return companyRepository.findAll(pageable)
@@ -80,8 +79,6 @@ public class CompanyAdminService {
         log.info("[System Admin] Đã cập nhật thông tin công ty: {}", company.getName());
         return companyRepository.save(company);
     }
-
-
 
     @Transactional
     public boolean toggleCompanyStatus(Long companyId) {

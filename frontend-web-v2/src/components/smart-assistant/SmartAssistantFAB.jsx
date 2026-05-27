@@ -10,14 +10,25 @@ export default function SmartAssistantFAB({ project, projectId, sprint }) {
     // Resolve projectId
     const resolvedProjectId = project?.projectId || projectId;
 
-    // If project is not fully loaded, fetch minimal info
-    const { data: projectData } = useQuery({
+    // Fetch project info if not provided
+    const { data: fetchedProject } = useQuery({
         queryKey: ['project-minimal', resolvedProjectId],
         queryFn: async () => (await apiClient.get(`/api/projects/${resolvedProjectId}`)).data,
         enabled: !!resolvedProjectId && !project,
     });
 
-    const resolvedProject = project || projectData;
+    // Fetch active sprint if not provided (useful for SprintTab)
+    const { data: activeSprint } = useQuery({
+        queryKey: ['project-active-sprint', resolvedProjectId],
+        queryFn: async () => {
+            const sprints = (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(resolvedProjectId))).data;
+            return (sprints || []).find(s => s.status === 'ACTIVE') || null;
+        },
+        enabled: !!resolvedProjectId && !sprint,
+    });
+
+    const resolvedProject = project || fetchedProject;
+    const resolvedSprint = sprint || activeSprint;
 
     if (!resolvedProjectId) return null;
 
@@ -34,7 +45,7 @@ export default function SmartAssistantFAB({ project, projectId, sprint }) {
             {isOpen && (
                 <SmartAssistantModal
                     project={resolvedProject}
-                    sprint={sprint}
+                    sprint={resolvedSprint}
                     onClose={() => setIsOpen(false)}
                 />
             )}

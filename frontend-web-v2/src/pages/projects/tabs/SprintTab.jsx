@@ -85,13 +85,10 @@ export default function SprintTab({ projectId }) {
                 <TimelineView projectId={projectId} />
             )}
 
-            <SmartAssistantFAB projectId={projectId} />
+            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
         </div>
     );
 }
-
-// ─── FAB already imported at top ───────────────────────────────────────────
-// Duplicate removed below
 
 // ─── Sprint View ───────────────────────────────────────────────────────
 function SprintView({ projectId }) {
@@ -139,6 +136,15 @@ function SprintView({ projectId }) {
     const activeSprint = sprints.find(s => s.status === 'ACTIVE');
     const planningSprints = sprints.filter(s => s.status === 'PLANNING');
     const completedSprints = sprints.filter(s => s.status === 'COMPLETED');
+
+    const { data: sprintPrediction } = useQuery({
+        queryKey: ['smart-sprint-prediction', activeSprint?.sprintId],
+        queryFn: async () => {
+            return (await apiClient.get(`/api/smart-assistant/sprint-prediction/${activeSprint.sprintId}`)).data;
+        },
+        enabled: !!activeSprint?.sprintId,
+        staleTime: 2 * 60 * 1000,
+    });
 
     if (isLoading) {
         return <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-3xl text-indigo-500" /></div>;
@@ -197,6 +203,9 @@ function SprintView({ projectId }) {
                             <p className="mt-3 text-sm text-gray-600 border-t border-indigo-200 pt-3">
                                 <strong>Goal:</strong> {activeSprint.goal}
                             </p>
+                        )}
+                        {sprintPrediction && sprintPrediction.alertLevel !== 'OK' && (
+                            <SprintAlertBanner prediction={sprintPrediction} />
                         )}
                         {expandedSprint === activeSprint.sprintId && (
                             <SprintIssueList
@@ -1006,6 +1015,69 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+}
+
+// ─── Sprint Alert Banner ───────────────────────────────────────────────────────
+function SprintAlertBanner({ prediction }) {
+    const isCritical = prediction.alertLevel === 'CRITICAL';
+
+    const bgColor = isCritical ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200';
+    const iconColor = isCritical ? 'text-red-500' : 'text-amber-500';
+    const icon = isCritical ? 'fa-circle-exclamation' : 'fa-triangle-exclamation';
+
+    const confidencePercent = prediction.onTimeConfidence != null
+        ? Math.round(prediction.onTimeConfidence * 100)
+        : null;
+
+    const showProgress = prediction.onTimeConfidence != null;
+
+    return (
+        <div className={`mt-3 p-4 rounded-xl border ${bgColor} animate-in slide-in-from-top-2 duration-300`}>
+            <div className="flex items-start gap-3">
+                <i className={`fa-solid ${icon} text-xl ${iconColor} mt-0.5 flex-shrink-0`} />
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <p className={`font-bold ${isCritical ? 'text-red-700' : 'text-amber-700'}`}>
+                            {isCritical ? 'Sprint có nguy cơ thất bại cao!' : 'Cần đẩy nhanh!'}
+                        </p>
+                        {confidencePercent != null && (
+                            <span className={`text-sm font-bold ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>
+                                Confidence hoàn thành đúng hạn: {confidencePercent}%
+                            </span>
+                        )}
+                    </div>
+
+                    {showProgress && (
+                        <div className="mt-2 relative h-2 bg-white/80 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all ${isCritical ? 'bg-red-400' : 'bg-amber-400'}`}
+                                style={{ width: `${confidencePercent}%` }}
+                            />
+                            <div className="absolute top-0 left-0 h-full w-0.5 bg-gray-800 animate-pulse" />
+                        </div>
+                    )}
+
+                    <div className="mt-2 space-y-1">
+                        {prediction.recommendations?.map((rec, i) => (
+                            <p key={i} className={`text-sm ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>
+                                {rec}
+                            </p>
+                        ))}
+                    </div>
+
+                    {prediction.daysRemaining != null && (
+                        <p className={`mt-2 text-xs ${isCritical ? 'text-red-500' : 'text-amber-500'}`}>
+                            Còn {prediction.daysRemaining} ngày
+                            {prediction.predictedCompletionDate && ` • Dự kiến hoàn thành: ${prediction.predictedCompletionDate}`}
+                            {prediction.autoTuningInfo && prediction.autoTuningInfo.source === 'auto-tuned' && (
+                                <span className="ml-2 text-purple-500">• ML tuned: α={prediction.autoTuningInfo.alpha} β={prediction.autoTuningInfo.beta}</span>
+                            )}
+                        </p>
+                    )}
+                </div>
             </div>
         </div>
     );

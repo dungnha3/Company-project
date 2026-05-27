@@ -301,17 +301,26 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Ước tính (giờ)</label>
-                                <div className="relative">
-                                    <i className="fa-solid fa-clock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                        type="number"
-                                        name="estimatedHours"
-                                        value={form.estimatedHours}
-                                        onChange={handleInputChange}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
-                                        placeholder="8"
-                                        min="0"
-                                        step="0.5"
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <i className="fa-solid fa-clock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            type="number"
+                                            name="estimatedHours"
+                                            value={form.estimatedHours}
+                                            onChange={handleInputChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
+                                            placeholder="8"
+                                            min="0"
+                                            step="0.5"
+                                        />
+                                    </div>
+                                    <AIAutoEstimateButton
+                                        projectId={form.projectId ? parseInt(form.projectId) : null}
+                                        assigneeId={form.assigneeId ? parseInt(form.assigneeId) : null}
+                                        weight={form.weight ? parseInt(form.weight) : null}
+                                        issueType={form.issueType}
+                                        onApply={(hours) => setForm(prev => ({ ...prev, estimatedHours: hours.toString() }))}
                                     />
                                 </div>
                             </div>
@@ -422,6 +431,107 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                     </div>
                 </form>
             </div>
+        </div>
+    );
+}
+
+// ─── AI Auto Estimate Button ─────────────────────────────────────────────────
+function AIAutoEstimateButton({ projectId, assigneeId, weight, issueType, onApply }) {
+    const [showTooltip, setShowTooltip] = useState(false);
+
+    const { data: estimate, isLoading, isFetching } = useQuery({
+        queryKey: ['smart-estimate', projectId, assigneeId, weight, issueType],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (projectId) params.append('projectId', projectId);
+            if (assigneeId) params.append('assigneeId', assigneeId);
+            if (weight) params.append('weight', weight);
+            if (issueType) params.append('issueType', issueType);
+            return (await apiClient.get(`/api/smart-assistant/estimate?${params.toString()}`)).data;
+        },
+        enabled: !!projectId && !!assigneeId,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const canEstimate = !!projectId && !!assigneeId;
+
+    const handleClick = () => {
+        if (!canEstimate) return;
+        if (estimate?.suggestedHours != null) {
+            onApply(estimate.suggestedHours);
+            setShowTooltip(true);
+            setTimeout(() => setShowTooltip(false), 3000);
+        }
+    };
+
+    const getConfidenceColor = (conf) => {
+        if (conf === 'high') return 'bg-green-100 text-green-700 border-green-200';
+        if (conf === 'medium') return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+        return 'bg-gray-100 text-gray-600 border-gray-200';
+    };
+
+    const getMethodBadge = (method) => {
+        if (method === 'OLS') return { label: 'ML', color: 'bg-purple-100 text-purple-700' };
+        if (method === 'Heuristic') return { label: 'Heuristic', color: 'bg-blue-100 text-blue-700' };
+        return { label: 'Baseline', color: 'bg-gray-100 text-gray-500' };
+    };
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={handleClick}
+                disabled={!canEstimate || isLoading || isFetching}
+                title={!canEstimate ? 'Cần chọn dự án và người thực hiện trước' : 'AI gợi ý giờ'}
+                className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    !canEstimate
+                        ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed'
+                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                }`}
+            >
+                {isLoading || isFetching ? (
+                    <i className="fa-solid fa-circle-notch fa-spin text-xs" />
+                ) : (
+                    <i className="fa-solid fa-wand-magic-sparkles text-xs" />
+                )}
+                <span className="hidden sm:inline">AI gợi ý</span>
+            </button>
+
+            {/* Tooltip / result popup */}
+            {showTooltip && estimate && (
+                <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-amber-200 rounded-xl shadow-xl p-4 w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-700">Gợi ý từ AI</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getConfidenceColor(estimate.confidence)}`}>
+                            {estimate.confidence === 'high' ? 'Cao' : estimate.confidence === 'medium' ? 'Trung bình' : 'Thấp'}
+                        </span>
+                    </div>
+                    <div className="flex items-end gap-2 mb-1">
+                        <span className="text-3xl font-bold text-amber-600">{estimate.suggestedHours}</span>
+                        <span className="text-sm text-gray-400 mb-1">giờ</span>
+                        {estimate.method && (
+                            <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${getMethodBadge(estimate.method).color}`}>
+                                {getMethodBadge(estimate.method).label}
+                            </span>
+                        )}
+                    </div>
+                    {estimate.explanation ? (
+                        <p className="text-xs text-gray-600 leading-relaxed">{estimate.explanation}</p>
+                    ) : (
+                        <p className="text-xs text-gray-500 leading-relaxed">{estimate.basis}</p>
+                    )}
+                    {estimate.derivedFromNSamples > 0 && estimate.rSquared != null && (
+                        <p className="text-[10px] text-gray-400 mt-1">R²={estimate.rSquared} • {estimate.derivedFromNSamples} samples</p>
+                    )}
+                </div>
+            )}
+
+            {/* Disabled hint */}
+            {!canEstimate && (
+                <span className="absolute -top-7 left-0 text-[10px] text-gray-400 whitespace-nowrap hidden group-hover:block">
+                    Chọn dự án & người làm
+                </span>
+            )}
         </div>
     );
 }

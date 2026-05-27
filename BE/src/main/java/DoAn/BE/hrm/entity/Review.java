@@ -1,8 +1,6 @@
 package DoAn.BE.hrm.entity;
 
 import DoAn.BE.common.entity.TenantScopedEntity;
-import DoAn.BE.hrm.entity.Employee;
-import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Filter;
@@ -133,11 +131,11 @@ public class Review extends TenantScopedEntity {
     }
 
     public enum ReviewType {
-        SPRINT_REVIEW,       // Đánh giá sau sprint
-        PROJECT_COMPLETION,  // Đánh giá khi kết thúc dự án
-        PERIODIC,            // Định kỳ (tháng/quý)
-        PROJECT,             // Gắn với dự án cụ thể
-        PROMOTION            // Thăng chức (không liên quan lương)
+        SPRINT_REVIEW, // Đánh giá sau sprint
+        PROJECT_COMPLETION, // Đánh giá khi kết thúc dự án
+        PERIODIC, // Định kỳ (tháng/quý)
+        PROJECT, // Gắn với dự án cụ thể
+        PROMOTION // Thăng chức (không liên quan lương)
     }
 
     public enum Rating {

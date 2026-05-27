@@ -13,7 +13,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
     const canCreateReview = hasPermission('REVIEW.CREATE');
 
     const [form, setForm] = useState({
-        performanceScore: 5,
+        performanceScore: 7,
         reworkCount: 0,
         reviewerNote: '',
     });
@@ -73,7 +73,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                                 <span className="ml-2">
                                     <ScoreSuggestionPanel
                                         issueId={issue.issueId}
-                                        onApply={(score) => setForm(prev => ({ ...prev, performanceScore: Math.round(score) }))}
+                                        onApply={(score) => setForm(prev => ({ ...prev, performanceScore: score }))}
                                     />
                                 </span>
                             </label>
@@ -82,11 +82,12 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                                     type="range"
                                     min="1"
                                     max="10"
+                                    step="0.5"
                                     value={form.performanceScore}
-                                    onChange={(e) => setForm(prev => ({ ...prev, performanceScore: parseInt(e.target.value) }))}
+                                    onChange={(e) => setForm(prev => ({ ...prev, performanceScore: parseFloat(e.target.value) }))}
                                     className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                                 />
-                                <span className="font-bold text-lg text-emerald-600 w-8 text-center">{form.performanceScore}</span>
+                                <span className="font-bold text-lg text-emerald-600 w-10 text-center">{form.performanceScore}</span>
                             </div>
                         </div>
 

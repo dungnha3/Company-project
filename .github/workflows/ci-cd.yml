@@ -77,7 +77,7 @@ jobs:
           retention-days: 1
 
   # =====================================================
-  # Job 3: Deploy Backend to Render
+  # Job 3: Deploy Backend to Render (Auto-Deploy via render.yaml)
   # =====================================================
   deploy-backend:
     name: Deploy Backend to Render
@@ -94,17 +94,20 @@ jobs:
           name: backend-war
           path: ./dist
 
-      - name: Deploy to Render
+      - name: Deploy to Render via Blueprint
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_ID_BE: ${{ secrets.RENDER_SERVICE_ID_BE }}
         run: |
-          echo "Triggering Render deployment via API..."
-          RESPONSE=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID_BE/deploys" \
+          echo "Deploying via render.yaml (Docker layers cached on Render)..."
+          RESPONSE=$(curl -s -X POST "https://api.render.com/v1/blueprints" \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Content-Type: application/json" \
-            -d '{"clearCache": true}')
-          
+            -d '{
+              "serviceName": "be-backend",
+              "repo": "'$GITHUB_REPOSITORY'",
+              "branch": "'$GITHUB_REF_NAME'",
+              "dry": false
+            }')
           echo "Deployment triggered: $RESPONSE"
 
   # =====================================================

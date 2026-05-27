@@ -1,15 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
-import { ENDPOINTS } from '@shared/api/endpoints';
 import TaskAssignmentPanel from './TaskAssignmentPanel';
-import InsightCard from './common/InsightCard';
 
 const TABS = [
-    { key: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
+    { key: 'dashboard', label: 'Tổng quan', icon: 'fa-chart-line' },
     { key: 'kanban', label: 'Kanban', icon: 'fa-columns' },
     { key: 'sprint', label: 'Sprint', icon: 'fa-bolt' },
-    { key: 'hr', label: 'HR', icon: 'fa-user-check' },
+    { key: 'hr', label: 'Đánh giá', icon: 'fa-star' },
 ];
 
 export default function SmartAssistantModal({ project, sprint, onClose }) {
@@ -46,36 +44,24 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
         enabled: !!sprintId && (activeTab === 'sprint' || activeTab === 'dashboard'),
     });
 
-    const { data: projectRisk, isLoading: loadingRisk } = useQuery({
-        queryKey: ['smart-risk', projectId],
+    const { data: sprintPrediction, isLoading: loadingPrediction } = useQuery({
+        queryKey: ['sprint-prediction', sprintId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant?action=project-risk&projectId=${projectId}`)).data;
+            return (await apiClient.get(`/api/smart-assistant/sprint-prediction/${sprintId}`)).data;
         },
-        enabled: !!projectId && (activeTab === 'sprint' || activeTab === 'dashboard'),
+        enabled: !!sprintId && activeTab === 'sprint',
     });
 
-    const isLoading = loadingSummary || loadingWorkload || loadingSprintHealth || loadingRisk;
+    const isLoading = loadingSummary || loadingWorkload || loadingSprintHealth || loadingPrediction;
 
-    const getScoreColor = (score, type = 'health') => {
-        if (type === 'risk') {
-            if (score >= 70) return 'text-red-600';
-            if (score >= 50) return 'text-orange-500';
-            if (score >= 25) return 'text-yellow-500';
-            return 'text-green-600';
-        }
+    const getScoreColor = (score) => {
         if (score >= 80) return 'text-green-600';
         if (score >= 60) return 'text-yellow-500';
         if (score >= 40) return 'text-orange-500';
         return 'text-red-600';
     };
 
-    const getBgColor = (score, type = 'health') => {
-        if (type === 'risk') {
-            if (score >= 70) return 'bg-red-50 border-red-200';
-            if (score >= 50) return 'bg-orange-50 border-orange-200';
-            if (score >= 25) return 'bg-yellow-50 border-yellow-200';
-            return 'bg-green-50 border-green-200';
-        }
+    const getBgColor = (score) => {
         if (score >= 80) return 'bg-green-50 border-green-200';
         if (score >= 60) return 'bg-yellow-50 border-yellow-200';
         if (score >= 40) return 'bg-orange-50 border-orange-200';
@@ -139,95 +125,13 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                             {/* ===== DASHBOARD TAB ===== */}
                             {activeTab === 'dashboard' && (
                                 <div className="space-y-4">
-                                    {/* Sprint Health */}
-                                    {(sprintHealth || summary?.sprintHealth) && (() => {
-                                        const sh = sprintHealth || summary?.sprintHealth;
-                                        return (
-                                            <div className={`rounded-xl border p-4 ${getBgColor(sh?.healthScore, 'health')}`}>
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <i className="fa-solid fa-heart-pulse text-indigo-500" />
-                                                        <span className="font-semibold text-gray-700">Sprint Health</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`text-2xl font-bold ${getScoreColor(sh?.healthScore, 'health')}`}>{sh?.healthScore || 0}</span>
-                                                        <span className="text-sm text-gray-400">/100</span>
-                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${sh?.healthScore >= 80 ? 'bg-green-100 text-green-700' : sh?.healthScore >= 60 ? 'bg-yellow-100 text-yellow-700' : sh?.healthScore >= 40 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
-                                                            {sh?.label || 'N/A'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                {/* Metrics */}
-                                                <div className="space-y-2">
-                                                    {[
-                                                        { label: 'Completion Rate', value: sh?.metrics?.completionRate, weight: '30%' },
-                                                        { label: 'On-Time Rate', value: sh?.metrics?.onTimeRate, weight: '25%' },
-                                                        { label: 'Rework Rate', value: sh?.metrics?.reworkRate, weight: '20%' },
-                                                        { label: 'Velocity Accuracy', value: sh?.metrics?.velocityAccuracy, weight: '15%' },
-                                                        { label: 'Burnout Risk', value: sh?.metrics?.burnoutRisk, weight: '10%', inverted: true },
-                                                    ].map(m => (
-                                                        <div key={m.label} className="flex items-center gap-2">
-                                                            <span className="text-xs text-gray-500 w-32">{m.label}</span>
-                                                            <div className="flex-1 h-2 bg-white/80 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className={`h-full rounded-full ${m.inverted ? (m.value > 50 ? 'bg-red-400' : 'bg-green-400') : 'bg-indigo-500'}`}
-                                                                    style={{ width: `${Math.min(m.value || 0, 100)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-xs font-medium text-gray-600 w-8 text-right">{m.value || 0}%</span>
-                                                            <span className="text-[10px] text-gray-400 w-7">{m.weight}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {sh?.recommendation && (
-                                                    <div className="mt-3 pt-3 border-t border-gray-200">
-                                                        <span className="text-sm text-gray-600 italic">💡 {sh.recommendation}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
+                                    {/* Sprint Delay Alert (from Holt's prediction) */}
+                                    {sprintHealth?.sprint && (
+                                        <SprintDelayAlert projectId={projectId} sprintId={sprintId} />
+                                    )}
 
-                                    {/* Project Risk */}
-                                    {(projectRisk || summary?.projectRisk) && (() => {
-                                        const pr = projectRisk || summary?.projectRisk;
-                                        if (!pr) return null;
-                                        return (
-                                            <div className={`rounded-xl border p-4 ${getBgColor(pr?.riskScore, 'risk')}`}>
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <i className="fa-solid fa-triangle-exclamation text-orange-500" />
-                                                        <span className="font-semibold text-gray-700">Project Risk</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`text-2xl font-bold ${getScoreColor(pr?.riskScore, 'risk')}`}>{pr?.riskScore || 0}</span>
-                                                        <span className="text-sm text-gray-400">/100</span>
-                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${pr?.riskScore >= 70 ? 'bg-red-100 text-red-700' : pr?.riskScore >= 50 ? 'bg-orange-100 text-orange-700' : pr?.riskScore >= 25 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                                                            {pr?.label || 'N/A'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                {pr?.riskFactors?.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {pr.riskFactors.filter(f => f.score >= 15).map((f, i) => (
-                                                            <span key={i} className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                                f.severity === 'high' ? 'bg-red-100 text-red-700' : f.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
-                                                            }`}>
-                                                                ⚠️ {f.label}: {f.score}%
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {pr?.recommendations?.length > 0 && (
-                                                    <div className="mt-3 pt-3 border-t border-gray-200">
-                                                        {pr.recommendations.slice(0, 2).map((r, i) => (
-                                                            <div key={i} className="text-sm text-gray-600 italic">💡 {r}</div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
+                                    {/* SmartEstimate Quick Widget */}
+                                    <SmartEstimateWidget projectId={projectId} />
 
                                     {/* Workload Summary */}
                                     {(workload || summary?.workload) && (() => {
@@ -286,7 +190,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                                         </div>
                                     )}
 
-                                    {/* Backlog count */}
+                                    {/* Backlog + Deadline warnings */}
                                     {(summary?.backlogCount > 0 || summary?.deadlineWarnings?.length > 0) && (
                                         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 space-y-2">
                                             {summary.backlogCount > 0 && (
@@ -309,7 +213,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                                         </div>
                                     )}
 
-                                    {!sprintHealth && !projectRisk && !workload && (
+                                    {!sprintHealth && !workload && !summary?.topInsights?.length && (
                                         <div className="text-center py-16 text-gray-400">
                                             <i className="fa-solid fa-robot text-4xl mb-3 opacity-30" />
                                             <p>Chưa có dữ liệu để phân tích</p>
@@ -398,50 +302,93 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                             {/* ===== SPRINT TAB ===== */}
                             {activeTab === 'sprint' && (
                                 <div className="space-y-4">
-                                    {sprintHealth ? (
+                                    {sprintPrediction ? (
                                         <>
-                                            {/* Sprint Info */}
-                                            {sprintHealth.sprint && (
-                                                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <h3 className="font-bold text-indigo-800">{sprintHealth.sprint.name}</h3>
-                                                            <div className="flex items-center gap-4 mt-1 text-sm text-indigo-600">
-                                                                <span>Actual: <strong>{sprintHealth.sprint.actualHours || 0}h</strong> / {sprintHealth.sprint.estimatedHours || 0}h</span>
-                                                                <span>{sprintHealth.sprint.daysRemaining}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className={`text-4xl font-bold ${getScoreColor(sprintHealth.healthScore, 'health')}`}>
-                                                                {sprintHealth.healthScore}
-                                                            </div>
-                                                            <div className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                                                sprintHealth.healthScore >= 80 ? 'bg-green-200 text-green-800' :
-                                                                sprintHealth.healthScore >= 60 ? 'bg-yellow-200 text-yellow-800' :
-                                                                sprintHealth.healthScore >= 40 ? 'bg-orange-200 text-orange-800' : 'bg-red-200 text-red-800'
-                                                            }`}>
-                                                                {sprintHealth.label}
-                                                            </div>
-                                                        </div>
+                                            {/* Sprint Alert */}
+                                            <div className={`rounded-xl border p-4 ${
+                                                sprintPrediction.alertLevel === 'CRITICAL' ? 'bg-red-50 border-red-200' :
+                                                sprintPrediction.alertLevel === 'WARNING' ? 'bg-amber-50 border-amber-200' :
+                                                'bg-green-50 border-green-200'
+                                            }`}>
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <i className={`fa-solid fa-chart-line ${
+                                                            sprintPrediction.alertLevel === 'CRITICAL' ? 'text-red-500' :
+                                                            sprintPrediction.alertLevel === 'WARNING' ? 'text-amber-500' :
+                                                            'text-green-500'
+                                                        }`} />
+                                                        <span className="font-semibold text-gray-700">
+                                                            {sprintPrediction.sprintName || 'Sprint'}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                        sprintPrediction.alertLevel === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                                                        sprintPrediction.alertLevel === 'WARNING' ? 'bg-amber-100 text-amber-700' :
+                                                        'bg-green-100 text-green-700'
+                                                    }`}>
+                                                        {sprintPrediction.alertLevel === 'CRITICAL' ? '⚠️ Nguy hiểm' :
+                                                         sprintPrediction.alertLevel === 'WARNING' ? '⚡ Cảnh báo' : '✅ Tốt'}
+                                                    </span>
+                                                </div>
+
+                                                {/* Progress bar */}
+                                                <div className="mb-3">
+                                                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                        <span>Tiến độ: {sprintPrediction.completedIssues || 0}/{sprintPrediction.totalIssues || 0} issues</span>
+                                                        <span>{sprintPrediction.daysRemaining || 0} ngày còn lại</span>
+                                                    </div>
+                                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div className={`h-full rounded-full transition-all ${
+                                                            sprintPrediction.alertLevel === 'CRITICAL' ? 'bg-red-500' :
+                                                            sprintPrediction.alertLevel === 'WARNING' ? 'bg-amber-500' :
+                                                            'bg-green-500'
+                                                        }`} style={{ width: `${Math.min(((sprintPrediction.completedIssues || 0) / (sprintPrediction.totalIssues || 1)) * 100, 100)}%` }} />
                                                     </div>
                                                 </div>
-                                            )}
 
-                                            {/* Metrics */}
-                                            <div className="grid grid-cols-5 gap-3">
-                                                {[
-                                                    { label: 'Hoàn thành', value: sprintHealth.metrics?.completionRate, color: 'bg-blue-500' },
-                                                    { label: 'Đúng hạn', value: sprintHealth.metrics?.onTimeRate, color: 'bg-green-500' },
-                                                    { label: 'Không rework', value: sprintHealth.metrics?.reworkRate, color: 'bg-purple-500' },
-                                                    { label: 'Velocity', value: sprintHealth.metrics?.velocityAccuracy, color: 'bg-cyan-500' },
-                                                    { label: 'Burnout', value: 100 - (sprintHealth.metrics?.burnoutRisk || 0), color: 'bg-pink-500' },
-                                                ].map(m => (
-                                                    <div key={m.label} className="text-center rounded-xl bg-gray-50 p-3">
-                                                        <div className={`text-2xl font-bold ${getScoreColor(m.value, 'health')}`}>{m.value || 0}%</div>
-                                                        <div className="text-[10px] text-gray-500 mt-1">{m.label}</div>
-                                                        <div className={`h-1 mt-2 rounded-full ${m.color}`} style={{ width: `${Math.min(m.value || 0, 100)}%` }} />
+                                                {/* Key metric */}
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className="text-center">
+                                                        <p className="text-3xl font-bold text-gray-800">
+                                                            {sprintPrediction.onTimeConfidence != null
+                                                                ? Math.round(sprintPrediction.onTimeConfidence * 100)
+                                                                : '—'}%
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">Khả năng hoàn thành đúng hạn</p>
                                                     </div>
-                                                ))}
+                                                    {sprintPrediction.predictedCompletionDate && (
+                                                        <div className="border-l border-gray-300 pl-3">
+                                                            <p className="text-sm text-gray-600">
+                                                                Dự kiến xong: <strong>{sprintPrediction.predictedCompletionDate}</strong>
+                                                            </p>
+                                                            {sprintPrediction.autoTuningInfo && (
+                                                                <p className="text-[10px] text-purple-500">
+                                                                    AI tuned: α={sprintPrediction.autoTuningInfo.alpha} β={sprintPrediction.autoTuningInfo.beta}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Recommendations */}
+                                                {sprintPrediction.recommendations?.length > 0 && (
+                                                    <div className="space-y-1">
+                                                        {sprintPrediction.recommendations.slice(0, 3).map((rec, i) => (
+                                                            <div key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                                                <i className="fa-solid fa-lightbulb text-amber-500 mt-0.5 text-xs" />
+                                                                <span>{rec}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    onClick={() => window.location.href = `/projects/${projectId}/sprints`}
+                                                    className="mt-3 w-full py-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <i className="fa-solid fa-arrow-right" />
+                                                    Xem chi tiết Sprint
+                                                </button>
                                             </div>
                                         </>
                                     ) : (
@@ -450,44 +397,13 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                                             <p>Chưa có sprint đang hoạt động</p>
                                         </div>
                                     )}
-
-                                    {projectRisk && (
-                                        <div className={`rounded-xl border p-4 ${getBgColor(projectRisk.riskScore, 'risk')}`}>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="font-semibold text-gray-700">Rủi ro dự án</span>
-                                                <span className={`font-bold ${getScoreColor(projectRisk.riskScore, 'risk')}`}>{projectRisk.riskScore}/100</span>
-                                            </div>
-                                            {projectRisk.riskFactors?.length > 0 && (
-                                                <div className="space-y-1">
-                                                    {projectRisk.riskFactors.filter(f => f.score >= 15).map((f, i) => (
-                                                        <div key={i} className="text-sm text-gray-600">
-                                                            ⚠️ {f.label}: {f.description}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
                             {/* ===== HR TAB ===== */}
                             {activeTab === 'hr' && (
                                 <div className="space-y-4">
-                                    <div className="text-center py-12 text-gray-400">
-                                        <i className="fa-solid fa-user-check text-4xl mb-3 opacity-30" />
-                                        <p className="font-medium text-gray-600">Performance Insights</p>
-                                        <p className="text-xs mt-1">Mở form đánh giá để xem gợi ý điểm</p>
-                                        <button
-                                            onClick={() => {
-                                                onClose();
-                                            }}
-                                            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-                                        >
-                                            <i className="fa-solid fa-arrow-right mr-2" />
-                                            Đến trang HR Reviews
-                                        </button>
-                                    </div>
+                                    <HRPerformanceInsights projectId={projectId} />
                                 </div>
                             )}
                         </>
@@ -504,6 +420,314 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                     />
                 </div>
             )}
+        </div>
+    );
+}
+
+// ─── Sprint Delay Alert (Holt's prediction) ─────────────────────────────────
+function SprintDelayAlert({ projectId, sprintId }) {
+    const { data: prediction } = useQuery({
+        queryKey: ['sprint-prediction', sprintId],
+        queryFn: async () => {
+            return (await apiClient.get(`/api/smart-assistant/sprint-prediction/${sprintId}`)).data;
+        },
+        enabled: !!sprintId,
+    });
+
+    if (!prediction?.alertLevel || prediction.alertLevel === 'OK') return null;
+
+    return (
+        <div className={`rounded-xl border p-4 ${
+            prediction.alertLevel === 'CRITICAL' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
+        }`}>
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                    <i className={`fa-solid fa-chart-line ${
+                        prediction.alertLevel === 'CRITICAL' ? 'text-red-500' : 'text-amber-500'
+                    }`} />
+                    <span className="font-semibold text-gray-700">Sprint Alert</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    prediction.alertLevel === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                }`}>
+                    {prediction.alertLevel === 'CRITICAL' ? 'Nguy hiểm' : 'Cảnh báo'}
+                </span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <span>Confidence hoàn thành đúng hạn:</span>
+                <strong className={prediction.alertLevel === 'CRITICAL' ? 'text-red-600' : 'text-amber-600'}>
+                        {' '}{prediction.onTimeConfidence != null ? Math.round(prediction.onTimeConfidence * 100) : '—'}%
+                    </strong>
+                <span>{prediction.daysRemaining} ngày còn lại</span>
+            </div>
+            {prediction.recommendations?.length > 0 && (
+                <p className="text-xs text-gray-500 italic">💡 {prediction.recommendations[0]}</p>
+            )}
+            <button
+                onClick={() => window.location.href = `/projects/${projectId}/sprints`}
+                className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+            >
+                <i className="fa-solid fa-arrow-right" />Xem chi tiết
+            </button>
+        </div>
+    );
+}
+
+// ─── SmartEstimate Quick Widget ─────────────────────────────────────────────
+function SmartEstimateWidget({ projectId }) {
+    const [selectedAssignee, setSelectedAssignee] = useState(null);
+    const [weight, setWeight] = useState(5);
+    const [estimate, setEstimate] = useState(null);
+
+    const { data: members = [] } = useQuery({
+        queryKey: ['project-members', projectId],
+        queryFn: async () => {
+            const res = await apiClient.get(`/api/projects/${projectId}/members`);
+            return res.data || [];
+        },
+        enabled: !!projectId,
+    });
+
+    const fetchEstimate = async () => {
+        if (!selectedAssignee || !projectId) return;
+        try {
+            const res = await apiClient.get('/api/smart-assistant/estimate', {
+                params: { projectId, assigneeId: selectedAssignee, weight, issueType: 'TASK' }
+            });
+            setEstimate(res.data);
+        } catch { /* ignore */ }
+    };
+
+    return (
+        <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+                <i className="fa-solid fa-wand-magic-sparkles text-amber-500" />
+                    <span className="font-semibold text-gray-700">Ước tính giờ nhanh</span>
+            </div>
+            <div className="flex gap-2 mb-2">
+                <select
+                    value={selectedAssignee || ''}
+                    onChange={e => setSelectedAssignee(e.target.value ? Number(e.target.value) : null)}
+                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
+                >
+                    <option value="">Chọn người làm</option>
+                    {members.map(m => (
+                        <option key={m.userId || m.user?.userId} value={m.userId || m.user?.userId}>
+                            {m.fullName || m.user?.fullName || 'N/A'}
+                        </option>
+                    ))}
+                </select>
+                <input
+                    type="number" min="1" max="10" value={weight}
+                    onChange={e => setWeight(Number(e.target.value))}
+                    className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-center bg-white"
+                />
+                <button
+                    onClick={fetchEstimate} disabled={!selectedAssignee}
+                    className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 disabled:opacity-50"
+                >Ước tính</button>
+            </div>
+            {estimate && (
+                <div className="bg-white rounded-lg p-3 border border-amber-200">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-2xl font-bold text-amber-600">{estimate.suggestedHours}</span>
+                        <span className="text-sm text-gray-400">gio</span>
+                        {estimate.method && (
+                            <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${
+                                estimate.method === 'OLS' ? 'bg-purple-100 text-purple-700' :
+                                estimate.method === 'Heuristic' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-500'
+                            }`}>{estimate.method}</span>
+                        )}
+                    </div>
+                    {estimate.explanation ? (
+                        <p className="text-xs text-gray-600 leading-relaxed">{estimate.explanation}</p>
+                    ) : (
+                        <p className="text-xs text-gray-500">{estimate.basis}</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── HR Performance Insights Sub-component ────────────────────────────────
+function HRPerformanceInsights({ projectId }) {
+    const { data: pendingReviews = [] } = useQuery({
+        queryKey: ['reviews-pending', projectId],
+        queryFn: async () => {
+            const res = await apiClient.get('/api/reviews/pending');
+            return res.data || [];
+        },
+        enabled: true,
+    });
+
+    const { data: recentReviews = [] } = useQuery({
+        queryKey: ['reviews-recent', projectId],
+        queryFn: async () => {
+            const params = new URLSearchParams({ size: 20 });
+            if (projectId) params.append('projectId', projectId);
+            const res = await apiClient.get(`/api/reviews?${params.toString()}`);
+            const data = res.data;
+            return Array.isArray(data) ? data : (data?.content || []);
+        },
+        enabled: true,
+    });
+
+    const validScores = recentReviews
+        .filter(r => r.totalScore != null)
+        .map(r => {
+            const t = typeof r.totalScore === 'number' ? r.totalScore : parseFloat(r.totalScore);
+            return isNaN(t) ? null : t;
+        })
+        .filter(s => s !== null);
+
+    const teamAvg = validScores.length > 0
+        ? (validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1)
+        : null;
+
+    const withEmployee = recentReviews.filter(r => r.employee);
+    const topPerformer = withEmployee.length > 0
+        ? withEmployee.reduce((best, r) => {
+            const cur = typeof r.totalScore === 'number' ? r.totalScore : parseFloat(r.totalScore);
+            const bestScore = typeof best.totalScore === 'number' ? best.totalScore : parseFloat(best.totalScore);
+            return (isNaN(cur) ? 0 : cur) > (isNaN(bestScore) ? 0 : bestScore) ? r : best;
+        }, withEmployee[0])
+        : null;
+
+    const needsImprovement = withEmployee.length > 0
+        ? withEmployee.reduce((worst, r) => {
+            const cur = typeof r.totalScore === 'number' ? r.totalScore : parseFloat(r.totalScore);
+            const worstScore = typeof worst.totalScore === 'number' ? worst.totalScore : parseFloat(worst.totalScore);
+            return (isNaN(cur) ? 10 : cur) < (isNaN(worstScore) ? 0 : worstScore) ? r : worst;
+        }, withEmployee[0])
+        : null;
+
+    const pendingCount = pendingReviews.length;
+
+    const getScoreColor = (score) => {
+        if (score == null) return 'text-gray-400';
+        const s = typeof score === 'number' ? score : parseFloat(score);
+        if (s >= 8) return 'text-green-600';
+        if (s >= 6) return 'text-indigo-600';
+        if (s >= 4) return 'text-yellow-600';
+        return 'text-red-600';
+    };
+
+    const getBgColor = (score) => {
+        if (score == null) return 'bg-gray-50 border-gray-200';
+        const s = typeof score === 'number' ? score : parseFloat(score);
+        if (s >= 8) return 'bg-green-50 border-green-200';
+        if (s >= 6) return 'bg-indigo-50 border-indigo-200';
+        if (s >= 4) return 'bg-yellow-50 border-yellow-200';
+        return 'bg-red-50 border-red-200';
+    };
+
+    const getScoreNum = (score) => {
+        if (score == null) return '—';
+        const s = typeof score === 'number' ? score : parseFloat(score);
+        return isNaN(s) ? '—' : s.toFixed(1);
+    };
+
+    if (recentReviews.length === 0) {
+        return (
+            <div className="text-center py-16 text-gray-400">
+                <i className="fa-solid fa-user-check text-4xl mb-3 opacity-30" />
+                <p className="font-medium text-gray-600">Chưa có dữ liệu đánh giá</p>
+                <p className="text-xs mt-1">Hoàn thành các đánh giá để xem insights</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Top stats row */}
+            <div className="grid grid-cols-2 gap-3">
+                {/* Team Average */}
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-center">
+                    <p className="text-xs text-indigo-500 font-medium mb-1">Team Average</p>
+                    <p className={`text-3xl font-bold ${getScoreColor(teamAvg)}`}>{teamAvg ?? '—'}</p>
+                    <p className="text-[10px] text-indigo-400">/10</p>
+                </div>
+                {/* Pending Reviews */}
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                    <p className="text-xs text-amber-500 font-medium mb-1">Chờ duyệt</p>
+                    <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                    <p className="text-[10px] text-amber-400">reviews</p>
+                </div>
+            </div>
+
+            {/* Top performer */}
+            {topPerformer && topPerformer.employee && (
+                <div className={`rounded-xl border p-4 ${getBgColor(topPerformer.totalScore)}`}>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-green-200 text-green-700 flex items-center justify-center text-sm font-bold">
+                            {topPerformer.employee.fullName?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-xs text-gray-500">Top Performer</p>
+                            <p className="font-bold text-gray-800">{topPerformer.employee.fullName}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className={`text-2xl font-bold ${getScoreColor(topPerformer.totalScore)}`}>{getScoreNum(topPerformer.totalScore)}</p>
+                            <p className="text-[10px] text-gray-400">{topPerformer.reviewPeriod}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Needs Improvement */}
+            {needsImprovement && needsImprovement.employee && (
+                <div className={`rounded-xl border p-4 ${getBgColor(needsImprovement.totalScore)}`}>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-orange-200 text-orange-700 flex items-center justify-center text-sm font-bold">
+                            {needsImprovement.employee.fullName?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-xs text-gray-500">Cần cải thiện</p>
+                            <p className="font-bold text-gray-800">{needsImprovement.employee.fullName}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className={`text-2xl font-bold ${getScoreColor(needsImprovement.totalScore)}`}>{getScoreNum(needsImprovement.totalScore)}</p>
+                            <p className="text-[10px] text-gray-400">{needsImprovement.reviewPeriod}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pending list */}
+            {pendingCount > 0 && (
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                    <h4 className="font-semibold text-amber-700 mb-2">
+                        <i className="fa-solid fa-clock mr-2" />
+                        Reviews chờ duyệt ({pendingCount})
+                    </h4>
+                    <div className="space-y-1">
+                        {pendingReviews.slice(0, 5).map(review => (
+                            <div key={review.reviewId || review.id} className="flex items-center justify-between text-sm">
+                                <span className="text-amber-700">
+                                    {review.employee?.fullName || 'N/A'} — {review.reviewPeriod}
+                                </span>
+                                <span className={`font-bold ${getScoreColor(review.totalScore)}`}>
+                                    {getScoreNum(review.totalScore)}
+                                </span>
+                            </div>
+                        ))}
+                        {pendingCount > 5 && (
+                            <p className="text-xs text-amber-500">+{pendingCount - 5} reviews khác</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Quick action */}
+            <button
+                onClick={() => window.location.href = '/hr/reviews'}
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            >
+                <i className="fa-solid fa-arrow-right" />
+                Đến trang HR Reviews
+            </button>
         </div>
     );
 }
