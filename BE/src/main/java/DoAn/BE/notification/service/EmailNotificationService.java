@@ -318,6 +318,92 @@ public class EmailNotificationService {
         }
     }
 
+    /**
+     * Gửi email thông báo khi một Issue có thay đổi (cập nhật trạng thái, comment mới...).
+     *
+     * @param email        Địa chỉ email người nhận
+     * @param recipientName Tên người nhận (dùng trong lời chào)
+     * @param issueKey     Mã issue, VD: "ALPHA-5"
+     * @param issueTitle   Tiêu đề issue
+     * @param projectName  Tên dự án chứa issue
+     * @param changeType   Loại thay đổi, VD: "Cập nhật trạng thái", "Bình luận mới"
+     * @param changeDetail Mô tả chi tiết thay đổi, VD: "To Do → In Progress"
+     * @param actorName    Tên người thực hiện thay đổi
+     */
+    public void sendIssueUpdatedEmail(
+            String email,
+            String recipientName,
+            String issueKey,
+            String issueTitle,
+            String projectName,
+            String changeType,
+            String changeDetail,
+            String actorName) {
+
+        if (!emailEnabled || mailSender == null) {
+            log.info("Email không được bật, bỏ qua thông báo cập nhật issue {} đến {}", issueKey, email);
+            return;
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("[" + issueKey + "] " + changeType + ": " + issueTitle);
+
+            String issueUrl = baseUrl + "/app/projects/issues/" + issueKey;
+
+            // ── Build HTML body ───────────────────────────────────────────────
+            StringBuilder html = new StringBuilder();
+            html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
+            html.append("<style>");
+            html.append("body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 24px; text-align: center; }");
+            html.append(".header h2 { margin: 0; font-size: 20px; }");
+            html.append(".content { padding: 24px; }");
+            html.append(".info-box { background-color: #f5f3ff; border-left: 4px solid #6366f1; padding: 14px 16px; margin: 14px 0; border-radius: 0 6px 6px 0; }");
+            html.append(".info-box p { margin: 4px 0; font-size: 14px; }");
+            html.append(".change-badge { display: inline-block; background: #ede9fe; color: #5b21b6; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }");
+            html.append(".btn { display: inline-block; padding: 10px 22px; background-color: #6366f1; color: white !important; text-decoration: none; border-radius: 6px; margin-top: 14px; font-size: 14px; }");
+            html.append(".footer { background-color: #f8f9fa; padding: 12px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }");
+            html.append("</style></head><body>");
+
+            html.append("<div class='header'><h2>🔔 Có cập nhật trên issue của bạn</h2></div>");
+            html.append("<div class='content'>");
+            html.append("<p>Kính gửi <strong>").append(recipientName).append("</strong>,</p>");
+            html.append("<p>Issue bạn đang theo dõi trong dự án <strong>\"")
+                    .append(projectName).append("\"</strong> vừa có cập nhật mới.</p>");
+
+            // Khung thông tin issue
+            html.append("<div class='info-box'>");
+            html.append("<p><strong>Mã issue:</strong> <span class='change-badge'>").append(issueKey).append("</span></p>");
+            html.append("<p><strong>Tiêu đề:</strong> ").append(issueTitle).append("</p>");
+            html.append("<p><strong>Loại thay đổi:</strong> ").append(changeType).append("</p>");
+            if (changeDetail != null && !changeDetail.isBlank()) {
+                html.append("<p><strong>Chi tiết:</strong> ").append(changeDetail).append("</p>");
+            }
+            html.append("<p><strong>Thực hiện bởi:</strong> ").append(actorName).append("</p>");
+            html.append("</div>");
+
+            html.append("<p>Nhấn nút bên dưới để xem chi tiết và phản hồi.</p>");
+            html.append("<p><a href='").append(issueUrl).append("' class='btn'>Xem Issue</a></p>");
+            html.append("</div>");
+
+            html.append("<div class='footer'>");
+            html.append("<p>Email này được gửi tự động từ hệ thống. Vui lòng không trả lời trực tiếp.</p>");
+            html.append("</div></body></html>");
+
+            helper.setText(html.toString(), true);
+            mailSender.send(message);
+            log.info("Đã gửi email cập nhật issue '{}' (loại: {}) đến {}", issueKey, changeType, email);
+
+        } catch (MessagingException e) {
+            log.error("Lỗi gửi email cập nhật issue {} đến {}: {}", issueKey, email, e.getMessage());
+            // Không ném exception để không ảnh hưởng đến luồng nghiệp vụ chính
+        }
+    }
+
     private String buildEmailContent(Notification notification) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 

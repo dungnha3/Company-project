@@ -11,6 +11,7 @@ import DoAn.BE.project.entity.IssueActivity.ActivityType;
 import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.entity.Sprint;
+import DoAn.BE.project.event.IssueUpdatedEvent;
 import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.project.repository.IssueActivityRepository;
@@ -351,6 +352,12 @@ public class IssueService {
             publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
         }
 
+        // Notify Assignee + Reporter about the general update
+        // (skip if only the assignee changed — the ASSIGNED handler already covers that)
+        if (!assigneeChanged) {
+            publishIssueUpdatedEvent(issue, actor, "Cập nhật công việc", null);
+        }
+
         return convertToDTO(issue);
     }
 
@@ -466,6 +473,13 @@ public class IssueService {
         updatePhaseStatusIfNeeded(issue);
 
         publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
+
+        // Thông báo email đến Assignee + Reporter về sự thay đổi trạng thái
+        // changeDetail dạng "To Do → In Progress" để hiển thị rõ trong email
+        if (!oldStatus.equals(newStatus)) {
+            String changeDetail = oldStatus + " → " + newStatus;
+            publishIssueUpdatedEvent(issue, user, "Cập nhật trạng thái", changeDetail);
+        }
 
         return convertToDTO(issue);
     }
@@ -615,6 +629,30 @@ public class IssueService {
             eventPublisher.publishEvent(new DoAn.BE.project.event.IssueEvent(this, issue, eventType, actorId));
         } catch (Exception e) {
             log.warn("Failed to publish issue event {}: {}", eventType, e.getMessage());
+        }
+    }
+
+    /**
+     * Publish {@link IssueUpdatedEvent} sau khi issue được lưu thành công.
+     *
+     * <p>Lưu ý:
+     * <ul>
+     *   <li>Giao cho {@link DoAn.BE.project.listener.IssueNotificationListener#handleIssueUpdated}
+     *       xử lý bất đồng bộ (AFTER_COMMIT + @Async).</li>
+     *   <li>Actor là User entity đầy đủ — listener dùng nó để loại actor ra khỏi danh sách nhận email.</li>
+     * </ul>
+     *
+     * @param issue        Issue sau khi đã lưu thành công vào DB
+     * @param actor        User thực hiện hành động — sẽ bị loại khỏi danh sách nhận
+     * @param changeType   Loại thay đổi, VD: "Cập nhật trạng thái", "Bình luận mới"
+     * @param changeDetail Chi tiết thay đổi, VD: "To Do → In Progress" (có thể null)
+     */
+    private void publishIssueUpdatedEvent(Issue issue, User actor, String changeType, String changeDetail) {
+        try {
+            eventPublisher.publishEvent(new IssueUpdatedEvent(this, issue, changeType, changeDetail, actor));
+        } catch (Exception e) {
+            // Không được để lỗi event ảnh hưởng luồng chính
+            log.warn("Failed to publish IssueUpdatedEvent for issue {}: {}", issue.getIssueKey(), e.getMessage());
         }
     }
 
