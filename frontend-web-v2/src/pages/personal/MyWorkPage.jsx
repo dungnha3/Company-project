@@ -27,7 +27,7 @@ export default function MyWorkPage() {
     const { data: timelogSummary, isLoading: loadingTimelogs } = useQuery({
         queryKey: ['timelogs', 'summary', 'my'],
         queryFn: async () => {
-            const res = await apiClient.get('/api/timelogs/summary/my');
+            const res = await apiClient.get(ENDPOINTS.TIMELOGS.MY_SUMMARY);
             return res.data;
         },
         staleTime: 60 * 1000,

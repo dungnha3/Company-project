@@ -1,9 +1,10 @@
 package DoAn.BE.project.entity;
 
-import DoAn.BE.common.entity.BaseEntity;
+import DoAn.BE.common.entity.TenantScopedEntity;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Filter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -14,7 +15,8 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public class ProjectExpense extends BaseEntity {
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class ProjectExpense extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +28,7 @@ public class ProjectExpense extends BaseEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(name = "expense_name", nullable = false, length = 200, columnDefinition = "NVARCHAR(200)")
+    @Column(name = "expense_name", nullable = false, length = 200)
     private String expenseName;
 
     @Column(name = "amount", precision = 15, scale = 2, nullable = false)
@@ -35,10 +37,10 @@ public class ProjectExpense extends BaseEntity {
     @Column(name = "expense_date", nullable = false)
     private LocalDate expenseDate;
 
-    @Column(name = "category", length = 100, columnDefinition = "NVARCHAR(100)")
+    @Column(name = "category", length = 100)
     private String category;
 
-    @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUS_OPTIONS = [
     { value: 'ACTIVE', label: 'Đang hoạt động' },
@@ -28,6 +29,8 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
     const [searchError, setSearchError] = useState('');
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useAccessControl();
+    const canCreateProject = hasPermission('PROJECT.CREATE');
 
     const createMutation = useMutation({
         mutationFn: async (data) => {
@@ -363,8 +366,8 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={createMutation.isPending}
-                            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            disabled={!canCreateProject || createMutation.isPending}
+                            className={`px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2 ${!canCreateProject ? 'cursor-not-allowed' : ''}`}
                         >
                             {createMutation.isPending ? (
                                 <>

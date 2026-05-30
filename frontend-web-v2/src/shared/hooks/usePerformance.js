@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
@@ -25,7 +25,7 @@ export const usePerformance = (options = {}) => {
     const employeeSummaryQuery = useQuery({
         queryKey: ['performance', 'employee', employeeId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/hr/performance/employees/${employeeId}/summary`);
+            const response = await apiClient.get(ENDPOINTS.HR_PERFORMANCE.EMPLOYEE_SUMMARY(employeeId));
             return response.data;
         },
         enabled: enabled && !!employeeId,
@@ -47,7 +47,7 @@ export const usePerformance = (options = {}) => {
     const dashboardQuery = useQuery({
         queryKey: ['performance', 'dashboard', period],
         queryFn: async () => {
-            const response = await apiClient.get('/api/hr/performance/dashboard', {
+            const response = await apiClient.get(ENDPOINTS.HR_PERFORMANCE.DASHBOARD, {
                 params: { period }
             });
             return response.data;
@@ -92,7 +92,7 @@ export const useEmployeePerformance = (employeeId) => {
     return useQuery({
         queryKey: ['performance', 'employee', employeeId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/hr/performance/employees/${employeeId}/summary`);
+            const response = await apiClient.get(ENDPOINTS.HR_PERFORMANCE.EMPLOYEE_SUMMARY(employeeId));
             return response.data;
         },
         enabled: !!employeeId,
@@ -101,40 +101,5 @@ export const useEmployeePerformance = (employeeId) => {
 };
 
 /**
- * Hook for company-wide performance overview
+ * Hook for performance by employee (for lists)
  */
-export const useCompanyPerformance = (period = 'all') => {
-    return useQuery({
-        queryKey: ['performance', 'company', period],
-        queryFn: async () => {
-            // Use the existing endpoint or create new aggregation endpoint
-            const response = await apiClient.get('/api/hr/performance/dashboard', {
-                params: { period }
-            });
-            return response.data;
-        },
-        staleTime: 5 * 60 * 1000,
-    });
-};
-
-/**
- * Score color helper
- */
-export const getScoreColor = (score) => {
-    if (score >= 9.0) return 'green';
-    if (score >= 8.0) return 'indigo';
-    if (score >= 6.5) return 'amber';
-    if (score >= 5.0) return 'orange';
-    return 'red';
-};
-
-/**
- * Score label helper
- */
-export const getScoreLabel = (score) => {
-    if (score >= 9.0) return 'Excellent';
-    if (score >= 8.0) return 'Good';
-    if (score >= 6.5) return 'Satisfactory';
-    if (score >= 5.0) return 'Average';
-    return 'Poor';
-};

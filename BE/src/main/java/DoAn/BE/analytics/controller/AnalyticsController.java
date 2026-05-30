@@ -33,7 +33,7 @@ public class AnalyticsController {
     @GetMapping("/projects/{projectId}/burndown")
     public ResponseEntity<BurndownDataDTO> getBurndown(
             @PathVariable Long projectId,
-            @RequestParam Long sprintId,
+            @RequestParam(required = false) Long sprintId,
             @AuthenticationPrincipal User currentUser) {
         validateProjectAccess(projectId, currentUser);
         accessControlService.checkAnalyticsViewPermission();

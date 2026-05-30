@@ -19,7 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class CompanyController {
 
     private final CompanyService companyService;

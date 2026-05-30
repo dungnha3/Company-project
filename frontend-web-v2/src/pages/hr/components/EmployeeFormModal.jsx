@@ -3,10 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const { hasPermission } = useAccessControl();
+    const canManageEmployee = hasPermission('HR.CREATE_EMPLOYEE');
     const [formData, setFormData] = useState(INITIAL_STATE);
     const [errors, setErrors] = useState({});
 
@@ -248,8 +251,8 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                     <button onClick={onClose} className="btn-ghost">Hủy bỏ</button>
                     <button
                         onClick={handleSubmit}
-                        disabled={mutation.isPending}
-                        className="btn-primary flex items-center gap-2"
+                        disabled={!canManageEmployee || mutation.isPending}
+                        className={`btn-primary flex items-center gap-2 ${!canManageEmployee ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {mutation.isPending && <i className="fa-solid fa-spinner fa-spin" />}
                         {isEditMode ? 'Lưu thay đổi' : 'Tạo hồ sơ'}

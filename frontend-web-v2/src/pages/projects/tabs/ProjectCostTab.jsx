@@ -4,10 +4,13 @@ import apiClient from '@shared/api/client';
 import { formatCurrency, formatDate } from '@shared/utils/formatters';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { CHART_TOOLTIP_STYLE, tooltipCurrencyFormatter } from '@shared/components/chart/ChartUtils';
 
 export default function ProjectCostTab({ projectId }) {
     const queryClient = useQueryClient();
     const [showAddExpense, setShowAddExpense] = useState(false);
+    const [pieActiveIndex, setPieActiveIndex] = useState(null);
+    const [barSelectedMember, setBarSelectedMember] = useState(null);
     const [newExpense, setNewExpense] = useState({
         expenseName: '',
         amount: '',
@@ -21,14 +24,14 @@ export default function ProjectCostTab({ projectId }) {
     const { data: costData, isLoading } = useQuery({
         queryKey: ['project-costs', projectId],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/projects/costs/${projectId}`);
+            const res = await apiClient.get(ENDPOINTS.PROJECT_COSTS.BY_PROJECT(projectId));
             return res.data;
         }
     });
 
     const addExpenseMutation = useMutation({
         mutationFn: async (data) => {
-            await apiClient.post('/api/projects/costs/expenses', { ...data, projectId });
+            await apiClient.post(ENDPOINTS.PROJECT_COSTS.CREATE_EXPENSE, { ...data, projectId });
         },
         onSuccess: () => {
             setShowAddExpense(false);
@@ -120,13 +123,46 @@ export default function ProjectCostTab({ projectId }) {
                                     outerRadius={100}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    activeIndex={pieActiveIndex}
+                                    activeShape={{ outerRadius: 110, strokeWidth: 2, stroke: '#6366f1' }}
+                                    onMouseEnter={(_, index) => setPieActiveIndex(index)}
+                                    onMouseLeave={() => setPieActiveIndex(null)}
                                 >
-                                    {pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    {pieData.map((_, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={COLORS[index % COLORS.length]}
+                                            opacity={pieActiveIndex !== null && pieActiveIndex !== index ? 0.5 : 1}
+                                            style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+                                        />
                                     ))}
                                 </Pie>
-                                <Tooltip formatter={(value) => formatCurrency(value)} />
-                                <Legend />
+                                {pieActiveIndex !== null && pieData[pieActiveIndex] ? (
+                                    <g>
+                                        <text x="50%" y="45%" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 20, fontWeight: 700, fill: '#111827' }}>
+                                            {tooltipCurrencyFormatter(pieData[pieActiveIndex].value)}
+                                        </text>
+                                    </g>
+                                ) : (
+                                    <g>
+                                        <text x="50%" y="42%" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 10, fill: '#9CA3AF' }}>
+                                            Tổng
+                                        </text>
+                                        <text x="50%" y="55%" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 12, fontWeight: 600, fill: '#6B7280' }}>
+                                            {formatCurrency(costData.totalProjectCost)}
+                                        </text>
+                                    </g>
+                                )}
+                                <Tooltip
+                                    contentStyle={CHART_TOOLTIP_STYLE}
+                                    formatter={(value) => [tooltipCurrencyFormatter(value), '']}
+                                    labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
+                                />
+                                <Legend
+                                    formatter={(value) => (
+                                        <span className="text-xs text-gray-600 cursor-pointer hover:text-gray-900">{value}</span>
+                                    )}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
@@ -137,15 +173,48 @@ export default function ProjectCostTab({ projectId }) {
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Chi phí nhân sự theo cá nhân</h3>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <BarChart
+                                data={barData}
+                                layout="vertical"
+                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                onClick={(data) => {
+                                    if (data && data.activeLabel) setBarSelectedMember(data.activeLabel);
+                                }}
+                            >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                 <XAxis type="number" tickFormatter={(val) => `${val / 1000000}M`} />
                                 <YAxis dataKey="name" type="category" width={100} fontSize={12} />
-                                <Tooltip formatter={(value) => formatCurrency(value)} />
-                                <Bar dataKey="Chi phí (VND)" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                                <Tooltip
+                                    contentStyle={CHART_TOOLTIP_STYLE}
+                                    formatter={(value) => [tooltipCurrencyFormatter(value), 'Chi phí']}
+                                    labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
+                                    cursor={{ fill: '#f3f4f6' }}
+                                />
+                                <Bar
+                                    dataKey="Chi phí (VND)"
+                                    fill="#6366f1"
+                                    radius={[0, 4, 4, 0]}
+                                    cursor="pointer"
+                                    onClick={(data) => {
+                                        if (data && data.name) setBarSelectedMember(data.name);
+                                    }}
+                                />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    {barSelectedMember && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-gray-500">Đã chọn</p>
+                                    <p className="text-sm font-semibold text-gray-900">{barSelectedMember}</p>
+                                </div>
+                                <button onClick={() => setBarSelectedMember(null)} className="text-xs text-gray-400 hover:text-gray-600">
+                                    <i className="fa-solid fa-xmark" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

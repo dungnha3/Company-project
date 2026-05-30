@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
@@ -33,9 +34,33 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         isImportant: false,
         isUrgent: false,
         sprintId: '',
+        storageFolder: '',
     });
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const fileInputRef = useRef(null);
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+
+    // Fetch project folders for dropdown
+    const { data: projectFiles = [] } = useQuery({
+        queryKey: ['projectFiles', form.projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.STORAGE.PROJECT_FILES(form.projectId))).data,
+        enabled: !!form.projectId && isOpen,
+        staleTime: 10000,
+    });
+
+    // Extract unique folder paths from project files
+    const availableFolders = useMemo(() => {
+        const folders = new Set();
+        projectFiles.forEach(f => {
+            if (f.contentType === 'folder' && f.folder) {
+                folders.add(f.folder);
+            }
+        });
+        return Array.from(folders).sort();
+    }, [projectFiles]);
 
     // Fetch projects
     const { data: projects = [] } = useQuery({
@@ -45,6 +70,9 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             return Array.isArray(res) ? res : (res?.content || []);
         },
         enabled: isOpen,
+        staleTime: 0,
+        retry: false,
+        onError: () => {},
     });
 
     // Fetch project members when project selected
@@ -89,8 +117,29 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             };
             return (await apiClient.post(ENDPOINTS.ISSUES.CREATE, payload)).data;
         },
-        onSuccess: (issue) => {
+        onSuccess: async (issue) => {
             toast.success(`Tạo ${form.issueType === 'BUG' ? 'bug' : 'task'} thành công!`);
+            // Upload files linked to this issue
+            const filesToUpload = selectedFiles;
+            const folderParam = form.storageFolder ? `?folder=${encodeURIComponent(form.storageFolder)}` : '';
+            if (filesToUpload.length > 0 && issue.issueId) {
+                for (const file of filesToUpload) {
+                    try {
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        fd.append('issueId', issue.issueId.toString());
+                        await apiClient.post(
+                            `${ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(form.projectId)}${folderParam}`,
+                            fd,
+                            { headers: { 'Content-Type': 'multipart/form-data' } }
+                        );
+                    } catch (err) {
+                        console.error('Failed to upload file:', err);
+                    }
+                }
+                toast.success(`${filesToUpload.length} file đã được đính kèm`);
+            }
+            setSelectedFiles([]);
             queryClient.invalidateQueries(['myIssues']);
             queryClient.invalidateQueries(['projectIssues', form.projectId]);
             onSuccess?.(issue);
@@ -130,7 +179,9 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             isImportant: false,
             isUrgent: false,
             sprintId: '',
+            storageFolder: '',
         });
+        setSelectedFiles([]);
         onClose();
     };
 
@@ -298,17 +349,26 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Ước tính (giờ)</label>
-                                <div className="relative">
-                                    <i className="fa-solid fa-clock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                        type="number"
-                                        name="estimatedHours"
-                                        value={form.estimatedHours}
-                                        onChange={handleInputChange}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
-                                        placeholder="8"
-                                        min="0"
-                                        step="0.5"
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <i className="fa-solid fa-clock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            type="number"
+                                            name="estimatedHours"
+                                            value={form.estimatedHours}
+                                            onChange={handleInputChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300"
+                                            placeholder="8"
+                                            min="0"
+                                            step="0.5"
+                                        />
+                                    </div>
+                                    <AIAutoEstimateButton
+                                        projectId={form.projectId ? parseInt(form.projectId) : null}
+                                        assigneeId={form.assigneeId ? parseInt(form.assigneeId) : null}
+                                        weight={form.weight ? parseInt(form.weight) : null}
+                                        issueType={form.issueType}
+                                        onApply={(hours) => setForm(prev => ({ ...prev, estimatedHours: hours.toString() }))}
                                     />
                                 </div>
                             </div>
@@ -387,6 +447,71 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                 </span>
                             </label>
                         </div>
+
+                        {/* Storage: Folder selection & File upload */}
+                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3">
+                            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                <i className="fa-solid fa-folder-open text-amber-500" /> Lưu trữ tài liệu
+                            </h3>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Thư mục lưu trữ</label>
+                                <div className="flex gap-2">
+                                    <select
+                                        name="storageFolder"
+                                        value={form.storageFolder}
+                                        onChange={handleInputChange}
+                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
+                                    >
+                                        <option value="">-- Gốc dự án (không chọn) --</option>
+                                        {availableFolders.map(f => (
+                                            <option key={f} value={f}>{f}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                                    >
+                                        <i className="fa-solid fa-paperclip" /> Chọn file
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            if (files.length > 0) {
+                                                setSelectedFiles(prev => [...prev, ...files]);
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                </div>
+                                {availableFolders.length === 0 && (
+                                    <p className="text-xs text-gray-400 mt-1">Chưa có thư mục nào. Tạo trong tab Lưu trữ của dự án.</p>
+                                )}
+                            </div>
+                            {selectedFiles.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="text-xs font-medium text-gray-600">{selectedFiles.length} file đã chọn:</p>
+                                    {selectedFiles.map((f, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-200">
+                                            <span className="text-xs text-gray-700 truncate flex items-center gap-2">
+                                                <i className="fa-solid fa-file text-gray-400" /> {f.name}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <i className="fa-solid fa-times text-xs" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Footer */}
@@ -401,8 +526,8 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                         </button>
                         <button
                             type="submit"
-                            disabled={createMutation.isPending}
-                            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:from-indigo-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            disabled={!canManageIssues || createMutation.isPending}
+                            className={`px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:from-indigo-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2 ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
                         >
                             {createMutation.isPending ? (
                                 <>
@@ -419,6 +544,102 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                     </div>
                 </form>
             </div>
+        </div>
+    );
+}
+
+// ─── AI Auto Estimate Button ─────────────────────────────────────────────────
+function AIAutoEstimateButton({ projectId, assigneeId, weight, issueType, onApply }) {
+    const [showTooltip, setShowTooltip] = useState(false);
+
+    const { data: estimate, isLoading, isFetching } = useQuery({
+        queryKey: ['smart-estimate', projectId, assigneeId, weight, issueType],
+        queryFn: async () => {
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.ESTIMATE(projectId, issueType, weight, assigneeId))).data;
+        },
+        enabled: !!projectId && !!assigneeId,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const canEstimate = !!projectId && !!assigneeId;
+
+    const handleClick = () => {
+        if (!canEstimate) return;
+        if (estimate?.suggestedHours != null) {
+            onApply(estimate.suggestedHours);
+            setShowTooltip(true);
+            setTimeout(() => setShowTooltip(false), 3000);
+        }
+    };
+
+    const getConfidenceColor = (conf) => {
+        if (conf === 'high') return 'bg-green-100 text-green-700 border-green-200';
+        if (conf === 'medium') return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+        return 'bg-gray-100 text-gray-600 border-gray-200';
+    };
+
+    const getMethodBadge = (method) => {
+        if (method === 'OLS') return { label: 'ML', color: 'bg-purple-100 text-purple-700' };
+        if (method === 'Heuristic') return { label: 'Heuristic', color: 'bg-blue-100 text-blue-700' };
+        return { label: 'Baseline', color: 'bg-gray-100 text-gray-500' };
+    };
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={handleClick}
+                disabled={!canEstimate || isLoading || isFetching}
+                title={!canEstimate ? 'Cần chọn dự án và người thực hiện trước' : 'AI gợi ý giờ'}
+                className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    !canEstimate
+                        ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed'
+                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                }`}
+            >
+                {isLoading || isFetching ? (
+                    <i className="fa-solid fa-circle-notch fa-spin text-xs" />
+                ) : (
+                    <i className="fa-solid fa-wand-magic-sparkles text-xs" />
+                )}
+                <span className="hidden sm:inline">AI gợi ý</span>
+            </button>
+
+            {/* Tooltip / result popup */}
+            {showTooltip && estimate && (
+                <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-amber-200 rounded-xl shadow-xl p-4 w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-700">Gợi ý từ AI</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getConfidenceColor(estimate.confidence)}`}>
+                            {estimate.confidence === 'high' ? 'Cao' : estimate.confidence === 'medium' ? 'Trung bình' : 'Thấp'}
+                        </span>
+                    </div>
+                    <div className="flex items-end gap-2 mb-1">
+                        <span className="text-3xl font-bold text-amber-600">{estimate.suggestedHours}</span>
+                        <span className="text-sm text-gray-400 mb-1">giờ</span>
+                        {estimate.method && (
+                            <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${getMethodBadge(estimate.method).color}`}>
+                                {getMethodBadge(estimate.method).label}
+                            </span>
+                        )}
+                    </div>
+                    {estimate.explanation ? (
+                        <p className="text-xs text-gray-600 leading-relaxed">{estimate.explanation}</p>
+                    ) : (
+                        <p className="text-xs text-gray-500 leading-relaxed">{estimate.basis}</p>
+                    )}
+                    {estimate.derivedFromNSamples > 0 && estimate.rSquared != null && (
+                        <p className="text-[10px] text-gray-400 mt-1">R²={estimate.rSquared} • {estimate.derivedFromNSamples} samples</p>
+                    )}
+                </div>
+            )}
+
+            {/* Disabled hint */}
+            {!canEstimate && (
+                <span className="absolute -top-7 left-0 text-[10px] text-gray-400 whitespace-nowrap hidden group-hover:block">
+                    Chọn dự án & người làm
+                </span>
+            )}
         </div>
     );
 }

@@ -43,6 +43,13 @@ public class ProfileController {
         return ResponseEntity.ok(userMapper.toDTO(user));
     }
 
+    @GetMapping
+    public ResponseEntity<UserDTO> getProfile() {
+        Long userId = getCurrentUserId();
+        User user = profileService.getCurrentUserProfile(userId);
+        return ResponseEntity.ok(userMapper.toDTO(user));
+    }
+
     @Transactional
     @PostMapping("/change-password")
     public ResponseEntity<Map<String, String>> changePassword(

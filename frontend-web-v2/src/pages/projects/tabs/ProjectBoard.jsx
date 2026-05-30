@@ -16,11 +16,13 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useTimerStore } from '@shared/stores/timerStore';
 import { fireTaskCompleted } from '@shared/stores/timerStore';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 import IssueDetailModal from '../components/IssueDetailModal';
 import CreateIssueModal from '../components/CreateIssueModal';
 import TimeLogSection from '../components/TimeLogSection';
 import BoardTimeLogPanel from '../components/BoardTimeLogPanel';
 import QuickReviewModal from '../components/QuickReviewModal';
+import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
 
 // ─── Fallback columns (used when API unavailable) ─────────────────────
 const FALLBACK_STATUSES = [
@@ -115,6 +117,11 @@ export default function ProjectBoard({ project }) {
     // ── Time Log panel
     const [showTimeLog, setShowTimeLog] = useState(false);
     const [activeTimeLogIssueId, setActiveTimeLogIssueId] = useState(null);
+
+    // ── Permissions
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+    const canManageAll = hasPermission('PROJECT.MANAGE_ALL');
 
     // ── Add column state
     const [showAddColumn, setShowAddColumn] = useState(false);
@@ -299,7 +306,7 @@ export default function ProjectBoard({ project }) {
 
     // ── Status change mutation
     const moveIssueMutation = useMutation({
-        mutationFn: ({ id, statusId, orderIndex }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`, null, {
+        mutationFn: ({ id, statusId, orderIndex }) => apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(id, statusId), null, {
             params: { orderIndex }
         }),
         onSuccess: () => {
@@ -405,7 +412,7 @@ export default function ProjectBoard({ project }) {
                 moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex });
             }
         }
-    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData]);
+    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, activeId]);
 
     // ── Reorder columns mutation
     const reorderColumnsMutation = useMutation({
@@ -600,13 +607,15 @@ export default function ProjectBoard({ project }) {
                     <span className="text-xs text-gray-400">
                         {filteredIssues.length}{filteredIssues.length !== issues.length ? `/${issues.length}` : ''} công việc
                     </span>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
-                    >
-                        <i className="fa-solid fa-plus" />
-                        Tạo Issue
-                    </button>
+                    {canManageIssues && (
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+                        >
+                            <i className="fa-solid fa-plus" />
+                            Tạo Issue
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -662,12 +671,13 @@ export default function ProjectBoard({ project }) {
                             onCancelWip={() => { setEditingWipCol(null); setWipInput(''); }}
                             getSwimlanes={getSwimlanes}
                             swimlaneMode={swimlaneMode}
-                            canDelete={col.title !== 'To Do' && col.title !== 'Done'}
+                            canDelete={canManageAll && col.title !== 'To Do' && col.title !== 'Done'}
                             onDelete={() => deleteColumnMutation.mutate(col.statusId)}
                         />
                     ))}
 
                     {/* Add Column */}
+                    {canManageAll && (
                     <div className="flex-shrink-0 w-72">
                         {showAddColumn ? (
                             <div className="bg-white rounded-xl border-2 border-dashed border-indigo-200 p-4 space-y-3">
@@ -717,6 +727,7 @@ export default function ProjectBoard({ project }) {
                             </button>
                         )}
                     </div>
+                    )}
                 </div>
 
                 <DragOverlay dropAnimation={null}>
@@ -769,6 +780,8 @@ export default function ProjectBoard({ project }) {
                     }}
                 />
             )}
+
+            <SmartAssistantFAB project={project} />
         </>
     );
 }
@@ -1130,6 +1143,9 @@ function ReviewSlaChip({ issue }) {
 function IssueCard({ issue, isOverlay, onClick }) {
     if (!issue) return null;
 
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+
     const isImportant = issue.isImportant;
     const isUrgent = issue.isUrgent;
     const isBoth = isImportant && isUrgent;
@@ -1279,7 +1295,7 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 <div className="flex items-center gap-2 flex-wrap">
                     {issue.statusName === 'Review' && <ReviewSlaChip issue={issue} />}
                 </div>
-                {issue.statusName !== 'Done' ? (
+                {canManageIssues && issue.statusName !== 'Done' && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -1289,7 +1305,8 @@ function IssueCard({ issue, isOverlay, onClick }) {
                     >
                         Nộp
                     </button>
-                ) : (
+                )}
+                {canManageIssues && issue.statusName === 'Done' && (
                     <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
                         <i className="fa-solid fa-check mr-1 text-[8px]" />
                     </span>

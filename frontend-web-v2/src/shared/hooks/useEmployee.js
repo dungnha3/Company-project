@@ -25,7 +25,7 @@ export const useEmployee = (employeeId, options = {}) => {
     const byUserIdQuery = useQuery({
         queryKey: ['employee', 'by-user', employeeId],
         queryFn: async () => {
-            const response = await apiClient.get('/api/employees/user/' + employeeId);
+            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.BY_USER(employeeId));
             return response.data;
         },
         enabled: enabled && !!employeeId,
@@ -70,32 +70,6 @@ export const useEmployees = (options = {}) => {
 };
 
 /**
- * Hook for paginated employee list
- */
-export const useEmployeesPage = (options = {}) => {
-    const { page = 0, size = 20, status, search } = options;
-    const queryClient = useQueryClient();
-
-    const query = useQuery({
-        queryKey: ['employees', 'page', page, size, status, search],
-        queryFn: async () => {
-            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.PAGE, {
-                params: { page, size, status, search }
-            });
-            return response.data;
-        },
-        staleTime: 2 * 60 * 1000,
-    });
-
-    return {
-        data: query.data,
-        isLoading: query.isLoading,
-        error: query.error,
-        refetch: () => query.refetch(),
-    };
-};
-
-/**
  * Hook for all active employees (for dropdowns, etc)
  */
 export const useActiveEmployees = () => {
@@ -133,7 +107,7 @@ export const useMyEmployee = () => {
     return useQuery({
         queryKey: ['employee', 'me'],
         queryFn: async () => {
-            const response = await apiClient.get('/api/employees/me');
+            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.ME);
             return response.data;
         },
         staleTime: 5 * 60 * 1000,

@@ -1,17 +1,20 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, Fragment } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDateTime } from '@shared/utils/formatters';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
+import PromptModal from '@shared/components/ui/PromptModal';
 
-export default function ProjectStorageTab({ projectId }) {
+export default function ProjectStorageTab({ projectId, issueId: initialIssueId }) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
-    const [currentFolderPath, setCurrentFolderPath] = useState(''); // Virtual directory path (e.g. "", "Contracts", "Contracts/Q1")
+    const [currentFolderPath, setCurrentFolderPath] = useState('');
+    const [showFolderModal, setShowFolderModal] = useState(false);
+    const [selectedIssueId, setSelectedIssueId] = useState(initialIssueId || null);
     const { hasPermission } = useAccessControl();
     const canManageStorage = hasPermission('PROJECT.MANAGE_ALL');
 
@@ -23,17 +26,22 @@ export default function ProjectStorageTab({ projectId }) {
 
     // Fetch all project files (flat list)
     const { data: files = [], isLoading } = useQuery({
-        queryKey: ['projectFiles', projectId],
+        queryKey: ['projectFiles', projectId, selectedIssueId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.STORAGE.PROJECT_FILES(projectId))).data,
     });
 
-    // Filter items based on current virtual directory path
+    // Filter items based on current virtual directory path AND issue filter
     const currentItems = useMemo(() => {
         return files.filter(file => {
+            // Issue filter: only show files linked to this issue
+            if (selectedIssueId && file.issueId !== selectedIssueId && file.issue?.issueId !== selectedIssueId) {
+                return false;
+            }
+            // Folder filter: only show files at current path
             const fileFolder = file.folder || '';
             return fileFolder === currentFolderPath;
         });
-    }, [files, currentFolderPath]);
+    }, [files, currentFolderPath, selectedIssueId]);
 
     // Sort: Folders first, then files alphabetically
     const sortedItems = useMemo(() => {
@@ -46,15 +54,20 @@ export default function ProjectStorageTab({ projectId }) {
         });
     }, [currentItems]);
 
-    // Upload file mutation (supports active folder)
+    // Upload file mutation (supports active folder and issue link)
     const uploadMutation = useMutation({
-        mutationFn: async (file) => {
+        mutationFn: async ({ file, issueId }) => {
             const formData = new FormData();
             formData.append('file', file);
-            let url = ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(projectId);
+            const params = new URLSearchParams();
             if (currentFolderPath) {
-                url += `?folder=${encodeURIComponent(currentFolderPath)}`;
+                params.append('folder', currentFolderPath);
             }
+            if (issueId) {
+                params.append('issueId', issueId.toString());
+            }
+            const queryString = params.toString();
+            const url = ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(projectId) + (queryString ? '?' + queryString : '');
             await apiClient.post(url, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
@@ -70,13 +83,18 @@ export default function ProjectStorageTab({ projectId }) {
 
     // Create virtual folder mutation
     const createFolderMutation = useMutation({
-        mutationFn: async (folderName) => {
+        mutationFn: async ({ folderName, issueId }) => {
             const params = new URLSearchParams();
             params.append('name', folderName);
             if (currentFolderPath) {
                 params.append('folder', currentFolderPath);
             }
-            await apiClient.post(`/api/storage/projects/${projectId}/folders?${params.toString()}`);
+            if (issueId) {
+                params.append('issueId', issueId.toString());
+            }
+            await apiClient.post(ENDPOINTS.STORAGE.PROJECT_FOLDERS(projectId), null, {
+                params: Object.fromEntries(params.entries()),
+            });
         },
         onSuccess: () => {
             toast.success('Đã tạo thư mục');
@@ -97,27 +115,29 @@ export default function ProjectStorageTab({ projectId }) {
 
     const handleFileChange = (e) => {
         const file = e.target.files?.[0];
-        if (file) uploadMutation.mutate(file);
+        if (file) uploadMutation.mutate({ file, issueId: selectedIssueId });
     };
 
     const handleCreateFolder = () => {
-        const folderName = prompt('Nhập tên thư mục mới:');
-        if (folderName && folderName.trim()) {
-            const trimmed = folderName.trim();
-            if (trimmed.includes('/') || trimmed.includes('\\')) {
-                toast.error('Tên thư mục không được chứa ký tự gạch chéo');
-                return;
-            }
-            // Check for duplicate folder name in current directory
-            const isDuplicate = currentItems.some(
-                item => item.contentType === 'folder' && item.fileName.toLowerCase() === trimmed.toLowerCase()
-            );
-            if (isDuplicate) {
-                toast.error('Thư mục này đã tồn tại');
-                return;
-            }
-            createFolderMutation.mutate(trimmed);
+        setShowFolderModal(true);
+    };
+
+    const handleFolderModalConfirm = (folderName) => {
+        if (!folderName) return;
+        const trimmed = folderName.trim();
+        if (trimmed.includes('/') || trimmed.includes('\\')) {
+            toast.error('Tên thư mục không được chứa ký tự gạch chéo');
+            return;
         }
+        const isDuplicate = currentItems.some(
+            item => item.contentType === 'folder' && item.fileName.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (isDuplicate) {
+            toast.error('Thư mục này đã tồn tại');
+            return;
+        }
+        createFolderMutation.mutate({ folderName: trimmed, issueId: selectedIssueId });
+        setShowFolderModal(false);
     };
 
     const handleItemClick = (item) => {
@@ -208,9 +228,21 @@ export default function ProjectStorageTab({ projectId }) {
         );
     }
 
+    // Fetch project issues for filter dropdown
+    const { data: projectIssues = [] } = useQuery({
+        queryKey: ['projectIssues', projectId],
+        queryFn: async () => {
+            const res = (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(projectId))).data;
+            return Array.isArray(res) ? res : (res?.content || []);
+        },
+        enabled: !!projectId,
+        staleTime: 30000,
+    });
+
     const breadcrumbParts = currentFolderPath ? currentFolderPath.split('/') : [];
 
     return (
+        <Fragment>
         <div className="card p-6 min-h-[520px] bg-white border border-gray-100 rounded-2xl shadow-sm flex flex-col">
             {/* Header controls */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 pb-4 border-b border-gray-100">
@@ -218,7 +250,21 @@ export default function ProjectStorageTab({ projectId }) {
                     <h2 className="text-lg font-bold text-gray-900">Tài liệu dự án</h2>
                     <p className="text-xs text-gray-400 mt-0.5">Lưu trữ bảo mật tích hợp Google Drive Cloud</p>
                 </div>
-                {canManageStorage && (
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* Issue filter */}
+                    <select
+                        value={selectedIssueId || ''}
+                        onChange={(e) => setSelectedIssueId(e.target.value ? parseInt(e.target.value) : null)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+                    >
+                        <option value="">Tất cả tài liệu</option>
+                        {projectIssues.map(issue => (
+                            <option key={issue.issueId} value={issue.issueId}>
+                                {issue.issueKey}: {issue.title?.substring(0, 30)}{issue.title?.length > 30 ? '...' : ''}
+                            </option>
+                        ))}
+                    </select>
+                    {canManageStorage && (
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleCreateFolder}
@@ -366,5 +412,16 @@ export default function ProjectStorageTab({ projectId }) {
                 </div>
             )}
         </div>
+
+        <PromptModal
+            isOpen={showFolderModal}
+            title="Tạo thư mục mới"
+            placeholder="Nhập tên thư mục..."
+            confirmLabel="Tạo thư mục"
+            onConfirm={handleFolderModalConfirm}
+            onCancel={() => setShowFolderModal(false)}
+            loading={createFolderMutation.isPending}
+        />
+        </Fragment>
     );
 }

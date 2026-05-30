@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUS_OPTIONS = [
     { value: 'PLANNING', label: 'Lập kế hoạch', color: 'bg-gray-100 text-gray-700' },
@@ -27,6 +28,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
     const [searchError, setSearchError] = useState('');
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useAccessControl();
+    const canManageAll = hasPermission('PROJECT.MANAGE_ALL');
 
     // Initialize form with project data
     useEffect(() => {
@@ -268,8 +271,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={updateMutation.isPending}
-                                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors disabled:opacity-50"
+                                    disabled={!canManageAll || updateMutation.isPending}
+                                    className={`px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors disabled:opacity-50 ${!canManageAll ? 'cursor-not-allowed' : ''}`}
                                 >
                                     {updateMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
                                 </button>
@@ -280,6 +283,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                     {activeTab === 'members' && (
                         <div className="p-6 space-y-4">
                             {/* Add member */}
+                            {canManageAll && (
                             <div className="flex gap-2">
                                 <div className="flex-1 relative">
                                     <i className="fa-solid fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -302,6 +306,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                     Thêm
                                 </button>
                             </div>
+                            )}
                             {searchError && <p className="text-sm text-red-500">{searchError}</p>}
 
                             {/* Members list */}
@@ -332,7 +337,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                                                     {member.role === 'OWNER' ? 'Chủ dự án' :
                                                         member.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'}
                                                 </span>
-                                                {member.role !== 'OWNER' && (
+                                                {canManageAll && member.role !== 'OWNER' && (
                                                     <button
                                                         onClick={() => removeMemberMutation.mutate(member.userId)}
                                                         disabled={removeMemberMutation.isPending}

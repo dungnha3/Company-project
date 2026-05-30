@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@shared/stores/authStore';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import GoogleLoginButton from '../../components/auth/GoogleLoginButton';
 
 export default function LoginPage() {
@@ -10,6 +11,7 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const { login, verify2fa } = useAuthStore();
+    const { clearWorkspace, fetchWorkspaces } = useWorkspaceStore();
 
     // 2FA state
     const [show2fa, setShow2fa] = useState(false);
@@ -34,6 +36,8 @@ export default function LoginPage() {
             }
 
             if (result.success) {
+                await clearWorkspace();
+                await fetchWorkspaces();
                 if (result.user?.isSystemAdmin) {
                     navigate('/admin/companies', { replace: true });
                 } else {
@@ -55,6 +59,8 @@ export default function LoginPage() {
         try {
             const result = await verify2fa(tempToken, twoFaCode);
             if (result.success) {
+                await clearWorkspace();
+                await fetchWorkspaces();
                 if (result.user?.isSystemAdmin) {
                     navigate('/admin/companies', { replace: true });
                 } else {

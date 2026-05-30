@@ -75,7 +75,7 @@ public class CompanyMember extends DoAn.BE.common.entity.BaseEntity {
 
     // Quyền hạn chi tiết (JSON)
     @Convert(converter = UserPermissionsConverter.class)
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private UserPermissions permissions;
 
     @Column(name = "is_active", nullable = false)

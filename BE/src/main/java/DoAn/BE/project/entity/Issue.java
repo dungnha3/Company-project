@@ -49,13 +49,13 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @JoinColumn(name = "phase_id")
     private ProjectPhase phase; // Giai đoạn (Waterfall)
 
-    @Column(name = "issue_key", nullable = false, unique = true, length = 20, columnDefinition = "NVARCHAR(20)")
+    @Column(name = "issue_key", nullable = false, unique = true, length = 20)
     private String issueKey; // VD: PROJ-001, PROJ-002
 
-    @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -124,9 +124,13 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     }
 
     public boolean isDone() {
-        return this.issueStatus != null &&
-                this.issueStatus.getName() != null &&
-                "Done".equals(this.issueStatus.getName());
+        if (this.issueStatus == null || this.issueStatus.getName() == null) {
+            return false;
+        }
+        String name = this.issueStatus.getName().toLowerCase();
+        return name.equals("done") || name.equals("hoàn thành") || name.equals("hoan thanh")
+                || name.equals("completed") || name.equals("đã hoàn thành")
+                || name.equals("đã xong") || name.equals("da xong");
     }
 
     public boolean isAssigned() {

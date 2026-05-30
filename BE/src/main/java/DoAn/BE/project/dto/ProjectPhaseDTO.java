@@ -46,18 +46,19 @@ public class ProjectPhaseDTO {
         private ProjectPhase.PhaseStatus status;
         private Integer orderIndex;
         private Long createdByUserId;
+        private Long issueCount;
 
         public static Response fromEntity(ProjectPhase phase) {
             return Response.builder()
                     .phaseId(phase.getPhaseId())
-                    .projectId(phase.getProject().getProjectId())
+                    .projectId(phase.getProject() != null ? phase.getProject().getProjectId() : null)
                     .name(phase.getName())
                     .description(phase.getDescription())
                     .startDate(phase.getStartDate())
                     .endDate(phase.getEndDate())
                     .status(phase.getStatus())
                     .orderIndex(phase.getOrderIndex())
-                    .createdByUserId(phase.getCreatedBy().getUserId())
+                    .createdByUserId(phase.getCreatedBy() != null ? phase.getCreatedBy().getUserId() : null)
                     .build();
         }
     }

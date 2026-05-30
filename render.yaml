@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: be-backend
+    runtime: docker
+    dockerfilePath: ./BE/Dockerfile
+    dockerContext: ./BE
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DDL_AUTO
+        value: validate
+      - key: RENDER
+        value: "true"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://be-backend.onrender.com,https://*.vercel.app"

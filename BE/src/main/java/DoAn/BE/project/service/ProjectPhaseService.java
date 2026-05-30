@@ -50,6 +50,14 @@ public class ProjectPhaseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public ProjectPhaseDTO.Response getPhaseById(Long phaseId, Long userId) {
+        ProjectPhase phase = projectPhaseRepository.findById(phaseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project Phase not found"));
+        validateProjectAccess(phase.getProject().getProjectId(), userId);
+        return ProjectPhaseDTO.Response.fromEntity(phase);
+    }
+
     @Transactional
     public ProjectPhaseDTO.Response createPhase(Long projectId, ProjectPhaseDTO.CreateRequest request, Long userId) {
         validateProjectManagement(projectId, userId);

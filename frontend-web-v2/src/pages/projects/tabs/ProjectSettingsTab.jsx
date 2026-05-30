@@ -5,6 +5,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useNavigate } from 'react-router-dom';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
+import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 const STATUS_OPTIONS = [
     { value: 'PLANNING', label: 'Lập kế hoạch' },
@@ -15,6 +16,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function ProjectSettingsTab({ project }) {
+    if (!project) return null;
     const [form, setForm] = useState({
         name: '',
         keyProject: '',
@@ -29,6 +31,7 @@ export default function ProjectSettingsTab({ project }) {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { hasPermission } = useAccessControl();
+    const { fetchWorkspaces } = useWorkspaceStore();
     const canManageAll = hasPermission('PROJECT.MANAGE_ALL');
     const canDelete = hasPermission('PROJECT.DELETE');
 
@@ -90,6 +93,27 @@ export default function ProjectSettingsTab({ project }) {
         onSuccess: () => {
             toast.success('Đã xóa thành viên!');
             refetchMembers();
+        },
+    });
+
+    // Update member role mutation
+    const updateRoleMutation = useMutation({
+        mutationFn: async ({ userId, role }) => {
+            return apiClient.patch(
+                `/api/projects/${project.projectId}/members/${userId}/role`,
+                null,
+                { params: { role } }
+            );
+        },
+        onSuccess: () => {
+            toast.success('Đã cập nhật vai trò!');
+            refetchMembers();
+            // Re-fetch workspace permissions so the affected member's UI
+            // reflects the new project permissions immediately (no re-login needed)
+            fetchWorkspaces();
+        },
+        onError: (err) => {
+            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
         },
     });
 
@@ -260,17 +284,32 @@ export default function ProjectSettingsTab({ project }) {
                                         <div className="text-xs text-gray-500">{member.email}</div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <span className={`badge ${member.role === 'OWNER' ? 'bg-purple-100 text-purple-700' : member.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>
-                                        {member.role === 'OWNER' ? 'Chủ dự án' : member.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'}
-                                    </span>
+                                <div className="flex items-center gap-2">
+                                    {member.role === 'OWNER' ? (
+                                        <span className="badge bg-purple-100 text-purple-700">Chủ dự án</span>
+                                    ) : canManageAll ? (
+                                        <select
+                                            value={member.role}
+                                            onChange={(e) => updateRoleMutation.mutate({ userId: member.userId, role: e.target.value })}
+                                            disabled={updateRoleMutation.isPending}
+                                            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 bg-white text-gray-700 cursor-pointer transition-colors hover:border-gray-300"
+                                            title="Đổi vai trò"
+                                        >
+                                            <option value="MEMBER">Thành viên</option>
+                                            <option value="MANAGER">Quản lý</option>
+                                        </select>
+                                    ) : (
+                                        <span className={`badge ${member.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>
+                                            {member.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'}
+                                        </span>
+                                    )}
                                     {member.role !== 'OWNER' && canManageAll && (
                                         <button
                                             onClick={() => removeMemberMutation.mutate(member.userId)}
-                                            className="text-red-500 hover:bg-red-50 p-2 rounded"
+                                            className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
                                             title="Xóa thành viên"
                                         >
-                                            <i className="fa-solid fa-trash" />
+                                            <i className="fa-solid fa-trash text-sm" />
                                         </button>
                                     )}
                                 </div>

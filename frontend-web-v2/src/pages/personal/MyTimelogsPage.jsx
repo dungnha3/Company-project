@@ -32,7 +32,7 @@ export default function MyTimelogsPage() {
     const { data: summary, refetch: refetchSummary } = useQuery({
         queryKey: ['timelogs', 'summary', 'my', refreshKey],
         queryFn: async () => {
-            const res = await apiClient.get('/api/timelogs/summary/my');
+            const res = await apiClient.get(ENDPOINTS.TIMELOGS.MY_SUMMARY);
             return res.data;
         },
         staleTime: 30 * 1000,

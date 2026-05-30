@@ -33,13 +33,17 @@ const LazyTreemap = lazy(() =>
 export {
     Bar, Line, Pie, Area, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    ResponsiveContainer, Rectangle
+    ResponsiveContainer, Rectangle,
+    ReferenceLine, ReferenceArea,
 } from 'recharts';
 
 /**
  * Wrapped BarChart with lazy loading, error boundary, and loading skeleton
  */
-export function BarChart({ children, fallbackHeight = 256, ...props }) {
+export function BarChart({ children, fallbackHeight = 256, width, height, ...props }) {
+    if (!width || !height) {
+        return <SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />;
+    }
     return (
         <ChartErrorBoundary>
             <Suspense fallback={<SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />}>
@@ -54,7 +58,10 @@ export function BarChart({ children, fallbackHeight = 256, ...props }) {
 /**
  * Wrapped LineChart with lazy loading, error boundary, and loading skeleton
  */
-export function LineChart({ children, fallbackHeight = 256, ...props }) {
+export function LineChart({ children, fallbackHeight = 256, width, height, ...props }) {
+    if (!width || !height) {
+        return <SkeletonChart type="line" className={`h-[${fallbackHeight}px]`} />;
+    }
     return (
         <ChartErrorBoundary>
             <Suspense fallback={<SkeletonChart type="line" className={`h-[${fallbackHeight}px]`} />}>
@@ -69,7 +76,10 @@ export function LineChart({ children, fallbackHeight = 256, ...props }) {
 /**
  * Wrapped PieChart with lazy loading, error boundary, and loading skeleton
  */
-export function PieChart({ children, fallbackHeight = 256, ...props }) {
+export function PieChart({ children, fallbackHeight = 256, width, height, ...props }) {
+    if (!width || !height) {
+        return <SkeletonChart type="pie" className={`h-[${fallbackHeight}px]`} />;
+    }
     return (
         <ChartErrorBoundary>
             <Suspense fallback={<SkeletonChart type="pie" className={`h-[${fallbackHeight}px]`} />}>
@@ -84,7 +94,10 @@ export function PieChart({ children, fallbackHeight = 256, ...props }) {
 /**
  * Wrapped AreaChart with lazy loading, error boundary, and loading skeleton
  */
-export function AreaChart({ children, fallbackHeight = 256, ...props }) {
+export function AreaChart({ children, fallbackHeight = 256, width, height, ...props }) {
+    if (!width || !height) {
+        return <SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />;
+    }
     return (
         <ChartErrorBoundary>
             <Suspense fallback={<SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />}>
@@ -99,7 +112,10 @@ export function AreaChart({ children, fallbackHeight = 256, ...props }) {
 /**
  * Wrapped Treemap with lazy loading, error boundary, and loading skeleton
  */
-export function Treemap({ children, fallbackHeight = 300, ...props }) {
+export function Treemap({ children, fallbackHeight = 300, width, height, ...props }) {
+    if (!width || !height) {
+        return <SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />;
+    }
     return (
         <ChartErrorBoundary>
             <Suspense fallback={<SkeletonChart type="bar" className={`h-[${fallbackHeight}px]`} />}>

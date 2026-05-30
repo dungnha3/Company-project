@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 
 import DoAn.BE.analytics.dto.*;
 import DoAn.BE.project.entity.Issue;
+import DoAn.BE.project.entity.ProjectMember;
 import DoAn.BE.project.entity.Sprint;
 import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.timetracking.repository.TimeLogRepository;
 
@@ -28,12 +30,20 @@ public class ProjectAnalyticsService {
         private final IssueRepository issueRepository;
         private final SprintRepository sprintRepository;
         private final TimeLogRepository timeLogRepository;
+        private final ProjectMemberRepository projectMemberRepository;
 
         // Get burndown chart data for a sprint
-        // Shows remaining work over time
-        // /
+        // If sprintId is null, auto-selects the latest active sprint
         public BurndownDataDTO getBurndownData(Long projectId, Long sprintId) {
-                Sprint sprint = sprintRepository.findById(sprintId).orElse(null);
+                Sprint sprint;
+                if (sprintId != null) {
+                        sprint = sprintRepository.findById(sprintId).orElse(null);
+                } else {
+                        // Auto-select latest sprint for this project
+                        List<Sprint> sprints = sprintRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+                        sprint = sprints.isEmpty() ? null : sprints.get(0);
+                }
+
                 if (sprint == null) {
                         return BurndownDataDTO.builder()
                                         .sprintName("N/A")
@@ -101,7 +111,6 @@ public class ProjectAnalyticsService {
         }
 
         // Get velocity data - issues completed per sprint
-        // /
         public VelocityDataDTO getVelocityData(Long projectId, int sprintCount) {
                 List<Sprint> sprints = sprintRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
 
@@ -163,16 +172,48 @@ public class ProjectAnalyticsService {
                                 .build();
         }
 
-        // Get team workload - hours logged per team member
+        // Get team workload - per member breakdown
         // /
         public TeamWorkloadDTO getTeamWorkload(Long projectId) {
                 BigDecimal totalHours = timeLogRepository.sumHoursByProject(projectId);
 
-                // For full implementation, group by user
-                // This is simplified
+                List<ProjectMember> members = projectMemberRepository.findByProject_ProjectId(projectId);
+                List<TeamWorkloadDTO.MemberWorkload> memberWorkloads = new ArrayList<>();
+
+                for (ProjectMember member : members) {
+                        if (member.getUser() == null) continue;
+                        Long uid = member.getUser().getUserId();
+
+                        long total = issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid);
+                        long completed = issueRepository.countCompletedByProjectAndAssignee(projectId, uid);
+                        long inProgress = issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid)
+                                - completed
+                                - issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid);
+                        // Count in-progress: issues assigned but not done (avoid N+1, compute via stream)
+                        List<Issue> memberIssues = issueRepository.findByProject_ProjectIdAndAssignee_UserId(projectId, uid);
+                        long inProg = memberIssues.stream().filter(i -> !i.isDone()).count();
+                        long unassigned = issueRepository.countByProject_ProjectIdAndAssignee_IsNull(projectId);
+                        BigDecimal hours = timeLogRepository.sumHoursByUserAndProject(uid, projectId);
+
+                        memberWorkloads.add(TeamWorkloadDTO.MemberWorkload.builder()
+                                .userId(uid)
+                                .userName(member.getUser().getFullName())
+                                .avatarUrl(member.getUser().getAvatarUrl())
+                                .totalIssues(total)
+                                .completedIssues(completed)
+                                .inProgressIssues(inProg)
+                                .unassignedIssues(unassigned)
+                                .loggedHours(hours != null ? hours.doubleValue() : 0.0)
+                                .build());
+                }
+
+                // Also add unassigned total once
+                long totalUnassigned = issueRepository.countByProject_ProjectIdAndAssignee_IsNull(projectId);
+
                 return TeamWorkloadDTO.builder()
                                 .projectId(projectId)
                                 .totalLoggedHours(totalHours != null ? totalHours : BigDecimal.ZERO)
+                                .members(memberWorkloads)
                                 .build();
         }
 }

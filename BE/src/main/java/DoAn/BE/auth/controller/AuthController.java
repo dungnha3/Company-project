@@ -1,9 +1,11 @@
 package DoAn.BE.auth.controller;
 
 import DoAn.BE.auth.dto.AuthResponse;
+import DoAn.BE.auth.dto.GoogleLoginRequest;
 import DoAn.BE.auth.dto.LoginRequest;
 import DoAn.BE.auth.dto.RegisterRequest;
 import DoAn.BE.auth.dto.SelectCompanyRequest;
+import DoAn.BE.auth.dto.Verify2faRequest;
 import DoAn.BE.auth.service.AuthService;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.UnauthorizedException;
@@ -78,14 +80,12 @@ public class AuthController {
 
     @PostMapping("/verify-2fa")
     public ResponseEntity<AuthResponse> verify2fa(
-            @RequestBody Map<String, String> request,
+            @Valid @RequestBody Verify2faRequest request,
             HttpServletRequest httpRequest) {
-        String tempToken = request.get("tempToken");
-        String code = request.get("code");
         String ipAddress = getClientIpAddress(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
 
-        AuthResponse response = authService.verify2fa(tempToken, code, ipAddress, userAgent);
+        AuthResponse response = authService.verify2fa(request.getTempToken(), request.getCode(), ipAddress, userAgent);
 
         ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
         response.setRefreshToken(null);
@@ -97,13 +97,12 @@ public class AuthController {
 
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> loginWithGoogle(
-            @RequestBody Map<String, String> request,
+            @Valid @RequestBody GoogleLoginRequest request,
             HttpServletRequest httpRequest) {
-        String idToken = request.get("token");
         String ipAddress = getClientIpAddress(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
 
-        AuthResponse response = authService.loginWithGoogle(idToken, ipAddress, userAgent);
+        AuthResponse response = authService.loginWithGoogle(request.getIdToken(), ipAddress, userAgent);
 
         ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
         response.setRefreshToken(null);
@@ -175,13 +174,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(
-            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
-            @RequestBody(required = false) Map<String, String> request) {
-        String refreshToken = cookieRefreshToken;
-        if ((refreshToken == null || refreshToken.trim().isEmpty()) && request != null) {
-            refreshToken = request.get("refreshToken");
-        }
-
+            @CookieValue(name = REFRESH_TOKEN_COOKIE) String refreshToken) {
         if (refreshToken == null || refreshToken.trim().isEmpty()) {
             throw new BadRequestException("Refresh token không được để trống");
         }
@@ -249,27 +242,6 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
-    }
-
-    @GetMapping("/validate")
-    public ResponseEntity<Map<String, Object>> validateToken(@RequestParam String token) {
-        try {
-            boolean valid = authService.validateToken(token);
-            Map<String, Object> response = new HashMap<>();
-            response.put("valid", valid);
-            response.put("message", valid ? "Token hợp lệ" : "Token không hợp lệ");
-
-            if (valid) {
-                return ResponseEntity.ok(response);
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-            }
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("valid", false);
-            response.put("message", "Token không hợp lệ: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
     }
 
     @PostMapping("/forgot-password")

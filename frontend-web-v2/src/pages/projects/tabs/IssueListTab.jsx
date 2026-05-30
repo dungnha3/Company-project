@@ -166,8 +166,8 @@ export default function IssueListTab({ projectId }) {
     const hasFilters = search || filterStatus || filterPriority || filterAssignee;
 
     // Reset to page 0 whenever filters change
-    const handleFilterChange = (setter) => (val) => {
-        setter(val);
+    const handleFilterChange = (setter) => (e) => {
+        setter(e.target.value);
         setPage(0);
     };
 

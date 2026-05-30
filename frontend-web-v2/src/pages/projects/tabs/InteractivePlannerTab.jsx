@@ -34,6 +34,7 @@ export default function InteractivePlannerTab({ projectId }) {
     const toast = useToast();
     const { hasPermission } = useAccessControl();
     const canManageGoals = hasPermission('PROJECT.MANAGE_PHASES');
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     // Fetch issues
     const { data: issuesRaw = [], isLoading: isIssuesLoading } = useQuery({
@@ -52,7 +53,7 @@ export default function InteractivePlannerTab({ projectId }) {
     const { data: goals = [] } = useQuery({
         queryKey: ['project-goals', projectId, filterYear],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/projects/${projectId}/goals`, {
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.GOALS(projectId), {
                 params: { year: filterYear },
             });
             return res.data || [];
@@ -64,7 +65,7 @@ export default function InteractivePlannerTab({ projectId }) {
     const { data: allGoals = [] } = useQuery({
         queryKey: ['project-goals-all', projectId],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/projects/${projectId}/goals`);
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.GOALS(projectId));
             return res.data || [];
         },
         enabled: !!projectId,
@@ -73,7 +74,7 @@ export default function InteractivePlannerTab({ projectId }) {
 
     // Goal Mutation: delete & recreate because there is no edit PUT in BE
     const deleteGoalMutation = useMutation({
-        mutationFn: (goalId) => apiClient.delete(`/api/projects/${projectId}/goals/${goalId}`),
+        mutationFn: (goalId) => apiClient.delete(ENDPOINTS.PROJECTS.GOAL_DELETE(projectId, goalId)),
         onSuccess: () => {
             toast.success('Đã xóa mục tiêu');
             queryClient.invalidateQueries(['project-goals', projectId]);
@@ -82,7 +83,7 @@ export default function InteractivePlannerTab({ projectId }) {
     });
 
     const toggleGoalMutation = useMutation({
-        mutationFn: (goalId) => apiClient.patch(`/api/projects/${projectId}/goals/${goalId}/toggle`),
+        mutationFn: (goalId) => apiClient.patch(ENDPOINTS.PROJECTS.GOAL_TOGGLE(projectId, goalId)),
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
             queryClient.invalidateQueries(['project-goals', projectId]);
@@ -94,7 +95,7 @@ export default function InteractivePlannerTab({ projectId }) {
         mutationFn: async ({ issueId, payload }) => {
             const originalIssue = issues.find(i => i.issueId === issueId);
             if (!originalIssue) return;
-            return apiClient.put(`/api/issues/${issueId}`, {
+            return apiClient.put(ENDPOINTS.ISSUES.BY_ID(issueId), {
                 title: originalIssue.title || originalIssue.subject,
                 description: originalIssue.description,
                 statusId: originalIssue.statusId,
@@ -203,6 +204,7 @@ export default function InteractivePlannerTab({ projectId }) {
 
     const handleDropQuadrant = (e, quadrantId) => {
         e.preventDefault();
+        if (!canManageIssues) return;
         const idStr = e.dataTransfer.getData('text/plain');
         const issueId = Number(idStr);
         if (!issueId) return;
@@ -221,11 +223,11 @@ export default function InteractivePlannerTab({ projectId }) {
 
     const handleDropMonth = (e, month) => {
         e.preventDefault();
+        if (!canManageIssues) return;
         const idStr = e.dataTransfer.getData('text/plain');
         const issueId = Number(idStr);
         if (!issueId) return;
 
-        // Set due date to the last day of that month
         const lastDay = new Date(filterYear, month, 0).getDate();
         const dueDate = `${filterYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
@@ -493,10 +495,10 @@ export default function InteractivePlannerTab({ projectId }) {
                                                     ${goal.isCompleted ? 'border-green-150 bg-green-50/20 text-green-700' : 'border-gray-100 bg-gray-50'}`}
                                             >
                                                 <button
-                                                    onClick={() => toggleGoalMutation.mutate(goal.goalId)}
-                                                    disabled={toggleGoalMutation.isPending}
+                                                    onClick={() => canManageGoals && toggleGoalMutation.mutate(goal.goalId)}
+                                                    disabled={!canManageGoals || toggleGoalMutation.isPending}
                                                     className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors
-                                                        ${goal.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-500'}`}
+                                                        ${goal.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed'}`}
                                                 >
                                                     {goal.isCompleted && <i className="fa-solid fa-check text-[7px]" />}
                                                 </button>
@@ -606,9 +608,9 @@ function GoalModal({ projectId, goal, defaultYear, onClose, onSuccess }) {
         mutationFn: async (data) => {
             if (isEditing) {
                 // Delete then Recreate
-                await apiClient.delete(`/api/projects/${projectId}/goals/${goal.goalId}`);
+                await apiClient.delete(ENDPOINTS.PROJECTS.GOAL_DELETE(projectId, goal.goalId));
             }
-            return apiClient.post(`/api/projects/${projectId}/goals`, data);
+            return apiClient.post(ENDPOINTS.PROJECTS.GOAL_CREATE(projectId), data);
         },
         onSuccess: () => {
             toast.success(isEditing ? 'Đã cập nhật mục tiêu' : 'Đã thêm mục tiêu');

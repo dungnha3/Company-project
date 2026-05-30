@@ -34,23 +34,3 @@ export function useReducedMotion() {
 
     return prefersReducedMotion;
 }
-
-/**
- * Utility to get animation props based on reduced motion preference
- * @param {boolean} prefersReducedMotion - from useReducedMotion hook
- * @returns {object} Animation configuration object
- */
-export function getAnimationProps(prefersReducedMotion) {
-    return {
-        // For framer-motion or similar
-        transition: prefersReducedMotion
-            ? { duration: 0 }
-            : { duration: 0.3 },
-
-        // For scroll behavior
-        scrollBehavior: prefersReducedMotion ? 'auto' : 'smooth',
-
-        // CSS class for animations
-        animationClass: prefersReducedMotion ? 'motion-reduce' : 'motion-normal',
-    };
-}

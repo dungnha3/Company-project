@@ -46,7 +46,7 @@ public class LeaveRequest extends TenantScopedEntity {
     @Column(name = "total_days", nullable = false)
     private Integer totalDays;
 
-    @Column(name = "reason", length = 500, columnDefinition = "NVARCHAR(500)")
+    @Column(name = "reason", length = 500, columnDefinition = "TEXT")
     private String reason;
 
     @Enumerated(EnumType.STRING)
@@ -61,7 +61,7 @@ public class LeaveRequest extends TenantScopedEntity {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    @Column(name = "approval_note", length = 500, columnDefinition = "NVARCHAR(500)")
+    @Column(name = "approval_note", length = 500, columnDefinition = "TEXT")
     private String approvalNote;
 
     // Legacy PM/Accounting columns kept for backward compatibility with existing
@@ -75,7 +75,7 @@ public class LeaveRequest extends TenantScopedEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private LocalDateTime pmApprovedAt;
 
-    @Column(name = "pm_note", length = 500, columnDefinition = "NVARCHAR(500)")
+    @Column(name = "pm_note", length = 500, columnDefinition = "TEXT")
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String pmNote;
 
@@ -88,7 +88,7 @@ public class LeaveRequest extends TenantScopedEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private LocalDateTime accountingApprovedAt;
 
-    @Column(name = "accounting_note", length = 500, columnDefinition = "NVARCHAR(500)")
+    @Column(name = "accounting_note", length = 500, columnDefinition = "TEXT")
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String accountingNote;
 

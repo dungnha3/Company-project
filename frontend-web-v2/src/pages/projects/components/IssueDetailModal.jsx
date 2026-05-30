@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import TimeLogSection from './TimeLogSection';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUSES = [
     { value: 1, label: 'Chờ xử lý', color: 'bg-gray-100 text-gray-700' },
@@ -33,6 +34,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const [activeTab, setActiveTab] = useState('details'); // details | comments | activity
     const [newComment, setNewComment] = useState('');
     const [timelogKey, setTimelogKey] = useState(0); // Increment to force TimeLogSection refresh
+
+    const { hasPermission } = useAccessControl();
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     // Listen for timelog-updated events (e.g. from auto-stop on task completion)
     useEffect(() => {
@@ -72,7 +76,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
 
     const statusMutation = useMutation({
         mutationFn: async (statusId) => {
-            await apiClient.patch(`/api/issues/${issue.issueId}/status/${statusId}`);
+            await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(issue.issueId, statusId));
         },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
@@ -85,7 +89,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     // Assign mutation
     const assignMutation = useMutation({
         mutationFn: async (assigneeId) => {
-            await apiClient.patch(`/api/issues/${issue.issueId}/assign/${assigneeId}`);
+            await apiClient.patch(ENDPOINTS.ISSUES.ASSIGN(issue.issueId, assigneeId));
         },
         onSuccess: () => {
             toast.success('Đã giao việc');
@@ -108,11 +112,50 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
     });
 
+    // File upload mutation
+    const fileInputRef = useRef(null);
+    const [uploadingFile, setUploadingFile] = useState(false);
+    const uploadFileMutation = useMutation({
+        mutationFn: async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            await apiClient.post(ENDPOINTS.STORAGE.UPLOAD_ISSUE_FILE(issue.issueId), formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+        },
+        onMutate: () => setUploadingFile(true),
+        onSettled: () => setUploadingFile(false),
+        onSuccess: () => {
+            toast.success('Đã tải file lên');
+            queryClient.invalidateQueries(['issueFiles', issue.issueId]);
+        },
+        onError: () => toast.error('Lỗi khi tải file lên'),
+    });
+
+    // Delete file mutation
+    const deleteFileMutation = useMutation({
+        mutationFn: async (fileId) => {
+            await apiClient.delete(ENDPOINTS.STORAGE.DELETE_FILE(fileId));
+        },
+        onSuccess: () => {
+            toast.success('Đã xóa file');
+            queryClient.invalidateQueries(['issueFiles', issue.issueId]);
+        },
+        onError: () => toast.error('Lỗi khi xóa file'),
+    });
+
+    // Fetch issue files
+    const { data: issueFiles = [] } = useQuery({
+        queryKey: ['issueFiles', issue.issueId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.STORAGE.ISSUE_FILES(issue.issueId))).data,
+        enabled: activeTab === 'files',
+    });
+
     // Update full issue mutation
     const updateIssueMutation = useMutation({
         mutationFn: async (payload) => {
             const currentIssue = fullIssue || issue;
-            await apiClient.put(`/api/issues/${issue.issueId}`, {
+            await apiClient.put(ENDPOINTS.ISSUES.BY_ID(issue.issueId), {
                 title: currentIssue.title || currentIssue.subject,
                 description: currentIssue.description,
                 statusId: currentIssue.statusId,
@@ -137,6 +180,29 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
     });
 
+    // Delete issue mutation
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            await apiClient.delete(`/api/issues/${issue.issueId}`);
+        },
+        onSuccess: () => {
+            toast.success('Đã xóa công việc');
+            queryClient.invalidateQueries(['projectIssues']);
+            queryClient.invalidateQueries(['projectBacklog']);
+            queryClient.invalidateQueries(['sprintIssues']);
+            queryClient.invalidateQueries(['myIssues']);
+            onUpdate?.();
+            onClose();
+        },
+        onError: () => toast.error('Lỗi khi xóa công việc')
+    });
+
+    const handleDelete = () => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa công việc này không? Mọi dữ liệu liên quan sẽ bị xóa vĩnh viễn.')) {
+            deleteMutation.mutate();
+        }
+    };
+
     if (!issue) return null;
 
     const currentIssue = fullIssue || issue;
@@ -153,9 +219,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         <span className="text-white/80 text-sm">|</span>
                         <select
                             value={currentIssue.issueType || 'TASK'}
-                            onChange={(e) => updateIssueMutation.mutate({ issueType: e.target.value })}
-                            disabled={updateIssueMutation.isPending}
-                            className="bg-transparent text-white font-medium text-sm border-none focus:ring-0 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 appearance-none"
+                            onChange={(e) => canManageIssues && updateIssueMutation.mutate({ issueType: e.target.value })}
+                            disabled={!canManageIssues || updateIssueMutation.isPending}
+                            className={`bg-transparent text-white font-medium text-sm border-none focus:ring-0 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 appearance-none ${!canManageIssues ? 'opacity-50' : ''}`}
                             style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
                         >
                             {ISSUE_TYPES.map(t => (
@@ -179,9 +245,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <select
                                 value={currentIssue.statusId || 1}
-                                onChange={(e) => statusMutation.mutate(Number(e.target.value))}
-                                disabled={statusMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                                onChange={(e) => canManageIssues && statusMutation.mutate(Number(e.target.value))}
+                                disabled={!canManageIssues || statusMutation.isPending}
+                                className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
                                 {STATUSES.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -194,9 +260,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <label className="block text-xs text-gray-500 mb-1">Độ ưu tiên</label>
                             <select
                                 value={currentIssue.priority || 'MEDIUM'}
-                                onChange={(e) => updateIssueMutation.mutate({ priority: e.target.value })}
-                                disabled={updateIssueMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                                onChange={(e) => canManageIssues && updateIssueMutation.mutate({ priority: e.target.value })}
+                                disabled={!canManageIssues || updateIssueMutation.isPending}
+                                className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
                                 {PRIORITIES.map(p => (
                                     <option key={p.value} value={p.value}>{p.label}</option>
@@ -209,9 +275,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <label className="block text-xs text-gray-500 mb-1">Người thực hiện</label>
                             <select
                                 value={currentIssue.assigneeId || ''}
-                                onChange={(e) => assignMutation.mutate(e.target.value || null)}
-                                disabled={assignMutation.isPending}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300"
+                                onChange={(e) => canManageIssues && assignMutation.mutate(e.target.value || null)}
+                                disabled={!canManageIssues || assignMutation.isPending}
+                                className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
                                 <option value="">-- Chưa giao --</option>
                                 {members.map(m => (
@@ -249,6 +315,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                     {[
                         { id: 'details', label: 'Chi tiết', icon: 'fa-file-lines' },
                         { id: 'comments', label: 'Bình luận', icon: 'fa-comments' },
+                        { id: 'files', label: 'Tài liệu', icon: 'fa-folder' },
                         { id: 'activity', label: 'Lịch sử', icon: 'fa-history' },
                     ].map(tab => (
                         <button
@@ -446,17 +513,35 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             ) : null}
 
                             {/* Custom Fields Section */}
-                            <CustomFieldsSection
-                                projectId={currentIssue.projectId}
-                                issueId={currentIssue.issueId}
-                                initialValues={currentIssue.customFieldValues || {}}
-                            />
+                            {canManageIssues ? (
+                                <CustomFieldsSection
+                                    projectId={currentIssue.projectId}
+                                    issueId={currentIssue.issueId}
+                                    initialValues={currentIssue.customFieldValues || {}}
+                                />
+                            ) : (
+                                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                    <div className="text-sm font-medium text-gray-500 mb-2">Custom Fields</div>
+                                    {Object.keys(currentIssue.customFieldValues || {}).length > 0 ? (
+                                        <div className="space-y-1">
+                                            {Object.entries(currentIssue.customFieldValues).map(([key, val]) => (
+                                                <div key={key} className="text-sm text-gray-600">
+                                                    <span className="font-medium">{key}:</span> {String(val ?? '')}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-400 italic">Không có custom fields</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {activeTab === 'comments' && (
                         <div className="space-y-4">
                             {/* Add Comment */}
+                            {canManageIssues ? (
                             <div className="flex gap-3">
                                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
                                     U
@@ -480,6 +565,9 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     </div>
                                 </div>
                             </div>
+                            ) : (
+                                <div className="text-center py-3 text-sm text-gray-400 italic">Bạn không có quyền bình luận</div>
+                            )}
 
                             {/* Comments List */}
                             <div className="space-y-3 pt-4 border-t border-gray-100">
@@ -507,6 +595,88 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         </div>
                     )}
 
+                    {activeTab === 'files' && (
+                        <div className="space-y-4">
+                            {/* Upload area */}
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-gray-700">File đính kèm</h3>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploadingFile}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                                >
+                                    {uploadingFile ? (
+                                        <><i className="fa-solid fa-spinner fa-spin" /> Đang tải...</>
+                                    ) : (
+                                        <><i className="fa-solid fa-upload" /> Tải lên file</>
+                                    )}
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) uploadFileMutation.mutate(file);
+                                        e.target.value = '';
+                                    }}
+                                />
+                            </div>
+
+                            {/* File list */}
+                            {issueFiles.length === 0 ? (
+                                <div className="text-center py-8 text-gray-400">
+                                    <i className="fa-solid fa-folder-open text-3xl mb-2" />
+                                    <p className="text-sm">Chưa có file đính kèm</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {issueFiles.map(file => (
+                                        <div key={file.id || file.fileId} className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <i className={`fa-solid ${file.contentType === 'folder' ? 'fa-folder text-amber-500' : 'fa-file text-gray-400'} flex-shrink-0`} />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-gray-800 truncate">{file.fileName}</p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : ''} • {file.uploadedBy?.fullName || file.uploadedByName || 'Người dùng'}
+                                                        {file.createdAt ? ' • ' + new Date(file.createdAt).toLocaleDateString('vi-VN') : ''}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <button
+                                                    onClick={() => {
+                                                        const link = document.createElement('a');
+                                                        link.href = `${apiClient.defaults.baseURL}${ENDPOINTS.STORAGE.DOWNLOAD_FILE(file.id || file.fileId)}`;
+                                                        link.download = file.fileName;
+                                                        link.click();
+                                                    }}
+                                                    className="w-8 h-8 rounded-lg hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                                                    title="Tải xuống"
+                                                >
+                                                    <i className="fa-solid fa-download text-xs" />
+                                                </button>
+                                                {canManageIssues && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('Xóa file này?')) {
+                                                                deleteFileMutation.mutate(file.id || file.fileId);
+                                                            }
+                                                        }}
+                                                        className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                                                        title="Xóa"
+                                                    >
+                                                        <i className="fa-solid fa-trash text-xs" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'activity' && (
                         <div className="space-y-6">
                             <TimeLogSection
@@ -530,7 +700,19 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                    <div>
+                        {canManageIssues && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={deleteMutation.isPending}
+                                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <i className="fa-solid fa-trash-can" />
+                                {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa công việc'}
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={onClose}
                         className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUS_LABELS = {
     ACTIVE: { label: 'Đang làm', color: 'bg-green-100 text-green-700' },
@@ -30,7 +31,7 @@ function AllocationBar({ value }) {
     );
 }
 
-function EditMemberModal({ member, projectId, onClose }) {
+function EditMemberModal({ member, projectId, onClose, canManage }) {
     const queryClient = useQueryClient();
     const [form, setForm] = useState({
         position: member.position || '',
@@ -45,7 +46,7 @@ function EditMemberModal({ member, projectId, onClose }) {
 
     const updateMutation = useMutation({
         mutationFn: (data) =>
-            apiClient.patch(`/api/projects/${projectId}/members/${member.userId}/info`, data),
+            apiClient.patch(ENDPOINTS.PROJECTS.UPDATE_MEMBER_INFO(projectId, member.userId), data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
             onClose();
@@ -172,8 +173,8 @@ function EditMemberModal({ member, projectId, onClose }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={updateMutation.isPending}
-                            className="btn-primary flex-1"
+                            disabled={!canManage || updateMutation.isPending}
+                            className={`btn-primary flex-1 ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {updateMutation.isPending ? (
                                 <><i className="fa-solid fa-spinner fa-spin mr-2" />Đang lưu...</>
@@ -292,6 +293,7 @@ function MemberCard({ member, projectId, canManage }) {
                     member={member}
                     projectId={projectId}
                     onClose={() => setEditing(false)}
+                    canManage={canManage}
                 />
             )}
         </>
@@ -300,7 +302,7 @@ function MemberCard({ member, projectId, canManage }) {
 
 export default function TeamTab({ projectId }) {
     const { hasPermission } = useWorkspaceStore();
-    const canManage = hasPermission('projectManageAll');
+    const canManage = hasPermission('PROJECT.MANAGE_ALL');
 
     const { data: members = [], isLoading } = useQuery({
         queryKey: ['project-members', projectId],

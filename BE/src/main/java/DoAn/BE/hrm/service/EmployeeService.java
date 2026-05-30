@@ -2,6 +2,7 @@ package DoAn.BE.hrm.service;
 
 import java.util.List;
 
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
-
     private final AccessControlService accessControlService;
+    private final EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public Employee getEmployeeById(Long id, User currentUser) {
@@ -81,7 +82,116 @@ public class EmployeeService {
         if (companyId == null) {
             return Page.empty(pageable);
         }
-        return employeeRepository.findByCompanyIdWithFilters(companyId, keyword, status, pageable);
+
+        String keywordParam = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+        String statusParam = status != null ? status.name() : null;
+
+        String whereClause = "WHERE e.company_id = :companyId";
+        if (statusParam != null) {
+            whereClause += " AND e.status = :status";
+        }
+        if (keywordParam != null) {
+            whereClause += " AND LOWER(e.full_name) LIKE :keyword";
+        }
+
+        String baseSql = "SELECT e.employee_id, e.created_at, e.updated_at, e.user_id, e.company_id, " +
+            "e.company_member_id, e.full_name, e.id_card, e.date_of_birth, e.gender, " +
+            "e.address, e.phone, e.hire_date, e.status, e.base_salary, e.allowance, e.leave_balance, " +
+            "u.email AS user_email, u.avatar_data AS user_avatar " +
+            "FROM employees e " +
+            "LEFT JOIN users u ON e.user_id = u.user_id " +
+            whereClause + " ORDER BY e.full_name";
+
+        jakarta.persistence.Query nativeQuery = entityManager.createNativeQuery(baseSql);
+        nativeQuery.setParameter("companyId", companyId);
+        if (statusParam != null) nativeQuery.setParameter("status", statusParam);
+        if (keywordParam != null) nativeQuery.setParameter("keyword", "%" + keywordParam.toLowerCase() + "%");
+
+        String countSql = "SELECT COUNT(*) FROM employees e " + whereClause;
+        jakarta.persistence.Query countQuery = entityManager.createNativeQuery(countSql);
+        countQuery.setParameter("companyId", companyId);
+        if (statusParam != null) countQuery.setParameter("status", statusParam);
+        if (keywordParam != null) countQuery.setParameter("keyword", "%" + keywordParam.toLowerCase() + "%");
+        long total = ((Number) countQuery.getSingleResult()).longValue();
+
+        int pageSize = pageable.getPageSize();
+        int firstResult = (int) pageable.getOffset();
+        nativeQuery.setFirstResult(firstResult);
+        nativeQuery.setMaxResults(pageSize);
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = nativeQuery.getResultList();
+        List<Employee> employees = results.stream().map(this::mapRowToEmployee).toList();
+
+        return new org.springframework.data.domain.PageImpl<>(employees, pageable, total);
+    }
+
+    private Employee mapRowToEmployee(Object[] row) {
+        Employee emp = new Employee();
+        emp.setEmployeeId(toLong(row[0]));
+        emp.setCreatedAt(toLocalDateTime(row[1]));
+        emp.setUpdatedAt(toLocalDateTime(row[2]));
+        emp.setUser(userProxy(toLong(row[3])));
+        emp.setCompany(companyProxy(toLong(row[4])));
+        emp.setFullName((String) row[6]);
+        emp.setIdCard((String) row[7]);
+        emp.setDateOfBirth(toLocalDate(row[8]));
+        try { emp.setGender(row[9] != null ? DoAn.BE.hrm.entity.Employee.Gender.valueOf((String) row[9]) : null); } catch (Exception e) { /* ignore */ }
+        emp.setAddress((String) row[10]);
+        emp.setPhone((String) row[11]);
+        emp.setHireDate(toLocalDate(row[12]));
+        try { emp.setStatus(row[13] != null ? DoAn.BE.hrm.entity.Employee.EmployeeStatus.valueOf((String) row[13]) : null); } catch (Exception e) { /* ignore */ }
+        emp.setBaseSalary(row[14] != null ? new java.math.BigDecimal(row[14].toString()) : null);
+        emp.setAllowance(row[15] != null ? new java.math.BigDecimal(row[15].toString()) : null);
+        emp.setLeaveBalance(row[16] != null ? toInt(row[16]) : null);
+        // row[17] = user_email, row[18] = user_avatar
+        if (row.length > 17) {
+            DoAn.BE.user.entity.User u = userProxy(toLong(row[3]));
+            u.setEmail((String) row[17]);
+            u.setAvatarUrl((String) row[18]);
+            emp.setUser(u);
+        }
+        return emp;
+    }
+
+    private Long toLong(Object val) {
+        if (val == null) return null;
+        if (val instanceof Number) return ((Number) val).longValue();
+        return Long.parseLong(val.toString());
+    }
+
+    private Integer toInt(Object val) {
+        if (val == null) return null;
+        if (val instanceof Number) return ((Number) val).intValue();
+        return Integer.parseInt(val.toString());
+    }
+
+    private java.time.LocalDateTime toLocalDateTime(Object val) {
+        if (val == null) return null;
+        if (val instanceof java.time.LocalDateTime) return (java.time.LocalDateTime) val;
+        if (val instanceof java.sql.Timestamp) return ((java.sql.Timestamp) val).toLocalDateTime();
+        return java.time.LocalDateTime.parse(val.toString());
+    }
+
+    private java.time.LocalDate toLocalDate(Object val) {
+        if (val == null) return null;
+        if (val instanceof java.time.LocalDate) return (java.time.LocalDate) val;
+        if (val instanceof java.sql.Date) return ((java.sql.Date) val).toLocalDate();
+        return java.time.LocalDate.parse(val.toString());
+    }
+
+    private DoAn.BE.user.entity.User userProxy(Long id) {
+        if (id == null) return null;
+        DoAn.BE.user.entity.User u = new DoAn.BE.user.entity.User();
+        u.setUserId(id);
+        return u;
+    }
+
+    private DoAn.BE.company.entity.Company companyProxy(Long id) {
+        if (id == null) return null;
+        DoAn.BE.company.entity.Company c = new DoAn.BE.company.entity.Company();
+        c.setCompanyId(id);
+        return c;
     }
 
     public Employee createEmployee(EmployeeRequest request, User currentUser) {
@@ -205,7 +315,11 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public Page<Employee> searchEmployees(String keyword, Pageable pageable) {
-        return employeeRepository.searchByKeyword(keyword, pageable);
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        if (companyId == null) {
+            return Page.empty(pageable);
+        }
+        return employeeRepository.searchByKeyword(keyword, companyId, pageable);
     }
 
     public Employee updateStatus(Long id, EmployeeStatus status) {

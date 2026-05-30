@@ -63,7 +63,7 @@ export default function DataTable({
                 <table className="w-full text-sm text-left min-w-[800px]">
                     <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-[11px] border-b border-gray-100">
                         <tr>
-                            {columns.map((column, idx) => (
+                            {(columns || []).map((column, idx) => (
                                 <th key={idx} className="px-4 py-3 whitespace-nowrap">
                                     {typeof column.header === 'function' ? column.header() : column.header}
                                 </th>
@@ -73,8 +73,8 @@ export default function DataTable({
                     <tbody className="divide-y divide-gray-50">
                         {data.map((row, rowIdx) => (
                             <tr key={row.id ?? rowIdx} className="hover:bg-gray-50/50 transition-colors">
-                                {columns.map((column, idx) => (
-                                    <td key={idx} className={`px-4 py-3 align-middle ${idx === columns.length - 1 ? 'text-right' : ''}`}>
+                                {(columns || []).map((column, idx) => (
+                                    <td key={idx} className={`px-4 py-3 align-middle ${idx === (columns || []).length - 1 ? 'text-right' : ''}`}>
                                         {column.cell ? column.cell(row) : (row[column.accessorKey] || '-')}
                                     </td>
                                 ))}

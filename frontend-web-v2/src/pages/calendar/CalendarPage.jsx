@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { calendarApi } from '../../shared/api/featureApi';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
@@ -68,16 +68,15 @@ export default function CalendarPage() {
         else setCurrentMonth(new Date());
     };
 
-    // ── Load events
-    useEffect(() => { loadEvents(); }, [currentMonth, currentWeek, currentDay, viewMode]);
-
-    const loadEvents = async () => {
+    // ── Load events (query 3 months before to include past events)
+    const loadEvents = useCallback(async () => {
         try {
             setLoading(true);
             let start, end;
+            // Query 3 months before current month to show historical events
             if (viewMode === 'month') {
-                start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59);
+                start = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 3, 1);
+                end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0, 23, 59, 59);
             } else if (viewMode === 'week') {
                 const weekStart = getWeekStart(currentWeek);
                 start = weekStart;
@@ -96,7 +95,9 @@ export default function CalendarPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentMonth, currentWeek, currentDay, viewMode]);
+
+    useEffect(() => { loadEvents(); }, [loadEvents]);
 
     // ── Filter events
     const filteredEvents = useMemo(() => {
@@ -200,8 +201,14 @@ export default function CalendarPage() {
     };
     const handleDelete = async (eventId) => {
         if (!confirm('Xóa sự kiện này?')) return;
-        try { await calendarApi.deleteEvent(eventId); setSelectedEvent(null); loadEvents(); }
-        catch (error) { console.error('Failed to delete event:', error); }
+        try {
+            await calendarApi.deleteEvent(eventId);
+            setSelectedEvent(null);
+            loadEvents();
+        } catch (error) {
+            const msg = error?.response?.data?.message || error?.message || 'Không thể xóa sự kiện';
+            alert('Lỗi: ' + msg);
+        }
     };
 
     const renderHeaderTitle = () => {

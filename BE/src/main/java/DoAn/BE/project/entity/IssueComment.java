@@ -30,7 +30,7 @@ public class IssueComment {
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
     @Column(name = "created_at")
@@ -39,7 +39,7 @@ public class IssueComment {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "is_edited", nullable = false)
+    @Column(name = "is_edited", nullable = false, columnDefinition = "boolean default false")
     private Boolean isEdited = false;
 
     @PrePersist

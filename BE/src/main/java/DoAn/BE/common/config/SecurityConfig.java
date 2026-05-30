@@ -4,11 +4,12 @@ import DoAn.BE.auth.filter.JwtAuthenticationFilter;
 import DoAn.BE.common.filter.RateLimitingFilter;
 import DoAn.BE.common.filter.SecurityHeadersFilter;
 import DoAn.BE.common.filter.TenantFilter;
+import DoAn.BE.common.filter.XssSanitizingFilter;
+import DoAn.BE.common.filter.PerformanceMonitorFilter;
 import DoAn.BE.common.util.AppConstants;
 import DoAn.BE.company.entity.CompanyRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -21,6 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 
 @Configuration
 @EnableWebSecurity
@@ -47,6 +49,12 @@ public class SecurityConfig {
 
         @Autowired
         private SecurityHeadersFilter securityHeadersFilter;
+
+        @Autowired
+        private XssSanitizingFilter xssSanitizingFilter;
+
+        @Autowired
+        private PerformanceMonitorFilter performanceMonitorFilter;
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -78,6 +86,8 @@ public class SecurityConfig {
                                                 .anyRequest().authenticated())
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
+                                .addFilterBefore(xssSanitizingFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(performanceMonitorFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(securityHeadersFilter, RateLimitingFilter.class)
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -88,24 +98,39 @@ public class SecurityConfig {
 
         // (conflicts with allowCredentials)
         @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:4200,http://localhost:5173}")
-        private List<String> allowedOrigins;
+        private String allowedOrigins;
 
         @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")
-        private List<String> allowedMethods;
+        private String allowedMethods;
 
-        @Value("${cors.allowed-headers:*}")
-        private List<String> allowedHeaders;
+        @Value("${cors.allowed-headers:Authorization,Content-Type,X-Company-Id,X-Workspace-Type,X-Requested-With,Accept,Origin}")
+        private String allowedHeaders;
 
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                // Configurable CORS policies
-                // Default in app.properties:
-                // http://localhost:3000,http://localhost:4200,http://localhost:5173
-                configuration.setAllowedOrigins(allowedOrigins);
-                configuration.setAllowedMethods(allowedMethods);
-                configuration.setAllowedHeaders(allowedHeaders);
+                // Configurable CORS policies with robust manual parsing to support spaces and clear formatting
+                if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {
+                    java.util.List<String> patterns = new java.util.ArrayList<>();
+                    for (String origin : allowedOrigins.split(",")) {
+                        patterns.add(origin.trim());
+                    }
+                    configuration.setAllowedOriginPatterns(patterns);
+                }
+
+                if (allowedMethods != null && !allowedMethods.trim().isEmpty()) {
+                        for (String method : allowedMethods.split(",")) {
+                                configuration.addAllowedMethod(method.trim());
+                        }
+                }
+
+                if (allowedHeaders != null && !allowedHeaders.trim().isEmpty()) {
+                        for (String header : allowedHeaders.split(",")) {
+                                configuration.addAllowedHeader(header.trim());
+                        }
+                }
+
                 configuration.setAllowCredentials(true);
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

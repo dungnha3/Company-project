@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import { toast } from 'sonner';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
@@ -11,14 +12,14 @@ export default function ProjectPerformanceTab({ projectId }) {
     const { data: rankings, isLoading } = useQuery({
         queryKey: ['performance-rankings', projectId],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/hr/performance-comparison/projects/${projectId}`);
+            const res = await apiClient.get(ENDPOINTS.PERFORMANCE.COMPARISON_BY_PROJECT(projectId));
             return res.data;
         }
     });
 
     const proposalMutation = useMutation({
         mutationFn: async (data) => {
-            await apiClient.post('/api/hr/proposals', { ...data, projectId });
+            await apiClient.post(ENDPOINTS.HR_PROPOSALS, { ...data, projectId });
         },
         onSuccess: () => {
             toast.success('Đã gửi đề xuất tăng lương thành công!');

@@ -87,18 +87,3 @@ export function EmptyProjects({ onAdd }) {
         />
     );
 }
-
-export function ErrorState({ onRetry, message = 'Đã xảy ra lỗi khi tải dữ liệu.' }) {
-    return (
-        <EmptyState
-            icon="fa-circle-exclamation"
-            title="Đã xảy ra lỗi"
-            description={message}
-            action={onRetry && (
-                <button onClick={onRetry} className="btn-secondary">
-                    <i className="fa-solid fa-rotate-right mr-2" />Thử lại
-                </button>
-            )}
-        />
-    );
-}

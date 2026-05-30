@@ -79,7 +79,7 @@ public class IssueActivityService {
 
         validateProjectAccess(projectId, currentUser.getUserId());
 
-        List<IssueActivity> activities = issueActivityRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+        List<IssueActivity> activities = issueActivityRepository.findByIssue_Project_ProjectIdOrderByCreatedAtDesc(projectId);
         return activities.stream()
                 .map(activity -> convertToDTO(activity, currentUser))
                 .collect(Collectors.toList());
@@ -95,7 +95,7 @@ public class IssueActivityService {
         validateProjectAccess(projectId, currentUser.getUserId());
 
         org.springframework.data.domain.Page<IssueActivity> activities = issueActivityRepository
-                .findByProjectIdOrderByCreatedAtDesc(projectId, pageable);
+                .findByIssue_Project_ProjectIdOrderByCreatedAtDesc(projectId, pageable);
         return activities.map(activity -> convertToDTO(activity, currentUser));
     }
 
@@ -107,7 +107,7 @@ public class IssueActivityService {
 
         validateProjectAccess(projectId, currentUser.getUserId());
 
-        List<IssueActivity> activities = issueActivityRepository.findByProjectIdAndUserIdOrderByCreatedAtDesc(
+        List<IssueActivity> activities = issueActivityRepository.findByIssue_Project_ProjectIdAndUser_UserIdOrderByCreatedAtDesc(
                 projectId, currentUser.getUserId());
         return activities.stream()
                 .map(activity -> convertToDTO(activity, currentUser))
@@ -124,7 +124,7 @@ public class IssueActivityService {
         validateProjectAccess(projectId, currentUser.getUserId());
 
         org.springframework.data.domain.Page<IssueActivity> activities = issueActivityRepository
-                .findByProjectIdAndUserIdOrderByCreatedAtDesc(
+                .findByIssue_Project_ProjectIdAndUser_UserIdOrderByCreatedAtDesc(
                         projectId, currentUser.getUserId(), pageable);
         return activities.map(activity -> convertToDTO(activity, currentUser));
     }

@@ -1,6 +1,6 @@
 package DoAn.BE.storage.entity;
 
-import DoAn.BE.common.entity.BaseEntity;
+import DoAn.BE.common.entity.TenantScopedEntity;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.Project;
@@ -9,8 +9,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-import org.hibernate.annotations.Filter;
-
 @Entity
 @Table(name = "files")
 @Getter
@@ -18,8 +16,7 @@ import org.hibernate.annotations.Filter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Filter(name = "tenantFilter", condition = "company_id = :companyId")
-public class FileEntity extends BaseEntity {
+public class FileEntity extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,4 +54,12 @@ public class FileEntity extends BaseEntity {
 
     @Column(name = "folder", length = 255)
     private String folder;
+
+    public Long getIssueId() {
+        return issue != null ? issue.getIssueId() : null;
+    }
+
+    public Long getProjectId() {
+        return project != null ? project.getProjectId() : null;
+    }
 }

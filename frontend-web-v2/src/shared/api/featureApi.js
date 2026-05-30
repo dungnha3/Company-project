@@ -120,31 +120,6 @@ export const calendarApi = {
 };
 
 /**
- * AI Assistant API Service
- */
-export const aiApi = {
-    getStatus: async () => (await apiClient.get(ENDPOINTS.AI.STATUS)).data,
-    chat: async (prompt, conversationId) => (await apiClient.post(ENDPOINTS.AI.CHAT, { prompt, conversationId })).data,
-    getConversations: async () => (await apiClient.get(ENDPOINTS.AI.CONVERSATIONS)).data,
-    getConversation: async (id) => (await apiClient.get(ENDPOINTS.AI.CONVERSATION_BY_ID(id))).data,
-    deleteConversation: async (id) => apiClient.delete(ENDPOINTS.AI.DELETE_CONVERSATION(id)),
-    getProjectSummary: async (projectId) => (await apiClient.get(ENDPOINTS.AI.PROJECT_SUMMARY(projectId))).data,
-    suggestTasks: async (projectId) => (await apiClient.get(ENDPOINTS.AI.SUGGEST_TASKS(projectId))).data,
-    analyzeProgress: async (projectId) => (await apiClient.get(ENDPOINTS.AI.ANALYZE_PROGRESS(projectId))).data,
-    getReport: async (projectId) => (await apiClient.get(ENDPOINTS.AI.REPORT(projectId))).data,
-};
-
-/**
- * Webhook API Service (deprecated - module removed from BE)
- */
-export const webhookApi = {};
-
-/**
- * Automation API Service (deprecated)
- */
-export const automationApi = {};
-
-/**
  * Issue API Service
  */
 export const issueApi = {

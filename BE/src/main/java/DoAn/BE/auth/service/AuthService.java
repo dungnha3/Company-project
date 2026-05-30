@@ -307,7 +307,6 @@ public class AuthService {
 
     @Transactional
     public AuthResponse impersonateUser(Long adminUserId, Long targetUserId, String ipAddress, String userAgent) {
-        // ... (giữ nguyên logic)
         User admin = userService.getUserById(adminUserId);
         if (!Boolean.TRUE.equals(admin.isSystemAdminAccount())) {
             throw new UnauthorizedException("Chỉ System Admin mới có quyền thực hiện thao tác này");
@@ -368,6 +367,9 @@ public class AuthService {
         newUser.setUsername(request.getEmail());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         newUser.setPhoneNumber(request.getPhoneNumber());
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            newUser.setFullName(request.getFullName().trim());
+        }
         newUser.setIsActive(true);
         newUser.setStatus(User.UserStatus.ACTIVE);
 
@@ -454,8 +456,7 @@ public class AuthService {
         userInfo.setUsername(user.getUsername());
         userInfo.setEmail(user.getEmail());
         userInfo.setIsActive(user.getIsActive());
-        userInfo.setIsSystemAdmin(user.isSystemAdminAccount()); // [SAAS] System Admin flag
-        // Personal plan check is removed
+        userInfo.setIsSystemAdmin(user.isSystemAdminAccount());
         userInfo.setTwoFactorEnabled(Boolean.TRUE.equals(user.getTwoFactorEnabled()));
         response.setUser(userInfo);
         List<AuthResponse.CompanyDTO> companies = memberships.stream()

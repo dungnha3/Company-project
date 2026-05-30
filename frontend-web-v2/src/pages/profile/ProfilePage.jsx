@@ -117,7 +117,7 @@ export default function ProfilePage() {
                 {activeTab === 'security' && <SecurityTab />}
                 {activeTab === 'notifications' && <NotificationsTab />}
                 {activeTab === 'preferences' && <PreferencesTab />}
-                {/* SessionsTab disabled — BE has no /api/profile/sessions endpoint yet */}
+                {activeTab === 'sessions' && <SessionsTab />}
             </div>
         </div>
     );

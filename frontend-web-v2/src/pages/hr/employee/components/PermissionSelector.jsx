@@ -29,8 +29,6 @@ const PERMISSION_GROUPS = [
         permissions: [
             { key: 'leaveViewAll', label: 'Xem đơn nghỉ phép (Tất cả)' },
             { key: 'leaveApprove', label: 'Duyệt đơn nghỉ phép' },
-            { key: 'attendanceViewAll', label: 'Xem chấm công (Tất cả)' },
-            { key: 'attendanceEdit', label: 'Chỉnh sửa chấm công' },
         ]
     },
     {

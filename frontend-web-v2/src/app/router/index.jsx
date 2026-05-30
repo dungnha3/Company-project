@@ -10,6 +10,7 @@ import SystemAdminLayout from '@layouts/SystemAdminLayout';
 // Guards
 import { AccessControlGuard } from './guards/AccessControlGuard';
 import SystemAdminGuard from './guards/SystemAdminGuard';
+import NavigateWithTab from './guards/NavigateWithTab';
 
 // Auth pages (not lazy - critical path)
 import LoginPage from '@pages/auth/LoginPage';
@@ -34,20 +35,17 @@ const ProjectDetailPage = lazy(() => import('@pages/projects/ProjectDetailPage')
 const LeaveRequestsPage = lazy(() => import('@pages/hr/LeaveRequestsPage'));
 const ReviewsPage = lazy(() => import('@pages/hr/ReviewsPage'));
 const ResourcePlanningPage = lazy(() => import('@pages/hr/ResourcePlanningPage'));
-const PerformanceOverviewPage = lazy(() => import('@pages/hr/PerformanceOverviewPage'));
 const HRDashboardPage = lazy(() => import('@pages/hr/HRDashboardPage'));
 
 // Project pages
 const MyIssuesPage = lazy(() => import('@pages/projects/MyIssuesPage'));
 
-
-// New feature pages
 const CalendarPage = lazy(() => import('@pages/calendar/CalendarPage'));
 const MyPerformancePage = lazy(() => import('@pages/hr/MyPerformancePage'));
 const MyWorkPage = lazy(() => import('@pages/personal/MyWorkPage'));
 
 const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
-const ReportsPage = lazy(() => import('@pages/reports/ReportsPage'));
+const ProjectCostPage = lazy(() => import('@pages/projects/ProjectCostPage'));
 
 
 const ActivityLogPage = lazy(() => import('@pages/company/ActivityLogPage'));
@@ -113,6 +111,12 @@ const router = createBrowserRouter([
             {
                 index: true,
                 element: <Navigate to="/app/me" replace />,
+            },
+
+            // Redirect /app/profile to /app/me/profile
+            {
+                path: 'profile',
+                element: <Navigate to="/app/me/profile" replace />,
             },
 
             // Personal Work Hub (/app/me)
@@ -202,8 +206,6 @@ const router = createBrowserRouter([
                             </AccessControlGuard>
                         ),
                     },
-
-
                     {
                         path: 'leave-requests',
                         element: (
@@ -222,18 +224,6 @@ const router = createBrowserRouter([
                             >
                                 <Suspense fallback={<PageLoader />}>
                                     <ReviewsPage />
-                                </Suspense>
-                            </AccessControlGuard>
-                        ),
-                    },
-                    {
-                        path: 'performance',
-                        element: (
-                            <AccessControlGuard
-                                requiredPermission="HR.MANAGE_REVIEWS"
-                            >
-                                <Suspense fallback={<PageLoader />}>
-                                    <PerformanceOverviewPage />
                                 </Suspense>
                             </AccessControlGuard>
                         ),
@@ -264,6 +254,7 @@ const router = createBrowserRouter([
                     </AccessControlGuard>
                 ),
             },
+            // Global project analytics/costs — must be AFTER projects/:id so :id doesn't swallow them
             {
                 path: 'projects/analytics',
                 element: (
@@ -275,14 +266,23 @@ const router = createBrowserRouter([
                 ),
             },
             {
-                path: 'projects/:id',
+                path: 'projects/costs',
                 element: (
                     <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
-                            <ProjectDetailPage />
+                            <ProjectCostPage />
                         </Suspense>
                     </AccessControlGuard>
                 ),
+            },
+            // Project-scoped routes — must be BEFORE projects/:id so :id doesn't swallow them
+            {
+                path: 'projects/:projectId/settings',
+                element: <NavigateWithTab to="/app/projects/:projectId" tab="settings" replace />,
+            },
+            {
+                path: 'projects/:projectId/kanban',
+                element: <NavigateWithTab to="/app/projects/:projectId" tab="board" replace />,
             },
             {
                 path: 'projects/:projectId/analytics',
@@ -294,14 +294,13 @@ const router = createBrowserRouter([
                     </AccessControlGuard>
                 ),
             },
-
-            // Reports
+            // Catch-all project detail — must be LAST
             {
-                path: 'reports',
+                path: 'projects/:id',
                 element: (
                     <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
-                            <ReportsPage />
+                            <ProjectDetailPage />
                         </Suspense>
                     </AccessControlGuard>
                 ),

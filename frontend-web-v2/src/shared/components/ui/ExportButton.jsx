@@ -18,18 +18,23 @@ export default function ExportButton({
     icon = 'fa-file-excel',
     className = ''
 }) {
+    if (!endpoint) {
+        console.warn('[ExportButton] Missing endpoint prop — export disabled');
+        return null;
+    }
     const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
     const { showToast } = useToast();
 
     const handleExport = async () => {
         setLoading(true);
+        setSuccess(false);
         try {
             const response = await apiClient.get(endpoint, {
                 params,
-                responseType: 'blob', // Important for binary files
+                responseType: 'blob',
             });
 
-            // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -37,11 +42,11 @@ export default function ExportButton({
             document.body.appendChild(link);
             link.click();
             link.parentNode.removeChild(link);
-
-            // Clean up the URL object
             window.URL.revokeObjectURL(url);
 
+            setSuccess(true);
             showToast('Xuất file thành công!', 'success');
+            setTimeout(() => setSuccess(false), 2000);
         } catch (error) {
             console.error('Export error:', error);
             showToast(error.response?.data?.message || 'Không thể xuất file', 'error');
@@ -56,12 +61,14 @@ export default function ExportButton({
             disabled={loading}
             className={`btn-secondary flex items-center gap-2 ${className}`}
         >
-            {loading ? (
+            {success ? (
+                <i className="fa-solid fa-check text-green-600" />
+            ) : loading ? (
                 <i className="fa-solid fa-spinner fa-spin" />
             ) : (
                 <i className={`fa-solid ${icon} text-green-600`} />
             )}
-            {loading ? 'Đang xuất...' : label}
+            {loading ? 'Đang xuất...' : success ? 'Đã xong!' : label}
         </button>
     );
 }

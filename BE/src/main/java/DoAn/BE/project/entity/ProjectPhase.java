@@ -26,10 +26,10 @@ public class ProjectPhase extends DoAn.BE.common.entity.BaseEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
+    @Column(nullable = false, length = 255)
     private String name; // VD: Giai đoạn 1, Giai đoạn Thiết kế
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "start_date")

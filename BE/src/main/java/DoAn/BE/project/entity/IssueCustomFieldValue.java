@@ -42,7 +42,7 @@ public class IssueCustomFieldValue {
     // String value for TEXT, TEXTAREA, SELECT, MULTI_SELECT, URL fields
     // For MULTI_SELECT, values are stored as JSON array: ["opt1", "opt2"]
     // /
-    @Column(name = "string_value", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "string_value", columnDefinition = "TEXT")
     private String stringValue;
 
     // Numeric value for NUMBER fields

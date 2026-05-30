@@ -11,7 +11,7 @@
 	<groupId>DoAn</groupId>
 	<artifactId>BE</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 	<name>BE</name>
 	<description>BE</description>
 	<url/>
@@ -41,10 +41,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-authorization-server</artifactId>
-		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
@@ -58,6 +55,12 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+	<!-- Health Check & Monitoring -->
+	<dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-actuator</artifactId>
+	</dependency>
+
 	<dependency>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-docker-compose</artifactId>
@@ -65,10 +68,10 @@
 		<optional>true</optional>
 	</dependency>
 	
-	<!-- SQL Server JDBC Driver -->
+	<!-- PostgreSQL JDBC Driver -->
 	<dependency>
-		<groupId>com.microsoft.sqlserver</groupId>
-		<artifactId>mssql-jdbc</artifactId>
+		<groupId>org.postgresql</groupId>
+		<artifactId>postgresql</artifactId>
 		<scope>runtime</scope>
 	</dependency>
 	
@@ -101,12 +104,6 @@
 	
 
 	
-	<!-- Redis for Caching -->
-	<dependency>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-data-redis</artifactId>
-	</dependency>
-	
 	<!-- Mail for Email Notifications -->
 	<dependency>
 		<groupId>org.springframework.boot</groupId>
@@ -126,11 +123,9 @@
 	</dependency>
 	
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-tomcat</artifactId>
-			<scope>provided</scope>
-		</dependency>
+
+
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -181,6 +176,18 @@
 			<groupId>com.google.apis</groupId>
 			<artifactId>google-api-services-drive</artifactId>
 			<version>v3-rev20230822-2.0.0</version>
+		</dependency>
+
+		<!-- Apache POI for Excel Export -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.2.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.5</version>
 		</dependency>
 	</dependencies>
 

@@ -201,12 +201,3 @@ export function getScoreLabel(score) {
     return 'Poor';
 }
 
-export function getScoreColorHex(score) {
-    const s = Number(score) || 0;
-    if (s >= 9.0) return '#22c55e';
-    if (s >= 8.0) return '#6366f1';
-    if (s >= 6.5) return '#f59e0b';
-    if (s >= 5.0) return '#f97316';
-    return '#ef4444';
-}
-

@@ -1,7 +1,9 @@
 package DoAn.BE.hrm.entity;
 
+import DoAn.BE.common.entity.TenantScopedEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Filter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -15,7 +17,8 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public class Review extends DoAn.BE.common.entity.BaseEntity {
+@Filter(name = "tenantFilter", condition = "company_id = :companyId")
+public class Review extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,13 +60,13 @@ public class Review extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "rating", length = 20)
     private Rating rating;
 
-    @Column(name = "comments", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "comments", columnDefinition = "TEXT")
     private String comments;
 
-    @Column(name = "next_goals", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "next_goals", columnDefinition = "TEXT")
     private String nextGoals;
 
-    @Column(name = "development_plan", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "development_plan", columnDefinition = "TEXT")
     private String developmentPlan;
 
     @Enumerated(EnumType.STRING)
@@ -128,11 +131,11 @@ public class Review extends DoAn.BE.common.entity.BaseEntity {
     }
 
     public enum ReviewType {
-        SPRINT_REVIEW,       // Đánh giá sau sprint
-        PROJECT_COMPLETION,  // Đánh giá khi kết thúc dự án
-        PERIODIC,            // Định kỳ (tháng/quý)
-        PROJECT,             // Gắn với dự án cụ thể
-        PROMOTION            // Thăng chức (không liên quan lương)
+        SPRINT_REVIEW, // Đánh giá sau sprint
+        PROJECT_COMPLETION, // Đánh giá khi kết thúc dự án
+        PERIODIC, // Định kỳ (tháng/quý)
+        PROJECT, // Gắn với dự án cụ thể
+        PROMOTION // Thăng chức (không liên quan lương)
     }
 
     public enum Rating {

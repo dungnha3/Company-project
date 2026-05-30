@@ -7,6 +7,7 @@ import { formatDate } from '@shared/utils/formatters';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import SprintOverview from '../components/BurndownChart';
 import IssueDetailModal from '../components/IssueDetailModal';
+import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
 
 // ─── Constants ─────────────────────────────────────────────────────────
 const SPRINT_STATUS = {
@@ -47,6 +48,14 @@ export default function SprintTab({ projectId }) {
     const [view, setView] = useState('sprints'); // 'sprints' | 'phases' | 'timeline'
     const [showCreateModal, setShowCreateModal] = useState(false);
     const queryClient = useQueryClient();
+
+    const { data: sprints = [] } = useQuery({
+        queryKey: ['sprints', projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(projectId))).data,
+        enabled: !!projectId,
+    });
+
+    const activeSprint = sprints.find(s => s.status === 'ACTIVE');
 
     const VIEW_TABS = [
         { id: 'sprints', label: 'Sprints', icon: 'fa-rocket' },
@@ -96,12 +105,14 @@ function SprintView({ projectId }) {
     const toast = useToast();
     const { hasPermission } = useAccessControl();
     const canManageSprints = hasPermission('PROJECT.MANAGE_SPRINTS');
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     const { data: sprints = [], isLoading } = useQuery({
         queryKey: ['sprints', projectId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(projectId))).data,
         enabled: !!projectId,
     });
+    const activeSprint = sprints.find(s => s.status === 'ACTIVE');
 
     const startMutation = useMutation({
         mutationFn: (sprintId) => apiClient.post(ENDPOINTS.SPRINTS.START(sprintId)),
@@ -129,9 +140,17 @@ function SprintView({ projectId }) {
         },
     });
 
-    const activeSprint = sprints.find(s => s.status === 'ACTIVE');
     const planningSprints = sprints.filter(s => s.status === 'PLANNING');
     const completedSprints = sprints.filter(s => s.status === 'COMPLETED');
+
+    const { data: sprintPrediction } = useQuery({
+        queryKey: ['smart-sprint-prediction', activeSprint?.sprintId],
+        queryFn: async () => {
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SPRINT_PREDICTION(activeSprint.sprintId))).data;
+        },
+        enabled: !!activeSprint?.sprintId,
+        staleTime: 2 * 60 * 1000,
+    });
 
     if (isLoading) {
         return <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-3xl text-indigo-500" /></div>;
@@ -191,6 +210,9 @@ function SprintView({ projectId }) {
                                 <strong>Goal:</strong> {activeSprint.goal}
                             </p>
                         )}
+                        {sprintPrediction && sprintPrediction.alertLevel !== 'OK' && (
+                            <SprintAlertBanner prediction={sprintPrediction} />
+                        )}
                         {expandedSprint === activeSprint.sprintId && (
                             <SprintIssueList
                                 sprintId={activeSprint.sprintId}
@@ -198,6 +220,7 @@ function SprintView({ projectId }) {
                                 onAddIssue={() => setShowAddIssueModal(activeSprint.sprintId)}
                                 onRemoveIssue={(issueId) => removeMutation.mutate({ sprintId: activeSprint.sprintId, issueId })}
                                 removePending={removeMutation.isPending}
+                                readOnly={!canManageIssues}
                             />
                         )}
                     </div>
@@ -245,6 +268,7 @@ function SprintView({ projectId }) {
                                         onAddIssue={() => setShowAddIssueModal(sprint.sprintId)}
                                         onRemoveIssue={(issueId) => removeMutation.mutate({ sprintId: sprint.sprintId, issueId })}
                                         removePending={removeMutation.isPending}
+                                        readOnly={!canManageIssues}
                                     />
                                 )}
                             </div>
@@ -311,6 +335,8 @@ function SprintView({ projectId }) {
                     onSuccess={() => { queryClient.invalidateQueries(['sprintIssues', showAddIssueModal]); queryClient.invalidateQueries(['sprints', projectId]); setShowAddIssueModal(null); }}
                 />
             )}
+
+            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
         </div>
     );
 }
@@ -528,6 +554,7 @@ function TimelineView({ projectId }) {
         }
         if (filtered.length === 0) return { filteredIssues: [], days: [], startDate: null, totalDays: 0 };
         const allDates = filtered.flatMap(i => [i.startDate, i.dueDate].filter(Boolean)).map(d => new Date(d));
+        if (allDates.length === 0) return { filteredIssues: filtered, days: [], startDate: null, totalDays: 0 };
         const min = new Date(Math.min(...allDates));
         const max = new Date(Math.max(...allDates));
         min.setDate(min.getDate() - 2);
@@ -860,7 +887,7 @@ function CreateSprintModal({ projectId, onClose, onSuccess }) {
     const toast = useToast();
 
     const createMutation = useMutation({
-        mutationFn: async (data) => (await apiClient.post(ENDPOINTS.SPRINTS.LIST, { ...data, projectId })).data,
+        mutationFn: async (data) => (await apiClient.post(ENDPOINTS.SPRINTS.CREATE, { ...data, projectId })).data,
         onSuccess: () => { toast.success('Tạo sprint thành công!'); onSuccess(); },
         onError: (err) => { toast.error('Lỗi: ' + (err.response?.data?.message || err.message)); },
     });
@@ -997,6 +1024,69 @@ function PhaseModal({ projectId, phase, onClose, onSuccess }) {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+}
+
+// ─── Sprint Alert Banner ───────────────────────────────────────────────────────
+function SprintAlertBanner({ prediction }) {
+    const isCritical = prediction.alertLevel === 'CRITICAL';
+
+    const bgColor = isCritical ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200';
+    const iconColor = isCritical ? 'text-red-500' : 'text-amber-500';
+    const icon = isCritical ? 'fa-circle-exclamation' : 'fa-triangle-exclamation';
+
+    const confidencePercent = prediction.onTimeConfidence != null
+        ? Math.round(prediction.onTimeConfidence * 100)
+        : null;
+
+    const showProgress = prediction.onTimeConfidence != null;
+
+    return (
+        <div className={`mt-3 p-4 rounded-xl border ${bgColor} animate-in slide-in-from-top-2 duration-300`}>
+            <div className="flex items-start gap-3">
+                <i className={`fa-solid ${icon} text-xl ${iconColor} mt-0.5 flex-shrink-0`} />
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <p className={`font-bold ${isCritical ? 'text-red-700' : 'text-amber-700'}`}>
+                            {isCritical ? 'Sprint có nguy cơ thất bại cao!' : 'Cần đẩy nhanh!'}
+                        </p>
+                        {confidencePercent != null && (
+                            <span className={`text-sm font-bold ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>
+                                Confidence hoàn thành đúng hạn: {confidencePercent}%
+                            </span>
+                        )}
+                    </div>
+
+                    {showProgress && (
+                        <div className="mt-2 relative h-2 bg-white/80 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all ${isCritical ? 'bg-red-400' : 'bg-amber-400'}`}
+                                style={{ width: `${confidencePercent}%` }}
+                            />
+                            <div className="absolute top-0 left-0 h-full w-0.5 bg-gray-800 animate-pulse" />
+                        </div>
+                    )}
+
+                    <div className="mt-2 space-y-1">
+                        {prediction.recommendations?.map((rec, i) => (
+                            <p key={i} className={`text-sm ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>
+                                {rec}
+                            </p>
+                        ))}
+                    </div>
+
+                    {prediction.daysRemaining != null && (
+                        <p className={`mt-2 text-xs ${isCritical ? 'text-red-500' : 'text-amber-500'}`}>
+                            Còn {prediction.daysRemaining} ngày
+                            {prediction.predictedCompletionDate && ` • Dự kiến hoàn thành: ${prediction.predictedCompletionDate}`}
+                            {prediction.autoTuningInfo && prediction.autoTuningInfo.source === 'auto-tuned' && (
+                                <span className="ml-2 text-purple-500">• ML tuned: α={prediction.autoTuningInfo.alpha} β={prediction.autoTuningInfo.beta}</span>
+                            )}
+                        </p>
+                    )}
+                </div>
             </div>
         </div>
     );

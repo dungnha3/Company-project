@@ -14,6 +14,10 @@ import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.hrm.entity.Employee;
+import DoAn.BE.company.repository.CompanyMemberRepository;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.UserPermissions;
+import DoAn.BE.common.context.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,7 @@ public class ProjectMemberService {
     private final TimeLogRepository timeLogRepository;
     private final EmployeeRepository employeeRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final CompanyMemberRepository companyMemberRepository;
 
     // Kiểm tra user có quyền truy cập dự án không
     // /
@@ -162,15 +167,9 @@ public class ProjectMemberService {
         memberToUpdate.setRole(newRole);
         memberToUpdate = projectMemberRepository.save(memberToUpdate);
 
-        // Sync to Chat (simplified: just remove and add, or specific method if chat
-        // service supports)
-        // handles role
-        // explicitly.
-        // Let's assume remove+add or specific update.
-        // Checking ProjectChatIntegrationService usage... users are added with role.
-        // Safest approach: update role in chat logic if exists, otherwise proceed.
-        // Re-using notifyMemberAdded might be confusing.
-        // Let's publish event and let listener handle chat update if possible.
+        // Sync project-level permissions to CompanyMember so that
+        // checkProjectManageIssuesPermission() immediately reflects the new role
+        syncProjectPermissionsToCompany(memberToUpdate.getUser().getUserId(), newRole);
 
         // Publish Event for Role Changed
         eventPublisher.publishEvent(new DoAn.BE.project.event.ProjectEvent(this,
@@ -180,6 +179,44 @@ public class ProjectMemberService {
                 convertToMemberDTO(memberToUpdate)));
 
         return convertToMemberDTO(memberToUpdate);
+    }
+
+    /**
+     * Khi project role thay đổi, đồng bộ các permission dự án sang CompanyMember.
+     * MANAGER/OWNER → bật các quyền dự án cơ bản.
+     * MEMBER       → tắt các quyền quản lý dự án (giữ nguyên các quyền khác như HR, Leave).
+     */
+    private void syncProjectPermissionsToCompany(Long userId, ProjectRole newRole) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) {
+            log.warn("[syncProjectPermissions] TenantContext companyId is null, skipping sync");
+            return;
+        }
+        CompanyMember companyMember = companyMemberRepository
+                .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(userId, companyId)
+                .orElse(null);
+        if (companyMember == null) {
+            log.warn("[syncProjectPermissions] CompanyMember not found for userId={} companyId={}", userId, companyId);
+            return;
+        }
+        // OWNER and COMPANY_ADMIN already have full permissions — skip
+        if (companyMember.hasAnyRole(DoAn.BE.company.entity.CompanyRole.OWNER,
+                DoAn.BE.company.entity.CompanyRole.COMPANY_ADMIN)) {
+            return;
+        }
+        UserPermissions perms = companyMember.getPermissions();
+        if (perms == null) {
+            perms = new UserPermissions();
+        }
+        boolean isManager = (newRole == ProjectRole.MANAGER || newRole == ProjectRole.OWNER);
+        perms.setProjectManageIssues(isManager);
+        perms.setProjectManageSprints(isManager);
+        perms.setProjectManagePhases(isManager);
+        perms.setProjectViewDashboard(isManager);
+        perms.setProjectExport(isManager);
+        companyMember.setPermissions(perms);
+        companyMemberRepository.save(companyMember);
+        log.info("[syncProjectPermissions] userId={} newRole={} → projectManageIssues={}", userId, newRole, isManager);
     }
 
     // Lấy danh sách thành viên dự án
@@ -284,6 +321,22 @@ public class ProjectMemberService {
         java.util.Map<Long, List<ProjectMember>> membersByUser = members.stream()
                 .collect(Collectors.groupingBy(m -> m.getUser().getUserId()));
 
+        // Pre-fetch all time log hours in a single bulk query to avoid N+1
+        java.util.Set<Long> allProjectIds = members.stream()
+                .map(m -> m.getProject().getProjectId())
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.List<Long> allUserIds = employees.stream()
+                .map(e -> e.getUser().getUserId())
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Double> hoursMap = new java.util.HashMap<>();
+        if (!allProjectIds.isEmpty() && !allUserIds.isEmpty()) {
+            List<Object[]> bulkHours = timeLogRepository.sumHoursByUsersAndProjects(allUserIds, new java.util.ArrayList<>(allProjectIds));
+            for (Object[] row : bulkHours) {
+                hoursMap.put(row[0] + "_" + row[1], ((Number) row[2]).doubleValue());
+            }
+        }
+
         return employees.stream()
                 .map(emp -> {
                     DoAn.BE.project.dto.ResourceOverviewDTO dto = new DoAn.BE.project.dto.ResourceOverviewDTO();
@@ -293,7 +346,6 @@ public class ProjectMemberService {
                     dto.setEmail(user.getEmail());
                     dto.setAvatarUrl(user.getAvatarUrl());
 
-                    // Lấy các project slots cho user này
                     List<ProjectMember> userMembers = membersByUser.getOrDefault(user.getUserId(), java.util.Collections.emptyList());
 
                     List<DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot> slots = userMembers.stream()
@@ -306,10 +358,8 @@ public class ProjectMemberService {
                                 slot.setPosition(m.getPosition());
                                 slot.setAllocationRate(m.getAllocationRate());
                                 slot.setMemberStatus(m.getMemberStatus() != null ? m.getMemberStatus().name() : null);
-                                // Time logged for this project
-                                java.math.BigDecimal hours = timeLogRepository.sumHoursByUserAndProject(
-                                        m.getUser().getUserId(), m.getProject().getProjectId());
-                                slot.setTotalLoggedHours(hours != null ? hours.doubleValue() : 0.0);
+                                Double hours = hoursMap.get(m.getUser().getUserId() + "_" + m.getProject().getProjectId());
+                                slot.setTotalLoggedHours(hours != null ? hours : 0.0);
                                 return slot;
                             })
                             .collect(java.util.stream.Collectors.toList());

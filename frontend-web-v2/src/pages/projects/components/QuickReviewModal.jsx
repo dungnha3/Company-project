@@ -3,13 +3,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
+import ScoreSuggestionPanel from '@components/smart-assistant/ScoreSuggestionPanel';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function QuickReviewModal({ issue, onClose, onSuccess }) {
     const toast = useToast();
     const queryClient = useQueryClient();
+    const { hasPermission } = useAccessControl();
+    const canCreateReview = hasPermission('REVIEW.CREATE');
 
     const [form, setForm] = useState({
-        performanceScore: 5,
+        performanceScore: 7,
         reworkCount: 0,
         reviewerNote: '',
     });
@@ -66,17 +70,24 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Điểm chất lượng (1-10) <span className="text-red-500">*</span>
+                                <span className="ml-2">
+                                    <ScoreSuggestionPanel
+                                        issueId={issue.issueId}
+                                        onApply={(score) => setForm(prev => ({ ...prev, performanceScore: score }))}
+                                    />
+                                </span>
                             </label>
                             <div className="flex items-center gap-3">
                                 <input
                                     type="range"
                                     min="1"
                                     max="10"
+                                    step="0.5"
                                     value={form.performanceScore}
-                                    onChange={(e) => setForm(prev => ({ ...prev, performanceScore: parseInt(e.target.value) }))}
+                                    onChange={(e) => setForm(prev => ({ ...prev, performanceScore: parseFloat(e.target.value) }))}
                                     className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                                 />
-                                <span className="font-bold text-lg text-emerald-600 w-8 text-center">{form.performanceScore}</span>
+                                <span className="font-bold text-lg text-emerald-600 w-10 text-center">{form.performanceScore}</span>
                             </div>
                         </div>
 
@@ -113,8 +124,8 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={quickScoreMutation.isPending}
-                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm"
+                            disabled={!canCreateReview || quickScoreMutation.isPending}
+                            className={`px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm ${!canCreateReview ? 'cursor-not-allowed' : ''}`}
                         >
                             {quickScoreMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-check" />}
                             Chấm điểm & Done

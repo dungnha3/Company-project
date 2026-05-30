@@ -19,7 +19,7 @@ apiClient.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // NEW: Workspace context headers (Dual Workspace Model)
+        // Workspace context headers
         const workspaceStorage = localStorage.getItem('workspace-storage');
         if (workspaceStorage) {
             try {

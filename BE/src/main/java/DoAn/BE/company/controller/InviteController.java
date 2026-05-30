@@ -1,6 +1,5 @@
 package DoAn.BE.company.controller;
 
-import org.springframework.transaction.annotation.Transactional;
 
 import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.company.dto.InviteRequest;
@@ -19,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/company/invite")
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class InviteController {
 
     private final InviteService inviteService;

@@ -21,6 +21,12 @@ public class AccessControlService {
     private final CompanyMemberRepository memberRepository;
     private final PermissionService permissionService;
 
+    private static final java.util.Map<String, Object> permissionCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void clearCache() {
+        permissionCache.clear();
+    }
+
     public User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User)) {
@@ -41,17 +47,11 @@ public class AccessControlService {
         }
 
         return memberRepository
-                .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+                .findActiveMemberWithRoles(user.getUserId(), companyId)
                 .orElse(null);
     }
 
-    // Called in filter to maintain compatibility but no-op internally now
-    public static void clearCache() {
-    }
-
-    // =====================================================================
-    // GRANULAR PERMISSION CHECKS — All go through PermissionService 3-level
-    // =====================================================================
+    // Use this when you want to CHECK permission without throwing
 
     // --- HR ---
     public void checkHrViewPermission() {
@@ -164,36 +164,6 @@ public class AccessControlService {
         checkDetailedPermission(PermissionKeys.CALENDAR_MANAGE, "Bạn không có quyền quản lý sự kiện");
     }
 
-    // --- Chat ---
-    public void checkChatCreateGroupPermission() {
-    }
-
-    public void checkChatSendMessagePermission() {
-    }
-
-    public void checkChatShareFilePermission() {
-    }
-
-    // --- Storage ---
-    public void checkStorageUploadPermission() {
-    }
-
-    public void checkStorageDeletePermission() {
-    }
-
-    public void checkStorageSharePermission() {
-    }
-
-    public void checkStorageManageFoldersPermission() {
-    }
-
-    // --- AI ---
-    public void checkAiChatPermission() {
-    }
-
-    public void checkAiCreateIssuesPermission() {
-    }
-
     // =====================================================================
     // CORE LOGIC
     // =====================================================================
@@ -288,7 +258,7 @@ public class AccessControlService {
         }
 
         CompanyMember member = memberRepository
-                .findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(user.getUserId(), companyId)
+                .findActiveMemberWithRoles(user.getUserId(), companyId)
                 .orElseThrow(() -> new ForbiddenException("Bạn không phải là thành viên của công ty này"));
 
         if (isCompanyAdminOrOwner(member)) {

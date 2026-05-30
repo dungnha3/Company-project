@@ -52,7 +52,9 @@ export default function ProjectDashboardTab({ projectId, project }) {
         queryKey: ['project-activities', projectId],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.ACTIVITIES.BY_PROJECT(projectId));
-            return (res.data?.content || res.data || []).slice(0, 10);
+            const data = res?.data;
+            const arr = Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []);
+            return arr.slice(0, 10);
         },
         staleTime: 30 * 1000,
     });
@@ -61,7 +63,7 @@ export default function ProjectDashboardTab({ projectId, project }) {
     const { data: teamPerf = [] } = useQuery({
         queryKey: ['performance', 'comparison', projectId],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/hr/performance-comparison/projects/${projectId}`);
+            const res = await apiClient.get(ENDPOINTS.PERFORMANCE.COMPARISON_BY_PROJECT(projectId));
             return res.data || [];
         },
         staleTime: 5 * 60 * 1000,
@@ -317,7 +319,7 @@ function TopPerformerRow({ perf, rank }) {
             </div>
             <div className="text-right">
                 <p className={`text-sm font-semibold ${scoreColor}`}>
-                    {score.toFixed(1)}
+                    {score === 0 ? '—' : score.toFixed(1)}
                 </p>
             </div>
         </div>
@@ -340,8 +342,7 @@ function ActivityRow({ act }) {
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-900">
-                    <span className="font-semibold">{act.userName || 'Người dùng'}</span>
-                    {act.description || ' đã thực hiện thay đổi'}
+                    {act.description || 'Đã thực hiện thay đổi'}
                     {act.issueTitle && (
                         <> trong <span className="text-indigo-600">'{act.issueTitle}'</span></>
                     )}

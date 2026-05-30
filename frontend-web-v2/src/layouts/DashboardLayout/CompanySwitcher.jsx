@@ -18,30 +18,22 @@ export default function CompanySwitcher({ collapsed }) {
     } = useWorkspaceStore();
 
     useEffect(() => {
-        // [HOTFIX] Force clear storage if user ID is missing (Stale data corrupting requests)
         const checkStaleAuth = () => {
             const storage = localStorage.getItem('auth-storage');
             if (storage) {
                 try {
                     const { state } = JSON.parse(storage);
                     if (state?.user?.username === 'admin' && !state?.user?.id && !state?.user?.userId) {
-                        console.error('🚨 DETECTED STALE AUTH DATA (Missing ID). CLEARING...', state.user);
                         localStorage.clear();
                         window.location.href = '/login';
                     }
-                } catch (e) {
-                    console.error(e);
+                } catch {
+                    // ignore parse errors
                 }
             }
         };
         checkStaleAuth();
-
-
-
-        if (workspaces.length === 0) {
-            fetchWorkspaces();
-        }
-    }, [workspaces]);
+    }, []);
 
     const navigate = useNavigate();
 

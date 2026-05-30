@@ -1,6 +1,6 @@
 package DoAn.BE.company.entity;
 
-import DoAn.BE.common.entity.BaseEntity;
+import DoAn.BE.common.entity.TenantScopedEntity;
 import DoAn.BE.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +12,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class WorkspaceJoinRequest extends BaseEntity {
+public class WorkspaceJoinRequest extends TenantScopedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
