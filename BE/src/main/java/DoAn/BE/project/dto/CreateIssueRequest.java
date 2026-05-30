@@ -38,4 +38,5 @@ public class CreateIssueRequest {
     private Integer weight; // 1-10
     private Boolean isImportant;
     private Boolean isUrgent;
+    private Long parentIssueId; // ID of parent issue (for subtasks)
 }

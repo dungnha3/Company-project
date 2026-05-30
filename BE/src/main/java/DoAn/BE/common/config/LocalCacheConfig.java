@@ -20,7 +20,7 @@ public class LocalCacheConfig {
                 "users", "userProfiles",
                 "companies", "companySettings",
                 "departments", "positions",
-                "employees", "projects",
+                "employees", "projects", "smartSubtasks",
                 "department", "position");
     }
 }

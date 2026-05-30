@@ -112,6 +112,14 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "rework_count")
     private Integer reworkCount = 0;
 
+    // Parent-child relationship for subtasks
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_issue_id")
+    private Issue parentIssue;
+
+    @OneToMany(mappedBy = "parentIssue", cascade = CascadeType.ALL)
+    private List<Issue> childIssues = new ArrayList<>();
+
     // Custom field values for this issue
     // /
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)

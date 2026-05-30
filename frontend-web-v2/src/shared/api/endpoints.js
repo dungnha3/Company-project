@@ -454,6 +454,12 @@ export const ENDPOINTS = {
         PROJECT_RISK: (projectId) => `/api/smart-assistant?action=project-risk&projectId=${projectId}`,
         SUGGEST_ASSIGNEE: (projectId) => `/api/smart-assistant/suggest-assignee?projectId=${projectId}`,
         BATCH_ASSIGN: '/api/smart-assistant/assign',
+        SUGGEST_SUBTASKS: (title, description) => {
+            const params = new URLSearchParams();
+            params.append('title', title);
+            if (description) params.append('description', description);
+            return `/api/smart-assistant/suggest-subtasks?${params.toString()}`;
+        },
     },
 
     // Storage (Google Drive Integration)

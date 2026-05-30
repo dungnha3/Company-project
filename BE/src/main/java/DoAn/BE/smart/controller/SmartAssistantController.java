@@ -22,6 +22,7 @@ public class SmartAssistantController {
     private final ProjectRiskService projectRiskService;
     private final SmartEstimateService smartEstimateService;
     private final SprintDelayPredictionService sprintDelayPredictionService;
+    private final SmartSubtaskService smartSubtaskService;
     private final IssueService issueService;
 
     @GetMapping
@@ -112,5 +113,12 @@ public class SmartAssistantController {
             @RequestParam(required = false) String issueType,
             @RequestParam(required = false, defaultValue = "5") Integer weight) {
         return ResponseEntity.ok(smartEstimateService.suggestByTitle(projectId, title, issueType, weight));
+    }
+
+    @GetMapping("/suggest-subtasks")
+    public ResponseEntity<?> suggestSubtasks(
+            @RequestParam String title,
+            @RequestParam(required = false, defaultValue = "") String description) {
+        return ResponseEntity.ok(smartSubtaskService.generateSubtasks(title, description));
     }
 }

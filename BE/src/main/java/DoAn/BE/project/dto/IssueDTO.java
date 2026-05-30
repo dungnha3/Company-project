@@ -44,4 +44,5 @@ public class IssueDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isOverdue;
+    private Long parentIssueId;
 }

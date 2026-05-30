@@ -107,6 +107,16 @@ public class IssueService {
             issue.setSprint(sprint);
         }
 
+        // Set parent issue for subtasks
+        if (request.getParentIssueId() != null) {
+            Issue parentIssue = issueRepository.findById(request.getParentIssueId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue cha"));
+            if (!parentIssue.getProject().getProjectId().equals(project.getProjectId())) {
+                throw new BadRequestException("Issue cha không thuộc cùng dự án");
+            }
+            issue.setParentIssue(parentIssue);
+        }
+
         issue = issueRepository.save(issue);
 
         // Log activity for issue creation
@@ -616,6 +626,7 @@ public class IssueService {
         dto.setCreatedAt(issue.getCreatedAt());
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setIsOverdue(issue.isOverdue());
+        dto.setParentIssueId(issue.getParentIssue() != null ? issue.getParentIssue().getIssueId() : null);
 
         return dto;
     }
