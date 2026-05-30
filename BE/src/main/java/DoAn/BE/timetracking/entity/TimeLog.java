@@ -36,7 +36,7 @@ public class TimeLog {
     private Long logId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "issue_id", nullable = false)
+    @JoinColumn(name = "issue_id", nullable = true)
     private Issue issue;
 
     @ManyToOne(fetch = FetchType.LAZY)

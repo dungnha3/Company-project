@@ -33,10 +33,17 @@ public class ProjectAnalyticsService {
         private final ProjectMemberRepository projectMemberRepository;
 
         // Get burndown chart data for a sprint
-        // Shows remaining work over time
-        // /
+        // If sprintId is null, auto-selects the latest active sprint
         public BurndownDataDTO getBurndownData(Long projectId, Long sprintId) {
-                Sprint sprint = sprintRepository.findById(sprintId).orElse(null);
+                Sprint sprint;
+                if (sprintId != null) {
+                        sprint = sprintRepository.findById(sprintId).orElse(null);
+                } else {
+                        // Auto-select latest sprint for this project
+                        List<Sprint> sprints = sprintRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+                        sprint = sprints.isEmpty() ? null : sprints.get(0);
+                }
+
                 if (sprint == null) {
                         return BurndownDataDTO.builder()
                                         .sprintName("N/A")
@@ -104,7 +111,6 @@ public class ProjectAnalyticsService {
         }
 
         // Get velocity data - issues completed per sprint
-        // /
         public VelocityDataDTO getVelocityData(Long projectId, int sprintCount) {
                 List<Sprint> sprints = sprintRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { calendarApi } from '../../shared/api/featureApi';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
@@ -69,9 +69,7 @@ export default function CalendarPage() {
     };
 
     // ── Load events (query 3 months before to include past events)
-    useEffect(() => { loadEvents(); }, [currentMonth, currentWeek, currentDay, viewMode]);
-
-    const loadEvents = async () => {
+    const loadEvents = useCallback(async () => {
         try {
             setLoading(true);
             let start, end;
@@ -97,7 +95,9 @@ export default function CalendarPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentMonth, currentWeek, currentDay, viewMode]);
+
+    useEffect(() => { loadEvents(); }, [loadEvents]);
 
     // ── Filter events
     const filteredEvents = useMemo(() => {
@@ -201,8 +201,14 @@ export default function CalendarPage() {
     };
     const handleDelete = async (eventId) => {
         if (!confirm('Xóa sự kiện này?')) return;
-        try { await calendarApi.deleteEvent(eventId); setSelectedEvent(null); loadEvents(); }
-        catch (error) { console.error('Failed to delete event:', error); }
+        try {
+            await calendarApi.deleteEvent(eventId);
+            setSelectedEvent(null);
+            loadEvents();
+        } catch (error) {
+            const msg = error?.response?.data?.message || error?.message || 'Không thể xóa sự kiện';
+            alert('Lỗi: ' + msg);
+        }
     };
 
     const renderHeaderTitle = () => {

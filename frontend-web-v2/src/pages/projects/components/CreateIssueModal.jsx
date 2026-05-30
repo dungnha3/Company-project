@@ -442,12 +442,7 @@ function AIAutoEstimateButton({ projectId, assigneeId, weight, issueType, onAppl
     const { data: estimate, isLoading, isFetching } = useQuery({
         queryKey: ['smart-estimate', projectId, assigneeId, weight, issueType],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (projectId) params.append('projectId', projectId);
-            if (assigneeId) params.append('assigneeId', assigneeId);
-            if (weight) params.append('weight', weight);
-            if (issueType) params.append('issueType', issueType);
-            return (await apiClient.get(`/api/smart-assistant/estimate?${params.toString()}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.ESTIMATE(projectId, issueType, weight, assigneeId))).data;
         },
         enabled: !!projectId && !!assigneeId,
         staleTime: 5 * 60 * 1000,

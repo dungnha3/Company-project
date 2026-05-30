@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -26,7 +26,10 @@ const PageLoader = () => <div className="flex items-center justify-center h-64">
 export default function ProjectDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [searchParams] = useSearchParams();
+    const urlTab = searchParams.get('tab');
+    const validTabs = ['overview', 'board', 'list', 'sprints', 'planner', 'calendar', 'team', 'performance', 'costs', 'files', 'settings'];
+    const [activeTab, setActiveTab] = useState(validTabs.includes(urlTab) ? urlTab : 'overview');
     const [showEditModal, setShowEditModal] = useState(false);
     const { currentWorkspace } = useWorkspaceStore();
     const settings = currentWorkspace?.settings || null;
@@ -160,7 +163,7 @@ export default function ProjectDetailPage() {
                         {VIEW_GROUPS.map((group) => (
                             <button
                                 key={group.id}
-                                onClick={() => setActiveTab(group.tabs[0].id)}
+                                onClick={() => { setActiveTab(group.tabs[0].id); navigate(`?tab=${group.tabs[0].id}`, { replace: true }); }}
                                 className={`
                                     whitespace-nowrap py-3 border-b-2 font-bold text-[15px] flex items-center gap-2 transition-all
                                     ${activeGroup.id === group.id
@@ -181,7 +184,7 @@ export default function ProjectDetailPage() {
                         {activeGroup.tabs.map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                onClick={() => { setActiveTab(tab.id); navigate(`?tab=${tab.id}`, { replace: true }); }}
                                 className={`
                                     whitespace-nowrap px-4 py-1.5 rounded-lg text-sm font-medium transition-all
                                     ${activeTab === tab.id

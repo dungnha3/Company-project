@@ -6,13 +6,14 @@ import { useTimelogSummary } from '@shared/hooks/useTimelogs';
  * Used in: MyWorkPage, ProjectDashboard, HRDashboard, EmployeeCard
  */
 export default function TimelogWidget({
-    userId,
     period = 'week', // 'day' | 'week' | 'month'
     showChart = false,
     compact = false,
     className = '',
     onClick,
 }) {
+    // Note: userId prop is intentionally not used — the hook fetches the current user's timelogs
+    // for the authenticated context. To filter by specific user, pass via the period params.
     const { data, isLoading } = useTimelogSummary(period);
 
     const summary = useMemo(() => {

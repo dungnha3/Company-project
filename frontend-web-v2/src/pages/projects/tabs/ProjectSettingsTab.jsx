@@ -16,6 +16,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function ProjectSettingsTab({ project }) {
+    if (!project) return null;
     const [form, setForm] = useState({
         name: '',
         keyProject: '',

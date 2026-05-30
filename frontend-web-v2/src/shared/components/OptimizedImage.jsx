@@ -130,7 +130,7 @@ export function Avatar({
         xl: 'w-16 h-16 text-xl',
     };
 
-    const initials = name
+    const initials = (name || '')
         .split(' ')
         .map(n => n[0])
         .join('')

@@ -20,7 +20,7 @@ export default function ProjectGoalTab({ projectId }) {
     const { data: goals = [], isLoading } = useQuery({
         queryKey: ['project-goals', projectId, filterYear],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/projects/${projectId}/goals`, {
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.GOALS(projectId), {
                 params: { year: filterYear },
             });
             return res.data || [];
@@ -32,7 +32,7 @@ export default function ProjectGoalTab({ projectId }) {
     const { data: allGoals = [] } = useQuery({
         queryKey: ['project-goals-all', projectId],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/projects/${projectId}/goals`);
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.GOALS(projectId));
             return res.data || [];
         },
         enabled: !!projectId,
@@ -41,7 +41,7 @@ export default function ProjectGoalTab({ projectId }) {
     const availableYears = [...new Set(allGoals.map(g => g.year))].sort((a, b) => b - a);
 
     const deleteMutation = useMutation({
-        mutationFn: (goalId) => apiClient.delete(`/api/projects/${projectId}/goals/${goalId}`),
+        mutationFn: (goalId) => apiClient.delete(ENDPOINTS.PROJECTS.GOAL_DELETE(projectId, goalId)),
         onSuccess: () => {
             toast.success('Đã xóa mục tiêu');
             queryClient.invalidateQueries(['project-goals', projectId]);
@@ -50,7 +50,7 @@ export default function ProjectGoalTab({ projectId }) {
     });
 
     const toggleMutation = useMutation({
-        mutationFn: (goalId) => apiClient.patch(`/api/projects/${projectId}/goals/${goalId}/toggle`),
+        mutationFn: (goalId) => apiClient.patch(ENDPOINTS.PROJECTS.GOAL_TOGGLE(projectId, goalId)),
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
             queryClient.invalidateQueries(['project-goals', projectId]);
@@ -266,9 +266,9 @@ function GoalModal({ projectId, goal, defaultYear, onClose, onSuccess }) {
         mutationFn: async (data) => {
             if (isEditing) {
                 // Backend only has toggle, no full edit — delete + recreate
-                await apiClient.delete(`/api/projects/${projectId}/goals/${goal.goalId}`);
+                await apiClient.delete(ENDPOINTS.PROJECTS.GOAL_DELETE(projectId, goal.goalId));
             }
-            return apiClient.post(`/api/projects/${projectId}/goals`, data);
+            return apiClient.post(ENDPOINTS.PROJECTS.GOAL_CREATE(projectId), data);
         },
         onSuccess: () => {
             toast.success(isEditing ? 'Đã cập nhật mục tiêu' : 'Đã thêm mục tiêu');

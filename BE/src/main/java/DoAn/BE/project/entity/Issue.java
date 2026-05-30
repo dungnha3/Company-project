@@ -124,9 +124,13 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     }
 
     public boolean isDone() {
-        return this.issueStatus != null &&
-                this.issueStatus.getName() != null &&
-                "Done".equals(this.issueStatus.getName());
+        if (this.issueStatus == null || this.issueStatus.getName() == null) {
+            return false;
+        }
+        String name = this.issueStatus.getName().toLowerCase();
+        return name.equals("done") || name.equals("hoàn thành") || name.equals("hoan thanh")
+                || name.equals("completed") || name.equals("đã hoàn thành")
+                || name.equals("đã xong") || name.equals("da xong");
     }
 
     public boolean isAssigned() {

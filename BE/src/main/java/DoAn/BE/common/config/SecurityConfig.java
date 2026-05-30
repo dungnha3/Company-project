@@ -103,7 +103,7 @@ public class SecurityConfig {
         @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")
         private String allowedMethods;
 
-        @Value("${cors.allowed-headers:*}")
+        @Value("${cors.allowed-headers:Authorization,Content-Type,X-Company-Id,X-Workspace-Type,X-Requested-With,Accept,Origin}")
         private String allowedHeaders;
 
         @Bean

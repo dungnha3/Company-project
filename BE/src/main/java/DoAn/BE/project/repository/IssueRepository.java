@@ -63,13 +63,14 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         // ==================== SIMPLE QUERIES (No relations needed)
         // ====================
 
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndAssignee_UserId(Long projectId, Long userId);
 
         List<Issue> findByIssueStatus_StatusId(Integer statusId);
 
         long countByProject_ProjectId(Long projectId);
 
-        @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId AND i.issueStatus.name = 'Done'")
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId AND LOWER(i.issueStatus.name) IN ('done', 'hoàn thành', 'hoan thanh', 'completed', 'đã hoàn thành')")
         long countCompletedByProject(@Param("projectId") Long projectId);
 
         @Query("SELECT DISTINCT i FROM Issue i " +
@@ -91,10 +92,12 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         List<Issue> findUpcomingDeadlinesWithRelations(@Param("date") LocalDate date);
 
         // [Paginated overdue - for large datasets]
+        @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         @Query("SELECT i FROM Issue i WHERE i.dueDate < :date AND i.issueStatus.name <> 'Done' AND i.assignee IS NOT NULL")
         Page<Issue> findOverdueIssues(@Param("date") LocalDate date, Pageable pageable);
 
         // [Paginated upcoming - for large datasets]
+        @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         @Query("SELECT i FROM Issue i WHERE i.dueDate = :date AND i.issueStatus.name <> 'Done' AND i.assignee IS NOT NULL")
         Page<Issue> findUpcomingDeadlines(@Param("date") LocalDate date, Pageable pageable);
 
@@ -124,7 +127,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         long countByProject_ProjectIdAndAssignee_IsNull(Long projectId);
 
         @Query("SELECT COUNT(i) FROM Issue i WHERE i.project.projectId = :projectId " +
-               "AND i.assignee.userId = :userId AND i.issueStatus.name = 'Done'")
+               "AND i.assignee.userId = :userId AND LOWER(i.issueStatus.name) IN ('done', 'hoàn thành', 'hoan thanh', 'completed', 'đã hoàn thành')")
         long countCompletedByProjectAndAssignee(
                 @Param("projectId") Long projectId,
                 @Param("userId") Long userId);

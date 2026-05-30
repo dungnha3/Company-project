@@ -29,32 +29,37 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByReviewer_EmployeeIdOrderByCreatedAtDesc(Long reviewerId);
 
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByReviewPeriodOrderByCreatedAtDesc(String reviewPeriod);
 
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByReviewTypeOrderByCreatedAtDesc(ReviewType reviewType);
 
         @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByStatusOrderByCreatedAtDesc(ReviewStatus status);
 
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByRatingOrderByCreatedAtDesc(Rating rating);
 
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.startDate >= :startDate AND r.endDate <= :endDate ORDER BY r.createdAt DESC")
         List<Review> findByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.employee.employeeId = :employeeId AND r.reviewPeriod = :reviewPeriod AND r.reviewType = :reviewType")
         Optional<Review> findByEmployeeAndPeriodAndType(@Param("employeeId") Long employeeId,
                         @Param("reviewPeriod") String reviewPeriod,
                         @Param("reviewType") ReviewType reviewType);
 
-
         @EntityGraph(attributePaths = { "employee", "employee.company", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.status = 'PENDING' ORDER BY r.createdAt ASC")
         List<Review> findPendingApproval();
 
-        @Query("SELECT r FROM Review r WHERE r.rating = 'EXCELLENT' AND YEAR(r.completedDate) = :year ORDER BY r.totalScore DESC")
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
+        @Query("SELECT r FROM Review r WHERE r.rating = 'EXCELLENT' AND CAST(EXTRACT(YEAR FROM r.completedDate) AS int) = :year ORDER BY r.totalScore DESC")
         List<Review> findExcellentPerformanceByYear(@Param("year") int year);
 
-        @Query("SELECT r.rating, COUNT(r) FROM Review r WHERE YEAR(r.completedDate) = :year GROUP BY r.rating")
+        @Query("SELECT r.rating, COUNT(r) FROM Review r WHERE CAST(EXTRACT(YEAR FROM r.completedDate) AS int) = :year GROUP BY r.rating")
         List<Object[]> countByRatingAndYear(@Param("year") int year);
 
         @Query(value = "SELECT e.employee_id, e.full_name, p.name as position_name, d.name as department_name " +
@@ -74,36 +79,37 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         Page<Review> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
         Page<Review> findByEmployee_EmployeeIdOrderByCreatedAtDesc(Long employeeId, Pageable pageable);
+
+        @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.employee.company.companyId = :companyId ORDER BY r.createdAt DESC")
         List<Review> findByCompanyId(@Param("companyId") Long companyId);
+
+        @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.employee.company.companyId = :companyId ORDER BY r.createdAt DESC")
         Page<Review> findByCompanyId(@Param("companyId") Long companyId, Pageable pageable);
 
-        // Lấy review theo dự án (Module 4)
         @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.projectId = :projectId ORDER BY r.createdAt DESC")
         List<Review> findByProjectId(@Param("projectId") Long projectId);
 
-        // Smart Assistant: Lấy điểm TB theo employee (đã approved)
         @Query("SELECT AVG(r.totalScore) FROM Review r " +
                "WHERE r.employee.employeeId = :empId " +
                "AND r.status = 'APPROVED'")
         BigDecimal getAverageScoreByEmployee(@Param("empId") Long employeeId);
 
-        // Smart Assistant: Lấy điểm TB kỹ thuật theo employee
         @Query("SELECT AVG(r.technicalScore) FROM Review r " +
                "WHERE r.employee.employeeId = :empId " +
                "AND r.status = 'APPROVED'")
         BigDecimal getAverageTechnicalScore(@Param("empId") Long employeeId);
 
-        // Smart Assistant: Lấy QuickScore reviews của employee trong kỳ
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         @Query("SELECT r FROM Review r " +
                "WHERE r.employee.employeeId = :empId " +
                "AND r.reviewPeriod LIKE 'Quick-%' " +
                "AND r.status = 'APPROVED'")
         List<Review> getQuickScoreReviews(@Param("empId") Long employeeId);
 
-        // Smart Assistant: Lấy reviews đã approved của employee
+        @EntityGraph(attributePaths = { "employee", "reviewer" })
         @Query("SELECT r FROM Review r " +
                "WHERE r.employee.employeeId = :empId " +
                "AND r.status = 'APPROVED' " +

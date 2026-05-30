@@ -306,7 +306,7 @@ export default function ProjectBoard({ project }) {
 
     // ── Status change mutation
     const moveIssueMutation = useMutation({
-        mutationFn: ({ id, statusId, orderIndex }) => apiClient.patch(`/api/issues/${id}/status/${statusId}`, null, {
+        mutationFn: ({ id, statusId, orderIndex }) => apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(id, statusId), null, {
             params: { orderIndex }
         }),
         onSuccess: () => {
@@ -412,7 +412,7 @@ export default function ProjectBoard({ project }) {
                 moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex });
             }
         }
-    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData]);
+    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, activeIssueId, activeIssue]);
 
     // ── Reorder columns mutation
     const reorderColumnsMutation = useMutation({

@@ -63,6 +63,7 @@ export default function MembersTab() {
 
     const removeMutation = useMutation({
         mutationFn: async (userId) => {
+            if (!currentWorkspace?.id) throw new Error('No workspace selected');
             await apiClient.delete(ENDPOINTS.COMPANIES.MEMBER_REMOVE(currentWorkspace.id, userId));
         },
         onSuccess: () => {

@@ -76,7 +76,9 @@ export default function ProjectStorageTab({ projectId }) {
             if (currentFolderPath) {
                 params.append('folder', currentFolderPath);
             }
-            await apiClient.post(`/api/storage/projects/${projectId}/folders?${params.toString()}`);
+            await apiClient.post(ENDPOINTS.STORAGE.PROJECT_FOLDERS(projectId), null, {
+                params: { name: folderName, ...(currentFolderPath ? { folder: currentFolderPath } : {}) },
+            });
         },
         onSuccess: () => {
             toast.success('Đã tạo thư mục');

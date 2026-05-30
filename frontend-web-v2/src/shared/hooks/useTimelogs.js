@@ -28,7 +28,7 @@ export const useTimelogs = (options = {}) => {
     const projectTimelogsQuery = useQuery({
         queryKey: ['timelogs', 'project', projectId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/timelogs/project/${projectId}`);
+            const response = await apiClient.get(ENDPOINTS.TIMELOGS.PROJECT_TIMELOGS(projectId));
             return response.data;
         },
         enabled: enabled && !!projectId,
@@ -50,7 +50,7 @@ export const useTimelogs = (options = {}) => {
     const mySummaryQuery = useQuery({
         queryKey: ['timelogs', 'summary', 'my'],
         queryFn: async () => {
-            const response = await apiClient.get('/api/timelogs/summary/my');
+            const response = await apiClient.get(ENDPOINTS.TIMELOGS.MY_SUMMARY);
             return response.data;
         },
         enabled: enabled,
@@ -61,7 +61,7 @@ export const useTimelogs = (options = {}) => {
     const projectSummaryQuery = useQuery({
         queryKey: ['timelogs', 'summary', 'project', projectId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/timelogs/project/${projectId}/summary`);
+            const response = await apiClient.get(ENDPOINTS.TIMELOGS.PROJECT_SUMMARY(projectId));
             return response.data;
         },
         enabled: enabled && !!projectId,
@@ -145,7 +145,7 @@ export const useTimelogSummary = (period = 'week') => {
     return useQuery({
         queryKey: ['timelogs', 'summary', 'my', period],
         queryFn: async () => {
-            const response = await apiClient.get('/api/timelogs/summary/my', {
+            const response = await apiClient.get(ENDPOINTS.TIMELOGS.MY_SUMMARY, {
                 params: { period }
             });
             return response.data;

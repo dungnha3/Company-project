@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
+import ImportButton from '@shared/components/ui/ImportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
@@ -18,7 +19,8 @@ export default function LeaveRequestsPage() {
         queryKey: ['pending-leave-count'],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.PENDING, { params: { size: 1 } });
-            return res.data?.totalElements || res.data?.content?.length || 0;
+            const data = res?.data;
+            return data?.totalElements ?? (Array.isArray(data?.content) ? data.content.length : 0) ?? 0;
         },
         refetchInterval: 30_000,
     });
@@ -39,15 +41,26 @@ export default function LeaveRequestsPage() {
                 </div>
                 <div className="flex gap-2">
                     {hasPermission('leaveViewAll') && (
-                        <ExportButton
-                            endpoint={ENDPOINTS.EXPORT.LEAVES}
-                            params={{
-                                startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-                                endDate: new Date().toISOString().split('T')[0]
-                            }}
-                            filename={`NghiPhep_${new Date().getFullYear()}.xlsx`}
-                            label="Xuất Excel"
-                        />
+                        <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                            <ExportButton
+                                endpoint={ENDPOINTS.EXPORT.LEAVES}
+                                params={{
+                                    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+                                    endDate: new Date().toISOString().split('T')[0]
+                                }}
+                                filename={`NghiPhep_${new Date().getFullYear()}.xlsx`}
+                                label="Xuất"
+                                className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm"
+                            />
+                            <div className="w-px h-6 bg-gray-200" />
+                            <ImportButton
+                                endpoint={ENDPOINTS.IMPORT.LEAVES}
+                                templateEndpoint={ENDPOINTS.TEMPLATE.LEAVES}
+                                templateFilename="Template_NghiPhep.xlsx"
+                                label="Nhập"
+                                className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm !px-3"
+                            />
+                        </div>
                     )}
                     <button onClick={() => setShowCreateModal(true)} className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-sm transition-colors">
                         <i className="fa-solid fa-plus mr-2" /> Tạo đơn
@@ -158,7 +171,7 @@ function MyLeaveRequests() {
     const { data: balance } = useQuery({
         queryKey: ['leave-balance'],
         queryFn: async () => {
-            const res = await apiClient.get('/api/leave-requests/me/balance');
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_BALANCE);
             return res.data;
         },
     });
@@ -784,7 +797,7 @@ function CreateLeaveModal({ isOpen, onClose }) {
     const { data: balance } = useQuery({
         queryKey: ['leave-balance'],
         queryFn: async () => {
-            const res = await apiClient.get('/api/leave-requests/me/balance');
+            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_BALANCE);
             return res.data;
         },
         enabled: isOpen,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@shared/stores/authStore';
 
 const AuthContext = createContext(null);
@@ -9,8 +9,6 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         const init = async () => {
-            // Skip initAuth if already authenticated (e.g., just logged in)
-            // Only re-validate when there's a token but no user data (page reload)
             const hasToken = Boolean(localStorage.getItem('accessToken'));
             if (!isAuthenticated && hasToken) {
                 await initAuth();
@@ -18,15 +16,15 @@ export function AuthProvider({ children }) {
             setLoading(false);
         };
         init();
-    }, []);
+    }, [initAuth, isAuthenticated]);
 
-    const value = {
+    const value = useMemo(() => ({
         user,
         loading,
         isAuthenticated,
         login,
         logout,
-    };
+    }), [user, loading, isAuthenticated, login, logout]);
 
     return (
         <AuthContext.Provider value={value}>

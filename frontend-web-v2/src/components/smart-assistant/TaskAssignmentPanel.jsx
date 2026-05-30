@@ -12,14 +12,14 @@ export default function TaskAssignmentPanel({ projectId, onClose }) {
     const { data: assignments = [], isLoading, refetch } = useQuery({
         queryKey: ['smart-task-assignment', projectId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant?action=task-assignment&projectId=${projectId}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.TASK_ASSIGNMENT(projectId))).data;
         },
         enabled: !!projectId,
     });
 
     const assignMutation = useMutation({
         mutationFn: async (assignments) => {
-            return (await apiClient.post('/api/smart-assistant/assign', assignments)).data;
+            return (await apiClient.post(ENDPOINTS.SMART_ASSISTANT.BATCH_ASSIGN, assignments)).data;
         },
         onSuccess: (data) => {
             toast.success(`Đã giao ${data.assigned}/${data.total} công việc thành công!`, 'success');

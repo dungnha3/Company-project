@@ -46,7 +46,7 @@ function EditMemberModal({ member, projectId, onClose, canManage }) {
 
     const updateMutation = useMutation({
         mutationFn: (data) =>
-            apiClient.patch(`/api/projects/${projectId}/members/${member.userId}/info`, data),
+            apiClient.patch(ENDPOINTS.PROJECTS.UPDATE_MEMBER_INFO(projectId, member.userId), data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
             onClose();
@@ -302,7 +302,7 @@ function MemberCard({ member, projectId, canManage }) {
 
 export default function TeamTab({ projectId }) {
     const { hasPermission } = useWorkspaceStore();
-    const canManage = hasPermission('projectManageAll');
+    const canManage = hasPermission('PROJECT.MANAGE_ALL');
 
     const { data: members = [], isLoading } = useQuery({
         queryKey: ['project-members', projectId],

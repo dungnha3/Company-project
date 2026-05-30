@@ -21,6 +21,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -144,14 +145,25 @@ public class ProjectService {
     public List<ProjectDTO> getMyProjects(Long userId) {
         List<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId);
         return memberships.stream()
-                .map(member -> convertToDTO(member.getProject()))
+                .map(member -> member.getProject())
+                .distinct()
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<ProjectDTO> getMyProjectsPaged(Long userId, Pageable pageable) {
-        Page<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId, pageable);
-        return memberships.map(member -> convertToDTO(member.getProject()));
+        List<ProjectMember> allMemberships = projectMemberRepository.findByUser_UserId(userId);
+        List<Project> uniqueProjects = allMemberships.stream()
+                .map(ProjectMember::getProject)
+                .distinct()
+                .collect(Collectors.toList());
+        long total = uniqueProjects.size();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), uniqueProjects.size());
+        List<ProjectDTO> pageContent = start >= uniqueProjects.size() ? Collections.emptyList()
+                : uniqueProjects.subList(start, end).stream().map(this::convertToDTO).collect(Collectors.toList());
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, total);
     }
 
     @Transactional(readOnly = true)

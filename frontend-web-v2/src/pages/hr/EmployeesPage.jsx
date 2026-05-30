@@ -6,6 +6,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import DataTable from '@shared/components/ui/DataTable';
 import ExportButton from '@shared/components/ui/ExportButton';
+import ImportButton from '@shared/components/ui/ImportButton';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import { useToast } from '@app/providers/ToastProvider';
@@ -251,11 +252,24 @@ export default function EmployeesPage() {
                 </div>
                 <div className="flex flex-wrap gap-3 mt-4">
                     {hasPermission('hrEditProfile') && (
-                        <ExportButton
-                            endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
-                            filename={`NhanVien_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
-                            label="Xuất Excel"
-                        />
+                        <>
+                            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <ExportButton
+                                    endpoint={ENDPOINTS.EXPORT.EMPLOYEES}
+                                    filename={`NhanVien_${formatDate(new Date()).replace(/\//g, '')}.xlsx`}
+                                    label="Xuất"
+                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm"
+                                />
+                                <div className="w-px h-6 bg-gray-200" />
+                                <ImportButton
+                                    endpoint={ENDPOINTS.IMPORT.EMPLOYEES}
+                                    templateEndpoint={ENDPOINTS.TEMPLATE.EMPLOYEES}
+                                    templateFilename="Template_NhanVien.xlsx"
+                                    label="Nhập"
+                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm !px-3"
+                                />
+                            </div>
+                        </>
                     )}
                     {hasPermission('hrCreateEmployee') && (
                         <button

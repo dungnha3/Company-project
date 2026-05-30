@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -30,12 +31,14 @@ public class CalendarController {
 
     // Create a new calendar event
     // POST /api/calendar/events
+    @Transactional
     @PostMapping("/events")
     public ResponseEntity<CalendarEventDTO> createEvent(
             @Valid @RequestBody CreateEventRequest request,
             @AuthenticationPrincipal User currentUser) {
         accessControlService.checkCalendarManagePermission();
-        return ResponseEntity.ok(calendarService.createEvent(request));
+        CalendarEventDTO created = calendarService.createEvent(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     // Get events in date range
@@ -73,10 +76,10 @@ public class CalendarController {
     // Delete event
     // DELETE /api/calendar/events/{eventId}
     @DeleteMapping("/events/{eventId}")
+    @Transactional
     public ResponseEntity<Void> deleteEvent(
             @PathVariable Long eventId,
             @AuthenticationPrincipal User currentUser) {
-        accessControlService.checkCalendarManagePermission();
         calendarService.deleteEvent(eventId);
         return ResponseEntity.noContent().build();
     }

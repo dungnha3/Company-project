@@ -321,6 +321,22 @@ public class ProjectMemberService {
         java.util.Map<Long, List<ProjectMember>> membersByUser = members.stream()
                 .collect(Collectors.groupingBy(m -> m.getUser().getUserId()));
 
+        // Pre-fetch all time log hours in a single bulk query to avoid N+1
+        java.util.Set<Long> allProjectIds = members.stream()
+                .map(m -> m.getProject().getProjectId())
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.List<Long> allUserIds = employees.stream()
+                .map(e -> e.getUser().getUserId())
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Double> hoursMap = new java.util.HashMap<>();
+        if (!allProjectIds.isEmpty() && !allUserIds.isEmpty()) {
+            List<Object[]> bulkHours = timeLogRepository.sumHoursByUsersAndProjects(allUserIds, new java.util.ArrayList<>(allProjectIds));
+            for (Object[] row : bulkHours) {
+                hoursMap.put(row[0] + "_" + row[1], ((Number) row[2]).doubleValue());
+            }
+        }
+
         return employees.stream()
                 .map(emp -> {
                     DoAn.BE.project.dto.ResourceOverviewDTO dto = new DoAn.BE.project.dto.ResourceOverviewDTO();
@@ -330,7 +346,6 @@ public class ProjectMemberService {
                     dto.setEmail(user.getEmail());
                     dto.setAvatarUrl(user.getAvatarUrl());
 
-                    // Lấy các project slots cho user này
                     List<ProjectMember> userMembers = membersByUser.getOrDefault(user.getUserId(), java.util.Collections.emptyList());
 
                     List<DoAn.BE.project.dto.ResourceOverviewDTO.ProjectSlot> slots = userMembers.stream()
@@ -343,10 +358,8 @@ public class ProjectMemberService {
                                 slot.setPosition(m.getPosition());
                                 slot.setAllocationRate(m.getAllocationRate());
                                 slot.setMemberStatus(m.getMemberStatus() != null ? m.getMemberStatus().name() : null);
-                                // Time logged for this project
-                                java.math.BigDecimal hours = timeLogRepository.sumHoursByUserAndProject(
-                                        m.getUser().getUserId(), m.getProject().getProjectId());
-                                slot.setTotalLoggedHours(hours != null ? hours.doubleValue() : 0.0);
+                                Double hours = hoursMap.get(m.getUser().getUserId() + "_" + m.getProject().getProjectId());
+                                slot.setTotalLoggedHours(hours != null ? hours : 0.0);
                                 return slot;
                             })
                             .collect(java.util.stream.Collectors.toList());

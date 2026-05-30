@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Optional;
 
 @Service
@@ -113,7 +114,11 @@ public class ReviewService {
             // Fall through to self-view check
         }
 
-        if (!review.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
+        // Guard against broken employee-user relationship
+        Employee emp = review.getEmployee();
+        User empUser = (emp != null) ? emp.getUser() : null;
+        Long reviewUserId = (empUser != null) ? empUser.getUserId() : null;
+        if (reviewUserId == null || !reviewUserId.equals(currentUser.getUserId())) {
             throw new ForbiddenException("You do not have permission to view this review");
         }
 
@@ -128,7 +133,8 @@ public class ReviewService {
             if (companyId == null) {
                 return java.util.Collections.emptyList();
             }
-            return reviewRepository.findByCompanyId(companyId);
+            List<Review> all = reviewRepository.findByCompanyId(companyId);
+            return all.stream().distinct().collect(Collectors.toList());
         } catch (ForbiddenException ignored) {
             // Fallback: user thường chỉ xem được reviews của chính mình
         }
@@ -141,7 +147,14 @@ public class ReviewService {
             Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
             if (companyId == null)
                 return Page.empty(pageable);
-            return reviewRepository.findByCompanyId(companyId, pageable);
+            List<Review> all = reviewRepository.findByCompanyId(companyId);
+            List<Review> unique = all.stream().distinct().collect(Collectors.toList());
+            long total = unique.size();
+            int start = (int) pageable.getOffset();
+            int end = Math.min(start + pageable.getPageSize(), unique.size());
+            List<Review> pageContent = start >= unique.size() ? java.util.Collections.emptyList()
+                    : unique.subList(start, end);
+            return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, total);
         } catch (ForbiddenException ignored) {
             // Fallback: user thường chỉ xem được reviews của chính mình
         }
@@ -333,7 +346,7 @@ public class ReviewService {
                     .orElse(null);
         }
         if (reviewer == null) {
-            reviewer = employeeRepository.findByUser_UserId(currentUser.getUserId()).orElse(null);
+            throw new BadRequestException("Không thể chấm điểm: Tài khoản của bạn chưa có hồ sơ nhân sự");
         }
 
         // 5. Map quick score to review scores:

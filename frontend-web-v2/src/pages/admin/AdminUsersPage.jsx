@@ -11,7 +11,7 @@ export default function AdminUsersPage() {
     const [search, setSearch] = useState('');
     const toast = useToast();
     const { user } = useAuthStore();
-    const canManageUsers = user?.roles?.includes('SYSTEM_ADMIN');
+    const canManageUsers = user?.isSystemAdmin;
 
     const fetchUsers = async (page = 0, keyword = '') => {
         setLoading(true);
@@ -45,7 +45,7 @@ export default function AdminUsersPage() {
 
     const handleToggleStatus = async (userId, currentStatus) => {
         try {
-            await apiClient.put(`/api/sysadmin/users/${userId}/toggle-status`);
+            await apiClient.put(ENDPOINTS.SYSADMIN.USER_TOGGLE_STATUS(userId));
             setUsers(users.map(u => 
                 u.userId === userId ? { ...u, isActive: !currentStatus } : u
             ));
@@ -58,7 +58,7 @@ export default function AdminUsersPage() {
     const handleResetPassword = async (userId) => {
         if (!window.confirm('Bạn có chắc muốn reset mật khẩu cho người dùng này?')) return;
         try {
-            await apiClient.post(`/api/sysadmin/users/${userId}/reset-password`);
+            await apiClient.post(ENDPOINTS.SYSADMIN.USER_RESET_PASSWORD(userId));
             toast.success('Đã gửi mật khẩu mới qua email');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Không thể reset mật khẩu');
@@ -148,7 +148,7 @@ export default function AdminUsersPage() {
                                             {user.email}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            {user.isSystemAdminAccount ? (
+                                            {user.isSystemAdmin ? (
                                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                                                     <i className="fa-solid fa-crown mr-1" />
                                                     System Admin
@@ -176,7 +176,7 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-center gap-2">
-                                                {!user.isSystemAdminAccount && canManageUsers && (
+                                                {!user.isSystemAdmin && canManageUsers && (
                                                     <>
                                                         <button
                                                             onClick={() => handleToggleStatus(user.userId, user.isActive)}
@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
                                                         </button>
                                                     </>
                                                 )}
-                                                {!user.isSystemAdminAccount && !canManageUsers && (
+                                                {!user.isSystemAdmin && !canManageUsers && (
                                                     <span className="text-xs text-gray-400 italic">Chỉ xem</span>
                                                 )}
                                             </div>

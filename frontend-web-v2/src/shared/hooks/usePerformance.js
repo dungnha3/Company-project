@@ -25,7 +25,7 @@ export const usePerformance = (options = {}) => {
     const employeeSummaryQuery = useQuery({
         queryKey: ['performance', 'employee', employeeId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/hr/performance/employees/${employeeId}/summary`);
+            const response = await apiClient.get(ENDPOINTS.HR_PERFORMANCE.EMPLOYEE_SUMMARY(employeeId));
             return response.data;
         },
         enabled: enabled && !!employeeId,
@@ -47,7 +47,7 @@ export const usePerformance = (options = {}) => {
     const dashboardQuery = useQuery({
         queryKey: ['performance', 'dashboard', period],
         queryFn: async () => {
-            const response = await apiClient.get('/api/hr/performance/dashboard', {
+            const response = await apiClient.get(ENDPOINTS.HR_PERFORMANCE.DASHBOARD, {
                 params: { period }
             });
             return response.data;
@@ -92,7 +92,7 @@ export const useEmployeePerformance = (employeeId) => {
     return useQuery({
         queryKey: ['performance', 'employee', employeeId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/hr/performance/employees/${employeeId}/summary`);
+            const response = await apiClient.get(ENDPOINTS.HR_PERFORMANCE.EMPLOYEE_SUMMARY(employeeId));
             return response.data;
         },
         enabled: !!employeeId,

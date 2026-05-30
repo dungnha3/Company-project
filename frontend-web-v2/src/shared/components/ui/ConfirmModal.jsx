@@ -53,14 +53,14 @@ export default function ConfirmModal({
                 </div>
                 <div className="modal-footer">
                     <button
-                        onClick={onCancel}
+                        onClick={onCancel || (() => {})}
                         className="btn-secondary"
                         disabled={loading}
                     >
                         {cancelLabel}
                     </button>
                     <button
-                        onClick={onConfirm}
+                        onClick={onConfirm || (() => {})}
                         className={confirmBtnClass}
                         disabled={loading}
                     >

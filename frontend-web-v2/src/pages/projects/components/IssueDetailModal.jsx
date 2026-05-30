@@ -76,7 +76,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
 
     const statusMutation = useMutation({
         mutationFn: async (statusId) => {
-            await apiClient.patch(`/api/issues/${issue.issueId}/status/${statusId}`);
+            await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(issue.issueId, statusId));
         },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
@@ -89,7 +89,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     // Assign mutation
     const assignMutation = useMutation({
         mutationFn: async (assigneeId) => {
-            await apiClient.patch(`/api/issues/${issue.issueId}/assign/${assigneeId}`);
+            await apiClient.patch(ENDPOINTS.ISSUES.ASSIGN(issue.issueId, assigneeId));
         },
         onSuccess: () => {
             toast.success('Đã giao việc');
@@ -116,7 +116,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
     const updateIssueMutation = useMutation({
         mutationFn: async (payload) => {
             const currentIssue = fullIssue || issue;
-            await apiClient.put(`/api/issues/${issue.issueId}`, {
+            await apiClient.put(ENDPOINTS.ISSUES.BY_ID(issue.issueId), {
                 title: currentIssue.title || currentIssue.subject,
                 description: currentIssue.description,
                 statusId: currentIssue.statusId,

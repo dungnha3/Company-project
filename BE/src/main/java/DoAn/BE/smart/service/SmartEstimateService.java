@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +38,6 @@ public class SmartEstimateService {
     private final IssueRepository issueRepository;
     private final UserRepository userRepository;
     private final DoAn.BE.project.repository.ProjectMemberRepository projectMemberRepository;
-    private final DoAn.BE.hrm.repository.EmployeeRepository employeeRepository;
 
     private static final int MIN_SAMPLES_FOR_ML = 3;
     private static final int MIN_SAMPLES_FOR_MEDIUM = 5;

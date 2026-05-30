@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatNumber } from '@shared/utils/formatters';
 import DataTable from '@shared/components/ui/DataTable';
+import { ExportButton, ImportButton } from '@shared/components/ui/index';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ReviewFormModal from './components/ReviewFormModal';
 import BulkReviewModal from './components/BulkReviewModal';
@@ -51,6 +52,21 @@ export default function ReviewsPage() {
                     </div>
                     {canCreate && (
                         <div className="flex gap-2">
+                            {/* Excel group */}
+                            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <ExportButton
+                                    endpoint={ENDPOINTS.EXPORT.REVIEWS}
+                                    filename={`DanhGia_${new Date().toISOString().split('T')[0]}.xlsx`}
+                                    label="Xuất"
+                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm"
+                                />
+                                <div className="w-px h-6 bg-gray-200" />
+                                <ImportButton
+                                    endpoint={ENDPOINTS.IMPORT.REVIEWS}
+                                    label="Nhập"
+                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm !px-3"
+                                />
+                            </div>
                             <button
                                 onClick={() => setShowBulkModal(true)}
                                 className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-medium transition-colors text-sm shadow-sm"
@@ -540,21 +556,21 @@ function ReviewTypeBadge({ type }) {
 }
 
 function RankBadge({ rank }) {
-    const styles = {
-        A: { bg: 'bg-green-50', text: 'text-green-700' },
-        B: { bg: 'bg-gray-100', text: 'text-gray-700' },
-        C: { bg: 'bg-amber-50', text: 'text-amber-700' },
-        D: { bg: 'bg-red-50', text: 'text-red-700' },
-    };
-    const s = styles[rank] || { bg: 'bg-gray-100', text: 'text-gray-700' };
-
-    if (!rank) return <span className="text-gray-400">-</span>;
-
-    return (
-        <span className={`${s.bg} ${s.text} font-semibold text-sm w-8 h-8 flex items-center justify-center rounded-full`}>
-            {rank}
-        </span>
-    );
+    if (rank && typeof rank === 'string' && /^[A-D]$/i.test(rank)) {
+        const styles = {
+            A: { bg: 'bg-green-50', text: 'text-green-700' },
+            B: { bg: 'bg-gray-100', text: 'text-gray-700' },
+            C: { bg: 'bg-amber-50', text: 'text-amber-700' },
+            D: { bg: 'bg-red-50', text: 'text-red-700' },
+        };
+        const s = styles[rank.toUpperCase()] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+        return (
+            <span className={`${s.bg} ${s.text} font-semibold text-sm w-8 h-8 flex items-center justify-center rounded-full`}>
+                {rank.toUpperCase()}
+            </span>
+        );
+    }
+    return <span className="text-gray-400">-</span>;
 }
 
 function ScoreBadge({ score }) {

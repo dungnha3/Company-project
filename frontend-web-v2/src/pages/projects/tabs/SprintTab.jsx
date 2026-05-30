@@ -92,8 +92,6 @@ export default function SprintTab({ projectId }) {
             {view === 'timeline' && (
                 <TimelineView projectId={projectId} />
             )}
-
-            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
         </div>
     );
 }
@@ -114,6 +112,7 @@ function SprintView({ projectId }) {
         queryFn: async () => (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(projectId))).data,
         enabled: !!projectId,
     });
+    const activeSprint = sprints.find(s => s.status === 'ACTIVE');
 
     const startMutation = useMutation({
         mutationFn: (sprintId) => apiClient.post(ENDPOINTS.SPRINTS.START(sprintId)),
@@ -141,14 +140,13 @@ function SprintView({ projectId }) {
         },
     });
 
-    const activeSprint = sprints.find(s => s.status === 'ACTIVE');
     const planningSprints = sprints.filter(s => s.status === 'PLANNING');
     const completedSprints = sprints.filter(s => s.status === 'COMPLETED');
 
     const { data: sprintPrediction } = useQuery({
         queryKey: ['smart-sprint-prediction', activeSprint?.sprintId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant/sprint-prediction/${activeSprint.sprintId}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SPRINT_PREDICTION(activeSprint.sprintId))).data;
         },
         enabled: !!activeSprint?.sprintId,
         staleTime: 2 * 60 * 1000,
@@ -337,6 +335,8 @@ function SprintView({ projectId }) {
                     onSuccess={() => { queryClient.invalidateQueries(['sprintIssues', showAddIssueModal]); queryClient.invalidateQueries(['sprints', projectId]); setShowAddIssueModal(null); }}
                 />
             )}
+
+            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
         </div>
     );
 }
@@ -554,6 +554,7 @@ function TimelineView({ projectId }) {
         }
         if (filtered.length === 0) return { filteredIssues: [], days: [], startDate: null, totalDays: 0 };
         const allDates = filtered.flatMap(i => [i.startDate, i.dueDate].filter(Boolean)).map(d => new Date(d));
+        if (allDates.length === 0) return { filteredIssues: filtered, days: [], startDate: null, totalDays: 0 };
         const min = new Date(Math.min(...allDates));
         const max = new Date(Math.max(...allDates));
         min.setDate(min.getDate() - 2);

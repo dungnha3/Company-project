@@ -367,6 +367,9 @@ public class AuthService {
         newUser.setUsername(request.getEmail());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         newUser.setPhoneNumber(request.getPhoneNumber());
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            newUser.setFullName(request.getFullName().trim());
+        }
         newUser.setIsActive(true);
         newUser.setStatus(User.UserStatus.ACTIVE);
 

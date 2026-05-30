@@ -15,6 +15,7 @@ import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.BadRequestException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
+import DoAn.BE.common.service.AccessControlService;
 import DoAn.BE.common.util.SecurityUtil;
 import DoAn.BE.company.entity.Company;
 import DoAn.BE.company.repository.CompanyRepository;
@@ -37,6 +38,7 @@ public class CalendarService {
     private final ProjectRepository projectRepository;
     private final IssueRepository issueRepository;
     private final UserRepository userRepository;
+    private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // Create a new calendar event
@@ -174,7 +176,16 @@ public class CalendarService {
         CalendarEvent event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sự kiện"));
 
-        if (!event.getCreatedBy().getUserId().equals(currentUser.getUserId())) {
+        boolean isCreator = event.getCreatedBy().getUserId().equals(currentUser.getUserId());
+        boolean hasManagePerm;
+        try {
+            accessControlService.checkCalendarManagePermission();
+            hasManagePerm = true;
+        } catch (ForbiddenException e) {
+            hasManagePerm = false;
+        }
+
+        if (!isCreator && !hasManagePerm) {
             throw new ForbiddenException("Bạn không có quyền xóa sự kiện này");
         }
 

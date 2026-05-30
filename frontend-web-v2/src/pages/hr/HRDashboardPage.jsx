@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
+import { CHART_TOOLTIP_STYLE } from '@shared/components/chart/ChartUtils';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 export default function HRDashboardPage() {
@@ -92,7 +93,7 @@ export default function HRDashboardPage() {
                 const calls = activeProjects.map(async (p) => {
                     const pid = p.projectId || p.id;
                     try {
-                        const res = await apiClient.get(`/api/hr/performance-comparison/projects/${pid}`);
+                        const res = await apiClient.get(ENDPOINTS.PERFORMANCE.COMPARISON_BY_PROJECT(pid));
                         return { projectId: pid, projectName: p.name, rankings: res.data || [] };
                     } catch {
                         return { projectId: pid, projectName: p.name, rankings: [] };
@@ -155,7 +156,11 @@ export default function HRDashboardPage() {
             .filter(p => p.rankings?.length > 0)
             .map(p => {
                 const avg = p.rankings.reduce((s, r) => s + Number(r.totalPerformanceScore || 0), 0) / Math.max(p.rankings.length, 1);
-                return { name: p.projectName?.substring(0, 15), 'Hiệu suất TB': Number(avg.toFixed(1)) };
+                return {
+                    name: p.projectName?.substring(0, 20),
+                    'Hiệu suất TB': Number(avg.toFixed(1)),
+                    projectId: p.projectId,
+                };
             });
     }, [allPerfData]);
 
@@ -303,14 +308,33 @@ export default function HRDashboardPage() {
             {/* Performance Chart */}
             {projectPerfChart.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                    <h3 className="font-medium text-gray-900 mb-4 pb-3 border-b border-gray-100">Hiệu suất theo dự án</h3>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                        <h3 className="font-medium text-gray-900">Hiệu suất theo dự án</h3>
+                        <span className="text-xs text-gray-400">Click thanh để xem chi tiết</span>
+                    </div>
                     <div style={{ height: '250px' }} className="min-h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={projectPerfChart}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                 <XAxis dataKey="name" fontSize={11} tick={{ fill: '#374151', fontWeight: 500 }} />
                                 <YAxis domain={[0, 10]} fontSize={11} tick={{ fill: '#374151', fontWeight: 500 }} />
-                                <Tooltip formatter={(v) => [v + ' điểm']} />
-                                <Bar dataKey="Hiệu suất TB" fill="#374151" radius={[4, 4, 0, 0]} />
+                                <Tooltip
+                                    contentStyle={CHART_TOOLTIP_STYLE}
+                                    formatter={(value) => [`${value} điểm`, 'Hiệu suất TB']}
+                                    labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
+                                    cursor={{ fill: '#f1f5f9' }}
+                                />
+                                <Bar
+                                    dataKey="Hiệu suất TB"
+                                    fill="#374151"
+                                    radius={[4, 4, 0, 0]}
+                                    cursor="pointer"
+                                    onClick={(data) => {
+                                        if (data && data.projectId) {
+                                            navigate(`/app/projects/analytics?projectId=${data.projectId}`);
+                                        }
+                                    }}
+                                />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

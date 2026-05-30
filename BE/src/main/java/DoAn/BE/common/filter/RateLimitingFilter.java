@@ -98,13 +98,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     // /
     private String extractClientIp(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();
-        // từ IP nội bộ (Load Balancer, Gateway)
+        // Only trust X-Forwarded-For when request comes from a known private IP (proxy).
+        // Use the LAST IP in the chain — it was added by the most trusted proxy closest to us.
+        // The first IP (client-supplied) is the least trusted and can be spoofed.
         if (isPrivateIp(remoteAddr)) {
-            // Check for proxy headers first
             String xForwardedFor = request.getHeader("X-Forwarded-For");
             if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-                // X-Forwarded-For can contain multiple IPs, take the first one
-                return xForwardedFor.split(",")[0].trim();
+                String[] parts = xForwardedFor.split(",");
+                return parts[parts.length - 1].trim();
             }
 
             String xRealIp = request.getHeader("X-Real-IP");

@@ -42,24 +42,19 @@ export const ENDPOINTS = {
 
     // System Admin (God Mode)
     SYSADMIN: {
+        USER_TOGGLE_STATUS: (id) => `/api/sysadmin/users/${id}/toggle-status`,
+        USER_RESET_PASSWORD: (id) => `/api/sysadmin/users/${id}/reset-password`,
         COMPANY_DETAILS: (id) => `/api/sysadmin/companies/${id}`,
         COMPANY_PLAN: (id) => `/api/sysadmin/companies/${id}/plan`,
         COMPANY_STATUS: (id) => `/api/sysadmin/companies/${id}/status`,
         COMPANY_DELETE: (id) => `/api/sysadmin/companies/${id}`,
-
         COMPANY_FEATURES: (id) => `/api/sysadmin/companies/${id}/features`,
         COMPANY_SETTINGS: (id) => `/api/sysadmin/companies/${id}/settings`,
-
-        // Settings
         SETTINGS: '/api/sysadmin/settings',
-
-        // Analytics
         ANALYTICS: {
             STATS: '/api/sysadmin/analytics/stats',
             GROWTH: '/api/sysadmin/analytics/growth',
         },
-
-        // Tenant Deep View
         TENANTS: {
             USERS: (companyId) => `/api/sysadmin/tenants/${companyId}/users`,
             PROJECTS: (companyId) => `/api/sysadmin/tenants/${companyId}/projects`,
@@ -139,32 +134,41 @@ export const ENDPOINTS = {
         DELETE: (id) => `/api/employees/${id}`,
         SEARCH: '/api/employees/search',
         BY_STATUS: (status) => `/api/employees/status/${status}`,
-    },
-
-    // Attendance
-    ATTENDANCE: {
-        CHECK_IN: '/api/attendance/check-in',
-        CHECK_OUT: '/api/attendance/check-out',
-        TODAY: '/api/attendance/today',
-        MY_HISTORY: '/api/attendance/my-history',
-        LIST: '/api/attendance',
-        BY_EMPLOYEE: (empId) => `/api/attendance/employee/${empId}`,
-        DATE_RANGE: '/api/attendance/date-range',
-        REPORT: '/api/attendance/report',
+        BY_USER: (userId) => `/api/employees/user/${userId}`,
+        ME: '/api/employees/me',
     },
 
     // Export to Excel
     EXPORT: {
         EMPLOYEES: '/api/export/employees/excel',
-        ATTENDANCE: '/api/export/attendance/excel', // params: month, year
-        SALARY: '/api/export/salary/excel', // params: month, year
-        LEAVES: '/api/export/leaves/excel', // params: startDate, endDate
+        SALARY: '/api/export/salary/excel',
+        LEAVES: '/api/export/leaves/excel',
+        REVIEWS: '/api/export/reviews/excel',
+        ATTENDANCE: '/api/export/attendance/excel',
+    },
+
+    // Import from Excel
+    IMPORT: {
+        EMPLOYEES: '/api/import/employees/excel',
+        LEAVES: '/api/import/leaves/excel',
+        REVIEWS: '/api/import/reviews/excel',
+        ATTENDANCE: '/api/import/attendance/excel',
+    },
+
+    // Template download (blank Excel files with headers)
+    TEMPLATE: {
+        EMPLOYEES: '/api/templates/employees',
+        LEAVES: '/api/templates/leaves',
+        REVIEWS: '/api/templates/reviews',
+        ATTENDANCE: '/api/templates/attendance',
     },
 
     // Leave Requests
     LEAVE_REQUESTS: {
         LIST: '/api/leave-requests',
         MY_REQUESTS: '/api/leave-requests',
+        ME: '/api/leave-requests/me',
+        MY_BALANCE: '/api/leave-requests/me/balance',
         BY_ID: (id) => `/api/leave-requests/${id}`,
         BY_EMPLOYEE: (empId) => `/api/leave-requests/employee/${empId}`,
         DATE_RANGE: '/api/leave-requests/date-range',
@@ -175,6 +179,8 @@ export const ENDPOINTS = {
         REJECT: (id) => `/api/leave-requests/${id}/reject`,
         TEAM_CALENDAR: '/api/leave-requests/team-calendar',
         CREATE: '/api/leave-requests',
+        EMPLOYEE_TOTAL_DAYS: (empId) => `/api/leave-requests/employee/${empId}/total-days`,
+        EMPLOYEE_IS_ON_LEAVE: (empId) => `/api/leave-requests/employee/${empId}/is-on-leave`,
     },
 
     // Salaries
@@ -256,7 +262,6 @@ export const ENDPOINTS = {
         OVERVIEW: '/api/dashboard/overview',
         STATS: '/api/dashboard/stats',
         MONTHLY: '/api/dashboard/monthly',
-        ATTENDANCE_BY_DEPT: '/api/dashboard/attendance-by-department',
         SALARY_BY_MONTH: '/api/dashboard/salary-by-month',
         EMPLOYEE_BY_AGE: '/api/dashboard/employee-by-age',
         EMPLOYEE_BY_GENDER: '/api/dashboard/employee-by-gender',
@@ -274,8 +279,15 @@ export const ENDPOINTS = {
         GOALS: (id) => `/api/projects/${id}/goals`,
         GOAL_TOGGLE: (id, goalId) => `/api/projects/${id}/goals/${goalId}/toggle`,
         GOAL_DELETE: (id, goalId) => `/api/projects/${id}/goals/${goalId}`,
+        GOAL_CREATE: (id) => `/api/projects/${id}/goals`,
         RESOURCE_OVERVIEW: '/api/projects/resource-overview',
         UPDATE_MEMBER_INFO: (projectId, memberId) => `/api/projects/${projectId}/members/${memberId}/info`,
+    },
+
+    // Project Costs
+    PROJECT_COSTS: {
+        BY_PROJECT: (projectId) => `/api/projects/costs/${projectId}`,
+        CREATE_EXPENSE: '/api/projects/costs/expenses',
     },
     // Project Dashboard & Export
     PROJECT_DASHBOARD: {
@@ -317,6 +329,7 @@ export const ENDPOINTS = {
         MY_ISSUES: '/api/issues/my-issues',
         MY_REPORTED: '/api/issues/my-reported',
         UPDATE_STATUS_TO: (id, statusId) => `/api/issues/${id}/status/${statusId}`,
+        ASSIGN: (id, assigneeId) => `/api/issues/${id}/assign/${assigneeId}`,
     },
 
     // Issue Statuses (Kanban columns)
@@ -370,6 +383,9 @@ export const ENDPOINTS = {
         BY_ISSUE: (issueId) => `/api/timelogs/issue/${issueId}`,
         TOTAL_BY_ISSUE: (issueId) => `/api/timelogs/issue/${issueId}/total`,
         MY_LOGS: '/api/timelogs/my',
+        MY_SUMMARY: '/api/timelogs/summary/my',
+        PROJECT_SUMMARY: (projectId) => `/api/timelogs/project/${projectId}/summary`,
+        PROJECT_TIMELOGS: (projectId) => `/api/timelogs/project/${projectId}`,
         UPDATE: (id) => `/api/timelogs/${id}`,
         DELETE: (id) => `/api/timelogs/${id}`,
     },
@@ -402,9 +418,20 @@ export const ENDPOINTS = {
     // Performance (HR individual performance — matches BE PerformanceController)
     PERFORMANCE: {
         MY_STATS: '/api/hr/performance/my-stats',
+        DASHBOARD: (period) => `/api/hr/performance/dashboard${period ? `?period=${period}` : ''}`,
+        EMPLOYEE_SUMMARY: (employeeId) => `/api/hr/performance/employees/${employeeId}/summary`,
         COMPARISON_ME: '/api/hr/performance-comparison/me',
         COMPARISON_BY_PROJECT: (projectId) => `/api/hr/performance-comparison/projects/${projectId}`,
     },
+
+    // HR Dashboard (BE HRPerformanceController)
+    HR_PERFORMANCE: {
+        DASHBOARD: '/api/hr/performance/dashboard',
+        EMPLOYEE_SUMMARY: (employeeId) => `/api/hr/performance/employees/${employeeId}/summary`,
+    },
+
+    // Salary Proposals (PENDING: requires backend ProposalsController)
+    HR_PROPOSALS: '/api/hr/proposals',
 
     // Smart Assistant (Module 5)
     SMART_ASSISTANT: {
@@ -414,8 +441,18 @@ export const ENDPOINTS = {
         SCORE_SUGGESTION_ISSUE: (issueId) => `/api/smart-assistant?action=score-suggestion&issueId=${issueId}`,
         SCORE_SUGGESTION_EMPLOYEE: (employeeId, reviewPeriod) => `/api/smart-assistant?action=score-suggestion&employeeId=${employeeId}&reviewPeriod=${encodeURIComponent(reviewPeriod)}`,
         SPRINT_HEALTH: (sprintId) => `/api/smart-assistant?action=sprint-health&sprintId=${sprintId}`,
+        SPRINT_PREDICTION: (sprintId) => `/api/smart-assistant/sprint-prediction/${sprintId}`,
+        ESTIMATE: (projectId, issueType, weight, assigneeId) => {
+            const params = new URLSearchParams();
+            if (projectId) params.append('projectId', projectId);
+            if (issueType) params.append('issueType', issueType);
+            if (weight) params.append('weight', weight);
+            if (assigneeId) params.append('assigneeId', assigneeId);
+            return `/api/smart-assistant/estimate?${params.toString()}`;
+        },
         WORKLOAD: (projectId) => `/api/smart-assistant?action=workload&projectId=${projectId}`,
         PROJECT_RISK: (projectId) => `/api/smart-assistant?action=project-risk&projectId=${projectId}`,
+        SUGGEST_ASSIGNEE: (projectId) => `/api/smart-assistant/suggest-assignee?projectId=${projectId}`,
         BATCH_ASSIGN: '/api/smart-assistant/assign',
     },
 
@@ -426,6 +463,7 @@ export const ENDPOINTS = {
         DISCONNECT: '/api/storage/disconnect',
         UPLOAD_PROJECT_FILE: (projectId) => `/api/storage/projects/${projectId}/upload`,
         PROJECT_FILES: (projectId) => `/api/storage/projects/${projectId}/files`,
+        PROJECT_FOLDERS: (projectId) => `/api/storage/projects/${projectId}/folders`,
         UPLOAD_ISSUE_FILE: (issueId) => `/api/storage/issues/${issueId}/upload`,
         ISSUE_FILES: (issueId) => `/api/storage/issues/${issueId}/files`,
         DOWNLOAD_FILE: (fileId) => `/api/storage/files/${fileId}/download`,

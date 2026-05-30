@@ -12,33 +12,29 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Repository cho thông báo đơn giản
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
+
     List<Notification> findByUser_UserIdOrderByCreatedAtDesc(Long userId);
 
     Page<Notification> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
-    // count method)
     Page<Notification> findByUser_UserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
-    // Đếm notification chưa đọc
     long countByUser_UserIdAndIsReadFalse(Long userId);
 
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.createdAt < :cutoffDate")
     int deleteOlderThan(LocalDateTime cutoffDate);
 
-    // Đếm notifications cũ (để log)
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.createdAt < :cutoffDate")
     long countOlderThan(LocalDateTime cutoffDate);
 
-    // [Adapter Support] Lấy notification theo type
     List<Notification> findByUser_UserIdAndTypeOrderByCreatedAtDesc(Long userId, String type);
 
-    // [Adapter Support] Lấy notification theo priority
     List<Notification> findByUser_UserIdAndPriorityOrderByCreatedAtDesc(Long userId,
             DoAn.BE.notification.entity.NotificationPriority priority);
+
     @Modifying
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.user.userId = :userId AND n.isRead = false")
     int markAllAsReadByUserId(Long userId);

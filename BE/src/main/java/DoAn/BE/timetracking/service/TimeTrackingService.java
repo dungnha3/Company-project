@@ -209,6 +209,7 @@ public class TimeTrackingService {
     // Update issue's actualHours based on sum of time logs
     // /
     private void updateIssueActualHours(Issue issue) {
+        if (issue == null) return;
         BigDecimal totalHours = timeLogRepository.sumHoursByIssue(issue.getIssueId());
         issue.setActualHours(totalHours);
         issueRepository.save(issue);
@@ -217,21 +218,27 @@ public class TimeTrackingService {
     // Convert entity to DTO
     // /
     private TimeLogDTO toDTO(TimeLog timeLog) {
-        return TimeLogDTO.builder()
+        TimeLogDTO.TimeLogDTOBuilder builder = TimeLogDTO.builder()
                 .logId(timeLog.getLogId())
-                .issueId(timeLog.getIssue().getIssueId())
-                .issueKey(timeLog.getIssue().getIssueKey())
-                .issueTitle(timeLog.getIssue().getTitle())
-                .projectId(timeLog.getIssue().getProject().getProjectId())
-                .projectName(timeLog.getIssue().getProject().getName())
                 .userId(timeLog.getUser().getUserId())
                 .userName(timeLog.getUser().getUsername())
                 .userAvatar(timeLog.getUser().getAvatarUrl())
                 .loggedHours(timeLog.getLoggedHours())
                 .workDate(timeLog.getWorkDate())
                 .description(timeLog.getDescription())
-                .createdAt(timeLog.getCreatedAt())
-                .build();
+                .createdAt(timeLog.getCreatedAt());
+
+        if (timeLog.getIssue() != null) {
+            builder.issueId(timeLog.getIssue().getIssueId())
+                   .issueKey(timeLog.getIssue().getIssueKey())
+                   .issueTitle(timeLog.getIssue().getTitle());
+            if (timeLog.getIssue().getProject() != null) {
+                builder.projectId(timeLog.getIssue().getProject().getProjectId())
+                       .projectName(timeLog.getIssue().getProject().getName());
+            }
+        }
+
+        return builder.build();
     }
 
     /**
@@ -264,6 +271,7 @@ public class TimeTrackingService {
         // Hours by project
         Map<Long, Map<String, Object>> byProjectMap = new LinkedHashMap<>();
         for (TimeLog log : allLogs) {
+            if (log.getIssue() == null || log.getIssue().getProject() == null) continue;
             Long pid = log.getIssue().getProject().getProjectId();
             String pname = log.getIssue().getProject().getName();
             byProjectMap.computeIfAbsent(pid, k -> {

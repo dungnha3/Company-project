@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 
 // ── Break deduction logic ─────────────────────────────────────────────────────
 // Default: 12:00–13:00 lunch break (1 hour)
@@ -38,7 +39,7 @@ function calculateBreakDeduction(startTime, endTime) {
 async function checkApprovedLeaveToday() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const res = await apiClient.get('/api/leave-requests/my', {
+        const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.ME, {
             params: { status: 'APPROVED' }
         });
         const requests = Array.isArray(res.data) ? res.data : (res.data?.content || []);

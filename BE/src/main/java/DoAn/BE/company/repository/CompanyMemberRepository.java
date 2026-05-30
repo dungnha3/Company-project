@@ -4,83 +4,68 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import DoAn.BE.company.entity.CompanyMember;
 import DoAn.BE.company.entity.CompanyRole;
 
-// Repository quản lý quan hệ User-Company
 @Repository
 public interface CompanyMemberRepository extends JpaRepository<CompanyMember, Long> {
 
-        // Lấy tất cả memberships của user
-        List<CompanyMember> findByUser_UserId(Long userId);
+    List<CompanyMember> findByUser_UserId(Long userId);
 
-        // Lấy memberships active của user
-        List<CompanyMember> findByUser_UserIdAndIsActiveTrue(Long userId);
+    List<CompanyMember> findByUser_UserIdAndIsActiveTrue(Long userId);
 
-        // Lấy pending invites (memberships chưa kích hoạt) của user
-        List<CompanyMember> findByUser_UserIdAndIsActiveFalse(Long userId);
+    List<CompanyMember> findByUser_UserIdAndIsActiveFalse(Long userId);
 
-        // Lấy membership cụ thể (user + company)
-        Optional<CompanyMember> findByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
+    Optional<CompanyMember> findByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
 
-        // Lấy membership active cụ thể
-        Optional<CompanyMember> findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(Long userId, Long companyId);
+    Optional<CompanyMember> findByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(Long userId, Long companyId);
 
-        // Eagerly fetch roles to avoid LazyInitializationException outside transaction
-        @org.springframework.data.jpa.repository.Query("SELECT DISTINCT cm FROM CompanyMember cm " +
-                        "LEFT JOIN FETCH cm.roles " +
-                        "WHERE cm.user.userId = :userId AND cm.company.companyId = :companyId AND cm.isActive = true")
-        Optional<CompanyMember> findActiveMemberWithRoles(
-                        @org.springframework.data.repository.query.Param("userId") Long userId,
-                        @org.springframework.data.repository.query.Param("companyId") Long companyId);
+    @Query("SELECT DISTINCT cm FROM CompanyMember cm " +
+            "LEFT JOIN FETCH cm.roles " +
+            "WHERE cm.user.userId = :userId AND cm.company.companyId = :companyId AND cm.isActive = true")
+    Optional<CompanyMember> findActiveMemberWithRoles(@Param("userId") Long userId, @Param("companyId") Long companyId);
 
-        // Lấy tất cả members trong công ty
-        List<CompanyMember> findByCompany_CompanyId(Long companyId);
+    @Query("SELECT DISTINCT cm FROM CompanyMember cm " +
+            "JOIN FETCH cm.user " +
+            "LEFT JOIN FETCH cm.roles " +
+            "WHERE cm.company.companyId = :companyId")
+    List<CompanyMember> findByCompanyIdWithUserAndRoles(@Param("companyId") Long companyId);
 
-        // Eagerly fetch user and roles to avoid LazyInitializationException
-        @org.springframework.data.jpa.repository.Query("SELECT DISTINCT cm FROM CompanyMember cm " +
-                        "JOIN FETCH cm.user " +
-                        "LEFT JOIN FETCH cm.roles " +
-                        "WHERE cm.company.companyId = :companyId")
-        List<CompanyMember> findByCompanyIdWithUserAndRoles(
-                        @org.springframework.data.repository.query.Param("companyId") Long companyId);
+    @Query("SELECT DISTINCT cm FROM CompanyMember cm " +
+            "JOIN FETCH cm.user " +
+            "LEFT JOIN FETCH cm.roles " +
+            "WHERE cm.company.companyId = :companyId AND cm.isActive = true")
+    List<CompanyMember> findByCompanyIdWithUserAndRolesActive(@Param("companyId") Long companyId);
 
-        // Lấy members active trong công ty
-        List<CompanyMember> findByCompany_CompanyIdAndIsActiveTrue(Long companyId);
+    List<CompanyMember> findByCompany_CompanyId(Long companyId);
 
-        // [SAAS] Lấy members active trong công ty có phân trang (cho AccountController)
-        org.springframework.data.domain.Page<CompanyMember> findByCompany_CompanyIdAndIsActiveTrue(Long companyId,
-                        org.springframework.data.domain.Pageable pageable);
+    List<CompanyMember> findByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 
-        // Kiểm tra user có trong công ty không
-        boolean existsByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
+    Page<CompanyMember> findByCompany_CompanyIdAndIsActiveTrue(Long companyId, Pageable pageable);
 
-        // Kiểm tra user có trong công ty và đang active không
-        boolean existsByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(Long userId, Long companyId);
+    boolean existsByUser_UserIdAndCompany_CompanyId(Long userId, Long companyId);
 
-        // Check by Entity
-        boolean existsByUserAndCompany(DoAn.BE.user.entity.User user, DoAn.BE.company.entity.Company company);
+    boolean existsByUser_UserIdAndCompany_CompanyIdAndIsActiveTrue(Long userId, Long companyId);
 
-        // [SAAS] Đếm tổng số user active trong công ty để check limit gói
-        long countByCompany_CompanyIdAndIsActiveTrue(Long companyId);
-        // MULTI-ROLE SUPPORT (Derived Queries)
+    boolean existsByUserAndCompany(DoAn.BE.user.entity.User user, DoAn.BE.company.entity.Company company);
 
-        // Tìm members có chứa role cụ thể
-        List<CompanyMember> findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
+    long countByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 
-        // Đếm members có chứa role cụ thể
-        long countByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
+    List<CompanyMember> findByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
 
-        // Tìm members có chứa 1 trong các role (OR logic)
-        List<CompanyMember> findByCompany_CompanyIdAndRolesInAndIsActiveTrue(Long companyId, Set<CompanyRole> roles);
-        // DEFAULT METHODS
+    long countByCompany_CompanyIdAndRolesContainingAndIsActiveTrue(Long companyId, CompanyRole role);
 
-        // Lấy tất cả Admins/Owners trong công ty
-        default List<CompanyMember> findAdminsByCompany(Long companyId) {
-                return findByCompany_CompanyIdAndRolesInAndIsActiveTrue(companyId,
-                                Set.of(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN));
-        }
+    List<CompanyMember> findByCompany_CompanyIdAndRolesInAndIsActiveTrue(Long companyId, Set<CompanyRole> roles);
+
+    default List<CompanyMember> findAdminsByCompany(Long companyId) {
+        return findByCompany_CompanyIdAndRolesInAndIsActiveTrue(companyId,
+                Set.of(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN));
+    }
 }

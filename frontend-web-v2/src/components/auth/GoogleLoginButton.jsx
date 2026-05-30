@@ -67,12 +67,7 @@ const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
     }, [loginWithGoogle, navigate]);
 
     if (!isGoogleConfigured()) {
-        return (
-            <div className="p-3 bg-gray-100 text-gray-500 rounded-xl text-center text-sm border border-dashed border-gray-300">
-                <i className="fa-brands fa-google mr-2"></i>
-                Cần cấu hình Google Client ID
-            </div>
-        );
+        return null; // Hide button when Google OAuth is not configured
     }
 
     return (

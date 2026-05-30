@@ -13,9 +13,9 @@ export default function ScoreSuggestionPanel({ issueId, employeeId, reviewPeriod
         queryKey,
         queryFn: async () => {
             if (issueId) {
-                return (await apiClient.get(`/api/smart-assistant?action=score-suggestion&issueId=${issueId}`)).data;
+                return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SCORE_SUGGESTION_ISSUE(issueId))).data;
             } else {
-                return (await apiClient.get(`/api/smart-assistant?action=score-suggestion&employeeId=${employeeId}&reviewPeriod=${encodeURIComponent(reviewPeriod || '')}`)).data;
+                return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SCORE_SUGGESTION_EMPLOYEE(employeeId, reviewPeriod || ''))).data;
             }
         },
         enabled: isExpanded,

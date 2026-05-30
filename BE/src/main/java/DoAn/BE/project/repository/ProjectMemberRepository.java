@@ -20,7 +20,8 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
     List<ProjectMember> findByProject_ProjectId(Long projectId);
 
     @EntityGraph(attributePaths = { "user", "project" })
-    List<ProjectMember> findByUser_UserId(Long userId);
+    @Query("SELECT DISTINCT pm FROM ProjectMember pm WHERE pm.user.userId = :userId")
+    List<ProjectMember> findByUser_UserId(@Param("userId") Long userId);
 
     @EntityGraph(attributePaths = { "user", "project" })
     Page<ProjectMember> findByUser_UserId(Long userId, Pageable pageable);

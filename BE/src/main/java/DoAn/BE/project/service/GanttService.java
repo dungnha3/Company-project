@@ -256,11 +256,11 @@ public class GanttService {
     private GanttDto.GanttItem buildIssueItem(Issue issue) {
         // Calculate progress from status
         int progress = 0;
-        if (issue.getIssueStatus() != null) {
+        if (issue.isDone()) {
+            progress = 100;
+        } else if (issue.getIssueStatus() != null) {
             String statusName = issue.getIssueStatus().getName().toLowerCase();
-            if (statusName.contains("done") || statusName.contains("closed") || statusName.contains("hoàn thành")) {
-                progress = 100;
-            } else if (statusName.contains("progress") || statusName.contains("đang")) {
+            if (statusName.contains("progress") || statusName.contains("đang")) {
                 progress = 50;
             } else if (statusName.contains("review") || statusName.contains("testing")) {
                 progress = 75;
@@ -322,9 +322,7 @@ public class GanttService {
             return 0;
 
         long completed = issues.stream()
-                .filter(i -> i.getIssueStatus() != null &&
-                        (i.getIssueStatus().getName().toLowerCase().contains("done") ||
-                                i.getIssueStatus().getName().toLowerCase().contains("closed")))
+                .filter(Issue::isDone)
                 .count();
 
         return (int) (completed * 100 / issues.size());
@@ -335,8 +333,7 @@ public class GanttService {
         int totalIssues = issues.size();
 
         long completedIssues = issues.stream()
-                .filter(i -> i.getIssueStatus() != null &&
-                        i.getIssueStatus().getName().toLowerCase().contains("done"))
+                .filter(Issue::isDone)
                 .count();
 
         long overdueIssues = issues.stream()

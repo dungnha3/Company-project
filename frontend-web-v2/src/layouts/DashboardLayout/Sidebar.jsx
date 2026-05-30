@@ -24,8 +24,9 @@ export const NAV_CONFIG = [
         title: 'Quản lý Dự án',
         items: [
             { path: '/app/projects', icon: 'fa-cubes', label: 'Dự án & Kanban' },
-            { path: '/app/hr/resource-planning', icon: 'fa-users-gear', label: 'Phân bổ nguồn lực' },
-            { path: '/app/projects/analytics', icon: 'fa-chart-pie', label: 'Thống kê dự án' },
+            { path: '/app/projects/costs', icon: 'fa-coins', label: 'Chi phí dự án' },
+            { path: '/app/hr/resource-planning', icon: 'fa-users-gear', label: 'Nguồn lực' },
+            { path: '/app/projects/analytics', icon: 'fa-chart-pie', label: 'Thống kê & Phân tích' },
         ],
     },
     {

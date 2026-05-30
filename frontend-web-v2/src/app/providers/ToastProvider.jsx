@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -18,10 +18,12 @@ export function ToastProvider({ children }) {
     const warning = useCallback((message) => showToast(message, 'warning'), [showToast]);
     const info = useCallback((message) => showToast(message, 'info'), [showToast]);
 
+    const value = useMemo(() => ({ showToast, success, error, warning, info }), [showToast, success, error, warning, info]);
+
     return (
-        <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
+        <ToastContext.Provider value={value}>
             {children}
-            {/* Toast Container - aria-live for accessibility */}
+            {/* Toast Container */}
             <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite" aria-atomic="true">
                 {toasts.map(toast => (
                     <div

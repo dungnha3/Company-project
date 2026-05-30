@@ -11,7 +11,7 @@ export default function AdminCompaniesPage() {
     const [search, setSearch] = useState('');
     const toast = useToast();
     const { user } = useAuthStore();
-    const canManageCompanies = user?.roles?.includes('SYSTEM_ADMIN');
+    const canManageCompanies = user?.isSystemAdmin;
 
     const fetchCompanies = async (page = 0) => {
         setLoading(true);

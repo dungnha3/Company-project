@@ -24,11 +24,9 @@ export const useAuthStore = create(
 
                 try {
                     const response = await apiClient.get(ENDPOINTS.AUTH.ME);
-                    // [FIX] API /auth/me returns AuthResponse, user is nested inside .user
                     const authData = response.data;
-                    const userData = authData.user || authData; // Fallback if structure changes
+                    const userData = authData.user || authData;
 
-                    // Normalize userId -> id
                     if (userData && userData.userId) {
                         userData.id = userData.userId;
                     }
@@ -38,7 +36,7 @@ export const useAuthStore = create(
                         isAuthenticated: true,
                     });
                 } catch (error) {
-                    console.error('Failed to init auth:', error);
+                    // On auth failure, clear tokens so stale sessions don't persist
                     get().clearAuth();
                 }
             },

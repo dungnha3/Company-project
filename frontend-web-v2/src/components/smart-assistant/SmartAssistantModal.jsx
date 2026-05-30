@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import TaskAssignmentPanel from './TaskAssignmentPanel';
 
 const TABS = [
@@ -20,10 +21,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
     const { data: summary, isLoading: loadingSummary } = useQuery({
         queryKey: ['smart-summary', projectId, sprintId],
         queryFn: async () => {
-            const params = new URLSearchParams({ action: 'summary' });
-            if (projectId) params.append('projectId', projectId);
-            if (sprintId) params.append('sprintId', sprintId);
-            return (await apiClient.get(`/api/smart-assistant?${params.toString()}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SUMMARY(projectId, sprintId))).data;
         },
         enabled: !!projectId,
     });
@@ -31,7 +29,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
     const { data: workload, isLoading: loadingWorkload } = useQuery({
         queryKey: ['smart-workload', projectId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant?action=workload&projectId=${projectId}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.WORKLOAD(projectId))).data;
         },
         enabled: !!projectId && (activeTab === 'kanban' || activeTab === 'dashboard'),
     });
@@ -39,7 +37,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
     const { data: sprintHealth, isLoading: loadingSprintHealth } = useQuery({
         queryKey: ['smart-sprint-health', sprintId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant?action=sprint-health&sprintId=${sprintId}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SPRINT_HEALTH(sprintId))).data;
         },
         enabled: !!sprintId && (activeTab === 'sprint' || activeTab === 'dashboard'),
     });
@@ -47,7 +45,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
     const { data: sprintPrediction, isLoading: loadingPrediction } = useQuery({
         queryKey: ['sprint-prediction', sprintId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant/sprint-prediction/${sprintId}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SPRINT_PREDICTION(sprintId))).data;
         },
         enabled: !!sprintId && activeTab === 'sprint',
     });
@@ -383,7 +381,7 @@ export default function SmartAssistantModal({ project, sprint, onClose }) {
                                                 )}
 
                                                 <button
-                                                    onClick={() => window.location.href = `/projects/${projectId}/sprints`}
+                                                    onClick={() => window.location.href = `/app/projects/${projectId}/sprints`}
                                                     className="mt-3 w-full py-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
                                                 >
                                                     <i className="fa-solid fa-arrow-right" />
@@ -429,7 +427,7 @@ function SprintDelayAlert({ projectId, sprintId }) {
     const { data: prediction } = useQuery({
         queryKey: ['sprint-prediction', sprintId],
         queryFn: async () => {
-            return (await apiClient.get(`/api/smart-assistant/sprint-prediction/${sprintId}`)).data;
+            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SPRINT_PREDICTION(sprintId))).data;
         },
         enabled: !!sprintId,
     });
@@ -464,7 +462,7 @@ function SprintDelayAlert({ projectId, sprintId }) {
                 <p className="text-xs text-gray-500 italic">💡 {prediction.recommendations[0]}</p>
             )}
             <button
-                onClick={() => window.location.href = `/projects/${projectId}/sprints`}
+                onClick={() => window.location.href = `/app/projects/${projectId}/sprints`}
                 className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
             >
                 <i className="fa-solid fa-arrow-right" />Xem chi tiết
@@ -482,7 +480,7 @@ function SmartEstimateWidget({ projectId }) {
     const { data: members = [] } = useQuery({
         queryKey: ['project-members', projectId],
         queryFn: async () => {
-            const res = await apiClient.get(`/api/projects/${projectId}/members`);
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.MEMBERS(projectId));
             return res.data || [];
         },
         enabled: !!projectId,
@@ -491,9 +489,7 @@ function SmartEstimateWidget({ projectId }) {
     const fetchEstimate = async () => {
         if (!selectedAssignee || !projectId) return;
         try {
-            const res = await apiClient.get('/api/smart-assistant/estimate', {
-                params: { projectId, assigneeId: selectedAssignee, weight, issueType: 'TASK' }
-            });
+            const res = await apiClient.get(ENDPOINTS.SMART_ASSISTANT.ESTIMATE(projectId, 'TASK', weight, selectedAssignee));
             setEstimate(res.data);
         } catch { /* ignore */ }
     };
@@ -556,7 +552,7 @@ function HRPerformanceInsights({ projectId }) {
     const { data: pendingReviews = [] } = useQuery({
         queryKey: ['reviews-pending', projectId],
         queryFn: async () => {
-            const res = await apiClient.get('/api/reviews/pending');
+            const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
             return res.data || [];
         },
         enabled: true,
@@ -565,9 +561,9 @@ function HRPerformanceInsights({ projectId }) {
     const { data: recentReviews = [] } = useQuery({
         queryKey: ['reviews-recent', projectId],
         queryFn: async () => {
-            const params = new URLSearchParams({ size: 20 });
-            if (projectId) params.append('projectId', projectId);
-            const res = await apiClient.get(`/api/reviews?${params.toString()}`);
+            const res = await apiClient.get(ENDPOINTS.REVIEWS.LIST, {
+                params: { size: 20, ...(projectId ? { projectId } : {}) }
+            });
             const data = res.data;
             return Array.isArray(data) ? data : (data?.content || []);
         },

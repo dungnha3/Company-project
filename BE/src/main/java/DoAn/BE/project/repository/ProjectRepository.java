@@ -17,28 +17,35 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     long countByCompany_CompanyId(Long companyId);
 
+    @EntityGraph(attributePaths = { "createdBy" })
     List<Project> findByCompany_CompanyId(Long companyId);
+
+    @EntityGraph(attributePaths = { "createdBy" })
     List<Project> findByCompany_CompanyIdAndIsActiveTrue(Long companyId);
 
     Optional<Project> findByKeyProject(String keyProject);
 
+    @EntityGraph(attributePaths = { "createdBy" })
     List<Project> findByCreatedBy_UserId(Long userId);
 
+    @EntityGraph(attributePaths = { "createdBy" })
     List<Project> findByIsActiveTrue();
 
+    @EntityGraph(attributePaths = { "createdBy" })
     List<Project> findByStatus(Project.ProjectStatus status);
 
-    @EntityGraph(attributePaths = { "createdBy", "members" })
+    @EntityGraph(attributePaths = { "createdBy" })
     @Query("SELECT p FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")
     List<Project> findByCompanyIdWithMembers(@Param("companyId") Long companyId);
 
+    @EntityGraph(attributePaths = { "createdBy" })
     @Query("SELECT p FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")
     Page<Project> findByCompanyIdPaged(@Param("companyId") Long companyId, Pageable pageable);
 
-    @EntityGraph(attributePaths = { "createdBy", "members", "members.user" })
+    @EntityGraph(attributePaths = { "createdBy" })
     @Query("SELECT p FROM Project p WHERE p.projectId = :projectId")
     Optional<Project> findByIdWithDetails(@Param("projectId") Long projectId);
-    
+
     @Query("SELECT COUNT(p) FROM Project p WHERE p.company.companyId = :companyId AND p.isActive = true")
     long countByCompanyId(@Param("companyId") Long companyId);
 }

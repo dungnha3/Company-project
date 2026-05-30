@@ -25,7 +25,7 @@ export const useEmployee = (employeeId, options = {}) => {
     const byUserIdQuery = useQuery({
         queryKey: ['employee', 'by-user', employeeId],
         queryFn: async () => {
-            const response = await apiClient.get('/api/employees/user/' + employeeId);
+            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.BY_USER(employeeId));
             return response.data;
         },
         enabled: enabled && !!employeeId,
@@ -107,7 +107,7 @@ export const useMyEmployee = () => {
     return useQuery({
         queryKey: ['employee', 'me'],
         queryFn: async () => {
-            const response = await apiClient.get('/api/employees/me');
+            const response = await apiClient.get(ENDPOINTS.EMPLOYEES.ME);
             return response.data;
         },
         staleTime: 5 * 60 * 1000,

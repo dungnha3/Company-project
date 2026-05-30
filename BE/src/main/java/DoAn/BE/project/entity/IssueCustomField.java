@@ -71,7 +71,6 @@ public class IssueCustomField {
     private String defaultValue;
 
     @OneToMany(mappedBy = "customField", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
     private List<IssueCustomFieldValue> values = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)

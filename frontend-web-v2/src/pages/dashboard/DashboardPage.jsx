@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '@shared/api/client';
@@ -7,7 +7,6 @@ import { useAuthStore } from '@shared/stores/authStore';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
-// ==================== DASHBOARD PAGE ====================
 export default function DashboardPage() {
     const { user } = useAuthStore();
     const { currentWorkspace } = useWorkspaceStore();
@@ -18,25 +17,63 @@ export default function DashboardPage() {
     return <MyWorkDashboard user={user} greeting={greeting} currentWorkspace={currentWorkspace} />;
 }
 
-// ==================== MY WORK DASHBOARD ====================
 function MyWorkDashboard({ user, greeting, currentWorkspace }) {
-
     const { data: myProjects = [] } = useQuery({
         queryKey: ['my-projects'],
         queryFn: async () => (await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS)).data || []
     });
 
-    const { data: myTasks = [] } = useQuery({
+    const { data: myTasks = [], isLoading: loadingTasks } = useQuery({
         queryKey: ['my-tasks'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data?.content?.slice(0, 8) || []
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES);
+            const data = res?.data;
+            if (Array.isArray(data)) return data.slice(0, 8);
+            if (Array.isArray(data?.content)) return data.content.slice(0, 8);
+            return [];
+        }
     });
 
     const { data: notifications = [] } = useQuery({
         queryKey: ['notifications-preview'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST)).data?.content?.slice(0, 5) || []
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST);
+            const data = res?.data;
+            if (Array.isArray(data)) return data.slice(0, 5);
+            if (Array.isArray(data?.content)) return data.content.slice(0, 5);
+            return [];
+        }
     });
 
-    // Count tasks by status
+    const { data: allIssues = [] } = useQuery({
+        queryKey: ['dashboard-all-issues'],
+        queryFn: async () => {
+            const results = await Promise.all(
+                (myProjects || []).map(p =>
+                    apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(p.projectId))
+                        .then(r => (r.data?.content || r.data || []))
+                        .catch(() => [])
+                )
+            );
+            return results.flat();
+        },
+        enabled: myProjects.length > 0,
+    });
+
+    const kpi = useMemo(() => {
+        const total = allIssues.length;
+        const done = allIssues.filter(i => i.statusName === 'Done').length;
+        const withDue = allIssues.filter(i => i.dueDate);
+        const overdue = withDue.filter(i => new Date(i.dueDate) < new Date() && i.statusName !== 'Done').length;
+        const doneWithDue = allIssues.filter(i => i.statusName === 'Done' && i.dueDate);
+        const onTimeDone = doneWithDue.filter(i => {
+            const updated = i.updatedAt ? new Date(i.updatedAt) : new Date();
+            return updated <= new Date(new Date(i.dueDate).setHours(23, 59, 59));
+        }).length;
+        const onTimeRate = doneWithDue.length > 0 ? Math.round((onTimeDone / doneWithDue.length) * 100) : 0;
+        return { total, done, overdue, onTimeRate, inProgress: allIssues.filter(i => i.statusName === 'In Progress').length };
+    }, [allIssues]);
+
     const todoTasks = myTasks.filter(t => t.statusName === 'To Do' || t.statusName === 'BACKLOG').length;
     const inProgressTasks = myTasks.filter(t => t.statusName === 'In Progress').length;
     const completedTasks = myTasks.filter(t => t.statusName === 'Done' || t.statusName === 'COMPLETED').length;
@@ -60,7 +97,15 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
                 </div>
             </div>
 
-            {/* Key Metrics - 4 cards */}
+            {/* KPIs - Reports Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <KpiCard label="Tổng công việc" value={kpi.total} icon="fa-list" color="blue" />
+                <KpiCard label="Hoàn thành" value={kpi.done} icon="fa-check-circle" color="green" />
+                <KpiCard label="Đúng hạn" value={`${kpi.onTimeRate}%`} icon="fa-clock" color="purple" />
+                <KpiCard label="Quá hạn" value={kpi.overdue} icon="fa-exclamation-triangle" color="red" />
+            </div>
+
+            {/* Key Metrics - My Tasks */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricBox title="Công việc" value={myTasks.length} subtitle="tasks" color="blue" icon="fa-list-check" />
                 <MetricBox title="Cần làm" value={todoTasks} subtitle="tasks" color="orange" icon="fa-clock" />
@@ -75,9 +120,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
                     <div className="border border-gray-200 rounded-lg bg-white p-6 h-full">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                             <h3 className="font-bold color-main text-lg">Công việc của tôi</h3>
-                            <Link to="/app/me/issues" className="text-xs color-blue font-semibold hover:underline">
-                                Xem tất cả →
-                            </Link>
+                            <Link to="/app/me/issues" className="text-xs color-blue font-semibold hover:underline">Xem tất cả →</Link>
                         </div>
                         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                             {myTasks.length > 0 ? myTasks.map(task => (
@@ -98,9 +141,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
                     <div className="border border-gray-200 rounded-lg bg-white p-6">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                             <h3 className="font-bold color-main text-lg">Dự án đang tham gia</h3>
-                            <Link to="/app/projects" className="text-xs color-blue font-semibold hover:underline">
-                                Xem tất cả →
-                            </Link>
+                            <Link to="/app/projects" className="text-xs color-blue font-semibold hover:underline">Xem tất cả →</Link>
                         </div>
                         <div className="space-y-2">
                             {myProjects.length > 0 ? myProjects.slice(0, 4).map((project, idx) => (
@@ -126,9 +167,7 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
                     <div className="border border-gray-200 rounded-lg bg-white p-6">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                             <h3 className="font-bold color-main text-lg">Thông báo</h3>
-                            <Link to="/app/notifications" className="text-xs color-blue font-semibold hover:underline">
-                                Xem tất cả →
-                            </Link>
+                            <Link to="/app/notifications" className="text-xs color-blue font-semibold hover:underline">Xem tất cả →</Link>
                         </div>
                         <div className="space-y-2">
                             {notifications.length > 0 ? notifications.map((notif, idx) => (
@@ -155,14 +194,9 @@ function MyWorkDashboard({ user, greeting, currentWorkspace }) {
     );
 }
 
-// ==================== SHARED COMPONENTS ====================
-
 const QuickAction = memo(function QuickAction({ to, icon, label }) {
     return (
-        <Link
-            to={to}
-            className="flex flex-col items-center gap-1 px-4 py-3 border border-gray-200 bg-gray-50 hover:bg-white rounded-lg transition-all hover:shadow-sm"
-        >
+        <Link to={to} className="flex flex-col items-center gap-1 px-4 py-3 border border-gray-200 bg-gray-50 hover:bg-white rounded-lg transition-all hover:shadow-sm">
             <i className={`fa-solid ${icon} text-lg color-main`} />
             <span className="text-[10px] font-semibold color-slate">{label}</span>
         </Link>
@@ -177,12 +211,8 @@ const QuickLink = memo(function QuickLink({ to, icon, label, color }) {
         purple: { bg: 'bg-purple-50', text: 'text-purple-500', border: 'border-purple-200', label: 'text-purple-600' },
     };
     const c = colorMap[color] || colorMap.blue;
-
     return (
-        <Link
-            to={to}
-            className={`flex items-center gap-3 p-4 border ${c.border} rounded-lg hover:shadow-md transition-all ${c.bg}`}
-        >
+        <Link to={to} className={`flex items-center gap-3 p-4 border ${c.border} rounded-lg hover:shadow-md transition-all ${c.bg}`}>
             <i className={`fa-solid ${icon} text-xl ${c.text}`} />
             <span className={`font-bold text-sm ${c.label}`}>{label}</span>
         </Link>
@@ -195,10 +225,8 @@ function MetricBox({ title, value, subtitle, color, icon }) {
         orange: { bg: 'bg-orange-50', text: 'text-orange-500', border: 'border-orange-200' },
         amber: { bg: 'bg-amber-50', text: 'text-amber-500', border: 'border-amber-200' },
         green: { bg: 'bg-green-50', text: 'text-green-500', border: 'border-green-200' },
-        purple: { bg: 'bg-purple-50', text: 'text-purple-500', border: 'border-purple-200' },
     };
     const c = colorMap[color] || colorMap.blue;
-
     return (
         <div className={`border ${c.border} rounded-lg bg-white p-5 hover:shadow-md transition-shadow`}>
             <div className="flex items-center gap-3 mb-3">
@@ -215,18 +243,38 @@ function MetricBox({ title, value, subtitle, color, icon }) {
     );
 }
 
+function KpiCard({ label, value, icon, color }) {
+    const colorMap = {
+        blue: { bg: 'bg-blue-50', text: 'text-blue-500', border: 'border-blue-200', val: 'text-blue-600' },
+        green: { bg: 'bg-green-50', text: 'text-green-500', border: 'border-green-200', val: 'text-green-600' },
+        purple: { bg: 'bg-purple-50', text: 'text-purple-500', border: 'border-purple-200', val: 'text-purple-600' },
+        red: { bg: 'bg-red-50', text: 'text-red-500', border: 'border-red-200', val: 'text-red-600' },
+    };
+    const c = colorMap[color] || colorMap.blue;
+    return (
+        <div className={`border ${c.border} rounded-lg bg-white p-5 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-lg ${c.bg} flex items-center justify-center`}>
+                    <i className={`fa-solid ${icon} ${c.text} text-lg`} />
+                </div>
+                <div>
+                    <p className="text-[10px] font-bold color-slate uppercase tracking-wider">{label}</p>
+                    <p className="text-[10px] color-slate mt-0.5">tất cả dự án</p>
+                </div>
+            </div>
+            <p className={`text-3xl font-black ${c.val}`}>{value}</p>
+        </div>
+    );
+}
+
 const TaskItem = memo(function TaskItem({ task }) {
     const priorityColors = {
         HIGH: 'bg-red-100 text-red-600',
         MEDIUM: 'bg-orange-100 text-orange-600',
         LOW: 'bg-green-100 text-green-600',
     };
-
     return (
-        <Link
-            to={`/app/projects/${task.projectId}`}
-            className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all"
-        >
+        <Link to={`/app/projects/${task.projectId}`} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all">
             <div className={`w-2 h-2 rounded-full shrink-0 ${task.priority === 'HIGH' ? 'bg-red-500' : task.priority === 'MEDIUM' ? 'bg-orange-500' : 'bg-green-500'}`} />
             <div className="flex-1 min-w-0">
                 <span className="font-medium color-main text-sm block truncate">{task.title}</span>
@@ -241,13 +289,9 @@ const TaskItem = memo(function TaskItem({ task }) {
 
 const NotificationItem = memo(function NotificationItem({ notification }) {
     const iconMap = {
-        leave: 'fa-calendar-check',
-        project: 'fa-folder',
-        task: 'fa-list-check',
-        mention: 'fa-at',
-        default: 'fa-bell',
+        leave: 'fa-calendar-check', project: 'fa-folder', task: 'fa-list-check',
+        mention: 'fa-at', default: 'fa-bell',
     };
-
     return (
         <div className="flex items-start gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
@@ -255,9 +299,7 @@ const NotificationItem = memo(function NotificationItem({ notification }) {
             </div>
             <div className="min-w-0 flex-1">
                 <p className="font-medium color-main text-sm line-clamp-2">{notification.message || notification.content}</p>
-                <p className="text-[10px] color-slate mt-0.5">
-                    {notification.createdAt ? formatDateTime(notification.createdAt) : 'Gần đây'}
-                </p>
+                <p className="text-[10px] color-slate mt-0.5">{notification.createdAt ? formatDateTime(notification.createdAt) : 'Gần đây'}</p>
             </div>
         </div>
     );

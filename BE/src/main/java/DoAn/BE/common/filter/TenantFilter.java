@@ -31,11 +31,19 @@ public class TenantFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        // Track if TenantContext was already set by JwtAuthenticationFilter (before this filter runs)
+        Long existingCompanyId = TenantContext.getCompanyId();
+
         try {
 
             String companyIdHeader = request.getHeader(DoAn.BE.common.util.AppConstants.HEADER_COMPANY_ID);
 
-            if (companyIdHeader != null && !companyIdHeader.isEmpty()) {
+            // Tenant-agnostic endpoints — skip company membership check entirely
+            String requestPath = request.getRequestURI();
+            boolean isTenantAgnostic = requestPath.equals("/api/profile")
+                    || requestPath.startsWith("/api/profile/");
+
+            if (companyIdHeader != null && !companyIdHeader.isEmpty() && !isTenantAgnostic) {
                 try {
                     Long companyId = Long.parseLong(companyIdHeader);
 
@@ -72,7 +80,7 @@ public class TenantFilter extends OncePerRequestFilter {
                             }
                         }
                     } else {
-                        
+
                         log.debug("Unauthenticated request with Company ID header. Context not set.");
                     }
 
@@ -83,10 +91,13 @@ public class TenantFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } finally {
-            // Xóa TenantContext sau khi xử lý xong
-            TenantContext.clear();
-            // Xóa cache của các services để tránh memory leak
-            DoAn.BE.common.service.AccessControlService.clearCache();
+            // Only clear TenantContext if it wasn't already set by JwtAuthenticationFilter
+            // (JwtAuthenticationFilter runs AFTER TenantFilter and sets companyId from JWT token)
+            if (existingCompanyId == null) {
+                TenantContext.clear();
+                // Xóa cache của các services để tránh memory leak
+                DoAn.BE.common.service.AccessControlService.clearCache();
+            }
         }
     }
 
@@ -98,6 +109,10 @@ public class TenantFilter extends OncePerRequestFilter {
             if (path.startsWith(prefix)) {
                 return true;
             }
+        }
+        // Tenant-agnostic user-scoped endpoints — skip TenantFilter entirely
+        if (path.equals("/api/profile") || path.startsWith("/api/profile/")) {
+            return true;
         }
         return false;
     }

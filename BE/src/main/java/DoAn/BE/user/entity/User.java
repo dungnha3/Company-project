@@ -75,7 +75,7 @@ public class User extends DoAn.BE.common.entity.BaseEntity {
 
     // [SAAS] System Admin Flag (Quản trị viên hệ thống toàn cục)
     @Builder.Default
-    @Column(name = "is_system_admin", nullable = false, columnDefinition = "bit default 0")
+    @Column(name = "is_system_admin", nullable = false)
     private Boolean isSystemAdmin = false;
 
     @Column(name = "last_login")
