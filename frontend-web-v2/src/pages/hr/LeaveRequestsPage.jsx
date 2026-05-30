@@ -171,9 +171,14 @@ function MyLeaveRequests() {
     const { data: balance } = useQuery({
         queryKey: ['leave-balance'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_BALANCE);
-            return res.data;
+            try {
+                const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_BALANCE);
+                return res.data;
+            } catch {
+                return null;
+            }
         },
+        retry: false,
     });
 
     const remaining = balance?.remainingDays ?? null;
@@ -797,10 +802,15 @@ function CreateLeaveModal({ isOpen, onClose }) {
     const { data: balance } = useQuery({
         queryKey: ['leave-balance'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_BALANCE);
-            return res.data;
+            try {
+                const res = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.MY_BALANCE);
+                return res.data;
+            } catch {
+                return null;
+            }
         },
         enabled: isOpen,
+        retry: false,
     });
 
     const handleSubmit = (e) => {

@@ -412,7 +412,7 @@ export default function ProjectBoard({ project }) {
                 moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex });
             }
         }
-    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, activeIssueId, activeIssue]);
+    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, activeId]);
 
     // ── Reorder columns mutation
     const reorderColumnsMutation = useMutation({

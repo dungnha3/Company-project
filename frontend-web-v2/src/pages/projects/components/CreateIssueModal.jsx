@@ -48,6 +48,9 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             return Array.isArray(res) ? res : (res?.content || []);
         },
         enabled: isOpen,
+        staleTime: 0,
+        retry: false,
+        onError: () => {},
     });
 
     // Fetch project members when project selected
