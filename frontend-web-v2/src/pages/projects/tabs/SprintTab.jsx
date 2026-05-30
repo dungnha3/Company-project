@@ -49,6 +49,14 @@ export default function SprintTab({ projectId }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const queryClient = useQueryClient();
 
+    const { data: sprints = [] } = useQuery({
+        queryKey: ['sprints', projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(projectId))).data,
+        enabled: !!projectId,
+    });
+
+    const activeSprint = sprints.find(s => s.status === 'ACTIVE');
+
     const VIEW_TABS = [
         { id: 'sprints', label: 'Sprints', icon: 'fa-rocket' },
         { id: 'phases', label: 'Giai đoạn', icon: 'fa-layer-group' },
@@ -85,7 +93,7 @@ export default function SprintTab({ projectId }) {
                 <TimelineView projectId={projectId} />
             )}
 
-            <SmartAssistantFAB project={null} projectId={projectId} />
+            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
         </div>
     );
 }
