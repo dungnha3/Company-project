@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -34,11 +34,33 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         isImportant: false,
         isUrgent: false,
         sprintId: '',
+        storageFolder: '',
     });
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const fileInputRef = useRef(null);
     const toast = useToast();
     const queryClient = useQueryClient();
     const { hasPermission } = useAccessControl();
     const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+
+    // Fetch project folders for dropdown
+    const { data: projectFiles = [] } = useQuery({
+        queryKey: ['projectFiles', form.projectId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.STORAGE.PROJECT_FILES(form.projectId))).data,
+        enabled: !!form.projectId && isOpen,
+        staleTime: 10000,
+    });
+
+    // Extract unique folder paths from project files
+    const availableFolders = useMemo(() => {
+        const folders = new Set();
+        projectFiles.forEach(f => {
+            if (f.contentType === 'folder' && f.folder) {
+                folders.add(f.folder);
+            }
+        });
+        return Array.from(folders).sort();
+    }, [projectFiles]);
 
     // Fetch projects
     const { data: projects = [] } = useQuery({
@@ -95,8 +117,29 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             };
             return (await apiClient.post(ENDPOINTS.ISSUES.CREATE, payload)).data;
         },
-        onSuccess: (issue) => {
+        onSuccess: async (issue) => {
             toast.success(`Tạo ${form.issueType === 'BUG' ? 'bug' : 'task'} thành công!`);
+            // Upload files linked to this issue
+            const filesToUpload = selectedFiles;
+            const folderParam = form.storageFolder ? `?folder=${encodeURIComponent(form.storageFolder)}` : '';
+            if (filesToUpload.length > 0 && issue.issueId) {
+                for (const file of filesToUpload) {
+                    try {
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        fd.append('issueId', issue.issueId.toString());
+                        await apiClient.post(
+                            `${ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(form.projectId)}${folderParam}`,
+                            fd,
+                            { headers: { 'Content-Type': 'multipart/form-data' } }
+                        );
+                    } catch (err) {
+                        console.error('Failed to upload file:', err);
+                    }
+                }
+                toast.success(`${filesToUpload.length} file đã được đính kèm`);
+            }
+            setSelectedFiles([]);
             queryClient.invalidateQueries(['myIssues']);
             queryClient.invalidateQueries(['projectIssues', form.projectId]);
             onSuccess?.(issue);
@@ -136,7 +179,9 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             isImportant: false,
             isUrgent: false,
             sprintId: '',
+            storageFolder: '',
         });
+        setSelectedFiles([]);
         onClose();
     };
 
@@ -401,6 +446,71 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                     <i className="fa-solid fa-bolt text-red-500 mr-1" /> Khẩn cấp
                                 </span>
                             </label>
+                        </div>
+
+                        {/* Storage: Folder selection & File upload */}
+                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3">
+                            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                <i className="fa-solid fa-folder-open text-amber-500" /> Lưu trữ tài liệu
+                            </h3>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Thư mục lưu trữ</label>
+                                <div className="flex gap-2">
+                                    <select
+                                        name="storageFolder"
+                                        value={form.storageFolder}
+                                        onChange={handleInputChange}
+                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 bg-white"
+                                    >
+                                        <option value="">-- Gốc dự án (không chọn) --</option>
+                                        {availableFolders.map(f => (
+                                            <option key={f} value={f}>{f}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                                    >
+                                        <i className="fa-solid fa-paperclip" /> Chọn file
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            if (files.length > 0) {
+                                                setSelectedFiles(prev => [...prev, ...files]);
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                </div>
+                                {availableFolders.length === 0 && (
+                                    <p className="text-xs text-gray-400 mt-1">Chưa có thư mục nào. Tạo trong tab Lưu trữ của dự án.</p>
+                                )}
+                            </div>
+                            {selectedFiles.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="text-xs font-medium text-gray-600">{selectedFiles.length} file đã chọn:</p>
+                                    {selectedFiles.map((f, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-200">
+                                            <span className="text-xs text-gray-700 truncate flex items-center gap-2">
+                                                <i className="fa-solid fa-file text-gray-400" /> {f.name}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <i className="fa-solid fa-times text-xs" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 

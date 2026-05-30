@@ -132,6 +132,7 @@ public class StorageController {
             @PathVariable Long projectId,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "folder", required = false) String folder,
+            @RequestParam(value = "issueId", required = false) Long issueId,
             @AuthenticationPrincipal User user) {
         try {
             Long companyId = TenantContext.getCompanyId();
@@ -157,6 +158,14 @@ public class StorageController {
             fileEntity.setCompany(companyRepository.findById(companyId).orElseThrow());
             fileEntity.setFolder(folder);
 
+            // Link to issue if provided
+            if (issueId != null) {
+                Issue issue = issueRepository.findById(issueId).orElse(null);
+                if (issue != null && issue.getProject().getProjectId().equals(projectId)) {
+                    fileEntity.setIssue(issue);
+                }
+            }
+
             return ResponseEntity.ok(fileRepository.save(fileEntity));
         } catch (Exception e) {
             log.error("Error uploading project file for projectId={}: {}", projectId, e.getMessage(), e);
@@ -169,6 +178,7 @@ public class StorageController {
             @PathVariable Long projectId,
             @RequestParam("name") String name,
             @RequestParam(value = "folder", required = false) String folder,
+            @RequestParam(value = "issueId", required = false) Long issueId,
             @AuthenticationPrincipal User user) {
         try {
             Long companyId = TenantContext.getCompanyId();
@@ -190,6 +200,14 @@ public class StorageController {
             folderEntity.setUploadedBy(user);
             folderEntity.setCompany(companyRepository.findById(companyId).orElseThrow());
             folderEntity.setFolder(folder);
+
+            // Link to issue if provided
+            if (issueId != null) {
+                Issue issue = issueRepository.findById(issueId).orElse(null);
+                if (issue != null && issue.getProject().getProjectId().equals(projectId)) {
+                    folderEntity.setIssue(issue);
+                }
+            }
 
             return ResponseEntity.ok(fileRepository.save(folderEntity));
         } catch (Exception e) {

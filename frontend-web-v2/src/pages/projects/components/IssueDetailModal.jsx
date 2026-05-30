@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -110,6 +110,45 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
             setNewComment('');
             queryClient.invalidateQueries(['issueComments', issue.issueId]);
         },
+    });
+
+    // File upload mutation
+    const fileInputRef = useRef(null);
+    const [uploadingFile, setUploadingFile] = useState(false);
+    const uploadFileMutation = useMutation({
+        mutationFn: async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            await apiClient.post(ENDPOINTS.STORAGE.UPLOAD_ISSUE_FILE(issue.issueId), formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+        },
+        onMutate: () => setUploadingFile(true),
+        onSettled: () => setUploadingFile(false),
+        onSuccess: () => {
+            toast.success('Đã tải file lên');
+            queryClient.invalidateQueries(['issueFiles', issue.issueId]);
+        },
+        onError: () => toast.error('Lỗi khi tải file lên'),
+    });
+
+    // Delete file mutation
+    const deleteFileMutation = useMutation({
+        mutationFn: async (fileId) => {
+            await apiClient.delete(ENDPOINTS.STORAGE.DELETE_FILE(fileId));
+        },
+        onSuccess: () => {
+            toast.success('Đã xóa file');
+            queryClient.invalidateQueries(['issueFiles', issue.issueId]);
+        },
+        onError: () => toast.error('Lỗi khi xóa file'),
+    });
+
+    // Fetch issue files
+    const { data: issueFiles = [] } = useQuery({
+        queryKey: ['issueFiles', issue.issueId],
+        queryFn: async () => (await apiClient.get(ENDPOINTS.STORAGE.ISSUE_FILES(issue.issueId))).data,
+        enabled: activeTab === 'files',
     });
 
     // Update full issue mutation
@@ -276,6 +315,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                     {[
                         { id: 'details', label: 'Chi tiết', icon: 'fa-file-lines' },
                         { id: 'comments', label: 'Bình luận', icon: 'fa-comments' },
+                        { id: 'files', label: 'Tài liệu', icon: 'fa-folder' },
                         { id: 'activity', label: 'Lịch sử', icon: 'fa-history' },
                     ].map(tab => (
                         <button
@@ -552,6 +592,88 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     ))
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'files' && (
+                        <div className="space-y-4">
+                            {/* Upload area */}
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-gray-700">File đính kèm</h3>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploadingFile}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                                >
+                                    {uploadingFile ? (
+                                        <><i className="fa-solid fa-spinner fa-spin" /> Đang tải...</>
+                                    ) : (
+                                        <><i className="fa-solid fa-upload" /> Tải lên file</>
+                                    )}
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) uploadFileMutation.mutate(file);
+                                        e.target.value = '';
+                                    }}
+                                />
+                            </div>
+
+                            {/* File list */}
+                            {issueFiles.length === 0 ? (
+                                <div className="text-center py-8 text-gray-400">
+                                    <i className="fa-solid fa-folder-open text-3xl mb-2" />
+                                    <p className="text-sm">Chưa có file đính kèm</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {issueFiles.map(file => (
+                                        <div key={file.id || file.fileId} className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <i className={`fa-solid ${file.contentType === 'folder' ? 'fa-folder text-amber-500' : 'fa-file text-gray-400'} flex-shrink-0`} />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-gray-800 truncate">{file.fileName}</p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : ''} • {file.uploadedBy?.fullName || file.uploadedByName || 'Người dùng'}
+                                                        {file.createdAt ? ' • ' + new Date(file.createdAt).toLocaleDateString('vi-VN') : ''}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <button
+                                                    onClick={() => {
+                                                        const link = document.createElement('a');
+                                                        link.href = `${apiClient.defaults.baseURL}${ENDPOINTS.STORAGE.DOWNLOAD_FILE(file.id || file.fileId)}`;
+                                                        link.download = file.fileName;
+                                                        link.click();
+                                                    }}
+                                                    className="w-8 h-8 rounded-lg hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                                                    title="Tải xuống"
+                                                >
+                                                    <i className="fa-solid fa-download text-xs" />
+                                                </button>
+                                                {canManageIssues && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('Xóa file này?')) {
+                                                                deleteFileMutation.mutate(file.id || file.fileId);
+                                                            }
+                                                        }}
+                                                        className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                                                        title="Xóa"
+                                                    >
+                                                        <i className="fa-solid fa-trash text-xs" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 

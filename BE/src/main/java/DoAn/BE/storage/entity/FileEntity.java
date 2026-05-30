@@ -54,4 +54,12 @@ public class FileEntity extends TenantScopedEntity {
 
     @Column(name = "folder", length = 255)
     private String folder;
+
+    public Long getIssueId() {
+        return issue != null ? issue.getIssueId() : null;
+    }
+
+    public Long getProjectId() {
+        return project != null ? project.getProjectId() : null;
+    }
 }

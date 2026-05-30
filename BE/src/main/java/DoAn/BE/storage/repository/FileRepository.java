@@ -10,7 +10,7 @@ import java.util.List;
 @Repository
 public interface FileRepository extends JpaRepository<FileEntity, Long> {
 
-    @EntityGraph(attributePaths = { "uploadedBy", "project" })
+    @EntityGraph(attributePaths = { "uploadedBy", "project", "issue" })
     List<FileEntity> findByProject_ProjectId(Long projectId);
 
     @EntityGraph(attributePaths = { "uploadedBy" })
@@ -22,6 +22,6 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     @EntityGraph(attributePaths = { "uploadedBy", "issue" })
     List<FileEntity> findByIssue_IssueIdOrderByCreatedAtDesc(Long issueId);
 
-    @EntityGraph(attributePaths = { "uploadedBy", "project" })
+    @EntityGraph(attributePaths = { "uploadedBy", "project", "issue" })
     List<FileEntity> findByCompanyCompanyId(Long companyId);
 }
