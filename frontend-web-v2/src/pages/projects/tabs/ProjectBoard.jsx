@@ -1295,7 +1295,7 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 <div className="flex items-center gap-2 flex-wrap">
                     {issue.statusName === 'Review' && <ReviewSlaChip issue={issue} />}
                 </div>
-                {canManageIssues && issue.statusName !== 'Done' ? (
+                {canManageIssues && issue.statusName !== 'Done' && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -1305,11 +1305,12 @@ function IssueCard({ issue, isOverlay, onClick }) {
                     >
                         Nộp
                     </button>
-                ) : canManageIssues ? (
+                )}
+                {canManageIssues && issue.statusName === 'Done' && (
                     <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
                         <i className="fa-solid fa-check mr-1 text-[8px]" />
                     </span>
-                ) : null}
+                )}
             </div>
         </div>
     );

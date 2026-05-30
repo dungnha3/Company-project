@@ -26,7 +26,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy the built artifact
-COPY --from=builder /app/target/BE-0.0.1-SNAPSHOT.war app.war
+COPY --from=builder /app/target/BE-0.0.1-SNAPSHOT.jar app.jar
 
 # Create non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
@@ -35,4 +35,4 @@ USER appuser
 EXPOSE 8080
 
 # JVM optimizations for tight 512MB RAM containers on Render (Optimized JIT, GC, Metaspace and Stacks)
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=60.0", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1", "-XX:MaxMetaspaceSize=100m", "-Xss256k", "-jar", "app.war"]
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=60.0", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1", "-XX:MaxMetaspaceSize=100m", "-Xss256k", "-jar", "app.jar"]

@@ -1,8 +1,3 @@
-database:
-  name: company-project-db
-  databaseName: company_project_db
-  plan: free
-
 services:
   - type: web
     name: be-backend
@@ -17,3 +12,5 @@ services:
         value: validate
       - key: RENDER
         value: "true"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://be-backend.onrender.com,https://*.vercel.app"
