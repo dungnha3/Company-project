@@ -124,11 +124,14 @@ public class IssueService {
                 reporter.getUsername() + " đã tạo issue '" + issue.getTitle() + "'");
         issueActivityRepository.save(createdActivity);
 
-        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
+        // Only send notifications for parent issues (not subtasks auto-created by AI)
+        if (issue.getParentIssue() == null) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.CREATED, issue, userId);
 
-        // Notify the assignee by email when an issue is created with one already set
-        if (issue.getAssignee() != null) {
-            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+            // Notify the assignee by email when an issue is created with one already set
+            if (issue.getAssignee() != null) {
+                publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+            }
         }
 
         return convertToDTO(issue);
@@ -145,7 +148,13 @@ public class IssueService {
 
         validateProjectAccess(issue.getProject().getProjectId(), userId);
 
-        return convertToDTO(issue);
+        IssueDTO dto = convertToDTO(issue);
+
+        // Populate subtasks for parent issues
+        List<Issue> subtasks = issueRepository.findByParentIssue_IssueId(issueId);
+        dto.setSubtasks(subtasks.stream().map(this::convertToDTO).collect(Collectors.toList()));
+
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -153,7 +162,7 @@ public class IssueService {
         // Validate access
         validateProjectAccess(projectId, userId);
 
-        List<Issue> issues = issueRepository.findByProject_ProjectId(projectId);
+        List<Issue> issues = issueRepository.findByProject_ProjectIdAndParentIssueIsNull(projectId);
         return issues.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -163,7 +172,7 @@ public class IssueService {
     public Page<IssueDTO> getProjectIssuesPaginated(Long projectId, Long userId, Pageable pageable) {
         // Validate access
         validateProjectAccess(projectId, userId);
-        Page<Issue> issues = issueRepository.findByProject_ProjectId(projectId, pageable);
+        Page<Issue> issues = issueRepository.findByProject_ProjectIdAndParentIssueIsNull(projectId, pageable);
         return issues.map(this::convertToDTO);
     }
 
@@ -172,7 +181,7 @@ public class IssueService {
         // Validate access
         validateProjectAccess(projectId, userId);
 
-        List<Issue> issues = issueRepository.findByProject_ProjectIdAndSprintIsNull(projectId);
+        List<Issue> issues = issueRepository.findByProject_ProjectIdAndSprintIsNullAndParentIssueIsNull(projectId);
         return issues.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -182,7 +191,7 @@ public class IssueService {
     public Page<IssueDTO> getProjectBacklogPaginated(Long projectId, Long userId, Pageable pageable) {
         // Validate access
         validateProjectAccess(projectId, userId);
-        Page<Issue> issues = issueRepository.findByProject_ProjectIdAndSprintIsNull(projectId, pageable);
+        Page<Issue> issues = issueRepository.findByProject_ProjectIdAndSprintIsNullAndParentIssueIsNull(projectId, pageable);
         return issues.map(this::convertToDTO);
     }
 
@@ -197,7 +206,7 @@ public class IssueService {
 
         validateProjectAccess(sprint.getProject().getProjectId(), userId);
 
-        List<Issue> issues = issueRepository.findBySprint_SprintId(sprintId);
+        List<Issue> issues = issueRepository.findBySprint_SprintIdAndParentIssueIsNull(sprintId);
         return issues.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -213,7 +222,7 @@ public class IssueService {
         }
 
         validateProjectAccess(sprint.getProject().getProjectId(), userId);
-        Page<Issue> issues = issueRepository.findBySprint_SprintId(sprintId, pageable);
+        Page<Issue> issues = issueRepository.findBySprint_SprintIdAndParentIssueIsNull(sprintId, pageable);
         return issues.map(this::convertToDTO);
     }
 
@@ -353,19 +362,22 @@ public class IssueService {
             }
         }
 
-        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
+        // Only send notifications for parent issues (subtasks are updated as part of parent workflow)
+        if (issue.getParentIssue() == null) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.UPDATED, issue, userId);
 
-        // Publish ASSIGNED event only when assignee is genuinely changed
-        boolean assigneeChanged = request.getAssigneeId() != null
-                && !request.getAssigneeId().equals(oldAssigneeId);
-        if (assigneeChanged) {
-            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
-        }
+            // Publish ASSIGNED event only when assignee is genuinely changed
+            boolean assigneeChanged = request.getAssigneeId() != null
+                    && !request.getAssigneeId().equals(oldAssigneeId);
+            if (assigneeChanged) {
+                publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+            }
 
-        // Notify Assignee + Reporter about the general update
-        // (skip if only the assignee changed — the ASSIGNED handler already covers that)
-        if (!assigneeChanged) {
-            publishIssueUpdatedEvent(issue, actor, "Cập nhật công việc", null);
+            // Notify Assignee + Reporter about the general update
+            // (skip if only the assignee changed — the ASSIGNED handler already covers that)
+            if (!assigneeChanged) {
+                publishIssueUpdatedEvent(issue, actor, "Cập nhật công việc", null);
+            }
         }
 
         return convertToDTO(issue);
@@ -386,7 +398,10 @@ public class IssueService {
             throw new ForbiddenException("Bạn không có quyền xóa issue này");
         }
 
-        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.DELETED, issue, userId);
+        // Only send notifications for parent issues
+        if (issue.getParentIssue() == null) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.DELETED, issue, userId);
+        }
 
         issueRepository.delete(issue);
     }
@@ -420,7 +435,10 @@ public class IssueService {
         issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.ASSIGNEE_CHANGED,
                 "Assignee", oldAssigneeName, assignee.getUsername()));
 
-        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+        // Only send notifications for parent issues (subtasks are updated as part of parent workflow)
+        if (issue.getParentIssue() == null) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.ASSIGNED, issue, userId);
+        }
 
         return convertToDTO(issue);
     }
@@ -482,13 +500,16 @@ public class IssueService {
 
         updatePhaseStatusIfNeeded(issue);
 
-        publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
+        // Only send notifications for parent issues (subtasks are updated as part of parent workflow)
+        if (issue.getParentIssue() == null) {
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
 
-        // Thông báo email đến Assignee + Reporter về sự thay đổi trạng thái
-        // changeDetail dạng "To Do → In Progress" để hiển thị rõ trong email
-        if (!oldStatus.equals(newStatus)) {
-            String changeDetail = oldStatus + " → " + newStatus;
-            publishIssueUpdatedEvent(issue, user, "Cập nhật trạng thái", changeDetail);
+            // Thông báo email đến Assignee + Reporter về sự thay đổi trạng thái
+            // changeDetail dạng "To Do → In Progress" để hiển thị rõ trong email
+            if (!oldStatus.equals(newStatus)) {
+                String changeDetail = oldStatus + " → " + newStatus;
+                publishIssueUpdatedEvent(issue, user, "Cập nhật trạng thái", changeDetail);
+            }
         }
 
         return convertToDTO(issue);

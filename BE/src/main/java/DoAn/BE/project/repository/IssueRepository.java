@@ -28,7 +28,13 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         List<Issue> findByProject_ProjectId(Long projectId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        List<Issue> findByProject_ProjectIdAndParentIssueIsNull(Long projectId);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByProject_ProjectId(Long projectId, Pageable pageable);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findByProject_ProjectIdAndParentIssueIsNull(Long projectId, Pageable pageable);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByAssignee_UserId(Long userId);
@@ -46,13 +52,25 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         List<Issue> findBySprint_SprintId(Long sprintId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        List<Issue> findBySprint_SprintIdAndParentIssueIsNull(Long sprintId);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findBySprint_SprintId(Long sprintId, Pageable pageable);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findBySprint_SprintIdAndParentIssueIsNull(Long sprintId, Pageable pageable);
 
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId);
 
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
+        List<Issue> findByProject_ProjectIdAndSprintIsNullAndParentIssueIsNull(Long projectId);
+
+        @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         Page<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId, Pageable pageable);
+
+        @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findByProject_ProjectIdAndSprintIsNullAndParentIssueIsNull(Long projectId, Pageable pageable);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         List<Issue> findByPhase_PhaseId(Long phaseId);
@@ -141,4 +159,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         // Smart Assistant: Issue chưa giao trong project
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndAssigneeIsNull(Long projectId);
+
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        List<Issue> findByParentIssue_IssueId(Long parentIssueId);
 }

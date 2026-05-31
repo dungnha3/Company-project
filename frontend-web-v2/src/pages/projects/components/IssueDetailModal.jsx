@@ -54,7 +54,6 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         queryKey: ['issue', issue?.issueId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.BY_ID(issue.issueId))).data,
         enabled: !!issue?.issueId,
-        initialData: issue,
     });
 
     // Fetch project members for assignee
@@ -343,6 +342,16 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     {currentIssue.description || <span className="italic text-gray-400">Không có mô tả</span>}
                                 </p>
                             </div>
+
+                            {/* Subtasks Section */}
+                            <SubtasksSection
+                                subtasks={currentIssue.subtasks || []}
+                                projectId={currentIssue.projectId}
+                                onUpdate={() => {
+                                    queryClient.invalidateQueries(['issue', currentIssue.issueId]);
+                                    onUpdate?.();
+                                }}
+                            />
 
                             {/* New Fields: Weight, Start Date, Important/Urgent, Eisenhower */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
@@ -888,6 +897,160 @@ function ActivityLogTab({ issueId }) {
                         </div>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+}
+
+function SubtasksSection({ subtasks, projectId, onUpdate }) {
+    const queryClient = useQueryClient();
+    const toast = useToast();
+    const [expandedSubtaskId, setExpandedSubtaskId] = useState(null);
+
+    const statusMutation = useMutation({
+        mutationFn: async ({ subtaskId, statusId }) => {
+            await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(subtaskId, statusId));
+        },
+        onSuccess: () => {
+            toast.success('Đã cập nhật trạng thái');
+            queryClient.invalidateQueries(['issue', projectId]);
+            onUpdate?.();
+        },
+        onError: () => toast.error('Lỗi cập nhật trạng thái'),
+    });
+
+    if (!subtasks || subtasks.length === 0) return null;
+
+    const completedCount = subtasks.filter(s => s.statusName?.toLowerCase().includes('done') || s.statusName?.toLowerCase().includes('hoàn thành')).length;
+    const progress = subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0;
+
+    const STATUS_OPTIONS = [
+        { value: 1, label: 'Chờ xử lý', shortLabel: 'Chờ', color: 'bg-gray-100 text-gray-600' },
+        { value: 2, label: 'Đang thực hiện', shortLabel: 'Làm', color: 'bg-indigo-100 text-indigo-600' },
+        { value: 3, label: 'Đang review', shortLabel: 'Review', color: 'bg-purple-100 text-purple-600' },
+        { value: 4, label: 'Hoàn thành', shortLabel: 'Done', color: 'bg-green-100 text-green-600' },
+    ];
+
+    const getStatusStyle = (statusId) => {
+        const found = STATUS_OPTIONS.find(s => s.value === statusId);
+        return found ? found.color : 'bg-gray-100 text-gray-600';
+    };
+
+    return (
+        <div className="border border-violet-200 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-600">
+                <div className="flex items-center gap-2">
+                    <i className="fa-solid fa-list-check text-white text-xs" />
+                    <span className="text-sm font-semibold text-white">Sub-tasks</span>
+                    <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold">
+                        {subtasks.length}
+                    </span>
+                </div>
+                <div className="flex items-center gap-3">
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-2">
+                        <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-white rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                        <span className="text-[10px] text-white/80 font-medium">{progress}%</span>
+                    </div>
+                    <span className="text-[10px] text-white/70">
+                        {completedCount}/{subtasks.length} hoàn thành
+                    </span>
+                </div>
+            </div>
+
+            {/* Subtask rows */}
+            <div className="divide-y divide-violet-100">
+                {subtasks.map((subtask) => {
+                    const isExpanded = expandedSubtaskId === subtask.issueId;
+
+                    return (
+                        <div key={subtask.issueId} className="hover:bg-violet-50/50 transition-colors">
+                            {/* Row */}
+                            <div className="flex items-center gap-3 px-4 py-2.5 pl-8">
+                                {/* Expand / collapse */}
+                                <button
+                                    onClick={() => setExpandedSubtaskId(isExpanded ? null : subtask.issueId)}
+                                    className="w-5 h-5 flex items-center justify-center text-violet-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                                >
+                                    <i className={`fa-solid fa-chevron-right text-[9px] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                </button>
+
+                                {/* Status badge */}
+                                <select
+                                    value={subtask.statusId || 1}
+                                    onChange={(e) => statusMutation.mutate({ subtaskId: subtask.issueId, statusId: Number(e.target.value) })}
+                                    disabled={statusMutation.isPending}
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border-0 cursor-pointer focus:ring-1 focus:ring-violet-400 ${getStatusStyle(subtask.statusId)}`}
+                                >
+                                    {STATUS_OPTIONS.map(s => (
+                                        <option key={s.value} value={s.value}>{s.shortLabel}</option>
+                                    ))}
+                                </select>
+
+                                {/* Title */}
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-sm text-gray-700 truncate block">{subtask.title}</span>
+                                    {isExpanded && subtask.description && (
+                                        <p className="text-xs text-gray-400 mt-0.5 truncate">{subtask.description}</p>
+                                    )}
+                                </div>
+
+                                {/* Assignee */}
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    {subtask.assigneeName ? (
+                                        <>
+                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-indigo-400 flex items-center justify-center text-white text-[9px] font-bold">
+                                                {subtask.assigneeName.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="text-xs text-gray-500 max-w-[80px] truncate">
+                                                {subtask.assigneeName}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="text-xs text-gray-400 italic">Chưa giao</span>
+                                    )}
+                                </div>
+
+                                {/* Issue key */}
+                                <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">
+                                    {subtask.issueKey}
+                                </span>
+                            </div>
+
+                            {/* Expanded detail */}
+                            {isExpanded && (
+                                <div className="px-8 pb-3 pl-12 animate-in fade-in slide-in-from-top-1 duration-150">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white/60 rounded-lg p-3 border border-violet-100">
+                                        <div>
+                                            <span className="text-[10px] text-gray-400 block">Người tạo</span>
+                                            <span className="text-xs font-medium text-gray-700">{subtask.reporterName || '—'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] text-gray-400 block">Ngày tạo</span>
+                                            <span className="text-xs font-medium text-gray-700">{subtask.createdAt ? formatDate(subtask.createdAt) : '—'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] text-gray-400 block">Hạn chót</span>
+                                            <span className={`text-xs font-medium ${subtask.dueDate && new Date(subtask.dueDate) < new Date() && !subtask.statusName?.toLowerCase().includes('done') ? 'text-red-500' : 'text-gray-700'}`}>
+                                                {subtask.dueDate ? formatDate(subtask.dueDate) : '—'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] text-gray-400 block">Trọng số</span>
+                                            <span className="text-xs font-medium text-gray-700">{subtask.weight || '—'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

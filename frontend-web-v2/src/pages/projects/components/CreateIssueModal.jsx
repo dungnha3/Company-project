@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
+import SubtaskSuggestionPanel from '@components/smart-assistant/SubtaskSuggestionPanel';
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
@@ -37,6 +38,8 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         storageFolder: '',
     });
     const [selectedFiles, setSelectedFiles] = useState([]);
+    const [acceptedSubtasks, setAcceptedSubtasks] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef(null);
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -99,35 +102,63 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         }
     }, [defaultProjectId]);
 
-    const createMutation = useMutation({
-        mutationFn: async (data) => {
-            const payload = {
-                projectId: parseInt(data.projectId),
-                title: data.title.trim(),
-                description: data.description.trim() || null,
-                priority: data.priority,
-                assigneeId: data.assigneeId ? parseInt(data.assigneeId) : null,
-                estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : null,
-                startDate: data.startDate || null,
-                dueDate: data.dueDate || null,
-                weight: data.weight ? parseInt(data.weight) : null,
-                isImportant: data.isImportant,
-                isUrgent: data.isUrgent,
-                sprintId: data.sprintId ? parseInt(data.sprintId) : null,
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!form.projectId || !form.title.trim()) {
+            toast.error('Vui lòng chọn dự án và nhập tiêu đề');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            // Step 1: Build payload for parent issue
+            const parentPayload = {
+                projectId: parseInt(form.projectId),
+                title: form.title.trim(),
+                description: form.description.trim() || null,
+                priority: form.priority,
+                assigneeId: form.assigneeId ? parseInt(form.assigneeId) : null,
+                estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
+                startDate: form.startDate || null,
+                dueDate: form.dueDate || null,
+                weight: form.weight ? parseInt(form.weight) : null,
+                isImportant: form.isImportant,
+                isUrgent: form.isUrgent,
+                sprintId: form.sprintId ? parseInt(form.sprintId) : null,
             };
-            return (await apiClient.post(ENDPOINTS.ISSUES.CREATE, payload)).data;
-        },
-        onSuccess: async (issue) => {
-            toast.success(`Tạo ${form.issueType === 'BUG' ? 'bug' : 'task'} thành công!`);
-            // Upload files linked to this issue
-            const filesToUpload = selectedFiles;
-            const folderParam = form.storageFolder ? `?folder=${encodeURIComponent(form.storageFolder)}` : '';
-            if (filesToUpload.length > 0 && issue.issueId) {
-                for (const file of filesToUpload) {
+
+            // Step 2: Create parent issue
+            const parentResponse = await apiClient.post(ENDPOINTS.ISSUES.CREATE, parentPayload);
+            const parentIssue = parentResponse.data;
+            const parentIssueId = parentIssue.issueId;
+
+            // Step 3: Create child issues for each accepted subtask
+            if (acceptedSubtasks.length > 0) {
+                for (const subtask of acceptedSubtasks) {
+                    const subtaskPayload = {
+                        ...parentPayload,
+                        title: subtask.title,
+                        description: `Subtask (${subtask.category || 'general'}) được gợi ý bởi AI cho issue: ${form.title.trim()}`,
+                        parentIssueId: parentIssueId,
+                    };
+                    await apiClient.post(ENDPOINTS.ISSUES.CREATE, subtaskPayload);
+                }
+                toast.success(`Đã tạo ${acceptedSubtasks.length} sub-task cho issue chính!`);
+            }
+
+            // Step 4: Upload files linked to parent issue
+            if (selectedFiles.length > 0 && parentIssueId) {
+                const folderParam = form.storageFolder ? `?folder=${encodeURIComponent(form.storageFolder)}` : '';
+                for (const file of selectedFiles) {
                     try {
                         const fd = new FormData();
                         fd.append('file', file);
-                        fd.append('issueId', issue.issueId.toString());
+                        fd.append('issueId', parentIssueId.toString());
                         await apiClient.post(
                             `${ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(form.projectId)}${folderParam}`,
                             fd,
@@ -137,31 +168,21 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                         console.error('Failed to upload file:', err);
                     }
                 }
-                toast.success(`${filesToUpload.length} file đã được đính kèm`);
+                toast.success(`${selectedFiles.length} file đã được đính kèm`);
             }
+
+            toast.success(`Tạo ${form.issueType === 'BUG' ? 'bug' : 'task'} thành công!`);
             setSelectedFiles([]);
+            setAcceptedSubtasks([]);
             queryClient.invalidateQueries(['myIssues']);
             queryClient.invalidateQueries(['projectIssues', form.projectId]);
-            onSuccess?.(issue);
+            onSuccess?.(parentIssue);
             handleClose();
-        },
-        onError: (err) => {
+        } catch (err) {
             toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-        },
-    });
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setForm(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!form.projectId || !form.title.trim()) {
-            toast.error('Vui lòng chọn dự án và nhập tiêu đề');
-            return;
+        } finally {
+            setIsSubmitting(false);
         }
-        createMutation.mutate(form);
     };
 
     const handleClose = () => {
@@ -182,6 +203,8 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             storageFolder: '',
         });
         setSelectedFiles([]);
+        setAcceptedSubtasks([]);
+        setIsSubmitting(false);
         onClose();
     };
 
@@ -280,6 +303,36 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                 rows={3}
                             />
                         </div>
+
+                        {/* Smart Subtask Suggestion */}
+                        <SubtaskSuggestionPanel
+                            title={form.title}
+                            description={form.description}
+                            onAccept={(selected) => setAcceptedSubtasks(selected)}
+                        />
+
+                        {/* Accepted Subtasks Preview */}
+                        {acceptedSubtasks.length > 0 && (
+                            <div className="border border-green-200 rounded-lg p-3 bg-green-50">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <i className="fa-solid fa-check-circle text-green-500 text-sm" />
+                                    <span className="text-sm font-semibold text-green-700">
+                                        Đã chọn {acceptedSubtasks.length} sub-task
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {acceptedSubtasks.map((st, idx) => (
+                                        <span
+                                            key={idx}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-green-200 rounded-full text-xs text-green-700"
+                                        >
+                                            <i className="fa-solid fa-check text-green-400 text-[8px]" />
+                                            {st.title}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Sprint & Assignee Row */}
                         <div className="grid grid-cols-2 gap-4">
@@ -516,20 +569,20 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
 
                     {/* Footer */}
                     <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
-                        <button
+                            <button
                             type="button"
                             onClick={handleClose}
-                            disabled={createMutation.isPending}
-                            className="px-5 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                            disabled={isSubmitting}
+                            className="px-5 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Hủy
                         </button>
                         <button
                             type="submit"
-                            disabled={!canManageIssues || createMutation.isPending}
+                            disabled={!canManageIssues || isSubmitting}
                             className={`px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:from-indigo-700 hover:to-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2 ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
                         >
-                            {createMutation.isPending ? (
+                            {isSubmitting ? (
                                 <>
                                     <i className="fa-solid fa-spinner fa-spin" />
                                     Đang tạo...

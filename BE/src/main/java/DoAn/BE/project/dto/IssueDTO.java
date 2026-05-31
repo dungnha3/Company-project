@@ -3,6 +3,7 @@ package DoAn.BE.project.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import DoAn.BE.project.entity.Issue.Priority;
 import lombok.AllArgsConstructor;
@@ -45,4 +46,5 @@ public class IssueDTO {
     private LocalDateTime updatedAt;
     private Boolean isOverdue;
     private Long parentIssueId;
+    private List<IssueDTO> subtasks;
 }
