@@ -84,6 +84,34 @@ public class IssueController {
         return ResponseEntity.ok(issues);
     }
 
+    /**
+     * Chỉ trả về issues thuộc sprint ACTIVE của dự án.
+     * Dùng cho Kanban board — không bao gồm Backlog hay Sprint PLANNING.
+     */
+    @GetMapping("/project/{projectId}/board")
+    public ResponseEntity<Page<IssueDTO>> getBoardIssues(
+            @PathVariable Long projectId,
+            Pageable pageable,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        Page<IssueDTO> issues = issueService.getActiveSprintIssues(projectId, user.getUserId(), pageable);
+        return ResponseEntity.ok(issues);
+    }
+
+    /**
+     * Trả về tất cả issues không thuộc sprint ACTIVE (Backlog + Sprint PLANNING).
+     * Dùng cho Backlog panel trên Kanban board.
+     */
+    @GetMapping("/project/{projectId}/backlog-including-planning")
+    public ResponseEntity<Page<IssueDTO>> getBacklogIncludingPlanning(
+            @PathVariable Long projectId,
+            Pageable pageable,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        Page<IssueDTO> issues = issueService.getBacklogIssuesIncludingPlanning(projectId, user.getUserId(), pageable);
+        return ResponseEntity.ok(issues);
+    }
+
     @GetMapping("/project/{projectId}/backlog")
     public ResponseEntity<Page<IssueDTO>> getProjectBacklog(
             @PathVariable Long projectId,

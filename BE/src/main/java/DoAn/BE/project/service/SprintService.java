@@ -27,8 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 @Service
@@ -254,6 +254,19 @@ public class SprintService {
                     currentUser.getUsername() + " đã bắt đầu sprint '" + sprint.getName() + "' với "
                             + sprintIssues.size() + " issues"));
         }
+
+        // ── Group assigned issues by assignee for batch email notification ───────
+        // Key: assigneeId → list of issueKeys. Null assignee issues are skipped.
+        Map<Long, List<String>> assigneeIssueKeys = sprintIssues.stream()
+                .filter(issue -> issue.getAssignee() != null)
+                .collect(Collectors.groupingBy(
+                        issue -> issue.getAssignee().getUserId(),
+                        Collectors.mapping(Issue::getIssueKey, Collectors.toList())
+                ));
+
+        // Publish batch-email event (1 email per user, not 1 per issue)
+        eventPublisher.publishEvent(new DoAn.BE.project.event.SprintStartedEvent(
+                this, sprint, assigneeIssueKeys, currentUser.getUserId()));
 
         log.info("Sprint {} started", sprint.getName());
 

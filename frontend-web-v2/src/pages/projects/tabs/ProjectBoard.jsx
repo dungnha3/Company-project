@@ -172,13 +172,13 @@ export default function ProjectBoard({ project }) {
         return map;
     }, [statuses]);
 
-    // ── Fetch issues — switches to /my-issues when "Của tôi" filter is active
+    // ── Fetch board issues — only from ACTIVE sprint (new board endpoint)
     const { data: projectIssues = [], isLoading: isLoadingProject } = useQuery({
-        queryKey: ['issues', project.projectId],
+        queryKey: ['issues', project.projectId, 'board'],
         queryFn: async () => {
             try {
-                const response = (await apiClient.get(ENDPOINTS.ISSUES.BY_PROJECT(project.projectId), {
-                    params: { size: 500, sort: 'createdAt,desc' }
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.BOARD(project.projectId), {
+                    params: { size: 500 }
                 })).data;
                 return response?.content || response || [];
             } catch { return []; }
@@ -204,12 +204,12 @@ export default function ProjectBoard({ project }) {
     const issues = filterMyIssues ? myIssues : projectIssues;
     const isLoading = filterMyIssues ? isLoadingMy : isLoadingProject;
 
-    // ── Fetch backlog issues (no sprint)
+    // ── Fetch backlog (Backlog + Sprint PLANNING — server-side filtered)
     const { data: backlogIssues = [] } = useQuery({
-        queryKey: ['backlog', project.projectId],
+        queryKey: ['backlog-including-planning', project.projectId],
         queryFn: async () => {
             try {
-                const response = (await apiClient.get(ENDPOINTS.ISSUES.BACKLOG(project.projectId), {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.BACKLOG_INCLUDE_PLANNING(project.projectId), {
                     params: { size: 200 }
                 })).data;
                 return response?.content || response || [];
@@ -233,7 +233,10 @@ export default function ProjectBoard({ project }) {
         return rectIntersection(args);
     }, [columnIds]);
 
-    // ── Filter issues — exclude backlog (sprintId == null) from Kanban columns
+    // ── Filter issues for Kanban columns ────────────────────────────────────────
+    // Backend already returns only ACTIVE-sprint issues for the board endpoint.
+    // The sprintId guard is kept as a safety net; it also filters the "My Issues"
+    // overlay (which still hits /my-issues and may include issues from any sprint).
     const filteredIssues = useMemo(() => {
         let result = issues.filter(i => i.sprintId != null);
         // Only apply remaining client-side filters here
@@ -343,6 +346,7 @@ export default function ProjectBoard({ project }) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['issues', project.projectId, 'board'] });
             queryClient.invalidateQueries({ queryKey: ['myIssues', 'filtered'] });
         },
         onSuccess: () => {
@@ -517,6 +521,7 @@ export default function ProjectBoard({ project }) {
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
             queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['issues', project.projectId, 'board'] });
             queryClient.invalidateQueries({ queryKey: ['myIssues', 'filtered'] });
         },
         onSuccess: () => {
@@ -863,6 +868,8 @@ export default function ProjectBoard({ project }) {
                     onClose={() => setSelectedIssue(null)}
                     onUpdate={() => {
                         queryClient.invalidateQueries(['issues', project.projectId]);
+                        queryClient.invalidateQueries(['issues', project.projectId, 'board']);
+                        queryClient.invalidateQueries(['backlog-including-planning', project.projectId]);
                         queryClient.invalidateQueries(['myIssues', 'filtered']);
                     }}
                 />
@@ -875,6 +882,8 @@ export default function ProjectBoard({ project }) {
                 onSuccess={() => {
                     setShowCreateModal(false);
                     queryClient.invalidateQueries(['issues', project.projectId]);
+                    queryClient.invalidateQueries(['issues', project.projectId, 'board']);
+                    queryClient.invalidateQueries(['backlog-including-planning', project.projectId]);
                     queryClient.invalidateQueries(['myIssues', 'filtered']);
                 }}
                 defaultProjectId={project.projectId}
@@ -889,6 +898,8 @@ export default function ProjectBoard({ project }) {
                         // Auto-stop timer and log time when task is completed
                         fireTaskCompleted(quickReviewIssueId);
                         queryClient.invalidateQueries(['issues', project.projectId]);
+                        queryClient.invalidateQueries(['issues', project.projectId, 'board']);
+                        queryClient.invalidateQueries(['backlog-including-planning', project.projectId]);
                         queryClient.invalidateQueries(['myIssues', 'filtered']);
                         setQuickReviewIssueId(null);
                     }}

@@ -55,10 +55,31 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         List<Issue> findBySprint_SprintIdAndParentIssueIsNull(Long sprintId);
 
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
-        Page<Issue> findBySprint_SprintId(Long sprintId, Pageable pageable);
-
-        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findBySprint_SprintIdAndParentIssueIsNull(Long sprintId, Pageable pageable);
+
+        /**
+         * Chỉ lấy issues thuộc sprint đang ACTIVE.
+         * Dùng cho Kanban board — đảm bảo không lấy nhầm issue của Sprint PLANNING.
+         */
+        @Query("SELECT i FROM Issue i WHERE i.project.projectId = :projectId " +
+               "AND i.sprint IS NOT NULL " +
+               "AND i.sprint.status = DoAn.BE.project.entity.Sprint.SprintStatus.ACTIVE " +
+               "AND i.parentIssue IS NULL " +
+               "ORDER BY i.orderIndex ASC NULLS LAST, i.createdAt DESC")
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findBoardIssuesByProjectId(@Param("projectId") Long projectId, Pageable pageable);
+
+        /**
+         * Lấy tất cả issues không thuộc sprint ACTIVE.
+         * Gồm: Backlog (sprintId == null) + Sprint PLANNING.
+         * Dùng cho Backlog panel — đảm bảo không lấy nhầm issue đang chạy.
+         */
+        @Query("SELECT i FROM Issue i WHERE i.project.projectId = :projectId " +
+               "AND i.parentIssue IS NULL " +
+               "AND (i.sprint IS NULL OR i.sprint.status = DoAn.BE.project.entity.Sprint.SprintStatus.PLANNING) " +
+               "ORDER BY CASE WHEN i.sprint IS NULL THEN 1 ELSE 0 END DESC, i.createdAt DESC")
+        @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
+        Page<Issue> findBacklogIssuesByProjectId(@Param("projectId") Long projectId, Pageable pageable);
 
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
         List<Issue> findByProject_ProjectIdAndSprintIsNull(Long projectId);

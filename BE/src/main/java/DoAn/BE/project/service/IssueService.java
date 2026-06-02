@@ -170,9 +170,32 @@ public class IssueService {
 
     @Transactional(readOnly = true)
     public Page<IssueDTO> getProjectIssuesPaginated(Long projectId, Long userId, Pageable pageable) {
-        // Validate access
         validateProjectAccess(projectId, userId);
         Page<Issue> issues = issueRepository.findByProject_ProjectIdAndParentIssueIsNull(projectId, pageable);
+        return issues.map(this::convertToDTO);
+    }
+
+    /**
+     * Chỉ trả về issues thuộc sprint ACTIVE của dự án.
+     * Dùng cho Kanban board — không bao gồm Backlog (sprintId == null)
+     * hay Sprint PLANNING.
+     */
+    @Transactional(readOnly = true)
+    public Page<IssueDTO> getActiveSprintIssues(Long projectId, Long userId, Pageable pageable) {
+        validateProjectAccess(projectId, userId);
+        Page<Issue> issues = issueRepository.findBoardIssuesByProjectId(projectId, pageable);
+        return issues.map(this::convertToDTO);
+    }
+
+    /**
+     * Trả về tất cả issues không thuộc sprint ACTIVE.
+     * Gồm: Backlog (sprintId == null) + Sprint PLANNING.
+     * Dùng cho Backlog panel trên Kanban board.
+     */
+    @Transactional(readOnly = true)
+    public Page<IssueDTO> getBacklogIssuesIncludingPlanning(Long projectId, Long userId, Pageable pageable) {
+        validateProjectAccess(projectId, userId);
+        Page<Issue> issues = issueRepository.findBacklogIssuesByProjectId(projectId, pageable);
         return issues.map(this::convertToDTO);
     }
 

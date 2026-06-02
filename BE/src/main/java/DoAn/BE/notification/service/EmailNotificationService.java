@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -459,5 +460,94 @@ public class EmailNotificationService {
         html.append("</html>");
 
         return html.toString();
+    }
+
+    /**
+     * Gửi một email tổng hợp cho mỗi user khi sprint bắt đầu.
+     * Mỗi email liệt kê toàn bộ issues được giao trong sprint đó — tránh spam nhiều email lẻ.
+     *
+     * @param user          Người nhận (assignee)
+     * @param sprintName    Tên sprint
+     * @param projectName   Tên dự án
+     * @param issueKeys     Danh sách issue keys được giao cho user này trong sprint
+     */
+    public void sendSprintStartedBatchEmail(User user, String sprintName, String projectName, List<String> issueKeys) {
+        if (!emailEnabled || mailSender == null) {
+            log.info("Email không được bật, bỏ qua gửi email sprint bắt đầu đến {}", user.getEmail());
+            return;
+        }
+
+        String email = user.getEmail();
+        if (email == null || email.isBlank()) {
+            log.warn("User '{}' không có email — bỏ qua thông báo sprint", user.getUsername());
+            return;
+        }
+
+        String recipientName = (user.getFullName() != null && !user.getFullName().isBlank())
+                ? user.getFullName()
+                : user.getUsername();
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Sprint '" + sprintName + "' đã bắt đầu — " + issueKeys.size() + " công việc mới");
+
+            StringBuilder html = new StringBuilder();
+            html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
+            html.append("<style>");
+            html.append("body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background-color: #007bff; color: white; padding: 20px; text-align: center; }");
+            html.append(".content { padding: 20px; }");
+            html.append(".footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666; }");
+            html.append(".issue-item { background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 10px; margin: 8px 0; border-radius: 4px; }");
+            html.append(".issue-key { font-weight: bold; color: #007bff; }");
+            html.append(".sprint-info { background-color: #e7f3ff; padding: 12px; border-radius: 5px; margin-bottom: 15px; }");
+            html.append("</style></head><body>");
+
+            html.append("<div class='header'><h2>🏃 Sprint '" + escapeHtml(sprintName) + "' đã bắt đầu!</h2></div>");
+            html.append("<div class='content'>");
+            html.append("<p>Kính gửi <strong>").append(escapeHtml(recipientName)).append("</strong>,</p>");
+            html.append("<p>Sprint <strong>'").append(escapeHtml(sprintName))
+                    .append("'</strong> của dự án <strong>'").append(escapeHtml(projectName))
+                    .append("'</strong> vừa được bắt đầu. Bạn được giao <strong>")
+                    .append(issueKeys.size()).append(" công việc</strong> trong sprint này:</p>");
+
+            html.append("<div class='sprint-info'>");
+            html.append("<p><strong>Sprint:</strong> ").append(escapeHtml(sprintName)).append("</p>");
+            html.append("<p><strong>Dự án:</strong> ").append(escapeHtml(projectName)).append("</p>");
+            html.append("<p><strong>Số công việc:</strong> ").append(issueKeys.size()).append("</p>");
+            html.append("</div>");
+
+            html.append("<h3>Các công việc được giao:</h3>");
+            for (String issueKey : issueKeys) {
+                html.append("<div class='issue-item'>");
+                html.append("<span class='issue-key'>").append(escapeHtml(issueKey)).append("</span>");
+                html.append("</div>");
+            }
+
+            html.append("<p>Hãy truy cập để xem chi tiết và bắt đầu làm việc.</p>");
+            html.append("</div>");
+            html.append("<div class='footer'>");
+            html.append("<p>Email này được gửi tự động từ hệ thống DACN. Vui lòng không trả lời email này.</p>");
+            html.append("</div></body></html>");
+
+            helper.setText(html.toString(), true);
+            mailSender.send(message);
+            log.info("Đã gửi email sprint bắt đầu ({} issues) đến {}", issueKeys.size(), email);
+
+        } catch (MessagingException e) {
+            log.error("Lỗi gửi email sprint bắt đầu đến {}: {}", email, e.getMessage());
+        }
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#39;");
     }
 }

@@ -10,7 +10,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const { hasPermission } = useAccessControl();
-    const canCreateReview = hasPermission('REVIEW.CREATE');
+    const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
 
     const [form, setForm] = useState({
         performanceScore: 7,
@@ -94,7 +94,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         <div className="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-sm mb-2 border border-emerald-100">
                             <strong>{issue.title}</strong>
                             <div className="mt-1 flex items-center gap-2">
-                                <span className="text-xs">Người thực hiện: <strong>{issue.assignee?.fullName || 'Chưa giao'}</strong></span>
+                                <span className="text-xs">Người thực hiện: <strong>{issue.assigneeName || 'Chưa giao'}</strong></span>
                             </div>
                         </div>
 
@@ -155,8 +155,8 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={!canCreateReview || quickScoreMutation.isPending}
-                            className={`px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm ${!canCreateReview ? 'cursor-not-allowed' : ''}`}
+                            disabled={!canManageIssues || quickScoreMutation.isPending}
+                            className={`px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
                         >
                             {quickScoreMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-check" />}
                             Chấm điểm & Done

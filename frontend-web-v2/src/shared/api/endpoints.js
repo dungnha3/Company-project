@@ -325,6 +325,8 @@ export const ENDPOINTS = {
         BY_ID: (id) => `/api/issues/${id}`,
         BY_PROJECT: (projectId) => `/api/issues/project/${projectId}`,
         BACKLOG: (projectId) => `/api/issues/project/${projectId}/backlog`,
+        BACKLOG_INCLUDE_PLANNING: (projectId) => `/api/issues/project/${projectId}/backlog-including-planning`,
+        BOARD: (projectId) => `/api/issues/project/${projectId}/board`,
         BY_SPRINT: (sprintId) => `/api/issues/sprint/${sprintId}`,
         MY_ISSUES: '/api/issues/my-issues',
         MY_REPORTED: '/api/issues/my-reported',

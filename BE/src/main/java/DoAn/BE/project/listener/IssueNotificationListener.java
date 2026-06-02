@@ -51,10 +51,15 @@ public class IssueNotificationListener {
             return;
         }
 
-        // Re-fetch to guarantee a live Hibernate session for lazy associations
         Issue issue = issueRepository.findById(event.getIssue().getIssueId()).orElse(null);
         if (issue == null) {
             log.warn("ASSIGNED event for unknown issue id={}", event.getIssue().getIssueId());
+            return;
+        }
+
+        // ── UX guard: chỉ gửi email khi issue nằm trong sprint đang ACTIVE ──────
+        // Backlog (sprint == null) hoặc sprint PLANNING → không gửi để tránh spam.
+        if (!shouldNotifyOnAssign(issue)) {
             return;
         }
 
@@ -76,14 +81,43 @@ public class IssueNotificationListener {
                     email,
                     assignee.getUsername(),
                     issue.getTitle(),
-                    issue.getProject().getName(),  // safe: fresh session is active
+                    issue.getProject().getName(),
                     issue.getIssueKey()
             );
         } catch (Exception e) {
-            // Email failure must NOT affect the main business flow
             log.error("Failed to send issue-assigned email for {} to {}: {}",
                     issue.getIssueKey(), email, e.getMessage());
         }
+    }
+
+    private boolean shouldNotifyOnAssign(Issue issue) {
+        if (issue.getSprint() == null) {
+            log.debug("Issue {} is in Backlog — skipping assignment email", issue.getIssueKey());
+            return false;
+        }
+        if (issue.getSprint().getStatus() != DoAn.BE.project.entity.Sprint.SprintStatus.ACTIVE) {
+            log.debug("Issue {} sprint '{}' is {} — skipping assignment email",
+                    issue.getIssueKey(),
+                    issue.getSprint().getName(),
+                    issue.getSprint().getStatus());
+            return false;
+        }
+        return true;
+    }
+
+    private boolean shouldNotifyOnUpdate(Issue issue) {
+        if (issue.getSprint() == null) {
+            log.debug("Issue {} is in Backlog — skipping update email", issue.getIssueKey());
+            return false;
+        }
+        if (issue.getSprint().getStatus() != DoAn.BE.project.entity.Sprint.SprintStatus.ACTIVE) {
+            log.debug("Issue {} sprint '{}' is {} — skipping update email",
+                    issue.getIssueKey(),
+                    issue.getSprint().getName(),
+                    issue.getSprint().getStatus());
+            return false;
+        }
+        return true;
     }
 
     // =========================================================================
@@ -118,14 +152,19 @@ public class IssueNotificationListener {
             return;
         }
 
-        // ── Bước 2: Xác định Actor để loại ra khỏi danh sách nhận ──────────────
+        // ── Bước 2: UX guard – chỉ gửi email khi issue thuộc sprint đang ACTIVE ──
+        if (!shouldNotifyOnUpdate(issue)) {
+            return;
+        }
+
+        // ── Bước 3: Xác định Actor để loại ra khỏi danh sách nhận ──────────────
         User actor = event.getActor();
         Long actorId = (actor != null) ? actor.getUserId() : null;
         String actorName = (actor != null && actor.getFullName() != null)
                 ? actor.getFullName()
                 : (actor != null ? actor.getUsername() : "Hệ thống");
 
-        // ── Bước 3: Gộp các người liên quan vào Set để tự loại trùng ────────────
+        // ── Bước 4: Gộp các người liên quan vào Set để tự loại trùng ────────────
         // Set<User> tự loại trùng nếu Assignee == Reporter (cùng userId)
         Set<User> recipients = new HashSet<>();
 
@@ -147,7 +186,7 @@ public class IssueNotificationListener {
             return;
         }
 
-        // ── Bước 4: Gửi email từng người, bỏ qua Actor ──────────────────────────
+        // ── Bước 5: Gửi email từng người, bỏ qua Actor ──────────────────────────
         String projectName = issue.getProject().getName(); // safe: session active
         String issueKey    = issue.getIssueKey();
         String issueTitle  = issue.getTitle();
