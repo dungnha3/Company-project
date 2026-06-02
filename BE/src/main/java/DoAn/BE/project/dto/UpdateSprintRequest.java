@@ -22,4 +22,5 @@ public class UpdateSprintRequest {
     private LocalDate startDate;
     private LocalDate endDate;
     private Sprint.SprintStatus status;
+    private Long phaseId;
 }

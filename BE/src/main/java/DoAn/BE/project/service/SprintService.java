@@ -8,6 +8,8 @@ import DoAn.BE.project.entity.Sprint;
 import DoAn.BE.project.entity.Sprint.SprintStatus;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.entity.ProjectMember;
+import DoAn.BE.project.entity.ProjectPhase;
+import DoAn.BE.project.repository.ProjectPhaseRepository;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.project.repository.SprintRepository;
 import DoAn.BE.project.repository.IssueRepository;
@@ -22,7 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +41,7 @@ public class SprintService {
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueRepository issueRepository;
     private final IssueActivityRepository issueActivityRepository;
+    private final ProjectPhaseRepository projectPhaseRepository;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -58,6 +65,16 @@ public class SprintService {
             }
         }
 
+        // Validate phase if provided
+        ProjectPhase phase = null;
+        if (request.getPhaseId() != null) {
+            phase = projectPhaseRepository.findById(request.getPhaseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giai đoạn"));
+            if (!phase.getProject().getProjectId().equals(request.getProjectId())) {
+                throw new BadRequestException("Giai đoạn không thuộc dự án này");
+            }
+        }
+
         // Kiểm tra không có sprint ACTIVE khác
         // Fix: Acquire lock on project to prevent concurrent sprint creations bypassing
         // the check
@@ -72,6 +89,7 @@ public class SprintService {
         // Create sprint
         Sprint sprint = new Sprint();
         sprint.setProject(project);
+        sprint.setPhase(phase);
         sprint.setName(request.getName());
         sprint.setGoal(request.getGoal());
         sprint.setStartDate(request.getStartDate());
@@ -91,8 +109,6 @@ public class SprintService {
 
     @Transactional(readOnly = true)
     public SprintDTO getSprintById(Long sprintId, User currentUser) {
-        accessControlService.checkProjectManageSprintsPermission();
-
         Sprint sprint = sprintRepository.findById(sprintId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sprint"));
 
@@ -107,15 +123,22 @@ public class SprintService {
 
     @Transactional(readOnly = true)
     public List<SprintDTO> getProjectSprints(Long projectId, User currentUser) {
-        accessControlService.checkProjectManageSprintsPermission();
-
-        // Kiểm tra quyền truy cập project
         validateProjectAccess(projectId, currentUser.getUserId());
 
-        List<Sprint> sprints = sprintRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
-        return sprints.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        List<Sprint> sprints = sprintRepository.findByProject_ProjectId(projectId);
+
+        // Sort: by phase.orderIndex ASC NULLS LAST, then sprint.startDate ASC NULLS LAST
+        List<Sprint> sorted = sprints.stream()
+                .sorted(Comparator
+                        .nullsLast(Comparator
+                                .comparing((Sprint s) -> s.getPhase() != null ? s.getPhase().getOrderIndex() : null,
+                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                        .thenComparing(Comparator
+                                .comparing((Sprint s) -> s.getStartDate(),
+                                        Comparator.nullsLast(Comparator.naturalOrder()))))
+                .toList();
+
+        return sorted.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     @Transactional
@@ -146,6 +169,16 @@ public class SprintService {
             // Validate chuyển trạng thái
             validateStatusTransition(sprint, request.getStatus());
             sprint.setStatus(request.getStatus());
+        }
+
+        // Validate and update phase if provided (nullable — optional field)
+        if (request.getPhaseId() != null) {
+            ProjectPhase phase = projectPhaseRepository.findById(request.getPhaseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giai đoạn"));
+            if (!phase.getProject().getProjectId().equals(sprint.getProject().getProjectId())) {
+                throw new BadRequestException("Giai đoạn không thuộc dự án này");
+            }
+            sprint.setPhase(phase);
         }
 
         // Validate ngày tháng
@@ -399,6 +432,11 @@ public class SprintService {
         dto.setStartDate(sprint.getStartDate());
         dto.setEndDate(sprint.getEndDate());
         dto.setStatus(sprint.getStatus());
+
+        if (sprint.getPhase() != null) {
+            dto.setPhaseId(sprint.getPhase().getPhaseId());
+            dto.setPhaseName(sprint.getPhase().getName());
+        }
 
         if (sprint.getCreatedBy() != null) {
             dto.setCreatedBy(sprint.getCreatedBy().getUserId());

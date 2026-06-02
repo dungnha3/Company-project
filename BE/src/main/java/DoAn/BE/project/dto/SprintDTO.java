@@ -23,4 +23,6 @@ public class SprintDTO {
     private LocalDateTime createdAt;
     private int totalIssues;
     private int completedIssues;
+    private Long phaseId;
+    private String phaseName;
 }

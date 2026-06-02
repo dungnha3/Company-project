@@ -1,6 +1,8 @@
 package DoAn.BE.project.entity;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -48,6 +50,9 @@ public class ProjectPhase extends DoAn.BE.common.entity.BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
+
+    @OneToMany(mappedBy = "phase", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Sprint> sprints = new ArrayList<>();
 
     public boolean isActive() {
         return this.status == PhaseStatus.IN_PROGRESS;

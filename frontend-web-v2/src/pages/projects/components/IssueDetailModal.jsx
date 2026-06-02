@@ -77,10 +77,26 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         mutationFn: async (statusId) => {
             await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(issue.issueId, statusId));
         },
+        onMutate: async (statusId) => {
+            await queryClient.cancelQueries({ queryKey: ['issue', issue.issueId] });
+            const snapshot = queryClient.getQueryData(['issue', issue.issueId]);
+            queryClient.setQueryData(['issue', issue.issueId], (old) =>
+                old ? { ...old, statusId, statusName: STATUSES.find(s => s.value === statusId)?.label } : old
+            );
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            toast.error('Không thể cập nhật trạng thái');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue', issue.issueId], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+        },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
-            queryClient.invalidateQueries(['issue', issue.issueId]);
-            queryClient.invalidateQueries(['myIssues']);
             onUpdate?.();
         },
     });
@@ -90,9 +106,26 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         mutationFn: async (assigneeId) => {
             await apiClient.patch(ENDPOINTS.ISSUES.ASSIGN(issue.issueId, assigneeId));
         },
+        onMutate: async (assigneeId) => {
+            await queryClient.cancelQueries({ queryKey: ['issue', issue.issueId] });
+            const snapshot = queryClient.getQueryData(['issue', issue.issueId]);
+            const member = members.find(m => String(m.userId) === String(assigneeId));
+            queryClient.setQueryData(['issue', issue.issueId], (old) =>
+                old ? { ...old, assigneeId, assigneeName: assigneeId ? (member?.username || member?.fullName || 'User') : null } : old
+            );
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            toast.error('Không thể giao việc');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue', issue.issueId], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId] });
+        },
         onSuccess: () => {
             toast.success('Đã giao việc');
-            queryClient.invalidateQueries(['issue', issue.issueId]);
             onUpdate?.();
         },
     });
@@ -105,9 +138,27 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                 content: content.trim(),
             });
         },
-        onSuccess: () => {
+        onMutate: async (content) => {
+            await queryClient.cancelQueries({ queryKey: ['issueComments', issue.issueId] });
+            const snapshot = queryClient.getQueryData(['issueComments', issue.issueId]);
+            const optimisticComment = {
+                commentId: `temp-${Date.now()}`,
+                content,
+                authorName: 'Bạn',
+                createdAt: new Date().toISOString(),
+                _optimistic: true,
+            };
+            queryClient.setQueryData(['issueComments', issue.issueId], (old = []) => [...old, optimisticComment]);
             setNewComment('');
-            queryClient.invalidateQueries(['issueComments', issue.issueId]);
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            if (context?.snapshot !== undefined) {
+                queryClient.setQueryData(['issueComments', issue.issueId], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issueComments', issue.issueId] });
         },
     });
 
@@ -171,10 +222,26 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                 ...payload
             });
         },
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['issue', issue.issueId] });
+            const snapshot = queryClient.getQueryData(['issue', issue.issueId]);
+            queryClient.setQueryData(['issue', issue.issueId], (old) =>
+                old ? { ...old, ...payload } : old
+            );
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            toast.error('Không thể cập nhật thẻ');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue', issue.issueId], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+        },
         onSuccess: () => {
             toast.success('Đã cập nhật thẻ');
-            queryClient.invalidateQueries(['issue', issue.issueId]);
-            queryClient.invalidateQueries(['myIssues']);
             onUpdate?.();
         },
     });
@@ -184,16 +251,36 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         mutationFn: async () => {
             await apiClient.delete(`/api/issues/${issue.issueId}`);
         },
+        onMutate: async () => {
+            const snapshotProjectIssues = queryClient.getQueryData(['projectIssues']);
+            const snapshotProjectBacklog = queryClient.getQueryData(['projectBacklog']);
+            const snapshotSprintIssues = queryClient.getQueryData(['sprintIssues']);
+            const snapshotMyIssues = queryClient.getQueryData(['myIssues']);
+            const snapshotIssues = queryClient.getQueryData(['issues']);
+            return { snapshotProjectIssues, snapshotProjectBacklog, snapshotSprintIssues, snapshotMyIssues, snapshotIssues };
+        },
+        onError: (err, vars, context) => {
+            toast.error('Lỗi khi xóa công việc');
+            if (context) {
+                if (context.snapshotProjectIssues) queryClient.setQueryData(['projectIssues'], context.snapshotProjectIssues);
+                if (context.snapshotProjectBacklog) queryClient.setQueryData(['projectBacklog'], context.snapshotProjectBacklog);
+                if (context.snapshotSprintIssues) queryClient.setQueryData(['sprintIssues'], context.snapshotSprintIssues);
+                if (context.snapshotMyIssues) queryClient.setQueryData(['myIssues'], context.snapshotMyIssues);
+                if (context.snapshotIssues) queryClient.setQueryData(['issues'], context.snapshotIssues);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['projectIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['projectBacklog'] });
+            queryClient.invalidateQueries({ queryKey: ['sprintIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+        },
         onSuccess: () => {
             toast.success('Đã xóa công việc');
-            queryClient.invalidateQueries(['projectIssues']);
-            queryClient.invalidateQueries(['projectBacklog']);
-            queryClient.invalidateQueries(['sprintIssues']);
-            queryClient.invalidateQueries(['myIssues']);
             onUpdate?.();
             onClose();
         },
-        onError: () => toast.error('Lỗi khi xóa công việc')
     });
 
     const handleDelete = () => {
@@ -911,12 +998,34 @@ function SubtasksSection({ subtasks, projectId, onUpdate }) {
         mutationFn: async ({ subtaskId, statusId }) => {
             await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(subtaskId, statusId));
         },
+        onMutate: async ({ subtaskId, statusId }) => {
+            await queryClient.cancelQueries({ queryKey: ['issue', projectId] });
+            const snapshot = queryClient.getQueryData(['issue', projectId]);
+            queryClient.setQueryData(['issue', projectId], (old) =>
+                old ? {
+                    ...old,
+                    subtasks: (old.subtasks || []).map(s =>
+                        s.issueId === subtaskId
+                            ? { ...s, statusId, statusName: STATUS_OPTIONS.find(o => o.value === statusId)?.label }
+                            : s
+                    )
+                } : old
+            );
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            toast.error('Lỗi cập nhật trạng thái');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue', projectId], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue', projectId] });
+        },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
-            queryClient.invalidateQueries(['issue', projectId]);
             onUpdate?.();
         },
-        onError: () => toast.error('Lỗi cập nhật trạng thái'),
     });
 
     if (!subtasks || subtasks.length === 0) return null;

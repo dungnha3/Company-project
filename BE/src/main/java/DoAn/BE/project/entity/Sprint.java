@@ -22,9 +22,13 @@ public class Sprint extends DoAn.BE.common.entity.BaseEntity {
     @EqualsAndHashCode.Include
     private Long sprintId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "phase_id")
+    private ProjectPhase phase;
 
     @Column(nullable = false, length = 255)
     private String name;

@@ -233,10 +233,9 @@ export default function ProjectBoard({ project }) {
         return rectIntersection(args);
     }, [columnIds]);
 
-    // ── Filter issues
+    // ── Filter issues — exclude backlog (sprintId == null) from Kanban columns
     const filteredIssues = useMemo(() => {
-        let result = issues;
-        // Note: filterMyIssues is handled server-side via /my-issues API
+        let result = issues.filter(i => i.sprintId != null);
         // Only apply remaining client-side filters here
         if (filterPriority) {
             result = result.filter(i => i.priority === filterPriority);
@@ -276,7 +275,7 @@ export default function ProjectBoard({ project }) {
         const groups = {};
         if (swimlaneMode === 'assignee') {
             columnIssues.forEach(issue => {
-                const key = issue.assignee?.fullName || 'Chưa giao';
+                const key = issue.assigneeName || 'Chưa giao';
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(issue);
             });
@@ -309,16 +308,46 @@ export default function ProjectBoard({ project }) {
         mutationFn: ({ id, statusId, orderIndex }) => apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(id, statusId), null, {
             params: { orderIndex }
         }),
+        onMutate: async ({ id, statusId, orderIndex }) => {
+            await queryClient.cancelQueries({ queryKey: ['issues', project.projectId] });
+            await queryClient.cancelQueries({ queryKey: ['myIssues', 'filtered'] });
+
+            const snapshotIssues = queryClient.getQueryData(['issues', project.projectId]);
+            const snapshotMy = queryClient.getQueryData(['myIssues', 'filtered']);
+
+            queryClient.setQueryData(['issues', project.projectId], (old = []) =>
+                old.map(issue =>
+                    String(issue.issueId) === String(id)
+                        ? { ...issue, statusId, statusName: statuses.find(s => s.statusId === statusId)?.name || issue.statusName }
+                        : issue
+                )
+            );
+            queryClient.setQueryData(['myIssues', 'filtered'], (old = []) =>
+                old.map(issue =>
+                    String(issue.issueId) === String(id)
+                        ? { ...issue, statusId, statusName: statuses.find(s => s.statusId === statusId)?.name || issue.statusName }
+                        : issue
+                )
+            );
+
+            return { snapshotIssues, snapshotMy };
+        },
+        onError: (err, vars, context) => {
+            showToast('Không thể cập nhật trạng thái', 'error');
+            if (context?.snapshotIssues) {
+                queryClient.setQueryData(['issues', project.projectId], context.snapshotIssues);
+            }
+            if (context?.snapshotMy) {
+                queryClient.setQueryData(['myIssues', 'filtered'], context.snapshotMy);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues', 'filtered'] });
+        },
         onSuccess: () => {
-            queryClient.invalidateQueries(['issues', project.projectId]);
-            queryClient.invalidateQueries(['myIssues', 'filtered']);
             showToast('Đã cập nhật trạng thái', 'success');
         },
-        onError: () => {
-            showToast('Không thể cập nhật trạng thái', 'error');
-            queryClient.invalidateQueries(['issues', project.projectId]);
-            queryClient.invalidateQueries(['myIssues', 'filtered']);
-        }
     });
 
     // Listen to quick submit task button clicks from IssueCard
@@ -419,11 +448,32 @@ export default function ProjectBoard({ project }) {
         mutationFn: async (payload) => {
             return (await apiClient.put(ENDPOINTS.ISSUE_STATUSES.REORDER, payload)).data;
         },
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['issue-statuses'] });
+            const snapshot = queryClient.getQueryData(['issue-statuses']);
+            queryClient.setQueryData(['issue-statuses'], (old = []) => {
+                const reordered = [...old];
+                payload.forEach(({ statusId, orderIndex }) => {
+                    const col = reordered.find(c => c.statusId === statusId);
+                    if (col) col.orderIndex = orderIndex;
+                });
+                return reordered.sort((a, b) => a.orderIndex - b.orderIndex);
+            });
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            showToast('Không thể sắp xếp lại cột', 'error');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue-statuses'], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
+        },
         onSuccess: (data) => {
-            queryClient.setQueryData(['issue-statuses'], data);
+            if (data) queryClient.setQueryData(['issue-statuses'], data);
             showToast('Đã sắp xếp lại cột', 'success');
         },
-        onError: () => showToast('Không thể sắp xếp lại cột', 'error'),
     });
 
     // ── Rename column mutation
@@ -431,16 +481,46 @@ export default function ProjectBoard({ project }) {
         mutationFn: async ({ statusId, name }) => {
             return (await apiClient.put(ENDPOINTS.ISSUE_STATUSES.UPDATE(statusId), { name })).data;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries(['issue-statuses']);
-            queryClient.invalidateQueries(['issues', project.projectId]);
-            queryClient.invalidateQueries(['myIssues', 'filtered']);
-            showToast('Đã đổi tên cột', 'success');
+        onMutate: async ({ statusId, name }) => {
+            await queryClient.cancelQueries({ queryKey: ['issue-statuses'] });
+            const snapshotStatuses = queryClient.getQueryData(['issue-statuses']);
+            const snapshotIssues = queryClient.getQueryData(['issues', project.projectId]);
+
+            queryClient.setQueryData(['issue-statuses'], (old = []) =>
+                old.map(s => s.statusId === statusId ? { ...s, name } : s)
+            );
+            queryClient.setQueryData(['issues', project.projectId], (old = []) =>
+                old.map(issue =>
+                    issue.statusId === statusId ? { ...issue, statusName: name } : issue
+                )
+            );
+            queryClient.setQueryData(['myIssues', 'filtered'], (old = []) =>
+                old.map(issue =>
+                    issue.statusId === statusId ? { ...issue, statusName: name } : issue
+                )
+            );
+
+            return { snapshotStatuses, snapshotIssues };
         },
-        onError: (err) => {
+        onError: (err, vars, context) => {
             const status = err?.response?.status;
             if (status === 409) showToast('Tên cột đã tồn tại', 'error');
             else showToast('Không thể đổi tên cột', 'error');
+            if (context?.snapshotStatuses) {
+                queryClient.setQueryData(['issue-statuses'], context.snapshotStatuses);
+            }
+            if (context?.snapshotIssues) {
+                queryClient.setQueryData(['issues', project.projectId], context.snapshotIssues);
+                queryClient.setQueryData(['myIssues', 'filtered'], context.snapshotIssues);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
+            queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues', 'filtered'] });
+        },
+        onSuccess: () => {
+            showToast('Đã đổi tên cột', 'success');
         },
     });
 
@@ -452,17 +532,38 @@ export default function ProjectBoard({ project }) {
                 color: newColColor,
             })).data;
         },
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ['issue-statuses'] });
+            const snapshot = queryClient.getQueryData(['issue-statuses']);
+            const optimisticCol = {
+                statusId: Date.now(),
+                name: newColName.trim(),
+                color: newColColor,
+                orderIndex: (snapshot?.length || 0),
+                _optimistic: true,
+            };
+            queryClient.setQueryData(['issue-statuses'], (old = []) => [...old, optimisticCol]);
+            return { snapshot };
+        },
+        onError: (err, vars, context) => {
+            const status = err?.response?.status;
+            if (status === 409) showToast('Tên cột đã tồn tại', 'error');
+            else showToast('Không thể thêm cột', 'error');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue-statuses'], context.snapshot);
+            }
+            setNewColName(newColName);
+            setNewColColor(newColColor);
+            setShowAddColumn(true);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
+        },
         onSuccess: () => {
-            queryClient.invalidateQueries(['issue-statuses']);
             setNewColName('');
             setNewColColor('#6366F1');
             setShowAddColumn(false);
             showToast('Đã thêm cột mới', 'success');
-        },
-        onError: (err) => {
-            const status = err?.response?.status;
-            if (status === 409) showToast('Tên cột đã tồn tại', 'error');
-            else showToast('Không thể thêm cột', 'error');
         },
     });
 
@@ -471,15 +572,28 @@ export default function ProjectBoard({ project }) {
         mutationFn: async (statusId) => {
             await apiClient.delete(ENDPOINTS.ISSUE_STATUSES.DELETE(statusId));
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries(['issue-statuses']);
-            showToast('Đã xóa cột', 'success');
+        onMutate: async (statusId) => {
+            await queryClient.cancelQueries({ queryKey: ['issue-statuses'] });
+            const snapshot = queryClient.getQueryData(['issue-statuses']);
+            queryClient.setQueryData(['issue-statuses'], (old = []) =>
+                old.filter(s => s.statusId !== statusId)
+            );
+            return { snapshot, deletedStatusId: statusId };
         },
-        onError: (err) => {
+        onError: (err, vars, context) => {
             const status = err?.response?.status;
             if (status === 409) showToast('Không thể xóa: cột còn chứa issue', 'error');
             else if (status === 403) showToast('Không thể xóa cột mặc định', 'error');
             else showToast('Không thể xóa cột', 'error');
+            if (context?.snapshot) {
+                queryClient.setQueryData(['issue-statuses'], context.snapshot);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issue-statuses'] });
+        },
+        onSuccess: () => {
+            showToast('Đã xóa cột', 'success');
         },
     });
 
@@ -1275,12 +1389,12 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    {issue.assignee ? (
+                    {issue.assigneeName ? (
                         <div
                             className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold ring-2 ring-white"
-                            title={issue.assignee.fullName}
+                            title={issue.assigneeName}
                         >
-                            {issue.assignee.fullName?.charAt(0)}
+                            {issue.assigneeName?.charAt(0)}
                         </div>
                     ) : (
                         <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px] ring-2 ring-white">

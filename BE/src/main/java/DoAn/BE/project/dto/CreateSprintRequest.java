@@ -26,4 +26,6 @@ public class CreateSprintRequest {
     
     private LocalDate startDate;
     private LocalDate endDate;
+
+    private Long phaseId;
 }

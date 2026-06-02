@@ -22,16 +22,47 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
         mutationFn: async (data) => {
             return (await apiClient.post(ENDPOINTS.REVIEWS.QUICK_SCORE(issue.issueId), data)).data;
         },
+        onMutate: async (data) => {
+            await queryClient.cancelQueries({ queryKey: ['issues'] });
+            const snapshotIssues = queryClient.getQueryData(['issues']);
+            const snapshotMy = queryClient.getQueryData(['myIssues']);
+
+            const doneStatusId = 4;
+            const doneStatusName = 'Done';
+            queryClient.setQueryData(['issues'], (old = []) =>
+                old.map(i =>
+                    String(i.issueId) === String(issue.issueId)
+                        ? { ...i, statusId: doneStatusId, statusName: doneStatusName }
+                        : i
+                )
+            );
+            queryClient.setQueryData(['myIssues'], (old = []) =>
+                old.map(i =>
+                    String(i.issueId) === String(issue.issueId)
+                        ? { ...i, statusId: doneStatusId, statusName: doneStatusName }
+                        : i
+                )
+            );
+            return { snapshotIssues, snapshotMy };
+        },
+        onError: (err, vars, context) => {
+            toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi chấm điểm');
+            if (context?.snapshotIssues) {
+                queryClient.setQueryData(['issues'], context.snapshotIssues);
+            }
+            if (context?.snapshotMy) {
+                queryClient.setQueryData(['myIssues'], context.snapshotMy);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+        },
         onSuccess: () => {
             toast.success('Chấm điểm thành công! Thẻ đã được chuyển sang Done.');
-            queryClient.invalidateQueries(['issues']);
-            queryClient.invalidateQueries(['myIssues']);
             onSuccess?.();
             onClose();
         },
-        onError: (err) => {
-            toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi chấm điểm');
-        }
     });
 
     const handleSubmit = (e) => {

@@ -13,26 +13,26 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SprintRepository extends JpaRepository<Sprint, Long> {
 
-    @EntityGraph(attributePaths = { "project", "createdBy" })
+    @EntityGraph(attributePaths = { "project", "createdBy", "phase" })
     List<Sprint> findByProject_ProjectId(Long projectId);
 
-    @EntityGraph(attributePaths = { "project", "createdBy" })
+    @EntityGraph(attributePaths = { "project", "createdBy", "phase" })
     List<Sprint> findByProject_ProjectIdAndStatus(Long projectId, SprintStatus status);
 
-    @EntityGraph(attributePaths = { "project", "createdBy" })
+    @EntityGraph(attributePaths = { "project", "createdBy", "phase" })
     List<Sprint> findByStatus(SprintStatus status);
 
-    @EntityGraph(attributePaths = { "project", "createdBy" })
+    @EntityGraph(attributePaths = { "project", "createdBy", "phase" })
     org.springframework.data.domain.Page<Sprint> findByStatus(SprintStatus status,
             org.springframework.data.domain.Pageable pageable);
 
     long countByProject_ProjectId(Long projectId);
 
-    @EntityGraph(attributePaths = { "project", "createdBy" })
+    @EntityGraph(attributePaths = { "project", "createdBy", "phase" })
     @Query("SELECT s FROM Sprint s WHERE s.project.projectId = :projectId ORDER BY s.createdAt DESC")
     List<Sprint> findByProjectIdOrderByCreatedAtDesc(@Param("projectId") Long projectId);
 
-    @EntityGraph(attributePaths = { "project", "createdBy" })
+    @EntityGraph(attributePaths = { "project", "createdBy", "phase" })
     Optional<Sprint> findFirstByProject_ProjectIdAndStatus(Long projectId, SprintStatus status);
 
     @Query("SELECT COUNT(s) FROM Sprint s WHERE s.project.projectId = :projectId AND s.status = :status")
