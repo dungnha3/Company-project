@@ -54,6 +54,10 @@ export const useAccessControl = () => {
                 case 'CALENDAR.MANAGE': return !!perms.calendarManage;
                 case 'WORKSPACE.MANAGE_MEMBERS': return !!perms.workspaceManageMembers;
                 case 'WORKSPACE.MANAGE_REQUESTS': return !!perms.workspaceManageRequests;
+                case 'STORAGE.VIEW': return !!perms.storageView;
+                case 'STORAGE.UPLOAD': return !!perms.storageUpload;
+                case 'STORAGE.DELETE': return !!perms.storageDelete;
+                case 'STORAGE.MANAGE_ALL': return !!perms.storageManageAll;
                 default: return false;
             }
         }

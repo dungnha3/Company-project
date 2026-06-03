@@ -135,6 +135,19 @@ public class AuditLogService {
         return auditLogRepository.findAllLogs(pageable);
     }
 
+    @Transactional(readOnly = true)
+    public Page<AuditLog> getStorageLogs(java.time.LocalDateTime after, Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) {
+            pageable = org.springframework.data.domain.PageRequest.of(
+                    pageable.getPageNumber(), pageable.getPageSize(),
+                    org.springframework.data.domain.Sort.by("createdAt").descending());
+        }
+        if (after != null) {
+            return auditLogRepository.findByActionStartingWithAndCreatedAtAfter("STORAGE_", after, pageable);
+        }
+        return auditLogRepository.findByActionStartingWith("STORAGE_", pageable);
+    }
+
     private String safeSerialize(Object value) {
         if (value == null)
             return null;

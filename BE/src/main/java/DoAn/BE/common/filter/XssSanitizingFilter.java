@@ -48,6 +48,12 @@ public class XssSanitizingFilter extends OncePerRequestFilter {
     };
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String ct = request.getContentType();
+        return ct != null && ct.toLowerCase().contains("multipart/form-data");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         filterChain.doFilter(new XssRequestWrapper(request), response);

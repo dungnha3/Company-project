@@ -377,6 +377,7 @@ export const ENDPOINTS = {
         BY_ACTOR: (actorId) => `/api/audit-logs/actor/${actorId}`,
         BY_TARGET: (targetId) => `/api/audit-logs/target/${targetId}`,
         CRITICAL: '/api/audit-logs/critical',
+        STORAGE: '/api/audit-logs/storage',
     },
 
     // Time Tracking (NEW)
@@ -472,6 +473,7 @@ export const ENDPOINTS = {
         UPLOAD_PROJECT_FILE: (projectId) => `/api/storage/projects/${projectId}/upload`,
         PROJECT_FILES: (projectId) => `/api/storage/projects/${projectId}/files`,
         PROJECT_FOLDERS: (projectId) => `/api/storage/projects/${projectId}/folders`,
+        PROJECT_FOLDER_TREE: (projectId) => `/api/storage/projects/${projectId}/folder-tree`,
         UPLOAD_ISSUE_FILE: (issueId) => `/api/storage/issues/${issueId}/upload`,
         ISSUE_FILES: (issueId) => `/api/storage/issues/${issueId}/files`,
         DOWNLOAD_FILE: (fileId) => `/api/storage/files/${fileId}/download`,

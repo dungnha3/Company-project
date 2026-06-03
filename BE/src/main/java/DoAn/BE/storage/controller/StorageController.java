@@ -1,5 +1,7 @@
 package DoAn.BE.storage.controller;
 
+import DoAn.BE.audit.entity.AuditLog;
+import DoAn.BE.audit.service.AuditLogService;
 import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.service.PermissionService;
 import DoAn.BE.company.entity.CompanyMember;
@@ -10,10 +12,13 @@ import DoAn.BE.project.entity.Project;
 import DoAn.BE.project.entity.Issue;
 import DoAn.BE.project.repository.ProjectRepository;
 import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.storage.dto.FileWithIssueDTO;
+import DoAn.BE.storage.dto.FolderNodeDTO;
 import DoAn.BE.storage.entity.FileEntity;
 import DoAn.BE.storage.repository.FileRepository;
 import DoAn.BE.storage.service.GoogleDriveIntegrationService;
 import DoAn.BE.user.entity.User;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,6 +27,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.HashMap;
@@ -42,6 +49,7 @@ public class StorageController {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final PermissionService permissionService;
+    private final AuditLogService auditLogService;
     private final String frontendUrl;
 
     public StorageController(
@@ -52,6 +60,7 @@ public class StorageController {
             CompanyRepository companyRepository,
             CompanyMemberRepository companyMemberRepository,
             PermissionService permissionService,
+            AuditLogService auditLogService,
             @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl) {
         this.driveService = driveService;
         this.fileRepository = fileRepository;
@@ -60,6 +69,7 @@ public class StorageController {
         this.companyRepository = companyRepository;
         this.companyMemberRepository = companyMemberRepository;
         this.permissionService = permissionService;
+        this.auditLogService = auditLogService;
         this.frontendUrl = frontendUrl;
     }
 
@@ -73,7 +83,7 @@ public class StorageController {
         if (companyId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        
+
         String url = driveService.getAuthorizationUrl(companyId);
         Map<String, String> response = new HashMap<>();
         response.put("url", url);
@@ -96,7 +106,7 @@ public class StorageController {
             return new RedirectView(frontendUrl + "/app/company/settings?drive_error=true&error_message=" + errMsg);
         }
     }
-    
+
     @DeleteMapping("/disconnect")
     public ResponseEntity<?> disconnectDrive() {
         Long companyId = TenantContext.getCompanyId();
@@ -113,10 +123,10 @@ public class StorageController {
         if (companyId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        
+
         Company company = companyRepository.findById(companyId).orElse(null);
         if (company == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        
+
         boolean isConnected = company.getSettings() != null && company.getSettings().getGoogleDriveAccessToken() != null;
         Map<String, Boolean> res = new HashMap<>();
         res.put("connected", isConnected);
@@ -202,7 +212,15 @@ public class StorageController {
                 }
             }
 
-            return ResponseEntity.ok(fileRepository.save(fileEntity));
+            FileEntity saved = fileRepository.save(fileEntity);
+
+            logStorageAction(user, "STORAGE_UPLOAD_FILE", saved.getId(),
+                    Map.of("fileName", saved.getFileName(), "size", saved.getFileSize(),
+                            "folder", saved.getFolder() == null ? "" : saved.getFolder(),
+                            "issueId", issueId == null ? "" : issueId.toString()),
+                    AuditLog.Severity.INFO);
+
+            return ResponseEntity.ok(saved);
         } catch (Exception e) {
             log.error("Error uploading project file for projectId={}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -303,7 +321,13 @@ public class StorageController {
                 }
             }
 
-            return ResponseEntity.ok(fileRepository.save(folderEntity));
+            FileEntity saved = fileRepository.save(folderEntity);
+
+            logStorageAction(user, "STORAGE_CREATE_FOLDER", saved.getId(),
+                    Map.of("folderName", name, "parentFolder", folder == null ? "" : folder),
+                    AuditLog.Severity.INFO);
+
+            return ResponseEntity.ok(saved);
         } catch (Exception e) {
             log.error("Error creating folder for projectId={}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -367,7 +391,7 @@ public class StorageController {
     }
 
     @GetMapping("/projects/{projectId}/files")
-    public ResponseEntity<List<FileEntity>> getProjectFiles(@PathVariable Long projectId, @AuthenticationPrincipal User user) {
+    public ResponseEntity<?> getProjectFiles(@PathVariable Long projectId, @AuthenticationPrincipal User user) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
@@ -376,7 +400,64 @@ public class StorageController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        return ResponseEntity.ok(fileRepository.findByProject_ProjectId(projectId));
+        CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
+                .orElse(null);
+        if (member == null || !permissionService.hasPermission(member, "STORAGE", "VIEW")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn không có quyền xem tệp tin"));
+        }
+
+        List<FileWithIssueDTO> result = fileRepository.findByProjectWithIssueGraph(projectId).stream()
+                .map(FileWithIssueDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Trả về cây folder ảo của project (chỉ các entry có contentType="folder"),
+     * dùng cho SubmitTaskModal chọn thư mục con khi nộp file.
+     */
+    @GetMapping("/projects/{projectId}/folder-tree")
+    public ResponseEntity<?> getProjectFolderTree(@PathVariable Long projectId, @AuthenticationPrincipal User user) {
+        Long companyId = TenantContext.getCompanyId();
+        if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        Project project = projectRepository.findById(projectId).orElse(null);
+        if (project == null || !project.getCompany().getCompanyId().equals(companyId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
+                .orElse(null);
+        if (member == null || !permissionService.hasPermission(member, "STORAGE", "VIEW")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn không có quyền xem thư mục"));
+        }
+
+        List<FileEntity> all = fileRepository.findByProjectWithIssueGraph(projectId);
+        // Build tree
+        FolderNodeDTO root = FolderNodeDTO.root();
+        Map<String, FolderNodeDTO> pathMap = new java.util.HashMap<>();
+        pathMap.put("", root);
+
+        for (FileEntity f : all) {
+            if (!"folder".equals(f.getContentType())) continue;
+            String folder = f.getFolder() == null ? "" : f.getFolder();
+            String parent = folder; // parent's path == this folder's `folder` field
+            FolderNodeDTO parentNode = pathMap.get(parent);
+            if (parentNode == null) {
+                // Parent not in map (DB inconsistency) — attach to root
+                parentNode = root;
+            }
+            FolderNodeDTO node = FolderNodeDTO.builder()
+                    .name(f.getFileName())
+                    .path(parent.isEmpty() ? f.getFileName() : parent + "/" + f.getFileName())
+                    .children(new java.util.ArrayList<>())
+                    .build();
+            parentNode.getChildren().add(node);
+            pathMap.put(node.getPath(), node);
+        }
+        return ResponseEntity.ok(root);
     }
 
     @GetMapping("/files/{fileId}/download")
@@ -385,12 +466,22 @@ public class StorageController {
             Long companyId = TenantContext.getCompanyId();
             if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
+            CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
+                    .orElse(null);
+            if (member == null || !permissionService.hasPermission(member, "STORAGE", "VIEW")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             FileEntity file = fileRepository.findById(fileId).orElseThrow();
             if (!file.getCompany().getCompanyId().equals(companyId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             byte[] data = driveService.downloadFile(companyId, file.getGoogleDriveFileId());
+
+            logStorageAction(user, "STORAGE_DOWNLOAD", file.getId(),
+                    Map.of("fileName", file.getFileName(), "fileSize", file.getFileSize() == null ? 0 : file.getFileSize()),
+                    AuditLog.Severity.INFO);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(file.getContentType() != null ? file.getContentType() : "application/octet-stream"));
@@ -429,7 +520,19 @@ public class StorageController {
                         .body(Map.of("message", "Bạn không có quyền xóa tệp tin"));
             }
 
-            if ("folder".equals(file.getContentType())) {
+            boolean isFolder = "folder".equals(file.getContentType());
+            boolean isOwner = file.getUploadedBy() != null
+                    && file.getUploadedBy().getUserId().equals(user.getUserId());
+            AuditLog.Severity severity = (isFolder || !isOwner) ? AuditLog.Severity.WARNING : AuditLog.Severity.INFO;
+
+            Map<String, Object> oldInfo = Map.of(
+                    "fileName", file.getFileName(),
+                    "contentType", file.getContentType() == null ? "" : file.getContentType(),
+                    "size", file.getFileSize() == null ? 0 : file.getFileSize(),
+                    "folder", file.getFolder() == null ? "" : file.getFolder()
+            );
+
+            if (isFolder) {
                 // Recursively delete all sub-files/sub-folders from Drive and DB
                 String folderPath = (file.getFolder() == null || file.getFolder().isEmpty())
                         ? file.getFileName()
@@ -462,6 +565,8 @@ public class StorageController {
             }
             fileRepository.delete(file);
 
+            logStorageAction(user, "STORAGE_DELETE", fileId, oldInfo, severity);
+
             return ResponseEntity.ok(Map.of("message", "Đã xóa thành công"));
         } catch (Exception e) {
             log.error("Error deleting file fileId={}: {}", fileId, e.getMessage(), e);
@@ -474,19 +579,21 @@ public class StorageController {
     // ISSUE FILE MANAGEMENT API
     // ==========================================
 
+    // #region DEBUG c47803 - uploadIssueFile
     @PostMapping("/issues/{issueId}/upload")
     public ResponseEntity<?> uploadIssueFile(
             @PathVariable Long issueId,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal User user) {
+        log.info("[DEBUG-c47803] uploadIssueFile START issueId={}, file={}, size={}", issueId, file.getOriginalFilename(), file.getSize());
         try {
             Long companyId = TenantContext.getCompanyId();
+            log.info("[DEBUG-c47803] uploadIssueFile companyId={}", companyId);
             if (companyId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("message", "Phiên đăng nhập không hợp lệ"));
             }
 
-            // Validate file (size, type)
             String fileError = validateFile(file);
             if (fileError != null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -495,18 +602,27 @@ public class StorageController {
 
             CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
                     .orElse(null);
+            log.info("[DEBUG-c47803] uploadIssueFile member={}, hasPermission={}", member != null ? member.getId() : null, member != null ? permissionService.hasPermission(member, "STORAGE", "UPLOAD") : null);
             if (member == null || !permissionService.hasPermission(member, "STORAGE", "UPLOAD")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "Bạn không có quyền tải lên tệp tin"));
             }
 
-            Issue issue = issueRepository.findById(issueId).orElse(null);
+            Issue issue = null;
+            try {
+                issue = issueRepository.findById(issueId).orElse(null);
+                log.info("[DEBUG-c47803] uploadIssueFile issue lookup: found={}", issue != null);
+            } catch (Exception ex) {
+                log.error("[DEBUG-c47803] uploadIssueFile issue lookup EX: {}", ex.getMessage(), ex);
+            }
             if (issue == null || !issue.getProject().getCompany().getCompanyId().equals(companyId)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("message", "Không tìm thấy nhiệm vụ"));
             }
 
+            log.info("[DEBUG-c47803] uploadIssueFile calling driveService.uploadFile...");
             String driveFileId = driveService.uploadFile(companyId, file);
+            log.info("[DEBUG-c47803] uploadIssueFile driveFileId={}", driveFileId);
 
             FileEntity fileEntity = new FileEntity();
             fileEntity.setFileName(file.getOriginalFilename());
@@ -514,34 +630,76 @@ public class StorageController {
             fileEntity.setFileSize(file.getSize());
             fileEntity.setContentType(file.getContentType());
             fileEntity.setIssue(issue);
+            fileEntity.setProject(issue.getProject());
             fileEntity.setUploadedBy(user);
-            fileEntity.setCompany(companyRepository.findById(companyId).orElseThrow());
+            log.info("[DEBUG-c47803] uploadIssueFile companyIdToSet={}", companyId);
+            fileEntity.setCompany(companyRepository.findById(companyId).orElseThrow(() -> new RuntimeException("Company not found: " + companyId)));
 
-            return ResponseEntity.ok(fileRepository.save(fileEntity));
+            log.info("[DEBUG-c47803] uploadIssueFile saving entity...");
+            FileEntity saved = fileRepository.save(fileEntity);
+            log.info("[DEBUG-c47803] uploadIssueFile SUCCESS savedId={}", saved.getId());
+
+            logStorageAction(user, "STORAGE_UPLOAD_ISSUE_FILE", saved.getId(),
+                    Map.of("fileName", saved.getFileName(),
+                            "size", saved.getFileSize() == null ? 0 : saved.getFileSize(),
+                            "issueId", String.valueOf(issueId),
+                            "projectId", String.valueOf(issue.getProject().getProjectId())),
+                    AuditLog.Severity.INFO);
+
+            return ResponseEntity.ok(saved);
         } catch (Exception e) {
-            log.error("Error uploading issue file issueId={}: {}", issueId, e.getMessage(), e);
+            log.error("[DEBUG-c47803] uploadIssueFile EXCEPTION: {} | {}", e.getClass().getName(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Không thể tải lên tệp tin: " + e.getMessage()));
         }
     }
+    // #endregion
 
+    // #region DEBUG c47803 - getIssueFiles
     @GetMapping("/issues/{issueId}/files")
-    public ResponseEntity<List<FileEntity>> getIssueFiles(@PathVariable Long issueId, @AuthenticationPrincipal User user) {
+    public ResponseEntity<?> getIssueFiles(@PathVariable Long issueId, @AuthenticationPrincipal User user) {
+        log.info("[DEBUG-c47803] getIssueFiles START issueId={}", issueId);
         Long companyId = TenantContext.getCompanyId();
-        if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (companyId == null) {
+            log.warn("[DEBUG-c47803] getIssueFiles FAIL: no companyId");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        Issue issue = issueRepository.findById(issueId).orElse(null);
+        // Dùng query có JOIN FETCH project+company để tránh LazyInitializationException
+        Issue issue = issueRepository.findByIdWithProjectAndCompany(issueId).orElse(null);
+        log.info("[DEBUG-c47803] getIssueFiles issue lookup: id={}, found={}, projectCompanyId={}",
+                issueId, issue != null, issue != null ? issue.getProject().getCompany().getCompanyId() : null);
+
         if (issue == null || !issue.getProject().getCompany().getCompanyId().equals(companyId)) {
+            log.warn("[DEBUG-c47803] getIssueFiles FAIL: issue not found or wrong company");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        return ResponseEntity.ok(fileRepository.findByIssue_IssueIdOrderByCreatedAtDesc(issueId));
+        CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
+                .orElse(null);
+        if (member == null || !permissionService.hasPermission(member, "STORAGE", "VIEW")) {
+            log.warn("[DEBUG-c47803] getIssueFiles FAIL: no permission");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        List<FileEntity> files = fileRepository.findByIssue_IssueIdOrderByCreatedAtDesc(issueId);
+        log.info("[DEBUG-c47803] getIssueFiles SUCCESS: found {} files for issueId={}", files.size(), issueId);
+
+        return ResponseEntity.ok(files);
     }
+    // #endregion
 
     @GetMapping("/files/{fileId}/metadata")
-    public ResponseEntity<FileEntity> getFileMetadata(@PathVariable Long fileId) {
+    public ResponseEntity<?> getFileMetadata(@PathVariable Long fileId, @AuthenticationPrincipal User user) {
         Long companyId = TenantContext.getCompanyId();
         if (companyId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        CompanyMember member = companyMemberRepository.findActiveMemberWithRoles(user.getUserId(), companyId)
+                .orElse(null);
+        if (member == null || !permissionService.hasPermission(member, "STORAGE", "VIEW")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         FileEntity file = fileRepository.findById(fileId).orElse(null);
         if (file == null || !file.getCompany().getCompanyId().equals(companyId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -601,5 +759,47 @@ public class StorageController {
             }
         }
         return null;
+    }
+
+    /**
+     * Ghi audit log cho thao tác storage. Best-effort, lỗi log không làm fail request.
+     */
+    private void logStorageAction(User user, String action, Long entityId,
+                                  Object newValue, AuditLog.Severity severity) {
+        try {
+            HttpServletRequest req = currentRequest();
+            String ip = req != null ? extractClientIp(req) : null;
+            String ua = req != null ? req.getHeader("User-Agent") : null;
+            auditLogService.logAction(
+                    user != null ? user.getUserId() : null,
+                    action,
+                    action.startsWith("STORAGE_CREATE_FOLDER") ? "FOLDER" : "FILE",
+                    entityId,
+                    null,
+                    newValue,
+                    severity,
+                    ip,
+                    ua);
+        } catch (Exception e) {
+            log.warn("Failed to write storage audit log: {}", e.getMessage());
+        }
+    }
+
+    private HttpServletRequest currentRequest() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes)
+                    RequestContextHolder.currentRequestAttributes();
+            return attrs.getRequest();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String extractClientIp(HttpServletRequest req) {
+        String h = req.getHeader("X-Forwarded-For");
+        if (h != null && !h.isEmpty()) {
+            return h.split(",")[0].trim();
+        }
+        return req.getRemoteAddr();
     }
 }

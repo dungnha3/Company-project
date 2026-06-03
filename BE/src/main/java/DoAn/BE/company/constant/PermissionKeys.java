@@ -46,4 +46,10 @@ public class PermissionKeys {
     // WORKSPACE GROUP
     public static final String WORKSPACE_MANAGE_MEMBERS = "WORKSPACE.MANAGE_MEMBERS"; // Mời, xóa thành viên
     public static final String WORKSPACE_MANAGE_REQUESTS = "WORKSPACE.MANAGE_REQUESTS"; // Duyệt yêu cầu gia nhập
+
+    // STORAGE GROUP
+    public static final String STORAGE_VIEW = "STORAGE.VIEW";
+    public static final String STORAGE_UPLOAD = "STORAGE.UPLOAD";
+    public static final String STORAGE_DELETE = "STORAGE.DELETE";
+    public static final String STORAGE_MANAGE_ALL = "STORAGE.MANAGE_ALL";
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -46,6 +46,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
     const [uploadingFiles, setUploadingFiles] = useState([]); // { id, name, size, progress, error }
     const [dragOver, setDragOver] = useState(false);
     const [driveConnected, setDriveConnected] = useState(null);
+    const [selectedFolder, setSelectedFolder] = useState(''); // path ảo, "" = gốc
 
     const statusNameToId = {};
     const statusMapByName = {};
@@ -82,16 +83,45 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
 
     const allFiles = [...existingFiles, ...attachedFiles.filter(f => f._pending)];
 
-    // Upload single file
+    // Fetch folder tree of the project for storage-location selection
+    const { data: folderTree } = useQuery({
+        queryKey: ['project-folder-tree', issue?.projectId],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.STORAGE.PROJECT_FOLDER_TREE(issue.projectId));
+            return res.data;
+        },
+        enabled: !!issue?.projectId,
+        staleTime: 60000,
+    });
+
+    // Flatten folder tree to a list of options (path → label)
+    const folderOptions = useMemo(() => {
+        const options = [{ path: '', label: '/ (Gốc dự án)' }];
+        const walk = (node, prefix) => {
+            if (!node || !node.children) return;
+            for (const c of node.children) {
+                const label = prefix ? `${prefix}/${c.name}` : `/${c.name}`;
+                options.push({ path: c.path, label });
+                walk(c, label);
+            }
+        };
+        if (folderTree) walk(folderTree, '');
+        return options;
+    }, [folderTree]);
+
+    // Upload single file (lưu vào project storage, vẫn liên kết với issue)
     const uploadFileMutation = useMutation({
-        mutationFn: async (file) => {
+        mutationFn: async (fileObj) => {
             const formData = new FormData();
-            formData.append('file', file);
-            const res = await apiClient.post(
-                ENDPOINTS.STORAGE.UPLOAD_ISSUE_FILE(issue.issueId),
-                formData,
-                { headers: { 'Content-Type': 'multipart/form-data' } }
-            );
+            formData.append('file', fileObj.file);
+            const params = new URLSearchParams();
+            if (selectedFolder) params.append('folder', selectedFolder);
+            params.append('issueId', String(issue.issueId));
+            const url = ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(issue.projectId)
+                + (params.toString() ? `?${params.toString()}` : '');
+            const res = await apiClient.post(url, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             return res.data;
         },
         onSuccess: (data) => {
@@ -101,6 +131,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                 data
             ]);
             queryClient.invalidateQueries(['issue-files', issue.issueId]);
+            queryClient.invalidateQueries(['projectFiles', issue.projectId]);
             showToast(`Đã upload ${data.fileName}`, 'success');
         },
         onError: (err) => {
@@ -115,6 +146,7 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries(['issue-files', issue.issueId]);
+            queryClient.invalidateQueries(['projectFiles', issue.projectId]);
             setAttachedFiles(prev => prev.filter(f => f.id !== fileId && f._pending));
         },
         onError: () => showToast('Không thể xóa file', 'error')
@@ -130,9 +162,12 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
             if (pendingFiles.length > 0) {
                 for (const pf of pendingFiles) {
                     const formData = new FormData();
-                    formData.append('file', pf);
+                    formData.append('file', pf.file);
+                    const params = new URLSearchParams();
+                    params.append('issueId', String(issue.issueId));
+                    if (selectedFolder) params.append('folder', selectedFolder);
                     await apiClient.post(
-                        ENDPOINTS.STORAGE.UPLOAD_ISSUE_FILE(issue.issueId),
+                        `${ENDPOINTS.STORAGE.UPLOAD_PROJECT_FILE(issue.projectId)}?${params.toString()}`,
                         formData,
                         { headers: { 'Content-Type': 'multipart/form-data' } }
                     );
@@ -194,7 +229,10 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                 continue;
             }
             validFiles.push({
-                ...file,
+                file: file,
+                name: file.name,
+                size: file.size,
+                type: file.type,
                 id: `temp-${Date.now()}-${Math.random()}`,
                 _pending: true,
                 googleDriveFileId: `temp-${Date.now()}`,
@@ -285,6 +323,27 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                             File đính kèm
                             <span className="text-gray-400 font-normal ml-1">(tối đa 50MB/file)</span>
                         </label>
+
+                        {/* Folder selector */}
+                        {issue?.projectId && (
+                            <div className="mb-3 flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+                                <i className="fa-solid fa-folder-tree text-amber-500 text-sm" />
+                                <label className="text-xs font-semibold text-gray-600 shrink-0">
+                                    Lưu vào thư mục:
+                                </label>
+                                <select
+                                    value={selectedFolder}
+                                    onChange={e => setSelectedFolder(e.target.value)}
+                                    className="flex-1 px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                                >
+                                    {folderOptions.map(opt => (
+                                        <option key={opt.path || '__root__'} value={opt.path}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         {/* Drop zone */}
                         <div

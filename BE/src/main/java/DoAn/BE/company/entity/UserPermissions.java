@@ -60,6 +60,11 @@ public class UserPermissions implements Serializable {
     private boolean workspaceManageMembers = false; // Mời/xóa thành viên
     private boolean workspaceManageRequests = false; // Duyệt yêu cầu gia nhập
 
+    // ===== NHÓM STORAGE =====
+    private boolean storageView = true;       // Xem danh sách file + tải xuống
+    private boolean storageUpload = false;    // Upload file + tạo folder
+    private boolean storageDelete = false;    // Xóa file/folder
+    private boolean storageManageAll = false; // Đổi quyền/quota, ngắt kết nối Drive
 
     public static UserPermissions defaultFor(CompanyRole role) {
         UserPermissions p = new UserPermissions();
@@ -102,6 +107,11 @@ public class UserPermissions implements Serializable {
             // Workspace
             p.setWorkspaceManageMembers(true);
             p.setWorkspaceManageRequests(true);
+            // Storage
+            p.setStorageView(true);
+            p.setStorageUpload(true);
+            p.setStorageDelete(true);
+            p.setStorageManageAll(true);
         }
         return p;
     }
@@ -147,6 +157,11 @@ public class UserPermissions implements Serializable {
         // Workspace
         copy.workspaceManageMembers = this.workspaceManageMembers;
         copy.workspaceManageRequests = this.workspaceManageRequests;
+        // Storage
+        copy.storageView = this.storageView;
+        copy.storageUpload = this.storageUpload;
+        copy.storageDelete = this.storageDelete;
+        copy.storageManageAll = this.storageManageAll;
         return copy;
     }
 
@@ -206,5 +221,12 @@ public class UserPermissions implements Serializable {
     public void applyWorkspaceTemplate(boolean enabled) {
         this.workspaceManageMembers = enabled;
         this.workspaceManageRequests = enabled;
+    }
+
+    public void applyStorageTemplate(boolean enabled) {
+        this.storageView = enabled;
+        this.storageUpload = enabled;
+        this.storageDelete = enabled;
+        this.storageManageAll = enabled;
     }
 }

@@ -13,10 +13,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+// #region DEBUG c47803
+// #endregion
+
 @Repository
 public interface IssueRepository extends JpaRepository<Issue, Long> {
 
-        // ==================== FETCH WITH RELATIONS (Optimized - No N+1)
+    // #region DEBUG c47803
+    /**
+     * Fetch issue với project + company để kiểm tra quyền truy cập
+     * (tránh LazyInitializationException khi gọi issue.getProject().getCompany())
+     */
+    @Query("SELECT i FROM Issue i JOIN FETCH i.project p JOIN FETCH p.company WHERE i.issueId = :issueId")
+    Optional<Issue> findByIdWithProjectAndCompany(@Param("issueId") Long issueId);
+    // #endregion
         // ====================
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee", "phase" })
         Optional<Issue> findWithRelationsByIssueId(Long issueId);

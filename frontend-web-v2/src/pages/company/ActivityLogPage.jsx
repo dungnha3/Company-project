@@ -10,6 +10,7 @@ const ACTIVITY_TYPES = {
     all: { label: 'Tất cả', icon: 'fa-list' },
     member: { label: 'Thành viên', icon: 'fa-users' },
     project: { label: 'Dự án', icon: 'fa-folder' },
+    storage: { label: 'Lưu trữ', icon: 'fa-hard-drive' },
     settings: { label: 'Cài đặt', icon: 'fa-cog' },
     billing: { label: 'Thanh toán', icon: 'fa-credit-card' },
     security: { label: 'Bảo mật', icon: 'fa-shield-alt' },
@@ -30,16 +31,21 @@ export default function ActivityLogPage() {
         queryFn: async () => {
             const params = { page, size: 20 };
 
-            // Map filters to API params
-            if (filter !== 'all') params.type = filter.toUpperCase();
-            if (searchQuery) params.search = searchQuery;
-
             // Date range calculation
             const now = new Date();
             if (dateRange === '7d') params.after = new Date(now - 7 * 86400000).toISOString();
             if (dateRange === '30d') params.after = new Date(now - 30 * 86400000).toISOString();
             if (dateRange === '90d') params.after = new Date(now - 90 * 86400000).toISOString();
 
+            // STORAGE filter: use dedicated endpoint
+            if (filter === 'storage') {
+                const res = await apiClient.get(ENDPOINTS.AUDIT.STORAGE, { params });
+                return res.data;
+            }
+
+            // Other filters: use main endpoint with type param
+            if (filter !== 'all') params.type = filter.toUpperCase();
+            if (searchQuery) params.search = searchQuery;
             return (await apiClient.get(ENDPOINTS.AUDIT.LIST, { params })).data;
         },
         enabled: !!currentWorkspace?.id,
@@ -60,7 +66,7 @@ export default function ActivityLogPage() {
             ip: log.ipAddress,
             time: new Date(log.createdAt),
             icon: config.icon,
-            color: typeKey === 'security' ? 'red' : typeKey === 'billing' ? 'green' : 'blue'
+            color: typeKey === 'security' ? 'red' : typeKey === 'billing' ? 'green' : typeKey === 'storage' ? 'indigo' : 'blue'
         };
     });
 

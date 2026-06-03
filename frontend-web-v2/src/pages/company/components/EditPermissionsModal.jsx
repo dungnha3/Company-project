@@ -5,7 +5,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useToast } from '@app/providers/ToastProvider';
 
-const PERMISSION_MODULES = ['HR', 'REVIEW', 'PROJECT', 'TIMETRACKING', 'ANALYTICS', 'CALENDAR', 'WORKSPACE'];
+const PERMISSION_MODULES = ['HR', 'REVIEW', 'PROJECT', 'TIMETRACKING', 'STORAGE', 'ANALYTICS', 'CALENDAR', 'WORKSPACE'];
 
 export default function EditPermissionsModal({ isOpen, onClose, member }) {
     const { currentWorkspace } = useWorkspaceStore();
@@ -316,6 +316,7 @@ const MODULE_LABELS = {
     REVIEW: 'Đánh giá hiệu suất',
     PROJECT: 'Dự án & Công việc',
     TIMETRACKING: 'Chấm công & Nghỉ phép',
+    STORAGE: 'Lưu trữ tài liệu',
     ANALYTICS: 'Phân tích',
     CALENDAR: 'Lịch & Sự kiện',
     WORKSPACE: 'Quản trị Workspace',
@@ -326,6 +327,7 @@ const MODULE_ICONS = {
     REVIEW: 'fa-chart-line',
     PROJECT: 'fa-diagram-project',
     TIMETRACKING: 'fa-clock',
+    STORAGE: 'fa-hard-drive',
     ANALYTICS: 'fa-chart-bar',
     CALENDAR: 'fa-calendar',
     WORKSPACE: 'fa-gear',
@@ -336,6 +338,7 @@ const MODULE_COLORS = {
     REVIEW: 'bg-emerald-500',
     PROJECT: 'bg-blue-500',
     TIMETRACKING: 'bg-amber-500',
+    STORAGE: 'bg-blue-600',
     ANALYTICS: 'bg-rose-500',
     CALENDAR: 'bg-cyan-500',
     WORKSPACE: 'bg-gray-500',
@@ -372,6 +375,12 @@ const MODULE_PERMISSION_MAP = {
         { jsonKey: 'timetrackingViewAll', apiKey: 'TIMETRACKING.VIEW_ALL', label: 'Xem Time log của mọi người' },
         { jsonKey: 'leaveApprove', apiKey: 'LEAVE.APPROVE', label: 'Duyệt đơn xin nghỉ' },
         { jsonKey: 'leaveViewAll', apiKey: 'LEAVE.VIEW_ALL', label: 'Xem toàn bộ đơn xin nghỉ' },
+    ],
+    STORAGE: [
+        { jsonKey: 'storageView', apiKey: 'STORAGE.VIEW', label: 'Xem danh sách file & tải xuống' },
+        { jsonKey: 'storageUpload', apiKey: 'STORAGE.UPLOAD', label: 'Upload file & tạo thư mục' },
+        { jsonKey: 'storageDelete', apiKey: 'STORAGE.DELETE', label: 'Xóa file / thư mục' },
+        { jsonKey: 'storageManageAll', apiKey: 'STORAGE.MANAGE_ALL', label: 'Quản lý lưu trữ (ngắt Drive)' },
     ],
     ANALYTICS: [
         { jsonKey: 'analyticsView', apiKey: 'ANALYTICS.VIEW', label: 'Xem Analytics' },
@@ -449,6 +458,10 @@ const PERMISSION_GROUPS = [
             { jsonKey: 'analyticsView', apiKey: 'ANALYTICS.VIEW', label: 'Xem Analytics' },
             { jsonKey: 'calendarView', apiKey: 'CALENDAR.VIEW', label: 'Xem Lịch chung' },
             { jsonKey: 'calendarManage', apiKey: 'CALENDAR.MANAGE', label: 'Quản lý sự kiện Lịch' },
+            { jsonKey: 'storageView', apiKey: 'STORAGE.VIEW', label: 'Xem & tải file' },
+            { jsonKey: 'storageUpload', apiKey: 'STORAGE.UPLOAD', label: 'Upload file & tạo thư mục' },
+            { jsonKey: 'storageDelete', apiKey: 'STORAGE.DELETE', label: 'Xóa file' },
+            { jsonKey: 'storageManageAll', apiKey: 'STORAGE.MANAGE_ALL', label: 'Quản lý lưu trữ' },
         ]
     },
 ];
@@ -490,6 +503,10 @@ const ROLE_PRESETS = [
             calendarManage: false,
             workspaceManageMembers: false,
             workspaceManageRequests: false,
+            storageView: true,
+            storageUpload: true,
+            storageDelete: false,
+            storageManageAll: false,
         }
     },
     {
@@ -528,6 +545,10 @@ const ROLE_PRESETS = [
             calendarManage: true,
             workspaceManageMembers: false,
             workspaceManageRequests: false,
+            storageView: true,
+            storageUpload: true,
+            storageDelete: true,
+            storageManageAll: false,
         }
     },
     {
@@ -566,6 +587,10 @@ const ROLE_PRESETS = [
             calendarManage: false,
             workspaceManageMembers: false,
             workspaceManageRequests: false,
+            storageView: true,
+            storageUpload: false,
+            storageDelete: false,
+            storageManageAll: false,
         }
     },
     {
@@ -604,6 +629,10 @@ const ROLE_PRESETS = [
             calendarManage: false,
             workspaceManageMembers: false,
             workspaceManageRequests: false,
+            storageView: true,
+            storageUpload: false,
+            storageDelete: false,
+            storageManageAll: false,
         }
     },
 ];

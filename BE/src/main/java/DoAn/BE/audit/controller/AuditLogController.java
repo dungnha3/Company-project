@@ -63,4 +63,14 @@ public class AuditLogController {
         return ResponseEntity.ok(logs);
     }
 
+    // GET /api/audit-logs/storage
+    @GetMapping("/storage")
+    public ResponseEntity<Page<AuditLogDTO>> getStorageLogs(
+            @RequestParam(required = false) java.time.LocalDateTime after,
+            Pageable pageable) {
+        accessControlService.checkCompanyAdminPermission();
+        Page<AuditLogDTO> logs = auditLogService.getStorageLogs(after, pageable).map(AuditLogDTO::fromEntity);
+        return ResponseEntity.ok(logs);
+    }
+
 }

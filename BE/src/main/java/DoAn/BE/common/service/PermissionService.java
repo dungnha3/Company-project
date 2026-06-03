@@ -112,6 +112,16 @@ public class PermissionService {
             case "CALENDAR.MANAGE":
                 return p.isCalendarManage();
 
+            // Storage
+            case "STORAGE.VIEW":
+                return p.isStorageView();
+            case "STORAGE.UPLOAD":
+                return p.isStorageUpload();
+            case "STORAGE.DELETE":
+                return p.isStorageDelete();
+            case "STORAGE.MANAGE_ALL":
+                return p.isStorageManageAll();
+
             default:
                 return null;
         }
@@ -123,17 +133,21 @@ public class PermissionService {
      * EMPLOYEE: xem project cá nhân, chat, calendar, storage cơ bản
      */
     private boolean hasRoleBasedDefaultPermission(CompanyMember member, String feature, String action) {
-        // All roles → basic chat, calendar, storage access
+        // All roles → basic chat, calendar, storage view
         switch (feature + "." + action) {
             case "CHAT.SEND_MESSAGE":
             case "CHAT.SHARE_FILE":
             case "CALENDAR.VIEW":
-            case "STORAGE.UPLOAD":
-            case "STORAGE.DELETE":
+            case "STORAGE.VIEW":
             case "TIMETRACKING.LOG":
                 return true;
             // PROJECT.VIEW: tất cả thành viên đều có thể xem projects mà họ tham gia
             case "PROJECT.VIEW":
+                return true;
+            // Storage upload/delete: mặc định true để không phá vỡ UX hiện tại
+            // Admin có thể tắt bằng explicit permission trong DB
+            case "STORAGE.UPLOAD":
+            case "STORAGE.DELETE":
                 return true;
         }
 

@@ -47,7 +47,6 @@ const PERMISSION_GROUPS = [
         icon: 'fa-sliders',
         permissions: [
             { key: 'chatCreateGroup', label: 'Tạo nhóm chat' },
-            { key: 'storageUpload', label: 'Tải lên tài liệu' },
         ]
     }
 ];

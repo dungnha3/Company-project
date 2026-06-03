@@ -239,6 +239,11 @@ public class CompanyMemberService {
             // Workspace
             case PermissionKeys.WORKSPACE_MANAGE_MEMBERS -> p.setWorkspaceManageMembers(value);
             case PermissionKeys.WORKSPACE_MANAGE_REQUESTS -> p.setWorkspaceManageRequests(value);
+            // Storage
+            case PermissionKeys.STORAGE_VIEW -> p.setStorageView(value);
+            case PermissionKeys.STORAGE_UPLOAD -> p.setStorageUpload(value);
+            case PermissionKeys.STORAGE_DELETE -> p.setStorageDelete(value);
+            case PermissionKeys.STORAGE_MANAGE_ALL -> p.setStorageManageAll(value);
 
             default -> throw new BadRequestException("Mã quyền không tồn tại: " + key);
         }
@@ -271,6 +276,7 @@ public class CompanyMemberService {
             case "ANALYTICS" -> perms.applyAnalyticsTemplate(enabled);
             case "CALENDAR" -> perms.applyCalendarTemplate(enabled);
             case "WORKSPACE" -> perms.applyWorkspaceTemplate(enabled);
+            case "STORAGE" -> perms.applyStorageTemplate(enabled);
 
             default -> throw new BadRequestException("Module không tồn tại: " + module);
         }

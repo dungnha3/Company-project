@@ -24,6 +24,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Page<AuditLog> findByAction(String action, Pageable pageable);
 
     @EntityGraph(attributePaths = { "actor", "targetUser" })
+    Page<AuditLog> findByActionStartingWith(String prefix, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "actor", "targetUser" })
+    Page<AuditLog> findByActionStartingWithAndCreatedAtAfter(String prefix,
+            java.time.LocalDateTime after, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "actor", "targetUser" })
+    Page<AuditLog> findByEntityType(String entityType, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "actor", "targetUser" })
     Page<AuditLog> findBySeverity(AuditLog.Severity severity, Pageable pageable);
 
     @EntityGraph(attributePaths = { "actor", "targetUser" })
