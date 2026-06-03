@@ -8,6 +8,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import DoAn.BE.user.entity.User;
+import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -54,6 +56,18 @@ public class ExportController {
         Long companyId = accessControlService.getCurrentCompanyId();
         byte[] data = exportService.exportTimeLogsExcel(companyId, month, year);
         String filename = "ChamCong_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
+        return buildExcelResponse(data, filename);
+    }
+
+    @GetMapping("/projects/{projectId}/issues/excel")
+    public ResponseEntity<byte[]> exportProjectIssuesExcel(
+            @PathVariable Long projectId) throws IOException {
+        User user = accessControlService.getCurrentUser();
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        byte[] data = exportService.exportProjectIssuesExcel(projectId, user.getUserId());
+        String filename = "CongViec_Project_" + projectId + "_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
         return buildExcelResponse(data, filename);
     }
 

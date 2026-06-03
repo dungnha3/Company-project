@@ -16,6 +16,17 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import DoAn.BE.project.entity.Issue;
+import DoAn.BE.project.entity.Project;
+import DoAn.BE.project.entity.ProjectMember;
+import DoAn.BE.project.entity.IssueStatus;
+import DoAn.BE.project.repository.ProjectRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
+import DoAn.BE.project.repository.IssueStatusRepository;
+import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.common.exception.ForbiddenException;
+import DoAn.BE.common.exception.ResourceNotFoundException;
+import java.time.LocalDateTime;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -34,6 +45,10 @@ public class ImportService {
     private final ReviewRepository reviewRepository;
     private final TimeLogRepository timeLogRepository;
     private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final IssueStatusRepository issueStatusRepository;
+    private final IssueRepository issueRepository;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter[] DATE_FMTS = {
@@ -770,5 +785,244 @@ public class ImportService {
         User user = userRepository.findByEmail(email.trim()).orElse(null);
         if (user == null) return null;
         return employeeRepository.findByUser_UserIdAndCompany_CompanyId(user.getUserId(), companyId).orElse(null);
+    }
+
+    // ========== PROJECT ISSUES IMPORT ==========
+
+    public record IssueImportResult(
+            int successCount,
+            int errorCount,
+            List<String> errors
+    ) {}
+
+    public IssueImportResult importIssuesExcel(MultipartFile file, Long projectId, Long userId) throws IOException {
+        List<String> errors = new ArrayList<>();
+        int successCount = 0;
+        int errorCount = 0;
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+        
+        ProjectMember currentMember = projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
+                .orElseThrow(() -> new ForbiddenException("Bạn không có quyền truy cập dự án này"));
+
+        if (!currentMember.canManageProject() && !currentUserHasAdminRole(userId)) {
+            throw new ForbiddenException("Bạn không có quyền quản lý dự án này để nhập công việc");
+        }
+
+        User reporter = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người tạo"));
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) {
+                errors.add("Sheet not found in Excel file");
+                return new IssueImportResult(0, 1, errors);
+            }
+
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) {
+                errors.add("Header row not found");
+                return new IssueImportResult(0, 1, errors);
+            }
+
+            Map<String, Integer> headerMap = new HashMap<>();
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                Cell cell = headerRow.getCell(i);
+                if (cell != null) {
+                    headerMap.put(getCellStringValue(cell).toLowerCase().trim(), i);
+                }
+            }
+
+            Integer titleIdx = headerMap.get("tiêu đề");
+            if (titleIdx == null) titleIdx = headerMap.get("title");
+            Integer descIdx = headerMap.get("mô tả");
+            if (descIdx == null) descIdx = headerMap.get("description");
+            Integer statusIdx = headerMap.get("trạng thái");
+            if (statusIdx == null) statusIdx = headerMap.get("status");
+            Integer priorityIdx = headerMap.get("độ ưu tiên");
+            if (priorityIdx == null) priorityIdx = headerMap.get("priority");
+            Integer typeIdx = headerMap.get("loại");
+            if (typeIdx == null) typeIdx = headerMap.get("type");
+            Integer assigneeIdx = headerMap.get("người thực hiện (email)");
+            if (assigneeIdx == null) assigneeIdx = headerMap.get("người thực hiện");
+            if (assigneeIdx == null) assigneeIdx = headerMap.get("assignee");
+            Integer estIdx = headerMap.get("giờ ước lượng");
+            if (estIdx == null) estIdx = headerMap.get("estimated_hours");
+            Integer startIdx = headerMap.get("ngày bắt đầu");
+            if (startIdx == null) startIdx = headerMap.get("start_date");
+            Integer dueIdx = headerMap.get("ngày hết hạn");
+            if (dueIdx == null) dueIdx = headerMap.get("due_date");
+            Integer weightIdx = headerMap.get("trọng số");
+            if (weightIdx == null) weightIdx = headerMap.get("weight");
+            Integer impIdx = headerMap.get("quan trọng");
+            if (impIdx == null) impIdx = headerMap.get("is_important");
+            Integer urgIdx = headerMap.get("khẩn cấp");
+            if (urgIdx == null) urgIdx = headerMap.get("is_urgent");
+
+            if (titleIdx == null) {
+                errors.add("Không tìm thấy cột 'Tiêu đề' trong file Excel");
+                return new IssueImportResult(0, 1, errors);
+            }
+
+            Long maxNumber = issueRepository.findMaxIssueNumberByProjectId(projectId);
+            long nextNumber = (maxNumber != null ? maxNumber : 0) + 1;
+
+            for (int rowNum = 1; rowNum <= sheet.getLastRowNum(); rowNum++) {
+                Row row = sheet.getRow(rowNum);
+                if (row == null || isRowEmpty(row)) continue;
+
+                try {
+                    String title = getCellStringValue(row.getCell(titleIdx));
+                    if (title == null || title.isBlank()) {
+                        errors.add("Dòng " + (rowNum + 1) + ": Tiêu đề không được để trống");
+                        errorCount++;
+                        continue;
+                    }
+
+                    Issue issue = new Issue();
+                    issue.setProject(project);
+                    issue.setReporter(reporter);
+                    issue.setTitle(title.trim());
+                    issue.setIssueKey(String.format("%s-%d", project.getKeyProject(), nextNumber++));
+
+                    if (descIdx != null) {
+                        issue.setDescription(getCellStringValue(row.getCell(descIdx)));
+                    }
+
+                    // Status
+                    IssueStatus status = null;
+                    if (statusIdx != null) {
+                       String statusStr = getCellStringValue(row.getCell(statusIdx));
+                       if (statusStr != null && !statusStr.isBlank()) {
+                           status = issueStatusRepository.findByNameIgnoreCase(statusStr.trim()).orElse(null);
+                       }
+                    }
+                    if (status == null) {
+                        status = issueStatusRepository.findDefaultTodoStatus()
+                               .orElseGet(() -> issueStatusRepository.findFirstByOrderByOrderIndexAsc().orElse(null));
+                    }
+                    issue.setIssueStatus(status);
+                    if (status != null && ("In Progress".equalsIgnoreCase(status.getName()) || "Đang thực hiện".equalsIgnoreCase(status.getName()))) {
+                        issue.setInProgressAt(LocalDateTime.now());
+                    }
+
+                    // Priority
+                    Issue.Priority priority = Issue.Priority.MEDIUM;
+                    if (priorityIdx != null) {
+                        String pStr = getCellStringValue(row.getCell(priorityIdx));
+                        if (pStr != null && !pStr.isBlank()) {
+                            try {
+                                priority = Issue.Priority.valueOf(pStr.trim().toUpperCase());
+                            } catch (IllegalArgumentException ignored) {}
+                        }
+                    }
+                    issue.setPriority(priority);
+
+                    // Issue Type
+                    Issue.IssueType type = Issue.IssueType.TASK;
+                    if (typeIdx != null) {
+                        String tStr = getCellStringValue(row.getCell(typeIdx));
+                        if (tStr != null && !tStr.isBlank()) {
+                            try {
+                                type = Issue.IssueType.valueOf(tStr.trim().toUpperCase());
+                            } catch (IllegalArgumentException ignored) {}
+                        }
+                    }
+                    issue.setIssueType(type);
+
+                    // Assignee
+                    if (assigneeIdx != null) {
+                        String email = getCellStringValue(row.getCell(assigneeIdx));
+                        if (email != null && !email.isBlank()) {
+                            User assignee = userRepository.findByEmail(email.trim()).orElse(null);
+                            if (assignee == null) {
+                                errors.add("Dòng " + (rowNum + 1) + ": Không tìm thấy người dùng có email '" + email + "'");
+                                errorCount++;
+                                continue;
+                            }
+                            Optional<ProjectMember> memberOpt = projectMemberRepository
+                                    .findByProject_ProjectIdAndUser_UserId(projectId, assignee.getUserId());
+                            if (memberOpt.isEmpty()) {
+                                errors.add("Dòng " + (rowNum + 1) + ": Người dùng có email '" + email + "' không phải là thành viên dự án");
+                                errorCount++;
+                                continue;
+                            }
+                            issue.setAssignee(assignee);
+                        }
+                    }
+
+                    // Estimated hours
+                    if (estIdx != null) {
+                        String estStr = getCellStringValue(row.getCell(estIdx));
+                        if (estStr != null && !estStr.isBlank()) {
+                            try {
+                                issue.setEstimatedHours(new BigDecimal(estStr.trim().replace(",", "")));
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+
+                    // Start date & Due date
+                    if (startIdx != null) {
+                        String startStr = getCellStringValue(row.getCell(startIdx));
+                        if (startStr != null && !startStr.isBlank()) {
+                            issue.setStartDate(parseDate(startStr));
+                        }
+                    }
+                    if (dueIdx != null) {
+                        String dueStr = getCellStringValue(row.getCell(dueIdx));
+                        if (dueStr != null && !dueStr.isBlank()) {
+                            issue.setDueDate(parseDate(dueStr));
+                        }
+                    }
+
+                    // Weight
+                    if (weightIdx != null) {
+                        String wStr = getCellStringValue(row.getCell(weightIdx));
+                        if (wStr != null && !wStr.isBlank()) {
+                            try {
+                                issue.setWeight(Integer.parseInt(wStr.trim()));
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+
+                    // Eisenhower flags
+                    boolean isImportant = false;
+                    if (impIdx != null) {
+                        String impStr = getCellStringValue(row.getCell(impIdx));
+                        if (impStr != null) {
+                            String clean = impStr.trim().toLowerCase();
+                            isImportant = clean.equals("có") || clean.equals("yes") || clean.equals("true") || clean.equals("1");
+                        }
+                    }
+                    issue.setIsImportant(isImportant);
+
+                    boolean isUrgent = false;
+                    if (urgIdx != null) {
+                        String urgStr = getCellStringValue(row.getCell(urgIdx));
+                        if (urgStr != null) {
+                            String clean = urgStr.trim().toLowerCase();
+                            isUrgent = clean.equals("có") || clean.equals("yes") || clean.equals("true") || clean.equals("1");
+                        }
+                    }
+                    issue.setIsUrgent(isUrgent);
+
+                    issueRepository.save(issue);
+                    successCount++;
+
+                } catch (Exception e) {
+                    errors.add("Dòng " + (rowNum + 1) + ": " + e.getMessage());
+                    errorCount++;
+                }
+            }
+        }
+
+        return new IssueImportResult(successCount, errorCount, errors);
+    }
+
+    private boolean currentUserHasAdminRole(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::isSystemAdminAccount)
+                .orElse(false);
     }
 }

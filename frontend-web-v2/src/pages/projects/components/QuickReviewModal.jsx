@@ -12,8 +12,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
     const { hasPermission } = useAccessControl();
     
     const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
-    const canCreateReview = hasPermission('REVIEW.CREATE');
-    const canSubmit = canManageIssues && canCreateReview;
+    const canSubmit = canManageIssues;
 
     const [form, setForm] = useState({
         performanceScore: 7,
@@ -103,13 +102,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         </div>
 
                         {/* Permission Warning */}
-                        {!canCreateReview && (
-                            <div className="bg-red-50 text-red-750 p-3 rounded-lg text-xs border border-red-150 flex items-start gap-2.5">
-                                <i className="fa-solid fa-triangle-exclamation text-sm shrink-0 mt-0.5" />
-                                <span>Bạn không có quyền <strong>Tạo đánh giá nhân viên (REVIEW.CREATE)</strong>. Vui lòng liên hệ Quản trị viên để được phân quyền.</span>
-                            </div>
-                        )}
-                        {!canManageIssues && canCreateReview && (
+                        {!canManageIssues && (
                             <div className="bg-red-50 text-red-755 p-3 rounded-lg text-xs border border-red-150 flex items-start gap-2.5">
                                 <i className="fa-solid fa-triangle-exclamation text-sm shrink-0 mt-0.5" />
                                 <span>Bạn không có quyền <strong>Quản lý công việc (PROJECT.MANAGE_ISSUES)</strong> trong dự án này.</span>

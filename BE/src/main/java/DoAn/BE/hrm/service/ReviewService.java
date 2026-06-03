@@ -17,6 +17,8 @@ import DoAn.BE.project.entity.IssueStatus;
 import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.user.entity.User;
+import DoAn.BE.project.entity.ProjectMember;
+import DoAn.BE.project.repository.ProjectMemberRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,7 @@ public class ReviewService {
     private final IssueStatusRepository issueStatusRepository;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final ProjectMemberRepository projectMemberRepository;
 
     public Review createReview(ReviewRequest request, User currentUser) {
         accessControlService.checkReviewCreatePermission();
@@ -323,13 +326,26 @@ public class ReviewService {
 
     @Transactional
     public Review quickScoreAndCompleteIssue(Long issueId, QuickScoreRequest request, User currentUser) {
-        // 1. Check permissions
+        // 1. Check project-level permission first
         accessControlService.checkProjectManageIssuesPermission();
-        accessControlService.checkReviewCreatePermission();
 
         // 2. Find Issue
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy issue"));
+
+        // Check if user has project management rights in this project
+        boolean isProjectManager = false;
+        if (issue.getProject() != null) {
+            isProjectManager = projectMemberRepository
+                    .findByProject_ProjectIdAndUser_UserId(issue.getProject().getProjectId(), currentUser.getUserId())
+                    .map(ProjectMember::canManageProject)
+                    .orElse(false);
+        }
+
+        // If not a project manager in this project, they must have the global review creation permission
+        if (!isProjectManager) {
+            accessControlService.checkReviewCreatePermission();
+        }
 
         if (issue.getAssignee() == null) {
             throw new BadRequestException("Issue chưa được giao cho ai, không thể chấm điểm");

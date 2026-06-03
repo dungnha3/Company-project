@@ -84,9 +84,9 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
          * Gồm: Backlog (sprintId == null) + Sprint PLANNING.
          * Dùng cho Backlog panel — đảm bảo không lấy nhầm issue đang chạy.
          */
-        @Query("SELECT i FROM Issue i WHERE i.project.projectId = :projectId " +
+        @Query("SELECT i FROM Issue i LEFT JOIN i.sprint s WHERE i.project.projectId = :projectId " +
                "AND i.parentIssue IS NULL " +
-               "AND (i.sprint IS NULL OR i.sprint.status = DoAn.BE.project.entity.Sprint.SprintStatus.PLANNING) " +
+               "AND (i.sprint IS NULL OR s.status = DoAn.BE.project.entity.Sprint.SprintStatus.PLANNING) " +
                "ORDER BY CASE WHEN i.sprint IS NULL THEN 1 ELSE 0 END DESC, i.createdAt DESC")
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })
         Page<Issue> findBacklogIssuesByProjectId(@Param("projectId") Long projectId, Pageable pageable);

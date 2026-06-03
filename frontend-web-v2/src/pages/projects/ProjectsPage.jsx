@@ -27,18 +27,20 @@ export default function ProjectsPage() {
     });
 
     const handleProjectCreated = () => {
-        queryClient.invalidateQueries(['projects']);
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
     };
 
     const handleIssueCreated = () => {
-        queryClient.invalidateQueries(['myIssues']);
+        queryClient.invalidateQueries({ queryKey: ['myIssues'] });
     };
 
-    const filtered = (projects || []).filter(p => {
-        if (!searchTerm) return true;
-        const s = searchTerm.toLowerCase();
-        return (p.name || '').toLowerCase().includes(s) || (p.key || '').toLowerCase().includes(s);
-    });
+    const filtered = (projects || [])
+        .filter(p => p.status !== 'CANCELLED')
+        .filter(p => {
+            if (!searchTerm) return true;
+            const s = searchTerm.toLowerCase();
+            return (p.name || '').toLowerCase().includes(s) || (p.key || '').toLowerCase().includes(s);
+        });
 
     return (
         <div className="max-w-full mx-auto p-6 space-y-6">

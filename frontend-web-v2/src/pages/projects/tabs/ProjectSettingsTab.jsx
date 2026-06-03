@@ -63,7 +63,8 @@ export default function ProjectSettingsTab({ project }) {
         },
         onSuccess: () => {
             toast.success('Cập nhật dự án thành công!');
-            queryClient.invalidateQueries(['project', project.projectId]);
+            queryClient.invalidateQueries({ queryKey: ['project', project.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
         },
         onError: (err) => {
             toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
@@ -124,6 +125,7 @@ export default function ProjectSettingsTab({ project }) {
         },
         onSuccess: () => {
             toast.success('Đã xóa dự án');
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
             navigate('/app/projects');
         },
         onError: (err) => toast.error('Lỗi khi xóa dự án: ' + err.message)

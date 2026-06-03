@@ -60,8 +60,8 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
         },
         onSuccess: () => {
             toast.success('Cập nhật dự án thành công!');
-            queryClient.invalidateQueries(['project', project.projectId]);
-            queryClient.invalidateQueries(['projects']);
+            queryClient.invalidateQueries({ queryKey: ['project', project.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
             onSuccess?.();
         },
         onError: (err) => {

@@ -146,7 +146,16 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
-    public void sendProjectMemberAddedEmail(String email, String memberName, String projectName, Long projectId) {
+    public void sendProjectMemberAddedEmail(
+            String email,
+            String memberName,
+            String projectKey,
+            String projectName,
+            Long projectId,
+            String roleName,
+            String startDateStr,
+            String actorName
+    ) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật, bỏ qua gửi email thêm thành viên dự án đến {}", email);
             return;
@@ -157,33 +166,44 @@ public class EmailNotificationService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail);
             helper.setTo(email);
-            helper.setSubject("Bạn đã được thêm vào dự án: " + projectName);
+            helper.setSubject("Bạn đã được thêm vào dự án mới: " + projectName);
 
-            String projectUrl = baseUrl + "/projects/" + projectId;
+            String projectUrl = baseUrl + "/app/projects/" + projectId;
 
             StringBuilder html = new StringBuilder();
             html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
             html.append("<style>");
-            html.append(
-                    "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
-            html.append(".header { background-color: #007bff; color: white; padding: 20px; text-align: center; }");
-            html.append(".content { padding: 20px; }");
-            html.append(
-                    ".footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666; }");
-            html.append(
-                    ".btn { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }");
+            html.append("body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 24px; text-align: center; }");
+            html.append(".header h2 { margin: 0; font-size: 20px; }");
+            html.append(".content { padding: 24px; }");
+            html.append(".info-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 14px 16px; margin: 14px 0; border-radius: 0 6px 6px 0; }");
+            html.append(".info-box p { margin: 4px 0; font-size: 14px; }");
+            html.append(".change-badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }");
+            html.append(".btn { display: inline-block; padding: 10px 22px; background-color: #2563eb; color: white !important; text-decoration: none; border-radius: 6px; margin-top: 14px; font-size: 14px; }");
+            html.append(".footer { background-color: #f8f9fa; padding: 12px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }");
             html.append("</style></head><body>");
 
             html.append("<div class='header'><h2>🎉 Bạn đã được thêm vào dự án mới!</h2></div>");
             html.append("<div class='content'>");
             html.append("<p>Kính gửi <strong>").append(memberName).append("</strong>,</p>");
             html.append("<p>Bạn đã được thêm vào dự án <strong>\"").append(projectName).append("\"</strong>.</p>");
+
+            // Khung thông tin dự án
+            html.append("<div class='info-box'>");
+            html.append("<p><strong>Mã dự án:</strong> <span class='change-badge'>").append(projectKey).append("</span></p>");
+            html.append("<p><strong>Tên dự án:</strong> ").append(projectName).append("</p>");
+            html.append("<p><strong>Vai trò:</strong> ").append(roleName).append("</p>");
+            html.append("<p><strong>Ngày bắt đầu:</strong> ").append(startDateStr).append("</p>");
+            html.append("<p><strong>Thực hiện bởi:</strong> ").append(actorName).append("</p>");
+            html.append("</div>");
+
             html.append("<p>Hãy truy cập dự án để xem thông tin chi tiết và bắt đầu làm việc.</p>");
             html.append("<p><a href='").append(projectUrl).append("' class='btn'>Xem dự án</a></p>");
             html.append("</div>");
 
             html.append("<div class='footer'>");
-            html.append("<p>Email này được gửi tự động từ hệ thống DACN. Vui lòng không trả lời email này.</p>");
+            html.append("<p>Email này được gửi tự động từ hệ thống. Vui lòng không trả lời trực tiếp.</p>");
             html.append("</div></body></html>");
 
             helper.setText(html.toString(), true);
@@ -195,8 +215,14 @@ public class EmailNotificationService {
         }
     }
 
-    public void sendIssueAssignedEmail(String email, String assigneeName, String issueTitle, String projectName,
-            String issueKey) {
+    public void sendIssueAssignedEmail(
+            String email,
+            String assigneeName,
+            String issueTitle,
+            String projectName,
+            String issueKey,
+            String actorName
+    ) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật, bỏ qua gửi email giao công việc đến {}", email);
             return;
@@ -209,21 +235,20 @@ public class EmailNotificationService {
             helper.setTo(email);
             helper.setSubject("Công việc mới được giao: " + issueTitle);
 
-            String issueUrl = baseUrl + "/projects/issues/" + issueKey;
+            String issueUrl = baseUrl + "/app/projects/issues/" + issueKey;
 
             StringBuilder html = new StringBuilder();
             html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
             html.append("<style>");
-            html.append(
-                    "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
-            html.append(".header { background-color: #28a745; color: white; padding: 20px; text-align: center; }");
-            html.append(".content { padding: 20px; }");
-            html.append(
-                    ".footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666; }");
-            html.append(
-                    ".btn { display: inline-block; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }");
-            html.append(
-                    ".info-box { background-color: #f0f8ff; border-left: 4px solid #007bff; padding: 12px; margin: 10px 0; }");
+            html.append("body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
+            html.append(".header { background: linear-gradient(135deg, #16a34a, #4ade80); color: white; padding: 24px; text-align: center; }");
+            html.append(".header h2 { margin: 0; font-size: 20px; }");
+            html.append(".content { padding: 24px; }");
+            html.append(".info-box { background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 14px 16px; margin: 14px 0; border-radius: 0 6px 6px 0; }");
+            html.append(".info-box p { margin: 4px 0; font-size: 14px; }");
+            html.append(".change-badge { display: inline-block; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }");
+            html.append(".btn { display: inline-block; padding: 10px 22px; background-color: #16a34a; color: white !important; text-decoration: none; border-radius: 6px; margin-top: 14px; font-size: 14px; }");
+            html.append(".footer { background-color: #f8f9fa; padding: 12px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }");
             html.append("</style></head><body>");
 
             html.append("<div class='header'><h2>📋 Bạn được giao công việc mới!</h2></div>");
@@ -231,17 +256,21 @@ public class EmailNotificationService {
             html.append("<p>Kính gửi <strong>").append(assigneeName).append("</strong>,</p>");
             html.append("<p>Bạn đã được giao một công việc mới trong dự án <strong>\"").append(projectName)
                     .append("\"</strong>.</p>");
+
+            // Khung thông tin công việc
             html.append("<div class='info-box'>");
-            html.append("<p><strong>Mã công việc:</strong> ").append(issueKey).append("</p>");
+            html.append("<p><strong>Mã công việc:</strong> <span class='change-badge'>").append(issueKey).append("</span></p>");
             html.append("<p><strong>Tiêu đề:</strong> ").append(issueTitle).append("</p>");
             html.append("<p><strong>Dự án:</strong> ").append(projectName).append("</p>");
+            html.append("<p><strong>Thực hiện bởi:</strong> ").append(actorName).append("</p>");
             html.append("</div>");
+
             html.append("<p>Hãy truy cập để xem chi tiết và bắt đầu làm việc.</p>");
             html.append("<p><a href='").append(issueUrl).append("' class='btn'>Xem công việc</a></p>");
             html.append("</div>");
 
             html.append("<div class='footer'>");
-            html.append("<p>Email này được gửi tự động từ hệ thống DACN. Vui lòng không trả lời email này.</p>");
+            html.append("<p>Email này được gửi tự động từ hệ thống. Vui lòng không trả lời trực tiếp.</p>");
             html.append("</div></body></html>");
 
             helper.setText(html.toString(), true);

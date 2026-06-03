@@ -261,7 +261,7 @@ public class SprintService {
                 .filter(issue -> issue.getAssignee() != null)
                 .collect(Collectors.groupingBy(
                         issue -> issue.getAssignee().getUserId(),
-                        Collectors.mapping(Issue::getIssueKey, Collectors.toList())
+                        Collectors.mapping(issue -> issue.getIssueKey() + ": " + issue.getTitle(), Collectors.toList())
                 ));
 
         // Publish batch-email event (1 email per user, not 1 per issue)

@@ -6,6 +6,7 @@ import DoAn.BE.project.event.IssueEvent;
 import DoAn.BE.project.event.IssueUpdatedEvent;
 import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.user.entity.User;
+import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -25,6 +26,7 @@ public class IssueNotificationListener {
 
     private final IssueRepository issueRepository;
     private final EmailNotificationService emailNotificationService;
+    private final UserRepository userRepository;
 
     // =========================================================================
     //  HANDLER 1 — Issue được giao cho người mới (ASSIGNED)
@@ -77,12 +79,20 @@ public class IssueNotificationListener {
         }
 
         try {
+            String actorName = "Hệ thống";
+            if (event.getActorId() != null) {
+                actorName = userRepository.findById(event.getActorId())
+                        .map(User::getFullName)
+                        .orElse("Hệ thống");
+            }
+
             emailNotificationService.sendIssueAssignedEmail(
                     email,
-                    assignee.getUsername(),
+                    assignee.getFullName() != null && !assignee.getFullName().isBlank() ? assignee.getFullName() : assignee.getUsername(),
                     issue.getTitle(),
                     issue.getProject().getName(),
-                    issue.getIssueKey()
+                    issue.getIssueKey(),
+                    actorName
             );
         } catch (Exception e) {
             log.error("Failed to send issue-assigned email for {} to {}: {}",

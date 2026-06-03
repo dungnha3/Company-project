@@ -23,6 +23,7 @@ import BoardTimeLogPanel from '../components/BoardTimeLogPanel';
 import QuickReviewModal from '../components/QuickReviewModal';
 import SubmitTaskModal from '../components/SubmitTaskModal';
 import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
+import { ExportButton, ImportButton } from '@shared/components/ui/index';
 
 // Statuses considered "forward" (not rework)
 const FORWARD_STATUSES = new Set(['Review', 'Done', 'Testing', 'test', 'review', 'done', 'kiểm tra', 'đánh giá', 'hoàn thành']);
@@ -801,13 +802,36 @@ export default function ProjectBoard({ project }) {
                         {filteredIssues.length}{filteredIssues.length !== issues.length ? `/${issues.length}` : ''} công việc
                     </span>
                     {canManageIssues && (
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
-                        >
-                            <i className="fa-solid fa-plus" />
-                            Tạo Issue
-                        </button>
+                        <>
+                            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                                <ExportButton
+                                    endpoint={ENDPOINTS.EXPORT.ISSUES(project.projectId)}
+                                    filename={`CongViec_Project_${project.projectId}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                                    label="Xuất"
+                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-xs md:!text-sm"
+                                />
+                                <div className="w-px h-6 bg-gray-200" />
+                                <ImportButton
+                                    endpoint={`${ENDPOINTS.IMPORT.ISSUES}?projectId=${project.projectId}`}
+                                    templateEndpoint={ENDPOINTS.TEMPLATE.ISSUES}
+                                    templateFilename="Template_CongViec.xlsx"
+                                    label="Nhập"
+                                    onSuccess={() => {
+                                        queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
+                                        queryClient.invalidateQueries({ queryKey: ['issues', project.projectId, 'board'] });
+                                        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
+                                    }}
+                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-xs md:!text-sm !px-3"
+                                />
+                            </div>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                                <i className="fa-solid fa-plus" />
+                                Tạo Issue
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -1056,6 +1080,56 @@ export default function ProjectBoard({ project }) {
 function BacklogPanel({ issues, onIssueClick }) {
     const [collapsed, setCollapsed] = useState(false);
 
+    const { planningSprints, unassignedIssues, totalPlanningCount } = useMemo(() => {
+        const sprintGroupsMap = {};
+        const unassigned = [];
+
+        issues.forEach(issue => {
+            if (issue.sprintId || issue.sprintName) {
+                const key = issue.sprintId || issue.sprintName;
+                if (!sprintGroupsMap[key]) {
+                    sprintGroupsMap[key] = {
+                        sprintId: issue.sprintId,
+                        sprintName: issue.sprintName || `Sprint ${issue.sprintId}`,
+                        issues: []
+                    };
+                }
+                sprintGroupsMap[key].issues.push(issue);
+            } else {
+                unassigned.push(issue);
+            }
+        });
+
+        // Convert map to array and sort sprints by sprintId
+        const planningSprintsList = Object.values(sprintGroupsMap).sort((a, b) => {
+            return (a.sprintId || 0) - (b.sprintId || 0);
+        });
+
+        // Sort issues within each sprint (by orderIndex, then by createdAt desc)
+        planningSprintsList.forEach(group => {
+            group.issues.sort((a, b) => {
+                const orderA = a.orderIndex ?? 999999;
+                const orderB = b.orderIndex ?? 999999;
+                if (orderA !== orderB) return orderA - orderB;
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            });
+        });
+
+        // Sort unassigned issues
+        unassigned.sort((a, b) => {
+            const orderA = a.orderIndex ?? 999999;
+            const orderB = b.orderIndex ?? 999999;
+            if (orderA !== orderB) return orderA - orderB;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        return {
+            planningSprints: planningSprintsList,
+            unassignedIssues: unassigned,
+            totalPlanningCount: issues.filter(i => i.sprintId || i.sprintName).length
+        };
+    }, [issues]);
+
     return (
         <div className={`flex-shrink-0 ${collapsed ? 'w-10' : 'w-72'} flex flex-col rounded-xl bg-slate-50 border border-slate-200 max-h-full transition-all duration-300 relative`}>
             {/* Header */}
@@ -1078,17 +1152,77 @@ function BacklogPanel({ issues, onIssueClick }) {
             </div>
 
             {!collapsed && (
-                <div className="flex-1 p-2 overflow-y-auto custom-scrollbar space-y-2">
+                <div className="flex-1 p-2 overflow-y-auto custom-scrollbar space-y-4">
                     {issues.length === 0 ? (
                         <div className="text-xs text-slate-400 text-center py-8 italic">
-                            Không có issue nào trong backlog
+                            Không có công việc nào trong backlog
                         </div>
                     ) : (
-                        issues.map(issue => (
-                            <div key={issue.issueId} className="cursor-pointer" onClick={() => onIssueClick?.(issue)}>
-                                <MiniIssueCard issue={issue} />
+                        <>
+                            {/* Section: Sắp diễn ra (Sprint PLANNING) */}
+                            <div className="space-y-2.5">
+                                <div className="flex items-center justify-between px-1">
+                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1">
+                                        <i className="fa-solid fa-clock-rotate-left text-[9px]" /> Sắp diễn ra (Planning)
+                                    </span>
+                                    <span className="bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 py-0.2 rounded-full text-[9px] font-bold">
+                                        {totalPlanningCount}
+                                    </span>
+                                </div>
+                                <div className="space-y-3 pl-1.5 border-l-2 border-indigo-100 ml-1">
+                                    {planningSprints.length === 0 ? (
+                                        <div className="text-[10px] text-slate-400 text-center py-3 bg-white/50 rounded-lg border border-dashed border-slate-200">
+                                            Không có công việc nào sắp diễn ra
+                                        </div>
+                                    ) : (
+                                        planningSprints.map(sprintGroup => (
+                                            <div key={sprintGroup.sprintId || sprintGroup.sprintName} className="space-y-1.5">
+                                                <div className="text-[9px] font-bold text-indigo-700 bg-indigo-50/70 border border-indigo-100/40 rounded px-1.5 py-0.5 flex items-center gap-1 select-none">
+                                                    <i className="fa-solid fa-box-archive text-[8px] text-indigo-400" />
+                                                    <span className="truncate">{sprintGroup.sprintName}</span>
+                                                    <span className="ml-auto text-[8px] text-indigo-500 font-mono">({sprintGroup.issues.length})</span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {sprintGroup.issues.map(issue => (
+                                                        <div key={issue.issueId} className="cursor-pointer" onClick={() => onIssueClick?.(issue)}>
+                                                            <MiniIssueCard issue={issue} showSprintBadge={false} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
-                        ))
+
+                            {/* Divider */}
+                            <div className="border-t border-slate-200/60 my-1" />
+
+                            {/* Section: Chưa phân bổ (Backlog / sprint = null) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between px-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                        <i className="fa-solid fa-folder-open text-[9px]" /> Chưa phân bổ
+                                    </span>
+                                    <span className="bg-slate-200/60 border border-slate-300/40 text-slate-600 px-1.5 py-0.2 rounded-full text-[9px] font-bold">
+                                        {unassignedIssues.length}
+                                    </span>
+                                </div>
+                                <div className="space-y-1.5">
+                                    {unassignedIssues.length === 0 ? (
+                                        <div className="text-[10px] text-slate-400 text-center py-3 bg-white/50 rounded-lg border border-dashed border-slate-200">
+                                            Không có công việc chưa phân bổ
+                                        </div>
+                                    ) : (
+                                        unassignedIssues.map(issue => (
+                                            <div key={issue.issueId} className="cursor-pointer" onClick={() => onIssueClick?.(issue)}>
+                                                <MiniIssueCard issue={issue} showSprintBadge={false} />
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </>
                     )}
                 </div>
             )}
@@ -1096,7 +1230,7 @@ function BacklogPanel({ issues, onIssueClick }) {
     );
 }
 
-function MiniIssueCard({ issue }) {
+function MiniIssueCard({ issue, showSprintBadge = true }) {
     return (
         <div className="bg-white p-2.5 rounded-lg border border-slate-200 hover:shadow-sm transition-all text-xs">
             <div className="flex items-center gap-1.5 mb-1">
@@ -1105,7 +1239,36 @@ function MiniIssueCard({ issue }) {
                 </span>
                 <span className="text-slate-400 font-mono text-[10px]">{issue.issueKey || `#${issue.issueId}`}</span>
             </div>
-            <p className="text-slate-700 font-medium line-clamp-2">{issue.title}</p>
+            <p className="text-slate-700 font-medium line-clamp-2 mb-2">{issue.title}</p>
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                {showSprintBadge ? (
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                        issue.sprintName 
+                            ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/50' 
+                            : 'bg-slate-100 text-slate-500 border border-slate-200/50'
+                    }`}>
+                        <i className={`fa-solid ${issue.sprintName ? 'fa-layer-group' : 'fa-inbox'} text-[8px]`} />
+                        {issue.sprintName || 'Chưa gán sprint'}
+                    </span>
+                ) : (
+                    <span />
+                )}
+                {issue.assigneeName ? (
+                    <div
+                        className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[8px] font-bold"
+                        title={`Người thực hiện: ${issue.assigneeName}`}
+                    >
+                        {issue.assigneeName.charAt(0).toUpperCase()}
+                    </div>
+                ) : (
+                    <div 
+                        className="w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[8px]"
+                        title="Chưa gán người thực hiện"
+                    >
+                        <i className="fa-solid fa-user text-[7px]" />
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

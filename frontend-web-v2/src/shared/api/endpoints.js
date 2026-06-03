@@ -145,6 +145,7 @@ export const ENDPOINTS = {
         LEAVES: '/api/export/leaves/excel',
         REVIEWS: '/api/export/reviews/excel',
         ATTENDANCE: '/api/export/attendance/excel',
+        ISSUES: (projectId) => `/api/export/projects/${projectId}/issues/excel`,
     },
 
     // Import from Excel
@@ -153,6 +154,7 @@ export const ENDPOINTS = {
         LEAVES: '/api/import/leaves/excel',
         REVIEWS: '/api/import/reviews/excel',
         ATTENDANCE: '/api/import/attendance/excel',
+        ISSUES: '/api/import/issues/excel',
     },
 
     // Template download (blank Excel files with headers)
@@ -161,6 +163,7 @@ export const ENDPOINTS = {
         LEAVES: '/api/templates/leaves',
         REVIEWS: '/api/templates/reviews',
         ATTENDANCE: '/api/templates/attendance',
+        ISSUES: '/api/templates/issues',
     },
 
     // Leave Requests

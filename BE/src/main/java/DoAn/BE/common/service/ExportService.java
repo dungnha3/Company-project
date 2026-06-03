@@ -8,6 +8,10 @@ import DoAn.BE.hrm.repository.LeaveRequestRepository;
 import DoAn.BE.hrm.repository.ReviewRepository;
 import DoAn.BE.timetracking.repository.TimeLogRepository;
 import DoAn.BE.user.entity.User;
+import DoAn.BE.project.entity.Issue;
+import DoAn.BE.project.repository.IssueRepository;
+import DoAn.BE.project.repository.ProjectMemberRepository;
+import DoAn.BE.common.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -28,6 +32,8 @@ public class ExportService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final ReviewRepository reviewRepository;
     private final TimeLogRepository timeLogRepository;
+    private final IssueRepository issueRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -347,6 +353,99 @@ public class ExportService {
 
                 row.createCell(col++).setCellValue(log.getDescription() != null ? log.getDescription() : "");
                 row.createCell(col++).setCellValue(log.getDescription() != null ? log.getDescription() : "");
+            }
+
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    // ========== PROJECT ISSUES EXPORT ==========
+
+    public byte[] exportProjectIssuesExcel(Long projectId, Long userId) throws IOException {
+        projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
+                .orElseThrow(() -> new ForbiddenException("Bạn không có quyền truy cập dự án này"));
+
+        List<Issue> issues = issueRepository.findByProject_ProjectId(projectId);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("CongViec");
+
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle dateStyle = createDateStyle(workbook);
+            CellStyle hourStyle = createHourStyle(workbook);
+
+            String[] headers = { "STT", "Mã công việc", "Tiêu đề", "Mô tả", "Trạng thái", "Độ ưu tiên",
+                    "Loại", "Người thực hiện (Email)", "Người thực hiện (Tên)", "Giờ ước lượng", "Giờ thực tế", "Ngày bắt đầu", "Ngày hết hạn",
+                    "Trọng số", "Quan trọng", "Khẩn cấp", "Người tạo (Email)" };
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowNum = 1;
+            for (Issue issue : issues) {
+                Row row = sheet.createRow(rowNum++);
+
+                int col = 0;
+                row.createCell(col++).setCellValue(rowNum - 1); // STT
+                row.createCell(col++).setCellValue(issue.getIssueKey()); // Ma cong viec
+                row.createCell(col++).setCellValue(issue.getTitle() != null ? issue.getTitle() : ""); // Tieu de
+                row.createCell(col++).setCellValue(issue.getDescription() != null ? issue.getDescription() : ""); // Mo ta
+                row.createCell(col++).setCellValue(issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : ""); // Trang thai
+                row.createCell(col++).setCellValue(issue.getPriority() != null ? issue.getPriority().name() : ""); // Do uu tien
+                row.createCell(col++).setCellValue(issue.getIssueType() != null ? issue.getIssueType().name() : ""); // Loai
+
+                User assignee = issue.getAssignee();
+                row.createCell(col++).setCellValue(assignee != null && assignee.getEmail() != null ? assignee.getEmail() : "");
+                row.createCell(col++).setCellValue(assignee != null && assignee.getFullName() != null ? assignee.getFullName() : "");
+
+                Cell estCell = row.createCell(col++);
+                if (issue.getEstimatedHours() != null) {
+                    estCell.setCellValue(issue.getEstimatedHours().doubleValue());
+                    estCell.setCellStyle(hourStyle);
+                } else {
+                    estCell.setCellValue("");
+                }
+
+                Cell actCell = row.createCell(col++);
+                if (issue.getActualHours() != null) {
+                    actCell.setCellValue(issue.getActualHours().doubleValue());
+                    actCell.setCellStyle(hourStyle);
+                } else {
+                    actCell.setCellValue("");
+                }
+
+                Cell startCell = row.createCell(col++);
+                if (issue.getStartDate() != null) {
+                    startCell.setCellValue(issue.getStartDate().format(DATE_FMT));
+                    startCell.setCellStyle(dateStyle);
+                } else {
+                    startCell.setCellValue("");
+                }
+
+                Cell dueCell = row.createCell(col++);
+                if (issue.getDueDate() != null) {
+                    dueCell.setCellValue(issue.getDueDate().format(DATE_FMT));
+                    dueCell.setCellStyle(dateStyle);
+                } else {
+                    dueCell.setCellValue("");
+                }
+
+                row.createCell(col++).setCellValue(issue.getWeight() != null ? issue.getWeight() : 0);
+                row.createCell(col++).setCellValue(Boolean.TRUE.equals(issue.getIsImportant()) ? "Có" : "Không");
+                row.createCell(col++).setCellValue(Boolean.TRUE.equals(issue.getIsUrgent()) ? "Có" : "Không");
+
+                User reporter = issue.getReporter();
+                row.createCell(col++).setCellValue(reporter != null && reporter.getEmail() != null ? reporter.getEmail() : "");
             }
 
             for (int i = 0; i < headers.length; i++) {

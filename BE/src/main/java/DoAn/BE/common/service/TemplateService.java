@@ -147,6 +147,44 @@ public class TemplateService {
         }
     }
 
+    // ========== ISSUES TEMPLATE ==========
+
+    public byte[] getIssueTemplate() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("CongViec");
+            CellStyle headerStyle = createHeaderStyle(workbook);
+
+            String[] headers = { "Tiêu đề", "Mô tả", "Trạng thái", "Độ ưu tiên", "Loại", "Người thực hiện (Email)",
+                    "Giờ ước lượng", "Ngày bắt đầu", "Ngày hết hạn", "Trọng số", "Quan trọng (Có/Không)", "Khẩn cấp (Có/Không)" };
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            Row sample = sheet.createRow(1);
+            sample.createCell(0).setCellValue("Thiết kế giao diện Kanban Board");
+            sample.createCell(1).setCellValue("Thiết kế bảng Kanban và các nút nhập/xuất Excel");
+            sample.createCell(2).setCellValue("To Do");
+            sample.createCell(3).setCellValue("MEDIUM");
+            sample.createCell(4).setCellValue("TASK");
+            sample.createCell(5).setCellValue("member@company.com");
+            sample.createCell(6).setCellValue(8.0);
+            sample.createCell(7).setCellValue("04/06/2026");
+            sample.createCell(8).setCellValue("10/06/2026");
+            sample.createCell(9).setCellValue(3);
+            sample.createCell(10).setCellValue("Có");
+            sample.createCell(11).setCellValue("Không");
+
+            for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
     // ========== STYLES ==========
 
     private CellStyle createHeaderStyle(Workbook workbook) {

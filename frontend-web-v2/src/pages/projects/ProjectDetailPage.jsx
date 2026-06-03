@@ -8,7 +8,6 @@ import ProjectBoard from './tabs/ProjectBoard';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 import EditProjectModal from './components/EditProjectModal';
-import ExportDropdown from './components/ExportDropdown';
 import ProjectDashboardTab from './tabs/ProjectDashboardTab';
 
 const SprintTab = lazy(() => import('./tabs/SprintTab'));
@@ -105,7 +104,6 @@ export default function ProjectDetailPage() {
                             </Link>
                         )}
 
-                        <ExportDropdown projectId={project.projectId} projectName={project.name} />
                         <button onClick={() => setShowEditModal(true)} className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                             <i className="fa-solid fa-pen" />
                             Sửa

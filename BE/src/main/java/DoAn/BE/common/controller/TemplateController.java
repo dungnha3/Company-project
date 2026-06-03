@@ -73,4 +73,18 @@ public class TemplateController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @GetMapping("/issues")
+    public ResponseEntity<byte[]> downloadIssueTemplate(@AuthenticationPrincipal UserDetails user) {
+        try {
+            byte[] template = templateService.getIssueTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDispositionFormData("attachment", "Template_CongViec.xlsx");
+            return ResponseEntity.ok().headers(headers).body(template);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
