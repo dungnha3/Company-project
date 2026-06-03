@@ -293,6 +293,7 @@ export default function ProjectStorageTab({ projectId, issueId: initialIssueId }
                     </div>
                 )}
             </div>
+            </div>
 
             {/* Navigation Breadcrumbs */}
             <div className="flex items-center gap-2 mb-4 bg-gray-50/50 px-4 py-2.5 rounded-xl border border-gray-100 text-sm overflow-x-auto custom-scrollbar">

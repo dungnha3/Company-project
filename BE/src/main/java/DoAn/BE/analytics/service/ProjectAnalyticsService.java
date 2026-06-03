@@ -186,9 +186,6 @@ public class ProjectAnalyticsService {
 
                         long total = issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid);
                         long completed = issueRepository.countCompletedByProjectAndAssignee(projectId, uid);
-                        long inProgress = issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid)
-                                - completed
-                                - issueRepository.countByProject_ProjectIdAndAssignee_UserId(projectId, uid);
                         // Count in-progress: issues assigned but not done (avoid N+1, compute via stream)
                         List<Issue> memberIssues = issueRepository.findByProject_ProjectIdAndAssignee_UserId(projectId, uid);
                         long inProg = memberIssues.stream().filter(i -> !i.isDone()).count();
@@ -206,9 +203,6 @@ public class ProjectAnalyticsService {
                                 .loggedHours(hours != null ? hours.doubleValue() : 0.0)
                                 .build());
                 }
-
-                // Also add unassigned total once
-                long totalUnassigned = issueRepository.countByProject_ProjectIdAndAssignee_IsNull(projectId);
 
                 return TeamWorkloadDTO.builder()
                                 .projectId(projectId)

@@ -108,6 +108,10 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    // Timestamp khi issue được chuyển sang In Progress
+    @Column(name = "in_progress_at")
+    private LocalDateTime inProgressAt;
+
     // Đếm số lần bị trả lại (từ Review/Done về In Progress)
     @Column(name = "rework_count")
     private Integer reworkCount = 0;
@@ -153,6 +157,7 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     public void changeStatus(IssueStatus newStatus) {
         this.issueStatus = newStatus;
         this.setUpdatedAt(LocalDateTime.now());
+        
         // Auto-set completedAt when status changes to Done
         if ("Done".equals(newStatus.getName())) {
             if (this.completedAt == null) {
@@ -160,6 +165,17 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
             }
         } else {
             this.completedAt = null; // Reset if moved away from Done
+        }
+
+        // Auto-set inProgressAt when status changes to In Progress
+        if (newStatus != null && newStatus.getName() != null && 
+            ("In Progress".equalsIgnoreCase(newStatus.getName()) || 
+             "Đang thực hiện".equalsIgnoreCase(newStatus.getName()))) {
+            if (this.inProgressAt == null) {
+                this.inProgressAt = LocalDateTime.now();
+            }
+        } else {
+            this.inProgressAt = null; // Reset if moved away from In Progress
         }
     }
 

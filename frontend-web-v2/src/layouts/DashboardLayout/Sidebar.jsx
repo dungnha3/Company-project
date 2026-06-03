@@ -26,6 +26,7 @@ export const NAV_CONFIG = [
             { path: '/app/projects', icon: 'fa-cubes', label: 'Dự án & Kanban' },
             { path: '/app/projects/costs', icon: 'fa-coins', label: 'Chi phí dự án' },
             { path: '/app/hr/resource-planning', icon: 'fa-users-gear', label: 'Nguồn lực' },
+            { path: '/app/projects/performance', icon: 'fa-chart-line', label: 'Hiệu suất dự án' },
             { path: '/app/projects/analytics', icon: 'fa-chart-pie', label: 'Thống kê & Phân tích' },
         ],
     },

@@ -345,6 +345,12 @@ public class ProjectMemberService {
                     dto.setFullName(emp.getFullName());
                     dto.setEmail(user.getEmail());
                     dto.setAvatarUrl(user.getAvatarUrl());
+                    
+                    // Profile details from Employee
+                    dto.setGender(emp.getGender() != null ? emp.getGender().name() : null);
+                    dto.setHireDate(emp.getHireDate());
+                    dto.setAddress(emp.getAddress());
+                    dto.setLeaveBalance(emp.getLeaveBalance());
 
                     List<ProjectMember> userMembers = membersByUser.getOrDefault(user.getUserId(), java.util.Collections.emptyList());
 
@@ -360,6 +366,19 @@ public class ProjectMemberService {
                                 slot.setMemberStatus(m.getMemberStatus() != null ? m.getMemberStatus().name() : null);
                                 Double hours = hoursMap.get(m.getUser().getUserId() + "_" + m.getProject().getProjectId());
                                 slot.setTotalLoggedHours(hours != null ? hours : 0.0);
+                                
+                                // Membership details
+                                slot.setYearsOfExperience(m.getYearsOfExperience());
+                                slot.setBillingRate(m.getBillingRate());
+                                slot.setSkillNotes(m.getSkillNotes());
+                                slot.setJoinDate(m.getJoinDate());
+                                slot.setLeaveDate(m.getLeaveDate());
+
+                                // Task statistics
+                                Long projId = m.getProject().getProjectId();
+                                Long uId = m.getUser().getUserId();
+                                slot.setTotalIssues(issueRepository.countByProject_ProjectIdAndAssignee_UserId(projId, uId));
+                                slot.setCompletedIssues(issueRepository.countCompletedByProjectAndAssignee(projId, uId));
                                 return slot;
                             })
                             .collect(java.util.stream.Collectors.toList());

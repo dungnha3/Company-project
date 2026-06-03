@@ -4,6 +4,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
+import { useTimerStore, fireTaskToReview } from '@shared/stores/timerStore';
 
 const ACCEPTED_TYPES = [
     'image/*', 'application/pdf', 'application/msword',
@@ -167,9 +168,13 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
             await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(issue.issueId, targetStatusId));
         },
         onSuccess: () => {
+            // Auto-stop timer and log work hours when task is submitted to Review
+            fireTaskToReview(issue.issueId);
             showToast('Đã nộp task thành công', 'success');
-            queryClient.invalidateQueries(['myIssues']);
-            queryClient.invalidateQueries(['myReportedIssues']);
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
             onSuccess?.();
             onClose();
         },

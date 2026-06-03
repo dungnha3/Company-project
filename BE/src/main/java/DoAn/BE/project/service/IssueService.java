@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -83,6 +84,9 @@ public class IssueService {
         issue.setTitle(request.getTitle());
         issue.setDescription(request.getDescription());
         issue.setIssueStatus(status);
+        if (status != null && ("In Progress".equalsIgnoreCase(status.getName()) || "Đang thực hiện".equalsIgnoreCase(status.getName()))) {
+            issue.setInProgressAt(LocalDateTime.now());
+        }
         issue.setPriority(request.getPriority() != null ? request.getPriority() : Issue.Priority.MEDIUM);
         issue.setIssueType(request.getIssueType() != null ? request.getIssueType() : Issue.IssueType.TASK);
         issue.setReporter(reporter);
@@ -666,6 +670,7 @@ public class IssueService {
         dto.setIsUrgent(issue.getIsUrgent());
         dto.setEisenhowerQuadrant(issue.getEisenhowerQuadrant());
         dto.setCompletedAt(issue.getCompletedAt());
+        dto.setInProgressAt(issue.getInProgressAt());
         dto.setReworkCount(issue.getReworkCount());
         dto.setCreatedAt(issue.getCreatedAt());
         dto.setUpdatedAt(issue.getUpdatedAt());
@@ -719,6 +724,42 @@ public class IssueService {
         if (event.getUser() != null) {
             log.warn("User {} deleted globally. Unassigning all issues.", event.getUser().getUsername());
             issueRepository.unassignByGlobalUser(event.getUser().getUserId());
+        }
+    }
+
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    @Transactional
+    public void initializeInProgressTimestamps() {
+        log.info("Initializing inProgressAt timestamps for In Progress issues...");
+        try {
+            java.util.List<Issue> inProgressIssues = issueRepository.findAll().stream()
+                .filter(i -> i.getIssueStatus() != null && 
+                            ("In Progress".equalsIgnoreCase(i.getIssueStatus().getName()) || 
+                             "Đang thực hiện".equalsIgnoreCase(i.getIssueStatus().getName())))
+                .filter(i -> i.getInProgressAt() == null)
+                .collect(java.util.stream.Collectors.toList());
+
+            for (Issue issue : inProgressIssues) {
+                java.util.List<IssueActivity> activities = 
+                    issueActivityRepository.findByIssue_IssueIdOrderByCreatedAtDesc(issue.getIssueId());
+                java.time.LocalDateTime foundTime = null;
+                for (IssueActivity act : activities) {
+                    if (act.getActivityType() == DoAn.BE.project.entity.IssueActivity.ActivityType.STATUS_CHANGED &&
+                        ("In Progress".equalsIgnoreCase(act.getNewValue()) || "Đang thực hiện".equalsIgnoreCase(act.getNewValue()))) {
+                        foundTime = act.getCreatedAt();
+                        break;
+                    }
+                }
+                if (foundTime != null) {
+                    issue.setInProgressAt(foundTime);
+                } else {
+                    issue.setInProgressAt(issue.getCreatedAt() != null ? issue.getCreatedAt() : (issue.getUpdatedAt() != null ? issue.getUpdatedAt() : java.time.LocalDateTime.now()));
+                }
+                issueRepository.save(issue);
+            }
+            log.info("Successfully initialized inProgressAt timestamps for {} issues.", inProgressIssues.size());
+        } catch (Exception e) {
+            log.error("Failed to initialize inProgressAt timestamps", e);
         }
     }
 }

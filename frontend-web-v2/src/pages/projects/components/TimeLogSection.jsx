@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { timelogApi } from '@shared/api/featureApi';
 import { useTimerStore, AUTO_STOP } from '@shared/stores/timerStore';
 import { formatDate, formatNumber } from '@shared/utils/formatters';
+import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 function MiniTimer({ issueId, onLogComplete }) {
     const { isRunning, issueId: timerIssueId, elapsedSeconds, autoStopTick, startTimer } = useTimerStore();
@@ -197,6 +198,8 @@ function DailyChart({ logs }) {
  * Shows: mini timer (if this issue is active), daily chart, quick log form, and log history
  */
 export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
+    const { hasPermission } = useAccessControl();
+    const isManager = hasPermission('PROJECT.MANAGE_ISSUES') || hasPermission('PROJECT.MANAGE_ALL');
     const [timelogs, setTimelogs] = useState([]);
     const [totalHours, setTotalHours] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -306,66 +309,32 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
                     </div>
                 </div>
 
-                {/* Estimated / Logged / Remaining pills */}
-                <div className="flex gap-2.5 mb-4">
-                    <div className="flex-1 bg-gray-50/50 border border-gray-100 rounded-xl px-3 py-2.5 text-center">
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Estimated</div>
-                        <div className="text-gray-700 font-extrabold text-base">
-                            {formatNumber(estimatedHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                        </div>
+                {/* Total Actual Hours Card */}
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl px-4 py-4 text-center mb-4">
+                    <div className="text-[10px] text-indigo-600 uppercase tracking-wider font-bold mb-1">
+                        Tổng thời gian thực tế đã ghi nhận
                     </div>
-                    <div className="flex-1 bg-gray-50/50 border border-gray-100 rounded-xl px-3 py-2.5 text-center">
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Logged</div>
-                        <div className={`font-extrabold text-base ${totalHours > estimatedHours ? 'text-red-500' : 'text-green-600'}`}>
-                            {formatNumber(totalHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                        </div>
-                    </div>
-                    <div className="flex-1 bg-gray-50/50 border border-gray-100 rounded-xl px-3 py-2.5 text-center">
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Remaining</div>
-                        <div className={`font-extrabold text-base ${remaining < 0 ? 'text-red-500' : 'text-amber-500'}`}>
-                            {formatNumber(Math.max(0, (estimatedHours || 0) - totalHours), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
-                        </div>
+                    <div className="text-indigo-900 font-extrabold text-2xl">
+                        {formatNumber(totalHours || 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h
                     </div>
                 </div>
-
-                {/* Progress bar with percentage */}
-                {estimatedHours > 0 && (
-                    <div className="relative mb-4">
-                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                    progress > 100 ? 'bg-gradient-to-r from-amber-500 to-red-500 shadow-sm'
-                                    : progress > 80 ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-sm'
-                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm'
-                                }`}
-                                style={{ width: `${Math.min(progress, 100)}%` }}
-                            />
-                        </div>
-                        {/* Percentage overlay */}
-                        <div className="flex justify-end mt-1.5">
-                            <span className={`text-[10px] font-bold ${
-                                progress > 100 ? 'text-red-500' : progress > 80 ? 'text-amber-500' : 'text-gray-400'
-                            }`}>
-                                {progress > 100 ? `+${(progress - 100).toFixed(0)}% quá giờ` : `${progress.toFixed(0)}% hoàn thành`}
-                            </span>
-                        </div>
-                    </div>
-                )}
 
                 {/* Daily chart */}
                 {timelogs.length > 0 && <DailyChart logs={timelogs} />}
 
-                {/* Log button */}
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                    <i className={`fa-solid ${showForm ? 'fa-minus' : 'fa-plus'}`} />
-                    {showForm ? 'Hủy ghi nhận' : 'Ghi nhận giờ làm'}
-                </button>
+                {/* Log button - Manager only to prevent fraud */}
+                {isManager && (
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                        <i className={`fa-solid ${showForm ? 'fa-minus' : 'fa-plus'}`} />
+                        {showForm ? 'Hủy ghi nhận' : 'Ghi nhận giờ làm'}
+                    </button>
+                )}
 
-                {/* Quick log form */}
-                {showForm && (
+                {/* Quick log form - Manager only */}
+                {isManager && showForm && (
                     <form onSubmit={handleSubmit} className="mt-4 pt-4 border-t border-gray-100 space-y-3.5">
                         <div className="flex gap-2">
                             <input
@@ -439,13 +408,15 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
                                                 <span className="text-gray-500 text-[10px] min-w-[70px] text-right font-bold bg-white px-2.5 py-1 rounded-full border border-gray-200/80 shadow-sm">
                                                     {log.userName || 'Thành viên'}
                                                 </span>
-                                                <button
-                                                    onClick={() => handleDelete(log.logId)}
-                                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
-                                                    title="Xóa"
-                                                >
-                                                    <i className="fa-solid fa-trash text-xs" />
-                                                </button>
+                                                {isManager && (
+                                                    <button
+                                                        onClick={() => handleDelete(log.logId)}
+                                                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
+                                                        title="Xóa"
+                                                    >
+                                                        <i className="fa-solid fa-trash text-xs" />
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

@@ -41,6 +41,7 @@ public class IssueDTO {
     private Boolean isUrgent;
     private Integer eisenhowerQuadrant;
     private LocalDateTime completedAt;
+    private LocalDateTime inProgressAt;
     private Integer reworkCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

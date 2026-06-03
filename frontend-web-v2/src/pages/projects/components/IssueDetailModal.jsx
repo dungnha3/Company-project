@@ -368,7 +368,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                 <option value="">-- Chưa giao --</option>
                                 {members.map(m => (
                                     <option key={m.userId} value={m.userId}>
-                                        {m.username || m.fullName}
+                                        {m.fullName || m.username} ({m.position || 'Thành viên'}) | Phân bổ: {m.allocationRate || 0}% | Task: {m.completedIssues || 0}/{m.totalIssues || 0} {m.allocationRate > 100 ? '⚠️ Quá tải' : ''}
                                     </option>
                                 ))}
                             </select>

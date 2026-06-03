@@ -12,13 +12,7 @@ import ExportDropdown from './components/ExportDropdown';
 import ProjectDashboardTab from './tabs/ProjectDashboardTab';
 
 const SprintTab = lazy(() => import('./tabs/SprintTab'));
-const IssueListTab = lazy(() => import('./tabs/IssueListTab'));
 const ProjectSettingsTab = lazy(() => import('./tabs/ProjectSettingsTab'));
-const ProjectCalendarTab = lazy(() => import('./tabs/ProjectCalendarTab'));
-const InteractivePlannerTab = lazy(() => import('./tabs/InteractivePlannerTab'));
-const TeamTab = lazy(() => import('./tabs/TeamTab'));
-const ProjectCostTab = lazy(() => import('./tabs/ProjectCostTab'));
-const ProjectPerformanceTab = lazy(() => import('./tabs/ProjectPerformanceTab'));
 const ProjectStorageTab = lazy(() => import('./tabs/ProjectStorageTab'));
 
 const PageLoader = () => <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-2xl text-primary" /></div>;
@@ -28,7 +22,7 @@ export default function ProjectDetailPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const urlTab = searchParams.get('tab');
-    const validTabs = ['overview', 'board', 'list', 'sprints', 'planner', 'calendar', 'team', 'performance', 'costs', 'files', 'settings'];
+    const validTabs = ['overview', 'board', 'sprints', 'files', 'settings'];
     const [activeTab, setActiveTab] = useState(validTabs.includes(urlTab) ? urlTab : 'overview');
     const [showEditModal, setShowEditModal] = useState(false);
     const { currentWorkspace } = useWorkspaceStore();
@@ -54,29 +48,10 @@ export default function ProjectDetailPage() {
                 icon: 'fa-layer-group',
                 tabs: [
                     { id: 'board', label: 'Bảng (Kanban)' },
-                    { id: 'list', label: 'Danh sách' },
                     { id: 'sprints', label: 'Sprints' }
                 ]
             },
-            {
-                id: 'planning_group',
-                label: 'Lập kế hoạch',
-                icon: 'fa-timeline',
-                tabs: [
-                    { id: 'planner', label: 'Bản đồ kế hoạch' },
-                    { id: 'calendar', label: 'Lịch công việc' }
-                ]
-            },
-            {
-                id: 'hr_group',
-                label: 'Nhân sự & Nguồn lực',
-                icon: 'fa-users-gear',
-                tabs: [
-                    { id: 'team', label: 'Thành viên' },
-                    { id: 'performance', label: 'Đánh giá hiệu suất' },
-                    { id: 'costs', label: 'Chi phí dự án' }
-                ]
-            },
+
             {
                 id: 'files_group',
                 label: 'Tài liệu',
@@ -208,45 +183,16 @@ export default function ProjectDetailPage() {
                         <SprintTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'list' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <IssueListTab projectId={project.projectId} />
-                    </Suspense>
-                )}
-                {activeTab === 'calendar' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <ProjectCalendarTab projectId={project.projectId} />
-                    </Suspense>
-                )}
-                {activeTab === 'planner' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <InteractivePlannerTab projectId={project.projectId} />
-                    </Suspense>
-                )}
+
 
                 { activeTab === 'files' && (
                     <Suspense fallback={<PageLoader />}>
                         <ProjectStorageTab projectId={project.projectId} />
                     </Suspense>
                 )}
-                {activeTab === 'team' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <TeamTab projectId={id} />
-                    </Suspense>
-                )}
                 {activeTab === 'settings' && (
                     <Suspense fallback={<PageLoader />}>
                         <ProjectSettingsTab project={project} />
-                    </Suspense>
-                )}
-                {activeTab === 'costs' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <ProjectCostTab projectId={project.projectId} />
-                    </Suspense>
-                )}
-                {activeTab === 'performance' && (
-                    <Suspense fallback={<PageLoader />}>
-                        <ProjectPerformanceTab projectId={project.projectId} />
                     </Suspense>
                 )}
             </div>

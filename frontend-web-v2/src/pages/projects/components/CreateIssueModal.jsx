@@ -369,7 +369,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                     <option value="">-- Chọn người --</option>
                                     {members.map(m => (
                                         <option key={m.userId} value={m.userId}>
-                                            {m.username || m.fullName} ({m.role === 'OWNER' ? 'Chủ dự án' : m.role === 'MANAGER' ? 'Quản lý' : 'Thành viên'})
+                                            {m.fullName || m.username} ({m.position || 'Thành viên'}) | Phân bổ: {m.allocationRate || 0}% | Task: {m.completedIssues || 0}/{m.totalIssues || 0} {m.allocationRate > 100 ? '⚠️ Quá tải' : ''}
                                         </option>
                                     ))}
                                 </select>

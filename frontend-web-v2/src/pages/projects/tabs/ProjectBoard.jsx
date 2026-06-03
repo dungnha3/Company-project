@@ -14,15 +14,29 @@ import {
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
-import { useTimerStore } from '@shared/stores/timerStore';
-import { fireTaskCompleted } from '@shared/stores/timerStore';
+import { useTimerStore, fireTaskCompleted, fireTaskStopped, calculateWorkingSeconds } from '@shared/stores/timerStore';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import IssueDetailModal from '../components/IssueDetailModal';
 import CreateIssueModal from '../components/CreateIssueModal';
 import TimeLogSection from '../components/TimeLogSection';
 import BoardTimeLogPanel from '../components/BoardTimeLogPanel';
 import QuickReviewModal from '../components/QuickReviewModal';
+import SubmitTaskModal from '../components/SubmitTaskModal';
 import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
+
+// Statuses considered "forward" (not rework)
+const FORWARD_STATUSES = new Set(['Review', 'Done', 'Testing', 'test', 'review', 'done', 'kiểm tra', 'đánh giá', 'hoàn thành']);
+// Statuses considered "backward" (rework trigger)
+const BACKWARD_STATUSES = new Set(['In Progress', 'To Do', 'to do', 'in progress', 'progress', 'đang thực hiện', 'chưa bắt đầu', 'mở']);
+
+function isBackwardMove(fromStatus, toStatus) {
+    if (!fromStatus || !toStatus) return false;
+    const oldLower = fromStatus.toLowerCase();
+    const newLower = toStatus.toLowerCase();
+    const isOldForward = [...FORWARD_STATUSES].some(s => oldLower.includes(s.toLowerCase()));
+    const isNewBackward = [...BACKWARD_STATUSES].some(s => newLower.includes(s.toLowerCase()));
+    return isOldForward && isNewBackward;
+}
 
 // ─── Fallback columns (used when API unavailable) ─────────────────────
 const FALLBACK_STATUSES = [
@@ -97,6 +111,10 @@ export default function ProjectBoard({ project }) {
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [quickReviewIssueId, setQuickReviewIssueId] = useState(null);
+    const [submitIssue, setSubmitIssue] = useState(null);
+    const [reworkWarning, setReworkWarning] = useState(null);
+    const [pendingMove, setPendingMove] = useState(null);
+    const [penalizedIssues, setPenalizedIssues] = useState(new Set());
 
     // ── Filter state
     const [searchText, setSearchText] = useState('');
@@ -345,12 +363,17 @@ export default function ProjectBoard({ project }) {
             }
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
-            queryClient.invalidateQueries({ queryKey: ['issues', project.projectId, 'board'] });
-            queryClient.invalidateQueries({ queryKey: ['myIssues', 'filtered'] });
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             showToast('Đã cập nhật trạng thái', 'success');
+            const reworkCount = data?.data?.reworkCount;
+            if (reworkCount > 0 && variables?.applyPenalty) {
+                showToast(`Rework! Đã bị trừ ${reworkCount} lần rework (-${reworkCount * 5}% điểm)`, 'warning', 4000);
+            }
         },
     });
 
@@ -358,14 +381,13 @@ export default function ProjectBoard({ project }) {
     useEffect(() => {
         const handler = (e) => {
             const { issue } = e.detail;
-            const reviewStatusId = statusNameToId['Review'];
-            if (reviewStatusId && issue.statusName !== 'Review' && issue.statusName !== 'Done') {
-                moveIssueMutation.mutate({ id: issue.issueId, statusId: reviewStatusId, orderIndex: 0 });
+            if (issue.statusName !== 'Review' && issue.statusName !== 'Done') {
+                setSubmitIssue(issue);
             }
         };
         window.addEventListener('submit-issue-kanban', handler);
         return () => window.removeEventListener('submit-issue-kanban', handler);
-    }, [statusNameToId, moveIssueMutation]);
+    }, []);
 
     // ── Drag handlers (supports both issue and column drags)
     const [dragType, setDragType] = useState(null); // 'Issue' or 'Column'
@@ -432,20 +454,72 @@ export default function ProjectBoard({ project }) {
                     return; // Stop here, wait for modal submission
                 }
 
-                // If it's a different column, auto-start timer if In Progress
-                if (activeIssue.statusName !== newStatusName && newStatusName === 'In Progress') {
-                    window.dispatchEvent(new CustomEvent('auto-start-timer', {
-                        detail: {
+                // If dropping into "Review", show SubmitTaskModal instead of mutating immediately
+                if (activeIssue.statusName !== 'Review' && newStatusName === 'Review') {
+                    setSubmitIssue(activeIssue);
+                    return; // Stop here, wait for modal submission
+                }
+
+                // Check if this is a backward move (rework)
+                if (isBackwardMove(activeIssue.statusName, newStatusName)) {
+                    const alreadyPenalized = penalizedIssues.has(activeIssue.issueId);
+                    setReworkWarning({
+                        issue: activeIssue,
+                        fromStatus: activeIssue.statusName,
+                        toStatus: newStatusName,
+                        reworkCount: (activeIssue.reworkCount || 0) + 1,
+                        penalty: ((activeIssue.reworkCount || 0) + 1) * 5,
+                        alreadyPenalized,
+                    });
+                    setPendingMove({
+                        id: activeIssue.issueId,
+                        statusId,
+                        orderIndex: newOrderIndex,
+                        applyPenalty: !alreadyPenalized,
+                    });
+                    return; // Stop here, wait for confirmation
+                }
+
+                // If it's a different column, start timer if In Progress, or stop if moving out
+                if (activeIssue.statusName !== newStatusName) {
+                    if (newStatusName === 'In Progress') {
+                        useTimerStore.getState().startTimer({
                             issueId: activeIssueId,
                             issueKey: activeIssue.issueKey,
                             issueTitle: activeIssue.title,
-                        }
-                    }));
+                        });
+                    } else if (activeIssue.statusName === 'In Progress') {
+                        fireTaskStopped(activeIssueId);
+                    }
                 }
+
+                if (penalizedIssues.has(activeIssue.issueId)) {
+                    setPenalizedIssues(prev => {
+                        const next = new Set(prev);
+                        next.delete(activeIssue.issueId);
+                        return next;
+                    });
+                }
+
                 moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex });
             }
         }
-    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, activeId]);
+    }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, penalizedIssues]);
+
+    const confirmReworkMove = () => {
+        if (!pendingMove) return;
+        if (pendingMove.applyPenalty) {
+            setPenalizedIssues(prev => new Set([...prev, pendingMove.id]));
+        }
+        moveIssueMutation.mutate({
+            id: pendingMove.id,
+            statusId: pendingMove.statusId,
+            orderIndex: pendingMove.orderIndex,
+            applyPenalty: pendingMove.applyPenalty,
+        });
+        setReworkWarning(null);
+        setPendingMove(null);
+    };
 
     // ── Reorder columns mutation
     const reorderColumnsMutation = useMutation({
@@ -867,10 +941,10 @@ export default function ProjectBoard({ project }) {
                     issue={selectedIssue}
                     onClose={() => setSelectedIssue(null)}
                     onUpdate={() => {
-                        queryClient.invalidateQueries(['issues', project.projectId]);
-                        queryClient.invalidateQueries(['issues', project.projectId, 'board']);
-                        queryClient.invalidateQueries(['backlog-including-planning', project.projectId]);
-                        queryClient.invalidateQueries(['myIssues', 'filtered']);
+                        queryClient.invalidateQueries({ queryKey: ['issues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
                     }}
                 />
             )}
@@ -881,10 +955,10 @@ export default function ProjectBoard({ project }) {
                 onClose={() => setShowCreateModal(false)}
                 onSuccess={() => {
                     setShowCreateModal(false);
-                    queryClient.invalidateQueries(['issues', project.projectId]);
-                    queryClient.invalidateQueries(['issues', project.projectId, 'board']);
-                    queryClient.invalidateQueries(['backlog-including-planning', project.projectId]);
-                    queryClient.invalidateQueries(['myIssues', 'filtered']);
+                    queryClient.invalidateQueries({ queryKey: ['issues'] });
+                    queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+                    queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+                    queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
                 }}
                 defaultProjectId={project.projectId}
             />
@@ -897,11 +971,76 @@ export default function ProjectBoard({ project }) {
                     onSuccess={() => {
                         // Auto-stop timer and log time when task is completed
                         fireTaskCompleted(quickReviewIssueId);
-                        queryClient.invalidateQueries(['issues', project.projectId]);
-                        queryClient.invalidateQueries(['issues', project.projectId, 'board']);
-                        queryClient.invalidateQueries(['backlog-including-planning', project.projectId]);
-                        queryClient.invalidateQueries(['myIssues', 'filtered']);
+                        queryClient.invalidateQueries({ queryKey: ['issues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
                         setQuickReviewIssueId(null);
+                    }}
+                />
+            )}
+
+            {/* Rework Warning Modal */}
+            {reworkWarning && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {reworkWarning.alreadyPenalized ? 'Di chuyển ngược' : 'Cảnh báo Rework'}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {reworkWarning.alreadyPenalized
+                                    ? 'Task này đã bị phạt rework.'
+                                    : 'Bạn đang kéo task ngược về'}
+                            </p>
+                        </div>
+                        <div className="p-6">
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                                <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded mr-2">
+                                    {reworkWarning.issue.issueKey}
+                                </span>
+                                <span className="text-sm text-gray-700">{reworkWarning.issue.title}</span>
+                            </div>
+                            {!reworkWarning.alreadyPenalized && (
+                                <div className="bg-red-50 rounded-lg p-4 mb-4">
+                                    <p className="text-sm font-medium text-red-700">Ảnh hưởng đến điểm Performance</p>
+                                    <div className="mt-2 space-y-1 text-sm">
+                                        <div className="flex justify-between"><span className="text-gray-600">Rework lần này:</span><span className="font-medium text-red-600">-5%</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-600">Tổng penalty:</span><span className="font-medium text-red-600">-{reworkWarning.penalty}% điểm</span></div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+                            <button
+                                onClick={() => { setReworkWarning(null); setPendingMove(null); }}
+                                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={confirmReworkMove}
+                                disabled={moveIssueMutation.isPending}
+                                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                            >
+                                Xác nhận Rework
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Submit Task Modal */}
+            {submitIssue && (
+                <SubmitTaskModal
+                    issue={submitIssue}
+                    onClose={() => setSubmitIssue(null)}
+                    onSuccess={() => {
+                        queryClient.invalidateQueries({ queryKey: ['issues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
+                        setSubmitIssue(null);
                     }}
                 />
             )}
@@ -1228,10 +1367,38 @@ function TimerStatusBadge({ issue }) {
 
     if (isRunningThis) {
         return (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
-                {formatCardTime(elapsedSeconds)}
-            </span>
+            <div className="flex items-center gap-1 shrink-0">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                    {formatCardTime(elapsedSeconds)}
+                </span>
+                <button
+                    onClick={(e) => { e.stopPropagation(); fireTaskStopped(issue.issueId); }}
+                    className="w-5 h-5 rounded bg-gray-100 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-colors text-[9px] shrink-0 cursor-pointer"
+                    title="Tạm dừng đếm giờ"
+                >
+                    <i className="fa-solid fa-pause" />
+                </button>
+            </div>
+        );
+    }
+
+    if (issue.statusName === 'In Progress') {
+        return (
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    useTimerStore.getState().startTimer({
+                        issueId: issue.issueId,
+                        issueKey: issue.issueKey,
+                        issueTitle: issue.title,
+                    });
+                }}
+                className="w-5 h-5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition-colors text-[9px] shrink-0 font-bold cursor-pointer"
+                title="Bắt đầu đếm giờ"
+            >
+                <i className="fa-solid fa-play" />
+            </button>
         );
     }
 
@@ -1270,6 +1437,8 @@ function IssueCard({ issue, isOverlay, onClick }) {
 
     const { hasPermission } = useAccessControl();
     const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+    const { isRunning, issueId: runningIssueId, elapsedSeconds } = useTimerStore();
+    const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
 
     const isImportant = issue.isImportant;
     const isUrgent = issue.isUrgent;
@@ -1286,12 +1455,17 @@ function IssueCard({ issue, isOverlay, onClick }) {
                 ? 'border-l-4 border-l-purple-400 bg-purple-50/40 ring-1 ring-purple-100'
                 : '';
 
+    const runningClasses = isRunningThis
+        ? 'ring-2 ring-indigo-500/80 bg-indigo-50/10 shadow-lg shadow-indigo-150/40 animate-pulse scale-[1.01] border-indigo-400'
+        : '';
+
     return (
         <div
             className={`
                 bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group
                 ${isOverlay ? 'shadow-xl rotate-2 ring-2 ring-indigo-500 ring-opacity-50 scale-105' : ''}
                 ${!isOverlay ? highlightClasses : ''}
+                ${runningClasses}
             `}
             onClick={onClick}
         >
@@ -1333,45 +1507,26 @@ function IssueCard({ issue, isOverlay, onClick }) {
             <h4 className="text-sm font-medium text-gray-800 mb-2 line-clamp-2">{issue.title}</h4>
 
             {/* Story Points + Actual Hours + Progress */}
-            {(Number(issue.estimatedHours) > 0 || Number(issue.actualHours) > 0) && (
-                (() => {
-                    const estimated = Number(issue.estimatedHours) || 0;
-                    const actual = Number(issue.actualHours) || 0;
-                    const progressPct = estimated > 0 && actual > 0 ? Math.min((actual / estimated) * 100, 100) : null;
-                    const isOverEstimate = estimated > 0 && actual > estimated;
-                    return (
-                        <div className="mb-2">
-                            <div className="flex items-center justify-between text-[10px] mb-1">
-                                <span className="text-gray-400 flex items-center gap-1">
-                                    <i className="fa-solid fa-fire-flame-curved text-[8px]" />
-                                    {estimated}h ước tính
-                                </span>
-                                {actual > 0 && (
-                                    <span className={`font-semibold flex items-center gap-1 ${isOverEstimate ? 'text-red-500' : 'text-teal-600'}`}>
-                                        <i className="fa-solid fa-clock text-[8px]" />
-                                        {actual.toFixed(1)}h thực tế
-                                    </span>
-                                )}
-                            </div>
-                            {progressPct !== null && (
-                                <div className="relative">
-                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all ${isOverEstimate ? 'bg-red-400' : 'bg-teal-400'}`}
-                                            style={{ width: `${Math.min(progressPct, 100)}%` }}
-                                        />
-                                    </div>
-                                    {isOverEstimate && (
-                                        <span className="absolute right-0 top-[-2px] text-[8px] text-red-500 font-bold">
-                                            +{(actual - estimated).toFixed(1)}h
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })()
-            )}
+            {(() => {
+                let actual = Number(issue.loggedHours ?? issue.actualHours ?? 0);
+                if (isRunningThis) {
+                    actual += elapsedSeconds / 3600;
+                } else if (issue.statusName === 'In Progress' && issue.inProgressAt) {
+                    const inProgressMs = new Date(issue.inProgressAt).getTime();
+                    actual += calculateWorkingSeconds(inProgressMs, Date.now()) / 3600;
+                }
+                return (
+                    <div className="mb-2 flex items-center justify-between text-[10px]">
+                        <span className="text-gray-500 flex items-center gap-1 font-medium">
+                            <i className="fa-solid fa-clock text-[8px] text-gray-400" />
+                            Thời gian thực tế
+                        </span>
+                        <span className="font-bold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded animate-duration-1000">
+                            {actual.toFixed(1)}h
+                        </span>
+                    </div>
+                );
+            })()}
 
             {/* Bottom row: key + due date + assignee */}
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">

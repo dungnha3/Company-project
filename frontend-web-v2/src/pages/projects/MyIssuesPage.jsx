@@ -14,7 +14,7 @@ import {
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
-import { useTimerStore } from '@shared/stores/timerStore';
+import { useTimerStore, fireTaskCompleted, fireTaskToReview, fireTaskStopped, calculateWorkingSeconds } from '@shared/stores/timerStore';
 import IssueDetailModal from './components/IssueDetailModal';
 import SubmitTaskModal from './components/SubmitTaskModal';
 
@@ -126,21 +126,51 @@ export default function MyIssuesPage() {
         },
         onSuccess: () => {
             showToast('Đã nộp task thành công', 'success');
-            queryClient.invalidateQueries(['myIssues']);
-            queryClient.invalidateQueries(['myReportedIssues']);
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
         },
         onError: (err) => showToast(err?.response?.data?.message || 'Không thể nộp task', 'error'),
     });
 
     const moveIssueMutation = useMutation({
-        mutationFn: async ({ issueId, targetStatusId, applyPenalty }) =>
+        mutationFn: async ({ issueId, targetStatusId, applyPenalty, fromStatusName }) =>
             apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(issueId, targetStatusId)),
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries(['myIssues']);
-            queryClient.invalidateQueries(['myReportedIssues']);
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
             const reworkCount = data?.data?.reworkCount;
             if (reworkCount > 0 && variables.applyPenalty) {
                 showToast(`Rework! Đã bị trừ ${reworkCount} lần rework (-${reworkCount * 5}% điểm)`, 'warning', 4000);
+            }
+            // Auto-start timer or stop timer based on target status name
+            const targetStatusName = issueStatuses.find(s => s.statusId === variables.targetStatusId)?.name;
+            if (targetStatusName === 'In Progress') {
+                const issueObj = allIssues.find(i => i.issueId === variables.issueId);
+                if (issueObj) {
+                    useTimerStore.getState().startTimer({
+                        issueId: variables.issueId,
+                        issueKey: issueObj.issueKey,
+                        issueTitle: issueObj.title,
+                    });
+                }
+            } else if (variables.fromStatusName === 'In Progress') {
+                if (targetStatusName === 'Done') {
+                    fireTaskCompleted(variables.issueId);
+                } else if (targetStatusName === 'Review') {
+                    fireTaskToReview(variables.issueId);
+                } else {
+                    fireTaskStopped(variables.issueId);
+                }
+            } else {
+                if (targetStatusName === 'Done') {
+                    fireTaskCompleted(variables.issueId);
+                } else if (targetStatusName === 'Review') {
+                    fireTaskToReview(variables.issueId);
+                }
             }
         },
         onError: () => showToast('Không thể di chuyển task', 'error'),
@@ -231,6 +261,7 @@ export default function MyIssuesPage() {
                 issueId: draggedIssue.issueId,
                 targetStatusId,
                 applyPenalty: !alreadyPenalized,
+                fromStatusName: draggedIssue.statusName,
             });
         } else if (targetStatusName === 'Review' && draggedIssue.statusName !== 'Review') {
             setSubmitIssue(draggedIssue);
@@ -242,7 +273,7 @@ export default function MyIssuesPage() {
                     return next;
                 });
             }
-            moveIssueMutation.mutate({ issueId: draggedIssue.issueId, targetStatusId });
+            moveIssueMutation.mutate({ issueId: draggedIssue.issueId, targetStatusId, fromStatusName: draggedIssue.statusName });
         }
     };
 
@@ -259,8 +290,10 @@ export default function MyIssuesPage() {
     const handleIssueClick = (issue) => setSelectedIssue(issue);
     const handleCloseModal = () => {
         setSelectedIssue(null);
-        queryClient.invalidateQueries(['myIssues']);
-        queryClient.invalidateQueries(['myReportedIssues']);
+        queryClient.invalidateQueries({ queryKey: ['issues'] });
+        queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+        queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
     };
 
     return (
@@ -500,44 +533,26 @@ function DraggableIssueCard({ issue, onClick, onSubmit }) {
     );
 }
 
-// ─── Mini burndown bar for a task card ─────────────────────────────────────────
-function MiniBurndown({ issue }) {
-    const estimated = Number(issue.estimatedHours) || 0;
-    const actual = Number(issue.loggedHours ?? issue.actualHours ?? 0);
-    if (estimated <= 0 && actual <= 0) return null;
-
-    const progressPct = estimated > 0 && actual > 0 ? Math.min((actual / estimated) * 100, 100) : null;
-    const isOverEstimate = estimated > 0 && actual > estimated;
-
+// ─── Mini actual time for a task card ─────────────────────────────────────────
+function MiniActualTime({ issue }) {
+    const { isRunning, issueId: runningIssueId, elapsedSeconds } = useTimerStore();
+    const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
+    let actual = Number(issue.loggedHours ?? issue.actualHours ?? 0);
+    if (isRunningThis) {
+        actual += elapsedSeconds / 3600;
+    } else if (issue.statusName === 'In Progress' && issue.inProgressAt) {
+        const inProgressMs = new Date(issue.inProgressAt).getTime();
+        actual += calculateWorkingSeconds(inProgressMs, Date.now()) / 3600;
+    }
     return (
-        <div className="mt-2 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between text-[10px] mb-1">
-                <span className="text-gray-400 flex items-center gap-1">
-                    <i className="fa-solid fa-fire-flame-curved text-[8px]" />
-                    {estimated}h ước tính
-                </span>
-                {actual > 0 && (
-                    <span className={`font-semibold flex items-center gap-1 ${isOverEstimate ? 'text-red-500' : 'text-teal-600'}`}>
-                        <i className="fa-solid fa-clock text-[8px]" />
-                        {actual.toFixed(1)}h thực tế
-                    </span>
-                )}
-            </div>
-            {progressPct !== null && (
-                <div className="relative">
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-all ${isOverEstimate ? 'bg-red-400' : 'bg-teal-400'}`}
-                            style={{ width: `${Math.min(progressPct, 100)}%` }}
-                        />
-                    </div>
-                    {isOverEstimate && (
-                        <span className="absolute right-0 top-[-2.5px] text-[8px] text-red-500 font-bold">
-                            +{(actual - estimated).toFixed(1)}h
-                        </span>
-                    )}
-                </div>
-            )}
+        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[10px]">
+            <span className="text-gray-500 flex items-center gap-1 font-medium">
+                <i className="fa-solid fa-clock text-[8px] text-gray-400" />
+                Thời gian thực tế
+            </span>
+            <span className="font-bold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">
+                {actual.toFixed(1)}h
+            </span>
         </div>
     );
 }
@@ -558,10 +573,38 @@ function TimerStatusBadge({ issue }) {
 
     if (isRunningThis) {
         return (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
-                {formatCardTime(elapsedSeconds)}
-            </span>
+            <div className="flex items-center gap-1 shrink-0">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                    {formatCardTime(elapsedSeconds)}
+                </span>
+                <button
+                    onClick={(e) => { e.stopPropagation(); fireTaskStopped(issue.issueId); }}
+                    className="w-5 h-5 rounded bg-gray-100 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-colors text-[9px] shrink-0 cursor-pointer"
+                    title="Tạm dừng đếm giờ"
+                >
+                    <i className="fa-solid fa-pause" />
+                </button>
+            </div>
+        );
+    }
+
+    if (issue.statusName === 'In Progress') {
+        return (
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    useTimerStore.getState().startTimer({
+                        issueId: issue.issueId,
+                        issueKey: issue.issueKey,
+                        issueTitle: issue.title,
+                    });
+                }}
+                className="w-5 h-5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition-colors text-[9px] shrink-0 font-bold cursor-pointer"
+                title="Bắt đầu đếm giờ"
+            >
+                <i className="fa-solid fa-play" />
+            </button>
         );
     }
 
@@ -604,10 +647,14 @@ function IssueCard({ issue, onClick, onSubmit }) {
                 ? 'border-l-4 border-l-purple-400 bg-purple-50/40 ring-1 ring-purple-100'
                 : '';
 
+    const runningClasses = isRunningThis
+        ? 'ring-2 ring-indigo-500/80 bg-indigo-50/10 shadow-lg shadow-indigo-150/40 animate-pulse scale-[1.01] border-indigo-400'
+        : '';
+
     return (
         <div
             onDoubleClick={onClick}
-            className={`bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${highlightClasses}`}
+            className={`bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${highlightClasses} ${runningClasses}`}
         >
             {/* Priority + badges row */}
             <div className="flex justify-between items-start mb-2">
@@ -677,8 +724,8 @@ function IssueCard({ issue, onClick, onSubmit }) {
                 </div>
             </div>
 
-            {/* Mini burndown chart */}
-            <MiniBurndown issue={issue} />
+            {/* Mini actual time */}
+            <MiniActualTime issue={issue} />
 
             {/* Submit action */}
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">

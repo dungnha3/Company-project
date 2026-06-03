@@ -21,6 +21,12 @@ public class ResourceOverviewDTO {
     private String email;
     private String avatarUrl;
 
+    // Profile details from Employee entity
+    private String gender;
+    private java.time.LocalDate hireDate;
+    private String address;
+    private Integer leaveBalance;
+
     // Tổng allocation (% toàn bộ dự án đang tham gia)
     private Integer totalAllocation;
 
@@ -41,5 +47,16 @@ public class ResourceOverviewDTO {
         private Integer allocationRate; // % phân bổ trong dự án này
         private String memberStatus;    // ACTIVE / ON_LEAVE / PART_TIME
         private Double totalLoggedHours;
+
+        // Project member specific fields
+        private Integer yearsOfExperience;
+        private java.math.BigDecimal billingRate;
+        private String skillNotes;
+        private java.time.LocalDate joinDate;
+        private java.time.LocalDate leaveDate;
+        
+        // Task statistics
+        private Long totalIssues;
+        private Long completedIssues;
     }
 }

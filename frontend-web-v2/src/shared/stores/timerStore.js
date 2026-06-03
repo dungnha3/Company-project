@@ -2,37 +2,59 @@ import { create } from 'zustand';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 
-// ── Break deduction logic ─────────────────────────────────────────────────────
-// Default: 12:00–13:00 lunch break (1 hour)
-// Returns how many seconds should be deducted for breaks within the work period
-function calculateBreakDeduction(startTime, endTime) {
-    const BREAKS = [
-        { startHour: 12, startMin: 0, endHour: 13, endMin: 0, label: 'Nghỉ trưa' },
-    ];
+// ── Calculate working seconds between two timestamps (8:00 - 18:00, excluding weekends and lunch 12:00-13:00) ──
+export function calculateWorkingSeconds(startTimeMs, endTimeMs) {
+    if (endTimeMs <= startTimeMs) return 0;
 
-    let totalDeducted = 0;
+    let totalSeconds = 0;
+    const start = new Date(startTimeMs);
+    const end = new Date(endTimeMs);
 
-    for (const brk of BREAKS) {
-        // Build break window for the given day
-        const dayStart = new Date(startTime);
-        dayStart.setHours(brk.startHour, brk.startMin, 0, 0);
-        const breakStart = dayStart.getTime();
+    // Temp variables for day looping
+    let current = new Date(start);
+    current.setHours(0, 0, 0, 0);
 
-        const dayEnd = new Date(startTime);
-        dayEnd.setHours(brk.endHour, brk.endMin, 0, 0);
-        const breakEnd = dayEnd.getTime();
+    const endDay = new Date(end);
+    endDay.setHours(0, 0, 0, 0);
 
-        // If work period spans across this break window, deduct break time
-        if (startTime < breakEnd && endTime > breakStart) {
-            const overlapStart = Math.max(startTime, breakStart);
-            const overlapEnd = Math.min(endTime, breakEnd);
-            if (overlapEnd > overlapStart) {
-                totalDeducted += Math.floor((overlapEnd - overlapStart) / 1000);
+    while (current.getTime() <= endDay.getTime()) {
+        const dayOfWeek = current.getDay();
+        // Skip Saturday (6) and Sunday (0)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const dayStart = new Date(current);
+            dayStart.setHours(8, 0, 0, 0); // Workday start: 8:00
+
+            const dayEnd = new Date(current);
+            dayEnd.setHours(18, 0, 0, 0); // Workday end: 18:00
+
+            // Overlap of workday with actual start/end
+            const actualStart = Math.max(dayStart.getTime(), startTimeMs);
+            const actualEnd = Math.min(dayEnd.getTime(), endTimeMs);
+
+            if (actualEnd > actualStart) {
+                let seconds = Math.floor((actualEnd - actualStart) / 1000);
+
+                // Deduct lunch break: 12:00 - 13:00
+                const lunchStart = new Date(current);
+                lunchStart.setHours(12, 0, 0, 0);
+                const lunchEnd = new Date(current);
+                lunchEnd.setHours(13, 0, 0, 0);
+
+                const overlapStart = Math.max(actualStart, lunchStart.getTime());
+                const overlapEnd = Math.min(actualEnd, lunchEnd.getTime());
+
+                if (overlapEnd > overlapStart) {
+                    seconds -= Math.floor((overlapEnd - overlapStart) / 1000);
+                }
+
+                totalSeconds += Math.max(0, seconds);
             }
         }
+        // Move to next day safely
+        current.setDate(current.getDate() + 1);
     }
 
-    return totalDeducted;
+    return totalSeconds;
 }
 
 // ── Check if user has approved leave today ───────────────────────────────────
@@ -49,7 +71,7 @@ async function checkApprovedLeaveToday() {
             return start && end && today >= start && today <= end;
         });
     } catch {
-        return false; // treat error as "no leave" (don't auto-stop on network error)
+        return false;
     }
 }
 
@@ -59,6 +81,8 @@ export const AUTO_STOP = {
     WORK_HOURS_END: 'work_hours_end',
     ON_LEAVE: 'on_leave',
 };
+
+let timerInterval = null;
 
 export const useTimerStore = create((set, get) => ({
     // Active timer state
@@ -71,31 +95,68 @@ export const useTimerStore = create((set, get) => ({
 
     // ── Start timer for a specific issue ─────────────────────────────────────
     startTimer: ({ issueId, issueKey, issueTitle }) => {
+        if (timerInterval) clearInterval(timerInterval);
+        const startTime = Date.now();
         set({
             isRunning: true,
             issueId,
             issueKey,
             issueTitle,
-            startTime: Date.now(),
+            startTime,
             elapsedSeconds: 0,
         });
         try {
-            sessionStorage.setItem('timer-state', JSON.stringify({
-                issueId, issueKey, issueTitle, startTime: Date.now(),
+            localStorage.setItem('timer-state', JSON.stringify({
+                issueId,
+                issueKey,
+                issueTitle,
+                startTime,
+                lastTickTime: startTime,
+                lastElapsedSeconds: 0,
             }));
         } catch {}
+
+        timerInterval = setInterval(async () => {
+            const currentStartTime = get().startTime;
+            if (!currentStartTime) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                return;
+            }
+
+            const nextElapsed = get().elapsedSeconds + 1;
+            set({ elapsedSeconds: nextElapsed });
+
+            try {
+                localStorage.setItem('timer-state', JSON.stringify({
+                    issueId,
+                    issueKey,
+                    issueTitle,
+                    startTime: currentStartTime,
+                    lastTickTime: Date.now(),
+                    lastElapsedSeconds: nextElapsed,
+                }));
+            } catch {}
+
+            // Check auto stop
+            const reason = await get().autoStopTick();
+            if (reason !== AUTO_STOP.NONE) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                await get().stopTimerWithReason(reason);
+                window.dispatchEvent(new CustomEvent('timelog-updated', { detail: { issueId } }));
+            }
+        }, 1000);
     },
 
     // ── Update elapsed seconds (called by ticker) ──────────────────────────────
     tick: () => {
         const { startTime } = get();
         if (!startTime) return;
-        set({ elapsedSeconds: Math.floor((Date.now() - startTime) / 1000) });
+        set({ elapsedSeconds: get().elapsedSeconds + 1 });
     },
 
     // ── Auto-stop tick: returns AUTO_STOP reason or AUTO_STOP.NONE ─────────────
-    // Call this every second from the UI ticker.
-    // If it returns a reason, the UI should call stopTimerWithReason() to stop & log.
     autoStopTick: async () => {
         const { isRunning, startTime } = get();
         if (!isRunning || !startTime) return AUTO_STOP.NONE;
@@ -105,7 +166,7 @@ export const useTimerStore = create((set, get) => ({
 
         // Weekend → auto-stop (no work on Sat/Sun)
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            return AUTO_STOP.ON_LEAVE; // reuse ON_LEAVE label for "day off"
+            return AUTO_STOP.ON_LEAVE;
         }
 
         // Past work hours end (default 18:00)
@@ -126,37 +187,36 @@ export const useTimerStore = create((set, get) => ({
 
     // ── Stop timer and return raw elapsed seconds ────────────────────────────
     stopTimer: () => {
-        const { startTime, issueId, issueKey, issueTitle } = get();
-        const rawSeconds = startTime
-            ? Math.floor((Date.now() - startTime) / 1000)
-            : get().elapsedSeconds;
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        const { startTime, issueId, issueKey, issueTitle, elapsedSeconds } = get();
+        const rawSeconds = elapsedSeconds;
 
         try {
-            sessionStorage.removeItem('timer-state');
+            localStorage.removeItem('timer-state');
         } catch {}
 
         set({
             isRunning: false,
             startTime: null,
             elapsedSeconds: 0,
+            issueId: null,
+            issueKey: null,
+            issueTitle: null,
         });
 
-        return { issueId, issueKey, issueTitle, rawSeconds };
+        return { issueId, issueKey, issueTitle, rawSeconds, startTime };
     },
 
     // ── Stop timer with reason (for auto-stop) ────────────────────────────────
     stopTimerWithReason: async (reason) => {
-        const { stopTimer, computeDeduction } = get();
+        const { stopTimer } = get();
         const result = stopTimer();
         if (!result || result.rawSeconds < 60) return;
 
-        const now = Date.now();
-        const deduction = computeDeduction(
-            result.startTime || (now - result.rawSeconds * 1000),
-            now
-        );
-        const netSeconds = Math.max(0, result.rawSeconds - deduction);
-        const hours = netSeconds / 3600;
+        const hours = result.rawSeconds / 3600;
 
         let description = 'Timer';
         if (reason === AUTO_STOP.WORK_HOURS_END) {
@@ -167,12 +227,11 @@ export const useTimerStore = create((set, get) => ({
 
         try {
             const { timelogApi } = await import('@shared/api/featureApi');
-            const breakNote = deduction > 0 ? ` (đã trừ ${Math.round(deduction / 60)}m nghỉ)` : '';
             await timelogApi.logTime({
                 issueId: result.issueId,
                 loggedHours: Math.max(0.25, Math.round(hours * 100) / 100),
                 workDate: new Date().toISOString().split('T')[0],
-                description: description + breakNote,
+                description: description,
             });
         } catch (err) {
             console.error('[timerStore] Failed to auto-log time:', err);
@@ -181,23 +240,77 @@ export const useTimerStore = create((set, get) => ({
 
     // ── Utility: compute break deduction for a given time window ─────────────
     computeDeduction: (startTimeMs, endTimeMs = Date.now()) => {
-        return calculateBreakDeduction(startTimeMs, endTimeMs);
+        // Keeps signature compatible but return 0 as calculation is already handled net in calculateWorkingSeconds gap
+        return 0;
     },
 
-    // ── Restore timer from sessionStorage ─────────────────────────────────────
+    // ── Restore timer from localStorage ─────────────────────────────────────
     restoreTimer: () => {
         try {
-            const saved = sessionStorage.getItem('timer-state');
+            const saved = localStorage.getItem('timer-state');
             if (!saved) return null;
-            const { issueId, issueKey, issueTitle, startTime } = JSON.parse(saved);
+            const { issueId, issueKey, issueTitle, startTime, lastTickTime, lastElapsedSeconds } = JSON.parse(saved);
             if (!startTime) return null;
-            const rawSeconds = Math.floor((Date.now() - startTime) / 1000);
-            if (rawSeconds > 8 * 3600) {
-                sessionStorage.removeItem('timer-state');
-                return null;
-            }
-            set({ isRunning: true, issueId, issueKey, issueTitle, startTime, elapsedSeconds: rawSeconds });
-            return { issueId, issueKey, issueTitle, rawSeconds };
+
+            // Calculate working seconds elapsed while the browser was closed/inactive
+            const workingSecondsGap = calculateWorkingSeconds(lastTickTime || startTime, Date.now());
+            const restoredElapsed = (lastElapsedSeconds || 0) + workingSecondsGap;
+
+            if (timerInterval) clearInterval(timerInterval);
+            set({
+                isRunning: true,
+                issueId,
+                issueKey,
+                issueTitle,
+                startTime,
+                elapsedSeconds: restoredElapsed
+            });
+
+            // Update localStorage immediately with restored progress
+            try {
+                localStorage.setItem('timer-state', JSON.stringify({
+                    issueId,
+                    issueKey,
+                    issueTitle,
+                    startTime,
+                    lastTickTime: Date.now(),
+                    lastElapsedSeconds: restoredElapsed,
+                }));
+            } catch {}
+
+            timerInterval = setInterval(async () => {
+                const currentStartTime = get().startTime;
+                if (!currentStartTime) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    return;
+                }
+
+                const nextElapsed = get().elapsedSeconds + 1;
+                set({ elapsedSeconds: nextElapsed });
+
+                try {
+                    localStorage.setItem('timer-state', JSON.stringify({
+                        issueId,
+                        issueKey,
+                        issueTitle,
+                        startTime: currentStartTime,
+                        lastTickTime: Date.now(),
+                        lastElapsedSeconds: nextElapsed,
+                    }));
+                } catch {}
+
+                // Check auto stop
+                const reason = await get().autoStopTick();
+                if (reason !== AUTO_STOP.NONE) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    await get().stopTimerWithReason(reason);
+                    window.dispatchEvent(new CustomEvent('timelog-updated', { detail: { issueId } }));
+                }
+            }, 1000);
+
+            return { issueId, issueKey, issueTitle, rawSeconds: restoredElapsed };
         } catch {
             return null;
         }
@@ -212,9 +325,8 @@ export function fireAutoStartTimer(issue) {
 }
 
 // ── Auto-complete event (fired when task is dragged/updated to Done status) ────
-// Automatically stops the running timer for this issue and saves the time log
 export async function fireTaskCompleted(issueId) {
-    const { isRunning, issueId: timerIssueId, stopTimer, computeDeduction } = useTimerStore.getState();
+    const { isRunning, issueId: timerIssueId, stopTimer } = useTimerStore.getState();
 
     // Only auto-log if the timer is running for THIS issue
     if (!isRunning || timerIssueId !== issueId) return;
@@ -222,14 +334,7 @@ export async function fireTaskCompleted(issueId) {
     const result = stopTimer();
     if (!result || result.rawSeconds < 60) return;
 
-    const now = Date.now();
-    const deduction = computeDeduction(
-        result.startTime || (now - result.rawSeconds * 1000),
-        now
-    );
-    const netSeconds = Math.max(0, result.rawSeconds - deduction);
-    const hours = netSeconds / 3600;
-    const breakNote = deduction > 0 ? ` (đã trừ ${Math.round(deduction / 60)}m nghỉ)` : '';
+    const hours = result.rawSeconds / 3600;
 
     try {
         const { timelogApi } = await import('@shared/api/featureApi');
@@ -237,12 +342,37 @@ export async function fireTaskCompleted(issueId) {
             issueId: result.issueId,
             loggedHours: Math.max(0.25, Math.round(hours * 100) / 100),
             workDate: new Date().toISOString().split('T')[0],
-            description: `Timer (auto-stop: task hoàn thành)${breakNote}`,
+            description: `Timer (auto-stop: task hoàn thành)`,
         });
-        // Notify UI to refresh time logs
         window.dispatchEvent(new CustomEvent('timelog-updated', { detail: { issueId } }));
     } catch (err) {
         console.error('[timerStore] Failed to auto-log on task complete:', err);
+    }
+}
+
+// Automatically stops the running timer for this issue and saves the time log as "Review" submission
+export async function fireTaskToReview(issueId) {
+    const { isRunning, issueId: timerIssueId, stopTimer } = useTimerStore.getState();
+
+    // Only auto-log if the timer is running for THIS issue
+    if (!isRunning || timerIssueId !== issueId) return;
+
+    const result = stopTimer();
+    if (!result || result.rawSeconds < 60) return;
+
+    const hours = result.rawSeconds / 3600;
+
+    try {
+        const { timelogApi } = await import('@shared/api/featureApi');
+        await timelogApi.logTime({
+            issueId: result.issueId,
+            loggedHours: Math.max(0.25, Math.round(hours * 100) / 100),
+            workDate: new Date().toISOString().split('T')[0],
+            description: `Timer (auto-stop: nộp task Review)`,
+        });
+        window.dispatchEvent(new CustomEvent('timelog-updated', { detail: { issueId } }));
+    } catch (err) {
+        console.error('[timerStore] Failed to auto-log on task Review:', err);
     }
 }
 
@@ -261,4 +391,30 @@ export function formatHours(seconds) {
     if (h > 0) return `${h}h ${m}m`;
     if (m > 0) return `${m}m`;
     return '0m';
+}
+
+// Automatically stops the running timer for this issue and saves the time log as a regular stop
+export async function fireTaskStopped(issueId) {
+    const { isRunning, issueId: timerIssueId, stopTimer } = useTimerStore.getState();
+
+    // Only auto-log if the timer is running for THIS issue
+    if (!isRunning || timerIssueId !== issueId) return;
+
+    const result = stopTimer();
+    if (!result || result.rawSeconds < 60) return;
+
+    const hours = result.rawSeconds / 3600;
+
+    try {
+        const { timelogApi } = await import('@shared/api/featureApi');
+        await timelogApi.logTime({
+            issueId: result.issueId,
+            loggedHours: Math.max(0.25, Math.round(hours * 100) / 100),
+            workDate: new Date().toISOString().split('T')[0],
+            description: `Timer (auto-stop: chuyển trạng thái)`,
+        });
+        window.dispatchEvent(new CustomEvent('timelog-updated', { detail: { issueId } }));
+    } catch (err) {
+        console.error('[timerStore] Failed to auto-log on task stop:', err);
+    }
 }

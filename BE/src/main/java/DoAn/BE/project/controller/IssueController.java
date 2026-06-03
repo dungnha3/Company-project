@@ -141,6 +141,15 @@ public class IssueController {
         return ResponseEntity.ok(issues);
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<java.util.List<IssueDTO>> getUserIssues(
+            @PathVariable Long userId,
+            Authentication authentication) {
+        log.info("Lấy danh sách issue được gán cho user: {}", userId);
+        java.util.List<IssueDTO> issues = issueService.getMyIssues(userId);
+        return ResponseEntity.ok(issues);
+    }
+
     @GetMapping("/my-reported")
     public ResponseEntity<Page<IssueDTO>> getMyReportedIssues(
             Authentication authentication,

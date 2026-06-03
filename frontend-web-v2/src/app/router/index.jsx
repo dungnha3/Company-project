@@ -46,6 +46,7 @@ const MyWorkPage = lazy(() => import('@pages/personal/MyWorkPage'));
 
 const AnalyticsPage = lazy(() => import('@pages/projects/AnalyticsPage'));
 const ProjectCostPage = lazy(() => import('@pages/projects/ProjectCostPage'));
+const ProjectPerformancePage = lazy(() => import('@pages/projects/ProjectPerformancePage'));
 
 
 const ActivityLogPage = lazy(() => import('@pages/company/ActivityLogPage'));
@@ -271,6 +272,16 @@ const router = createBrowserRouter([
                     <AccessControlGuard>
                         <Suspense fallback={<PageLoader />}>
                             <ProjectCostPage />
+                        </Suspense>
+                    </AccessControlGuard>
+                ),
+            },
+            {
+                path: 'projects/performance',
+                element: (
+                    <AccessControlGuard>
+                        <Suspense fallback={<PageLoader />}>
+                            <ProjectPerformancePage />
                         </Suspense>
                     </AccessControlGuard>
                 ),

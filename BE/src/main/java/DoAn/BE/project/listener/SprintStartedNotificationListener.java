@@ -2,11 +2,9 @@ package DoAn.BE.project.listener;
 
 import DoAn.BE.notification.service.EmailNotificationService;
 import DoAn.BE.project.event.SprintStartedEvent;
-import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

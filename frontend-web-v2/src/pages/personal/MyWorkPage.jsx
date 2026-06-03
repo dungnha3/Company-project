@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useAuthStore } from '@shared/stores/authStore';
 import { formatDate, formatNumber } from '@shared/utils/formatters';
+import { useTimerStore, calculateWorkingSeconds } from '@shared/stores/timerStore';
 
 const TODAY = new Date();
 const TODAY_STR = TODAY.toISOString().split('T')[0];
@@ -306,6 +307,17 @@ function IssueRow({ issue }) {
         LOW: 'bg-gray-100 text-gray-500',
     };
 
+    const { isRunning, issueId: runningIssueId, elapsedSeconds } = useTimerStore();
+    const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
+    
+    let actual = Number(issue.loggedHours ?? issue.actualHours ?? 0);
+    if (isRunningThis) {
+        actual += elapsedSeconds / 3600;
+    } else if (issue.statusName === 'In Progress' && issue.inProgressAt) {
+        const inProgressMs = new Date(issue.inProgressAt).getTime();
+        actual += calculateWorkingSeconds(inProgressMs, Date.now()) / 3600;
+    }
+
     return (
         <div className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
             <div className="flex-1 min-w-0">
@@ -327,12 +339,10 @@ function IssueRow({ issue }) {
                 )}
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
-                {issue.estimatedHours && (
-                    <span className="text-xs text-gray-500">
-                        <i className="fa-solid fa-clock text-[10px] mr-1" />
-                        {issue.estimatedHours}h
-                    </span>
-                )}
+                <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">
+                    <i className="fa-solid fa-clock text-[10px] mr-1 text-teal-500" />
+                    {actual.toFixed(1)}h
+                </span>
             </div>
         </div>
     );

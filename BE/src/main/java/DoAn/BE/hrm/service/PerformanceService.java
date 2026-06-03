@@ -126,6 +126,22 @@ public class PerformanceService {
                 dto.setEmployeeAvatar(stats.emp.getUser().getAvatarUrl());
             }
 
+            dto.setCompletedTasks(stats.completedTasks);
+            dto.setTotalStoryPoints(stats.totalEstimated.intValue());
+            dto.setOverdueTasks(stats.overdueTasks);
+            dto.setLateTasks(stats.lateTasks);
+            dto.setReworks(stats.reworks);
+
+            if (stats.completedTasks == 0) {
+                dto.setVolumeScore(BigDecimal.ZERO.setScale(1));
+                dto.setSpeedScore(BigDecimal.ZERO.setScale(1));
+                dto.setSystemScore(BigDecimal.ZERO.setScale(1));
+                dto.setQualityScore(BigDecimal.ZERO.setScale(1));
+                dto.setTotalPerformanceScore(BigDecimal.ZERO.setScale(1));
+                rankings.add(dto);
+                continue;
+            }
+
             // 1. Volume Score (0-10)
             BigDecimal volumeScore = stats.totalEstimated.divide(maxVolume, 4, RoundingMode.HALF_UP).multiply(new BigDecimal(10));
 
@@ -140,8 +156,21 @@ public class PerformanceService {
                 if (speedScore.compareTo(new BigDecimal(10)) > 0) {
                     speedScore = new BigDecimal(10);
                 }
-            } else if (stats.completedTasks > 0) {
-                speedScore = new BigDecimal(10); // Logged 0 hours but completed tasks -> extremely fast (or forgot to log)
+
+                // Penalty for late tasks
+                if (stats.lateTasks > 0) {
+                    double lateRatio = (double) stats.lateTasks / stats.completedTasks;
+                    speedScore = speedScore.multiply(new BigDecimal(1.0 - 0.5 * lateRatio));
+                }
+            } else {
+                // Logged 0 hours but completed tasks
+                if (stats.lateTasks > 0) {
+                    // Penalize based on percentage of late tasks
+                    double lateRatio = (double) stats.lateTasks / stats.completedTasks;
+                    speedScore = new BigDecimal(10).multiply(new BigDecimal(1.0 - 0.8 * lateRatio));
+                } else {
+                    speedScore = new BigDecimal(10); // Logged 0 hours, no late tasks -> extremely fast
+                }
             }
 
             dto.setVolumeScore(volumeScore.setScale(1, RoundingMode.HALF_UP));
@@ -171,12 +200,6 @@ public class PerformanceService {
             // Total Performance = (System + Quality) / 2
             BigDecimal totalScore = systemScore.add(qualityScore).divide(new BigDecimal(2), 1, RoundingMode.HALF_UP);
             dto.setTotalPerformanceScore(totalScore.setScale(1, RoundingMode.HALF_UP));
-
-            dto.setCompletedTasks(stats.completedTasks);
-            dto.setTotalStoryPoints(stats.totalEstimated.intValue());
-            dto.setOverdueTasks(stats.overdueTasks);
-            dto.setLateTasks(stats.lateTasks);
-            dto.setReworks(stats.reworks);
 
             rankings.add(dto);
         }

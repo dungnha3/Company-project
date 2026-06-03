@@ -6,6 +6,8 @@ import { useUIStore } from '@shared/stores/uiStore';
 import useThemeStore from '@shared/stores/themeStore';
 import { useKeyboardShortcuts } from '@shared/components/ShortcutsModal';
 
+import { useTimerStore } from '@shared/stores/timerStore';
+
 export default function DashboardLayout() {
     const { sidebarCollapsed } = useUIStore();
     const { initTheme } = useThemeStore();
@@ -15,9 +17,11 @@ export default function DashboardLayout() {
     // Initialize keyboard shortcuts
     const { ShortcutsModal } = useKeyboardShortcuts(navigate);
 
-    // Initialize theme on mount
+    // Initialize theme and restore active timer on mount
     useEffect(() => {
         initTheme();
+        const { restoreTimer } = useTimerStore.getState();
+        restoreTimer();
     }, [initTheme]);
 
 
