@@ -24,4 +24,12 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
 
     @EntityGraph(attributePaths = { "uploadedBy", "project", "issue" })
     List<FileEntity> findByCompanyCompanyId(Long companyId);
+
+    // Find a virtual folder at the root level of a project (folder IS NULL)
+    java.util.Optional<FileEntity> findByProject_ProjectIdAndContentTypeAndFolderIsNullAndFileName(
+            Long projectId, String contentType, String fileName);
+
+    // Find a virtual folder nested inside another folder
+    java.util.Optional<FileEntity> findByProject_ProjectIdAndContentTypeAndFolderAndFileName(
+            Long projectId, String contentType, String folder, String fileName);
 }

@@ -208,4 +208,77 @@ public class GoogleDriveIntegrationService {
         settings.setDriveFolderId(null);
         companySettingsRepository.save(settings);
     }
+
+    /**
+     * Get company settings (public helper for controller layer).
+     */
+    public CompanySettings getCompanySettings(Long companyId) {
+        return companySettingsRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company settings not found: " + companyId));
+    }
+
+    /**
+     * Get company settings safely — returns null if not found (non-critical paths).
+     */
+    public CompanySettings getCompanySettingsSafe(Long companyId) {
+        return companySettingsRepository.findById(companyId).orElse(null);
+    }
+
+    /**
+     * Idempotent: Get an existing folder by name under parentFolderId, or create it if not found.
+     */
+    public String getOrCreateFolder(CompanySettings settings, String parentFolderId, String folderName) throws IOException {
+        Drive driveService = getDriveService(settings.getGoogleDriveAccessToken(), settings.getGoogleDriveRefreshToken());
+
+        // Escape single quotes to avoid query injection in Drive API q parameter
+        String escapedName = folderName.replace("\\", "\\\\").replace("'", "\\'");
+
+        FileList result = driveService.files().list()
+                .setQ("mimeType='application/vnd.google-apps.folder'"
+                        + " and name='" + escapedName + "'"
+                        + " and '" + parentFolderId + "' in parents"
+                        + " and trashed=false")
+                .setSpaces("drive")
+                .setFields("files(id, name)")
+                .execute();
+
+        if (!result.getFiles().isEmpty()) {
+            return result.getFiles().get(0).getId();
+        }
+
+        // Create folder under parent
+        File fileMetadata = new File();
+        fileMetadata.setName(folderName);
+        fileMetadata.setMimeType("application/vnd.google-apps.folder");
+        fileMetadata.setParents(Collections.singletonList(parentFolderId));
+
+        File folder = driveService.files().create(fileMetadata)
+                .setFields("id")
+                .execute();
+        return folder.getId();
+    }
+
+    /**
+     * Upload a file to a specific Drive folder (identified by targetFolderId).
+     */
+    public String uploadFileToFolder(CompanySettings settings, String targetFolderId, MultipartFile multipartFile) throws IOException {
+        if (settings.getGoogleDriveAccessToken() == null) {
+            throw new RuntimeException("Google Drive is not connected for this company.");
+        }
+
+        Drive driveService = getDriveService(settings.getGoogleDriveAccessToken(), settings.getGoogleDriveRefreshToken());
+
+        File fileMetadata = new File();
+        fileMetadata.setName(multipartFile.getOriginalFilename());
+        fileMetadata.setParents(Collections.singletonList(targetFolderId));
+
+        InputStreamContent mediaContent = new InputStreamContent(
+                multipartFile.getContentType(),
+                multipartFile.getInputStream());
+
+        File file = driveService.files().create(fileMetadata, mediaContent)
+                .setFields("id")
+                .execute();
+        return file.getId();
+    }
 }

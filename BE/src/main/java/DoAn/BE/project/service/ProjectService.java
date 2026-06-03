@@ -36,14 +36,12 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
-
-
     private final AccessControlService accessControlService;
-
     private final SprintRepository sprintRepository;
     private final IssueRepository issueRepository;
     private final IssueStatusRepository issueStatusRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final DoAn.BE.storage.service.GoogleDriveIntegrationService driveService;
 
     @Transactional
     public ProjectDTO createProject(CreateProjectRequest request, User currentUser) {
@@ -89,8 +87,25 @@ public class ProjectService {
         ProjectMember ownerMember = new ProjectMember(project, currentUser, ProjectRole.OWNER);
         projectMemberRepository.save(ownerMember);
 
-
-
+        // Tạo thư mục Drive ngay khi tạo dự án (nếu Drive đã kết nối)
+        try {
+            Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+            if (companyId != null) {
+                DoAn.BE.company.entity.CompanySettings settings = driveService.getCompanySettingsSafe(companyId);
+                if (settings != null
+                        && settings.getGoogleDriveAccessToken() != null
+                        && settings.getDriveFolderId() != null) {
+                    String projectFolderId = driveService.getOrCreateFolder(
+                            settings, settings.getDriveFolderId(), project.getName());
+                    project.setDriveFolderId(projectFolderId);
+                    projectRepository.save(project);
+                    log.info("Đã tạo thư mục Drive cho dự án '{}': {}", project.getName(), projectFolderId);
+                }
+            }
+        } catch (Exception e) {
+            // Non-fatal: thư mục Drive sẽ được tạo lazily lần đầu upload/tạo folder
+            log.warn("Không thể tạo thư mục Drive cho dự án '{}': {}", project.getName(), e.getMessage());
+        }
         ProjectDTO projectDTO = convertToDTO(project);
 
         // Publish Event

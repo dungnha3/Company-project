@@ -63,6 +63,10 @@ public class Project extends TenantScopedEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    // Google Drive folder ID for this project (under SaaS_Storage/{projectName}/)
+    @Column(name = "drive_folder_id")
+    private String driveFolderId;
+
     public boolean isActive() {
         return this.isActive && this.status == ProjectStatus.ACTIVE;
     }
