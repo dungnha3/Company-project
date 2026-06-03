@@ -325,6 +325,7 @@ public class ReviewService {
     public Review quickScoreAndCompleteIssue(Long issueId, QuickScoreRequest request, User currentUser) {
         // 1. Check permissions
         accessControlService.checkProjectManageIssuesPermission();
+        accessControlService.checkReviewCreatePermission();
 
         // 2. Find Issue
         Issue issue = issueRepository.findById(issueId)

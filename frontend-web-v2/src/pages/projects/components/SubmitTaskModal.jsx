@@ -5,6 +5,7 @@ import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import { useTimerStore, fireTaskToReview } from '@shared/stores/timerStore';
+import { useAuthStore } from '@shared/stores/authStore';
 
 const ACCEPTED_TYPES = [
     'image/*', 'application/pdf', 'application/msword',
@@ -39,7 +40,10 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const { hasPermission } = useAccessControl();
+    const { user: currentUser } = useAuthStore();
     const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+    const isAssignee = currentUser && Number(issue.assigneeId) === Number(currentUser.userId);
+    const canSubmit = canManageIssues || isAssignee;
     const fileInputRef = useRef(null);
     const [note, setNote] = useState('');
     const [attachedFiles, setAttachedFiles] = useState([]);
@@ -124,18 +128,19 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
             });
             return res.data;
         },
-        onSuccess: (data) => {
-            setUploadingFiles(prev => prev.filter(f => f.id !== data.googleDriveFileId));
+        onSuccess: (data, variables) => {
+            setUploadingFiles(prev => prev.filter(f => f.id !== variables.id));
             setAttachedFiles(prev => [
-                ...prev.filter(f => f._pending && f.googleDriveFileId !== data.googleDriveFileId),
+                ...prev.filter(f => f.id !== variables.id),
                 data
             ]);
             queryClient.invalidateQueries(['issue-files', issue.issueId]);
             queryClient.invalidateQueries(['projectFiles', issue.projectId]);
             showToast(`Đã upload ${data.fileName}`, 'success');
         },
-        onError: (err) => {
+        onError: (err, variables) => {
             showToast(err?.response?.data?.message || 'Upload thất bại', 'error');
+            setAttachedFiles(prev => prev.filter(f => f.id !== variables.id));
         }
     });
 
@@ -511,9 +516,9 @@ export default function SubmitTaskModal({ issue, onClose, onSuccess }) {
                             return (
                                 <button
                                     onClick={handleConfirm}
-                                    disabled={!canManageIssues || !note.trim() || submitMutation.isPending || isUploading || needsFile}
-                                    className={`px-6 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2 ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
-                                    title={needsFile ? 'Phải đính kèm ít nhất 1 file minh chứng' : !canManageIssues ? 'Bạn không có quyền nộp task' : ''}
+                                    disabled={!canSubmit || !note.trim() || submitMutation.isPending || isUploading || needsFile}
+                                    className={`px-6 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2 ${!canSubmit ? 'cursor-not-allowed' : ''}`}
+                                    title={needsFile ? 'Phải đính kèm ít nhất 1 file minh chứng' : !canSubmit ? 'Bạn không có quyền nộp task' : ''}
                                 >
                                     {submitMutation.isPending ? (
                                         <><i className="fa-solid fa-spinner fa-spin text-xs" />Đang nộp...</>

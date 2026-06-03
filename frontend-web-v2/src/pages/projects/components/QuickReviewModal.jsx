@@ -10,7 +10,10 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const { hasPermission } = useAccessControl();
+    
     const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
+    const canCreateReview = hasPermission('REVIEW.CREATE');
+    const canSubmit = canManageIssues && canCreateReview;
 
     const [form, setForm] = useState({
         performanceScore: 7,
@@ -67,6 +70,7 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (!canSubmit) return;
         quickScoreMutation.mutate({
             performanceScore: form.performanceScore,
             reworkCount: form.reworkCount,
@@ -98,6 +102,20 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                             </div>
                         </div>
 
+                        {/* Permission Warning */}
+                        {!canCreateReview && (
+                            <div className="bg-red-50 text-red-750 p-3 rounded-lg text-xs border border-red-150 flex items-start gap-2.5">
+                                <i className="fa-solid fa-triangle-exclamation text-sm shrink-0 mt-0.5" />
+                                <span>Bạn không có quyền <strong>Tạo đánh giá nhân viên (REVIEW.CREATE)</strong>. Vui lòng liên hệ Quản trị viên để được phân quyền.</span>
+                            </div>
+                        )}
+                        {!canManageIssues && canCreateReview && (
+                            <div className="bg-red-50 text-red-755 p-3 rounded-lg text-xs border border-red-150 flex items-start gap-2.5">
+                                <i className="fa-solid fa-triangle-exclamation text-sm shrink-0 mt-0.5" />
+                                <span>Bạn không có quyền <strong>Quản lý công việc (PROJECT.MANAGE_ISSUES)</strong> trong dự án này.</span>
+                            </div>
+                        )}
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Điểm chất lượng (1-10) <span className="text-red-500">*</span>
@@ -114,9 +132,10 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                                     min="1"
                                     max="10"
                                     step="0.5"
+                                    disabled={!canSubmit}
                                     value={form.performanceScore}
                                     onChange={(e) => setForm(prev => ({ ...prev, performanceScore: parseFloat(e.target.value) }))}
-                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 disabled:opacity-50"
                                 />
                                 <span className="font-bold text-lg text-emerald-600 w-10 text-center">{form.performanceScore}</span>
                             </div>
@@ -127,9 +146,10 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                             <input
                                 type="number"
                                 min="0"
+                                disabled={!canSubmit}
                                 value={form.reworkCount}
                                 onChange={(e) => setForm(prev => ({ ...prev, reworkCount: parseInt(e.target.value) || 0 }))}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-400"
                             />
                         </div>
 
@@ -137,8 +157,9 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú / Nhận xét</label>
                             <textarea
                                 value={form.reviewerNote}
+                                disabled={!canSubmit}
                                 onChange={(e) => setForm(prev => ({ ...prev, reviewerNote: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 resize-none"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 resize-none disabled:bg-gray-50 disabled:text-gray-400"
                                 rows={3}
                                 placeholder="Nhận xét về chất lượng công việc..."
                             />
@@ -155,8 +176,8 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         </button>
                         <button
                             type="submit"
-                            disabled={!canManageIssues || quickScoreMutation.isPending}
-                            className={`px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm ${!canManageIssues ? 'cursor-not-allowed' : ''}`}
+                            disabled={!canSubmit || quickScoreMutation.isPending}
+                            className={`px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm ${!canSubmit ? 'cursor-not-allowed' : ''}`}
                         >
                             {quickScoreMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-check" />}
                             Chấm điểm & Done
