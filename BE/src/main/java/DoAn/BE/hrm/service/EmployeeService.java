@@ -13,6 +13,7 @@ import DoAn.BE.common.exception.DuplicateException;
 import DoAn.BE.common.exception.ResourceNotFoundException;
 import DoAn.BE.common.exception.ForbiddenException;
 import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.common.service.EncryptionService;
 import DoAn.BE.hrm.dto.EmployeeRequest;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Employee.EmployeeStatus;
@@ -41,6 +42,7 @@ public class EmployeeService {
     private final CompanyMemberRepository companyMemberRepository;
     private final EmailNotificationService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final EncryptionService encryptionService;
 
     @org.springframework.beans.factory.annotation.Value("${app.client.url:http://localhost:3000}")
     private String clientUrl;
@@ -148,11 +150,17 @@ public class EmployeeService {
         emp.setUser(userProxy(toLong(row[3])));
         emp.setCompany(companyProxy(toLong(row[4])));
         emp.setFullName((String) row[6]);
-        emp.setIdCard((String) row[7]);
+        
+        String rawIdCard = (String) row[7];
+        emp.setIdCard(rawIdCard != null && encryptionService.isEncrypted(rawIdCard) ? encryptionService.decrypt(rawIdCard) : rawIdCard);
+        
         emp.setDateOfBirth(toLocalDate(row[8]));
         try { emp.setGender(row[9] != null ? DoAn.BE.hrm.entity.Employee.Gender.valueOf((String) row[9]) : null); } catch (Exception e) { /* ignore */ }
         emp.setAddress((String) row[10]);
-        emp.setPhone((String) row[11]);
+        
+        String rawPhone = (String) row[11];
+        emp.setPhone(rawPhone != null && encryptionService.isEncrypted(rawPhone) ? encryptionService.decrypt(rawPhone) : rawPhone);
+        
         emp.setHireDate(toLocalDate(row[12]));
         try { emp.setStatus(row[13] != null ? DoAn.BE.hrm.entity.Employee.EmployeeStatus.valueOf((String) row[13]) : null); } catch (Exception e) { /* ignore */ }
         emp.setBaseSalary(row[14] != null ? new java.math.BigDecimal(row[14].toString()) : null);
