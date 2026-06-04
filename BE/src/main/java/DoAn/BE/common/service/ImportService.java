@@ -1,6 +1,12 @@
 package DoAn.BE.common.service;
 
 import DoAn.BE.company.entity.Company;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanyRole;
+import DoAn.BE.company.entity.UserPermissions;
+import DoAn.BE.company.repository.CompanyRepository;
+import DoAn.BE.company.repository.CompanyMemberRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.LeaveRequest;
 import DoAn.BE.hrm.entity.Review;
@@ -49,6 +55,9 @@ public class ImportService {
     private final ProjectMemberRepository projectMemberRepository;
     private final IssueStatusRepository issueStatusRepository;
     private final IssueRepository issueRepository;
+    private final CompanyRepository companyRepository;
+    private final CompanyMemberRepository companyMemberRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter[] DATE_FMTS = {
@@ -140,23 +149,56 @@ public class ImportService {
                         user = userRepository.findByUsername(email).orElse(null);
                     }
 
+                    Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+
+                    CompanyMember member = null;
                     if (user == null) {
-                        errors.add("Row " + (rowNum + 1) + ": User with email '" + email + "' not found");
-                        errorCount++;
-                        continue;
+                        // Create shadow user
+                        user = new User();
+                        user.setEmail(email);
+                        user.setUsername(email);
+                        user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+                        user.setStatus(User.UserStatus.PENDING_ACTIVATION);
+                        user.setActivationToken(java.util.UUID.randomUUID().toString());
+                        user.setIsActive(false);
+                        user = userRepository.save(user);
+
+                        // Create company member
+                        member = new CompanyMember();
+                        member.setUser(user);
+                        member.setCompany(company);
+                        member.getRoles().add(CompanyRole.EMPLOYEE);
+                        member.setPermissions(UserPermissions.defaultFor(CompanyRole.EMPLOYEE));
+                        member.setInvitedAt(LocalDateTime.now());
+                        member.setJoinedAt(LocalDateTime.now());
+                        member.setIsActive(false);
+                        member = companyMemberRepository.save(member);
+                    } else {
+                        // If user exists, check if they are a member of the company
+                        member = companyMemberRepository.findByUser_UserIdAndCompany_CompanyId(user.getUserId(), companyId).orElse(null);
+                        if (member == null) {
+                            member = new CompanyMember();
+                            member.setUser(user);
+                            member.setCompany(company);
+                            member.getRoles().add(CompanyRole.EMPLOYEE);
+                            member.setPermissions(UserPermissions.defaultFor(CompanyRole.EMPLOYEE));
+                            member.setInvitedAt(LocalDateTime.now());
+                            member.setJoinedAt(LocalDateTime.now());
+                            member.setIsActive(true); // already active user
+                            member = companyMemberRepository.save(member);
+                        }
                     }
 
-                    if (employeeRepository.findByUser_UserId(user.getUserId()).isPresent()) {
+                    if (employeeRepository.findByUser_UserIdAndCompany_CompanyId(user.getUserId(), companyId).isPresent()) {
                         errors.add("Row " + (rowNum + 1) + ": Employee already exists for user '" + email + "'");
                         errorCount++;
                         continue;
                     }
 
-                    Company company = new Company();
-                    company.setCompanyId(companyId);
-
                     Employee emp = new Employee();
                     emp.setUser(user);
+                    emp.setCompanyMember(member);
                     emp.setCompany(company);
                     emp.setFullName(fullName);
 
