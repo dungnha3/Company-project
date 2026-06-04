@@ -158,6 +158,19 @@ export default function ProjectBoard({ project }) {
         staleTime: 60000,
     });
 
+    // ── Fetch sprints of the project to identify the active sprint
+    const { data: sprints = [] } = useQuery({
+        queryKey: ['sprints', project.projectId],
+        queryFn: async () => {
+            try {
+                return (await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(project.projectId))).data;
+            } catch { return []; }
+        },
+        enabled: !!project.projectId,
+    });
+
+    const activeSprint = useMemo(() => sprints.find(s => s.status === 'ACTIVE'), [sprints]);
+
     // ── Build dynamic columns from statuses
     const columns = useMemo(() =>
         statuses.map(s => ({
@@ -166,7 +179,7 @@ export default function ProjectBoard({ project }) {
             title: s.name,
             ...hexToColumnStyle(s.color),
         })),
-    [statuses]);
+        [statuses]);
 
     const columnIds = useMemo(() => columns.map(c => c.id), [columns]);
     const statusNameToId = useMemo(() => {
@@ -238,10 +251,19 @@ export default function ProjectBoard({ project }) {
 
     // ── Filter issues for Kanban columns ────────────────────────────────────────
     // Backend already returns only ACTIVE-sprint issues for the board endpoint.
-    // The sprintId guard is kept as a safety net; it also filters the "My Issues"
-    // overlay (which still hits /my-issues and may include issues from any sprint).
+    // When "Của tôi" is active, we manually restrict to the current project, active sprint, and parent issues only.
     const filteredIssues = useMemo(() => {
-        let result = issues.filter(i => i.sprintId != null);
+        let result = issues;
+        if (filterMyIssues) {
+            const activeSprintId = activeSprint?.sprintId;
+            result = result.filter(i => 
+                i.projectId === project.projectId &&
+                i.sprintId === activeSprintId &&
+                i.parentIssueId == null
+            );
+        } else {
+            result = result.filter(i => i.sprintId != null);
+        }
         // Only apply remaining client-side filters here
         if (filterPriority) {
             result = result.filter(i => i.priority === filterPriority);
@@ -255,7 +277,7 @@ export default function ProjectBoard({ project }) {
             );
         }
         return result;
-    }, [issues, filterPriority, searchText]);
+    }, [issues, filterMyIssues, activeSprint, project.projectId, filterPriority, searchText]);
 
     // ── Group issues by status column
     const boardData = useMemo(() => {
@@ -354,7 +376,9 @@ export default function ProjectBoard({ project }) {
             queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
         },
         onSuccess: (data, variables) => {
-            showToast('Đã cập nhật trạng thái', 'success');
+            if (variables?.statusChanged) {
+                showToast('Đã cập nhật trạng thái', 'success');
+            }
             const reworkCount = data?.data?.reworkCount;
             if (reworkCount > 0 && variables?.applyPenalty) {
                 showToast(`Rework! Đã bị trừ ${reworkCount} lần rework (-${reworkCount * 5}% điểm)`, 'warning', 4000);
@@ -433,6 +457,36 @@ export default function ProjectBoard({ project }) {
         if (activeIssue && newStatusName) {
             const statusId = statusNameToId[newStatusName];
             if (statusId) {
+                const statusChanged = activeIssue.statusName !== newStatusName;
+
+                // Find current index of activeIssue in its current column
+                const colIssues = boardData[activeIssue.statusName] || [];
+                const currentIndex = colIssues.findIndex(i => i.issueId === activeIssueId);
+
+                // Determine if there is any actual change in position or status
+                let isPositionChanged = true;
+                if (!statusChanged) {
+                    // Same column - check if it dropped on itself or didn't change position
+                    if (overId === activeIssueId) {
+                        isPositionChanged = false;
+                    } else if (columnIds.includes(overId)) {
+                        // Dropped on the column container - check if it was already at the end
+                        if (currentIndex === colIssues.length - 1) {
+                            isPositionChanged = false;
+                        }
+                    } else {
+                        // Dropped on another issue - check if index is same
+                        if (newOrderIndex === currentIndex) {
+                            isPositionChanged = false;
+                        }
+                    }
+                }
+
+                if (!statusChanged && !isPositionChanged) {
+                    // No change in status and no change in position, do nothing
+                    return;
+                }
+
                 // If dropping into "Done", show QuickReviewModal instead of mutating immediately
                 if (activeIssue.statusName !== 'Done' && newStatusName === 'Done') {
                     setQuickReviewIssueId(activeIssueId);
@@ -466,7 +520,7 @@ export default function ProjectBoard({ project }) {
                 }
 
                 // If it's a different column, start timer if In Progress, or stop if moving out
-                if (activeIssue.statusName !== newStatusName) {
+                if (statusChanged) {
                     if (newStatusName === 'In Progress') {
                         useTimerStore.getState().startTimer({
                             issueId: activeIssueId,
@@ -486,7 +540,7 @@ export default function ProjectBoard({ project }) {
                     });
                 }
 
-                moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex });
+                moveIssueMutation.mutate({ id: activeIssueId, statusId, orderIndex: newOrderIndex, statusChanged });
             }
         }
     }, [issues, moveIssueMutation, columnIds, statusNameToId, columns, showToast, boardData, penalizedIssues]);
@@ -501,6 +555,7 @@ export default function ProjectBoard({ project }) {
             statusId: pendingMove.statusId,
             orderIndex: pendingMove.orderIndex,
             applyPenalty: pendingMove.applyPenalty,
+            statusChanged: true,
         });
         setReworkWarning(null);
         setPendingMove(null);
@@ -799,7 +854,7 @@ export default function ProjectBoard({ project }) {
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
                             >
                                 <i className="fa-solid fa-plus" />
-                                Tạo Issue
+                                Tạo Công việc
                             </button>
                         </>
                     )}
@@ -847,55 +902,55 @@ export default function ProjectBoard({ project }) {
 
                     {/* Add Column */}
                     {canManageAll && (
-                    <div className="flex-shrink-0 w-72">
-                        {showAddColumn ? (
-                            <div className="bg-white rounded-xl border-2 border-dashed border-indigo-200 p-4 space-y-3">
-                                <h4 className="text-sm font-bold text-gray-700">Thêm cột mới</h4>
-                                <input
-                                    type="text"
-                                    placeholder="Tên cột (ví dụ: Testing)"
-                                    value={newColName}
-                                    onChange={e => setNewColName(e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Enter' && newColName.trim()) addColumnMutation.mutate(); if (e.key === 'Escape') setShowAddColumn(false); }}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300"
-                                    autoFocus
-                                />
-                                <div className="flex gap-1.5 flex-wrap">
-                                    {COLUMN_COLORS.map(c => (
+                        <div className="flex-shrink-0 w-72">
+                            {showAddColumn ? (
+                                <div className="bg-white rounded-xl border-2 border-dashed border-indigo-200 p-4 space-y-3">
+                                    <h4 className="text-sm font-bold text-gray-700">Thêm cột mới</h4>
+                                    <input
+                                        type="text"
+                                        placeholder="Tên cột (ví dụ: Testing)"
+                                        value={newColName}
+                                        onChange={e => setNewColName(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter' && newColName.trim()) addColumnMutation.mutate(); if (e.key === 'Escape') setShowAddColumn(false); }}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300"
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {COLUMN_COLORS.map(c => (
+                                            <button
+                                                key={c.hex}
+                                                onClick={() => setNewColColor(c.hex)}
+                                                className={`w-6 h-6 rounded-full border-2 transition-all ${newColColor === c.hex ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105'}`}
+                                                style={{ backgroundColor: c.hex }}
+                                                title={c.label}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2">
                                         <button
-                                            key={c.hex}
-                                            onClick={() => setNewColColor(c.hex)}
-                                            className={`w-6 h-6 rounded-full border-2 transition-all ${newColColor === c.hex ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105'}`}
-                                            style={{ backgroundColor: c.hex }}
-                                            title={c.label}
-                                        />
-                                    ))}
+                                            onClick={() => newColName.trim() && addColumnMutation.mutate()}
+                                            disabled={!newColName.trim() || addColumnMutation.isPending}
+                                            className="flex-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                                        >
+                                            {addColumnMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : 'Thêm'}
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowAddColumn(false); setNewColName(''); }}
+                                            className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                                        >
+                                            Hủy
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => newColName.trim() && addColumnMutation.mutate()}
-                                        disabled={!newColName.trim() || addColumnMutation.isPending}
-                                        className="flex-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                                    >
-                                        {addColumnMutation.isPending ? <i className="fa-solid fa-spinner fa-spin" /> : 'Thêm'}
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowAddColumn(false); setNewColName(''); }}
-                                        className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-                                    >
-                                        Hủy
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={() => setShowAddColumn(true)}
-                                className="w-full h-20 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-gray-400 hover:text-indigo-500 transition-all flex items-center justify-center gap-2 text-sm font-medium"
-                            >
-                                <i className="fa-solid fa-plus" /> Thêm cột
-                            </button>
-                        )}
-                    </div>
+                            ) : (
+                                <button
+                                    onClick={() => setShowAddColumn(true)}
+                                    className="w-full h-20 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-gray-400 hover:text-indigo-500 transition-all flex items-center justify-center gap-2 text-sm font-medium"
+                                >
+                                    <i className="fa-solid fa-plus" /> Thêm cột
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -1193,11 +1248,10 @@ function MiniIssueCard({ issue, showSprintBadge = true }) {
             <p className="text-slate-700 font-medium line-clamp-2 mb-2">{issue.title}</p>
             <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between">
                 {showSprintBadge ? (
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                        issue.sprintName 
-                            ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/50' 
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${issue.sprintName
+                            ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
                             : 'bg-slate-100 text-slate-500 border border-slate-200/50'
-                    }`}>
+                        }`}>
                         <i className={`fa-solid ${issue.sprintName ? 'fa-layer-group' : 'fa-inbox'} text-[8px]`} />
                         {issue.sprintName || 'Chưa gán sprint'}
                     </span>
@@ -1212,7 +1266,7 @@ function MiniIssueCard({ issue, showSprintBadge = true }) {
                         {issue.assigneeName.charAt(0).toUpperCase()}
                     </div>
                 ) : (
-                    <div 
+                    <div
                         className="w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[8px]"
                         title="Chưa gán người thực hiện"
                     >

@@ -91,7 +91,7 @@ export default function MyWorkPage() {
                 if (aActive !== bActive) return aActive - bActive;
                 return (a.dueDate || '').localeCompare(b.dueDate || '');
             })
-            .slice(0, 8);
+            .slice(0, 20);
     }, [myIssues]);
 
     // Performance scores
@@ -175,7 +175,7 @@ export default function MyWorkPage() {
                                 Xem tất cả →
                             </Link>
                         </div>
-                        <div className="p-5">
+                        <div className="p-5 max-h-[420px] overflow-y-auto custom-scrollbar">
                             {todaysIssues.length === 0 ? (
                                 <div className="text-center py-8">
                                     <i className="fa-solid fa-check-circle text-3xl text-gray-300 mb-2" />

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     DndContext,
     PointerSensor,
@@ -17,6 +17,7 @@ import { useToast } from '@app/providers/ToastProvider';
 import { useTimerStore, fireTaskCompleted, fireTaskToReview, fireTaskStopped, calculateWorkingSeconds } from '@shared/stores/timerStore';
 import IssueDetailModal from './components/IssueDetailModal';
 import SubmitTaskModal from './components/SubmitTaskModal';
+import QuickReviewModal from './components/QuickReviewModal';
 
 const VIEW_MODES = [
     { id: 'all', label: 'Tất cả', icon: 'fa-list-check' },
@@ -25,15 +26,21 @@ const VIEW_MODES = [
     { id: 'overdue', label: 'Quá hạn', icon: 'fa-clock' },
 ];
 
-const STATUS_ORDER = ['To Do', 'In Progress', 'Review', 'Done'];
-
-// Unified status column styles matching ProjectBoard
-const COLUMN_STYLES = {
-    'To Do': { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' },
-    'In Progress': { bg: 'bg-blue-50/60 border border-blue-100', dot: 'bg-indigo-500', marker: 'bg-indigo-200' },
-    'Review': { bg: 'bg-amber-50/60 border border-amber-100', dot: 'bg-amber-500', marker: 'bg-amber-200' },
-    'Done': { bg: 'bg-emerald-50/60 border border-emerald-100', dot: 'bg-green-500', marker: 'bg-emerald-200' },
-};
+function hexToColumnStyle(hex) {
+    const upperHex = hex?.toUpperCase();
+    const colorMap = {
+        '#94A3B8': { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' },
+        '#6366F1': { bg: 'bg-blue-50/60 border border-blue-100', dot: 'bg-indigo-500', marker: 'bg-indigo-200' },
+        '#F59E0B': { bg: 'bg-amber-50/60 border border-amber-100', dot: 'bg-amber-500', marker: 'bg-amber-200' },
+        '#10B981': { bg: 'bg-emerald-50/60 border border-emerald-100', dot: 'bg-green-500', marker: 'bg-emerald-200' },
+        '#EF4444': { bg: 'bg-red-50/60 border border-red-100', dot: 'bg-red-500', marker: 'bg-red-200' },
+        '#8B5CF6': { bg: 'bg-purple-50/60 border border-purple-100', dot: 'bg-purple-500', marker: 'bg-purple-200' },
+        '#EC4899': { bg: 'bg-pink-50/60 border border-pink-100', dot: 'bg-pink-500', marker: 'bg-pink-200' },
+        '#06B6D4': { bg: 'bg-cyan-50/60 border border-cyan-100', dot: 'bg-cyan-500', marker: 'bg-cyan-200' },
+        '#F97316': { bg: 'bg-orange-50/60 border border-orange-100', dot: 'bg-orange-500', marker: 'bg-orange-200' },
+    };
+    return colorMap[upperHex] || { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' };
+}
 
 const BACKWARD_MOVES = {
     'To Do': new Set([]),
@@ -61,6 +68,7 @@ export default function MyIssuesPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [submitIssue, setSubmitIssue] = useState(null);
+    const [quickReviewIssueId, setQuickReviewIssueId] = useState(null);
     const [activeId, setActiveId] = useState(null);
     // Rework warning modal state
     const [reworkWarning, setReworkWarning] = useState(null);
@@ -70,58 +78,6 @@ export default function MyIssuesPage() {
     const [selectedProjectId, setSelectedProjectId] = useState('all');
     const queryClient = useQueryClient();
     const { showToast } = useToast();
-
-    // Fetch my projects
-    const { data: projects = [] } = useQuery({
-        queryKey: ['projects', 'my'],
-        queryFn: async () => {
-            try {
-                const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
-                return Array.isArray(res.data) ? res.data : (res.data?.content || []);
-            } catch { return []; }
-        },
-        staleTime: 2 * 60 * 1000,
-    });
-
-    const activeProjects = useMemo(() => {
-        return (projects || []).filter(p => p.status !== 'CANCELLED');
-    }, [projects]);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-    );
-
-    const kanbanCollisionDetection = useCallback((args) => {
-        const pointerCollisions = pointerWithin(args);
-        if (pointerCollisions.length > 0) {
-            const columnHit = pointerCollisions.find(c => STATUS_ORDER.includes(c.id));
-            if (columnHit) return [columnHit];
-            return pointerCollisions;
-        }
-        return rectIntersection(args);
-    }, []);
-
-    // Fetch my assigned issues
-    const { data: assignedIssues = [], isLoading: loadingAssigned } = useQuery({
-        queryKey: ['myIssues'],
-        queryFn: async () => {
-            try {
-                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES)).data;
-                return response?.content || response || [];
-            } catch { return []; }
-        },
-    });
-
-    // Fetch issues I reported
-    const { data: reportedIssues = [], isLoading: loadingReported } = useQuery({
-        queryKey: ['myReportedIssues'],
-        queryFn: async () => {
-            try {
-                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_REPORTED)).data;
-                return Array.isArray(response) ? response : (response?.content || []);
-            } catch { return []; }
-        },
-    });
 
     const { data: issueStatuses = [] } = useQuery({
         queryKey: ['issue-statuses-for-submit'],
@@ -135,6 +91,113 @@ export default function MyIssuesPage() {
         issueStatuses.reduce((acc, s) => { acc[s.name] = s.statusId; return acc; }, {}),
         [issueStatuses]
     );
+
+    const statuses = useMemo(() => {
+        return issueStatuses.length > 0 ? issueStatuses : [
+            { statusId: 1, name: 'To Do', orderIndex: 1, color: '#94A3B8' },
+            { statusId: 2, name: 'In Progress', orderIndex: 2, color: '#6366F1' },
+            { statusId: 3, name: 'Review', orderIndex: 3, color: '#F59E0B' },
+            { statusId: 4, name: 'Done', orderIndex: 4, color: '#10B981' },
+        ];
+    }, [issueStatuses]);
+
+    const STATUS_ORDER = useMemo(() => statuses.map(s => s.name), [statuses]);
+
+    const COLUMN_STYLES = useMemo(() => {
+        return statuses.reduce((acc, s) => {
+            acc[s.name] = hexToColumnStyle(s.color);
+            return acc;
+        }, {});
+    }, [statuses]);
+
+    // Fetch my projects
+    const { data: projects = [] } = useQuery({
+        queryKey: ['projects', 'my'],
+        queryFn: async () => {
+            try {
+                const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS, {
+                    params: { size: 100 }
+                });
+                return Array.isArray(res.data) ? res.data : (res.data?.content || []);
+            } catch { return []; }
+        },
+        staleTime: 2 * 60 * 1000,
+    });
+
+    const activeProjects = useMemo(() => {
+        return (projects || []).filter(p => p.status === 'ACTIVE');
+    }, [projects]);
+
+    // Fetch sprints for each active project to identify their active sprints
+    const sprintQueries = useQueries({
+        queries: activeProjects.map(p => ({
+            queryKey: ['sprints', p.projectId || p.id],
+            queryFn: async () => {
+                try {
+                    const res = await apiClient.get(ENDPOINTS.SPRINTS.BY_PROJECT(p.projectId || p.id));
+                    return res.data || [];
+                } catch {
+                    return [];
+                }
+            },
+            staleTime: 60000,
+            enabled: !!(p.projectId || p.id),
+        }))
+    });
+
+    const activeSprintIdsByProject = useMemo(() => {
+        const map = new Map();
+        sprintQueries.forEach((q, idx) => {
+            const project = activeProjects[idx];
+            if (!project) return;
+            const sprints = q.data || [];
+            const activeSprint = sprints.find(s => s.status === 'ACTIVE');
+            if (activeSprint) {
+                map.set(String(project.projectId || project.id), activeSprint.sprintId);
+            }
+        });
+        return map;
+    }, [sprintQueries, activeProjects]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    );
+
+    const kanbanCollisionDetection = useCallback((args) => {
+        const pointerCollisions = pointerWithin(args);
+        if (pointerCollisions.length > 0) {
+            const columnHit = pointerCollisions.find(c => STATUS_ORDER.includes(c.id));
+            if (columnHit) return [columnHit];
+            return pointerCollisions;
+        }
+        return rectIntersection(args);
+    }, [STATUS_ORDER]);
+
+    // Fetch my assigned issues
+    const { data: assignedIssues = [], isLoading: loadingAssigned } = useQuery({
+        queryKey: ['myIssues'],
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES, {
+                    params: { size: 1000, sort: 'createdAt,desc' }
+                })).data;
+                return response?.content || response || [];
+            } catch { return []; }
+        },
+    });
+
+    // Fetch issues I reported
+    const { data: reportedIssues = [], isLoading: loadingReported } = useQuery({
+        queryKey: ['myReportedIssues'],
+        queryFn: async () => {
+            try {
+                const response = (await apiClient.get(ENDPOINTS.ISSUES.MY_REPORTED, {
+                    params: { size: 1000, sort: 'createdAt,desc' }
+                })).data;
+                return Array.isArray(response) ? response : (response?.content || []);
+            } catch { return []; }
+        },
+    });
 
     const submitMutation = useMutation({
         mutationFn: async ({ issueId, targetStatusId, note }) => {
@@ -193,20 +256,33 @@ export default function MyIssuesPage() {
         onError: () => showToast('Không thể di chuyển task', 'error'),
     });
 
-    const isLoading = loadingAssigned || loadingReported;
+    const isLoading = loadingAssigned || loadingReported || sprintQueries.some(q => q.isLoading);
+
+    const assignedUnique = useMemo(() => {
+        const unique = [...new Map(assignedIssues.map(i => [i.issueId, i])).values()];
+        return unique.filter(i => {
+            const projIdStr = String(i.projectId);
+            const activeSprintId = activeSprintIdsByProject.get(projIdStr);
+            return activeSprintId && String(i.sprintId) === String(activeSprintId);
+        });
+    }, [assignedIssues, activeSprintIdsByProject]);
+
+    const reportedUnique = useMemo(() => {
+        const unique = [...new Map(reportedIssues.map(i => [i.issueId, i])).values()];
+        return unique.filter(i => {
+            const projIdStr = String(i.projectId);
+            const activeSprintId = activeSprintIdsByProject.get(projIdStr);
+            return activeSprintId && String(i.sprintId) === String(activeSprintId);
+        });
+    }, [reportedIssues, activeSprintIdsByProject]);
 
     const allIssues = useMemo(() => {
         const seen = new Map();
-        [...assignedIssues, ...reportedIssues].forEach(i => {
+        [...assignedUnique, ...reportedUnique].forEach(i => {
             if (!seen.has(i.issueId)) seen.set(i.issueId, i);
         });
         return Array.from(seen.values());
-    }, [assignedIssues, reportedIssues]);
-
-    const assignedUnique = useMemo(() =>
-        [...new Map(assignedIssues.map(i => [i.issueId, i])).values()], [assignedIssues]);
-    const reportedUnique = useMemo(() =>
-        [...new Map(reportedIssues.map(i => [i.issueId, i])).values()], [reportedIssues]);
+    }, [assignedUnique, reportedUnique]);
 
     const projectsFilteredIssues = useMemo(() => {
         if (selectedProjectId && selectedProjectId !== 'all') {
@@ -257,7 +333,7 @@ export default function MyIssuesPage() {
 
     const byStatus = useMemo(() =>
         STATUS_ORDER.reduce((acc, s) => { acc[s] = filteredIssues.filter(i => i.statusName === s); return acc; }, {}),
-        [filteredIssues]
+        [filteredIssues, STATUS_ORDER]
     );
 
     const activeIssue = activeId ? filteredIssues.find(i => i.issueId === activeId) : null;
@@ -303,6 +379,8 @@ export default function MyIssuesPage() {
             });
         } else if (targetStatusName === 'Review' && draggedIssue.statusName !== 'Review') {
             setSubmitIssue(draggedIssue);
+        } else if (draggedIssue.statusName !== 'Done' && targetStatusName === 'Done') {
+            setQuickReviewIssueId(draggedIssue.issueId);
         } else {
             if (penalizedIssues.has(draggedIssue.issueId)) {
                 setPenalizedIssues(prev => {
@@ -432,9 +510,10 @@ export default function MyIssuesPage() {
                             <KanbanColumn
                                 key={statusName}
                                 title={statusName}
-                                issues={byStatus[statusName]}
+                                issues={byStatus[statusName] || []}
                                 onIssueClick={handleIssueClick}
                                 onSubmit={setSubmitIssue}
+                                colStyle={COLUMN_STYLES[statusName]}
                             />
                         ))}
                     </div>
@@ -504,6 +583,23 @@ export default function MyIssuesPage() {
                 />
             )}
 
+            {/* Quick Review Modal */}
+            {quickReviewIssueId && (
+                <QuickReviewModal
+                    issue={allIssues.find(i => i.issueId === quickReviewIssueId)}
+                    onClose={() => setQuickReviewIssueId(null)}
+                    onSuccess={() => {
+                        // Auto-stop timer and log time when task is completed
+                        fireTaskCompleted(quickReviewIssueId);
+                        queryClient.invalidateQueries({ queryKey: ['issues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+                        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
+                        setQuickReviewIssueId(null);
+                    }}
+                />
+            )}
+
             {selectedIssue && <IssueDetailModal issue={selectedIssue} onClose={handleCloseModal} />}
         </div>
     );
@@ -525,20 +621,20 @@ function StatMini({ icon, label, value, highlight }) {
 }
 
 // ─── Kanban Column - Minimalist ────────────────────────────────────────────
-function KanbanColumn({ title, issues, onIssueClick, onSubmit }) {
+function KanbanColumn({ title, issues = [], onIssueClick, onSubmit, colStyle }) {
     const { setNodeRef, isOver } = useDroppable({ id: title });
-    const colStyle = COLUMN_STYLES[title] || COLUMN_STYLES['To Do'];
+    const finalStyle = colStyle || { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' };
 
     return (
         <div className={`
             flex-shrink-0 w-80 flex flex-col rounded-xl max-h-full transition-all duration-200
-            ${colStyle.bg}
+            ${finalStyle.bg}
             ${isOver ? 'ring-2 ring-indigo-400 scale-[1.01] shadow-lg' : ''}
         `}>
             {/* Column Header */}
             <div className="px-4 py-3 flex items-center justify-between rounded-t-xl bg-white/60 backdrop-blur-sm sticky top-0 z-10 font-bold border-b border-gray-100/50">
                 <div className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${colStyle.marker}`} />
+                    <span className={`w-2.5 h-2.5 rounded-full ${finalStyle.marker}`} />
                     <span className="text-sm font-semibold text-gray-700">{title}</span>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-white text-gray-500 shadow-sm border border-gray-100">
