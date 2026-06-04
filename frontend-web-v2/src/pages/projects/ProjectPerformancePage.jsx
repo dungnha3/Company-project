@@ -13,7 +13,7 @@ export default function ProjectPerformancePage() {
     const { data: myProjects = [] } = useQuery({
         queryKey: ['performance-page-projects'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
             return Array.isArray(res.data) ? res.data : (res.data?.content || []);
         },
     });
@@ -56,10 +56,13 @@ export default function ProjectPerformancePage() {
     };
     const toOne = (value) => safeNumber(value).toFixed(1);
 
+    // Filter active rankings (members with at least 1 completed task)
+    const activeRankings = rankings.filter(r => safeNumber(r.completedTasks) > 0);
+
     // Prepare data for charts
-    const top3 = rankings.slice(0, 3);
-    const avgScore = rankings.reduce((sum, r) => sum + safeNumber(r.totalPerformanceScore), 0) / Math.max(rankings.length, 1);
-    const avgSpeed = rankings.reduce((sum, r) => sum + safeNumber(r.speedScore), 0) / Math.max(rankings.length, 1);
+    const top3 = activeRankings.slice(0, 3);
+    const avgScore = activeRankings.reduce((sum, r) => sum + safeNumber(r.totalPerformanceScore), 0) / Math.max(activeRankings.length, 1);
+    const avgSpeed = activeRankings.reduce((sum, r) => sum + safeNumber(r.speedScore), 0) / Math.max(activeRankings.length, 1);
     const totalLate = rankings.reduce((sum, r) => sum + safeNumber(r.lateTasks), 0);
     const totalOverdue = rankings.reduce((sum, r) => sum + safeNumber(r.overdueTasks), 0);
     const totalRework = rankings.reduce((sum, r) => sum + safeNumber(r.reworks), 0);
@@ -78,8 +81,8 @@ export default function ProjectPerformancePage() {
         radarData[2][`emp${index}`] = safeNumber(emp.qualityScore);
     });
 
-    // Bar Data for everyone
-    const barData = rankings.map(emp => ({
+    // Bar Data for active members
+    const barData = activeRankings.map(emp => ({
         name: emp.employeeName,
         'Khối lượng': safeNumber(emp.volumeScore),
         'Tốc độ': safeNumber(emp.speedScore),
@@ -133,7 +136,7 @@ export default function ProjectPerformancePage() {
                 <div className="flex justify-center items-center py-20">
                     <i className="fa-solid fa-spinner fa-spin text-3xl text-gray-400" />
                 </div>
-            ) : rankings.length === 0 ? (
+            ) : activeRankings.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm">
                     <i className="fa-solid fa-users-slash text-4xl text-gray-300 mb-4" />
                     <p className="text-gray-500 font-medium">Chưa có dữ liệu hiệu suất cho dự án này.</p>
@@ -152,11 +155,43 @@ export default function ProjectPerformancePage() {
                         <MetricCard title="Nhân sự" value={String(rankings.length)} tone="slate" />
                     </div>
 
-                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-900">
-                        <p className="font-semibold mb-1">Giải thích nhanh điểm số</p>
-                        <p>- Hiệu suất hệ thống: trung bình giữa <strong>Khối lượng</strong> và <strong>Tốc độ</strong>.</p>
-                        <p>- Tổng điểm: trung bình giữa <strong>Hiệu suất hệ thống</strong> và <strong>Chất lượng review</strong>.</p>
-                        <p>- Trễ hạn/Rework ảnh hưởng trực tiếp đến điểm khối lượng và tổng điểm.</p>
+                    <div className="bg-white rounded-xl border border-indigo-100 p-5 shadow-sm space-y-4">
+                        <div className="flex items-center gap-2 text-indigo-900 border-b border-indigo-50 pb-2">
+                            <i className="fa-solid fa-circle-info text-indigo-500 text-lg" />
+                            <h3 className="font-bold text-gray-900">Công thức tính điểm hiệu suất</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            <div className="bg-indigo-50/50 rounded-lg p-3 border border-indigo-50">
+                                <p className="font-semibold text-indigo-950 mb-1 text-xs uppercase tracking-wide">1. Hiệu suất hệ thống</p>
+                                <div className="bg-white px-2 py-1 rounded border border-indigo-100 font-mono text-[11px] text-indigo-700 inline-block mb-2">
+                                    (Khối lượng + Tốc độ) / 2
+                                </div>
+                                <ul className="list-disc pl-4 space-y-1 text-xs text-gray-500">
+                                    <li><strong>Khối lượng:</strong> Tổng hợp thời gian log, trọng số task, độ khó và độ ưu tiên.</li>
+                                    <li><strong>Tốc độ:</strong> Tỷ lệ hoàn thành công việc so với thời hạn dự kiến.</li>
+                                </ul>
+                            </div>
+                            <div className="bg-purple-50/50 rounded-lg p-3 border border-purple-50">
+                                <p className="font-semibold text-purple-950 mb-1 text-xs uppercase tracking-wide">2. Tổng điểm hiệu suất</p>
+                                <div className="bg-white px-2 py-1 rounded border border-purple-100 font-mono text-[11px] text-purple-700 inline-block mb-2">
+                                    (Hiệu suất hệ thống + Chất lượng) / 2
+                                </div>
+                                <ul className="list-disc pl-4 space-y-1 text-xs text-gray-500">
+                                    <li>Là căn cứ tổng hợp chính để xếp hạng và thưởng phạt nhân sự.</li>
+                                    <li><strong>Chất lượng:</strong> Điểm đánh giá (Review) được HR/PM duyệt.</li>
+                                </ul>
+                            </div>
+                            <div className="bg-rose-50/50 rounded-lg p-3 border border-rose-50">
+                                <p className="font-semibold text-rose-950 mb-1 text-xs uppercase tracking-wide">3. Yếu tố giảm trừ</p>
+                                <div className="bg-white px-2 py-1 rounded border border-rose-100 text-rose-700 font-semibold text-[11px] inline-block mb-2">
+                                    Trễ hạn & Bị trả lại (Rework)
+                                </div>
+                                <ul className="list-disc pl-4 space-y-1 text-xs text-gray-500">
+                                    <li><strong>Trễ hạn:</strong> Task hoàn thành muộn sẽ bị giảm trừ điểm Tốc độ.</li>
+                                    <li><strong>Rework:</strong> Mỗi lần task bị từ chối/bị trả lại sẽ bị trừ điểm Khối lượng.</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Charts Section */}
@@ -235,7 +270,7 @@ export default function ProjectPerformancePage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {rankings.map((emp, index) => (
+                                    {activeRankings.map((emp, index) => (
                                         <tr key={emp.employeeId} className="hover:bg-indigo-50/30 transition-colors">
                                             <td className="p-4 text-center">
                                                 {index === 0 ? <i className="fa-solid fa-medal text-yellow-500 text-2xl drop-shadow" /> : 
@@ -257,7 +292,9 @@ export default function ProjectPerformancePage() {
                                             <td className="p-4 text-center font-medium text-red-500">{safeNumber(emp.lateTasks) > 0 ? safeNumber(emp.lateTasks) : '-'}</td>
                                             <td className="p-4 text-center font-medium text-rose-500">{safeNumber(emp.overdueTasks) > 0 ? safeNumber(emp.overdueTasks) : '-'}</td>
                                             <td className="p-4 text-center font-medium text-orange-500">{safeNumber(emp.reworks) > 0 ? safeNumber(emp.reworks) : '-'}</td>
-                                            <td className="p-4 text-center font-medium text-amber-600">{toOne(emp.qualityScore)}</td>
+                                            <td className="p-4 text-center font-medium text-amber-600">
+                                                {emp.qualityScore != null ? toOne(emp.qualityScore) : '—'}
+                                            </td>
                                             <td className="p-4 text-center">
                                                 <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 font-bold text-indigo-700">
                                                     {toOne(emp.totalPerformanceScore)}

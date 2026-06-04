@@ -43,6 +43,7 @@ public class IssueDTO {
     private LocalDateTime completedAt;
     private LocalDateTime inProgressAt;
     private Integer reworkCount;
+    private BigDecimal performanceScore;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isOverdue;

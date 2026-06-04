@@ -18,6 +18,7 @@ import DoAn.BE.project.repository.IssueRepository;
 import DoAn.BE.project.repository.IssueStatusRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.project.entity.ProjectMember;
+import DoAn.BE.project.service.IssueService;
 import DoAn.BE.project.repository.ProjectMemberRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class ReviewService {
     private final EmployeeRepository employeeRepository;
     private final IssueRepository issueRepository;
     private final IssueStatusRepository issueStatusRepository;
+    private final IssueService issueService;
     private final AccessControlService accessControlService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final ProjectMemberRepository projectMemberRepository;
@@ -110,19 +112,28 @@ public class ReviewService {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
+        boolean canView = false;
         try {
             accessControlService.checkReviewViewAllPermission();
-            return review;
+            canView = true;
         } catch (ForbiddenException ignored) {
             // Fall through to self-view check
         }
 
-        // Guard against broken employee-user relationship
-        Employee emp = review.getEmployee();
-        User empUser = (emp != null) ? emp.getUser() : null;
-        Long reviewUserId = (empUser != null) ? empUser.getUserId() : null;
-        if (reviewUserId == null || !reviewUserId.equals(currentUser.getUserId())) {
-            throw new ForbiddenException("You do not have permission to view this review");
+        if (!canView) {
+            // Guard against broken employee-user relationship
+            Employee emp = review.getEmployee();
+            User empUser = (emp != null) ? emp.getUser() : null;
+            Long reviewUserId = (empUser != null) ? empUser.getUserId() : null;
+            if (reviewUserId == null || !reviewUserId.equals(currentUser.getUserId())) {
+                throw new ForbiddenException("You do not have permission to view this review");
+            }
+        }
+
+        // Force initialize lazy associations to prevent LazyInitializationException during DTO mapping
+        if (review.getEmployee() != null && review.getEmployee().getUser() != null) {
+            review.getEmployee().getUser().getEmail();
+            review.getEmployee().getUser().getAvatarUrl();
         }
 
         return review;
@@ -202,6 +213,10 @@ public class ReviewService {
         review.setNextGoals(request.getNextGoals());
         review.setDevelopmentPlan(request.getDevelopmentPlan());
 
+        if (review.getStatus() == ReviewStatus.REJECTED || review.getStatus() == ReviewStatus.IN_PROGRESS) {
+            review.setStatus(ReviewStatus.PENDING);
+        }
+
         return reviewRepository.save(review);
     }
 
@@ -258,12 +273,22 @@ public class ReviewService {
     public Review submitForApproval(Long id, User currentUser) {
         Review review = getReviewById(id, currentUser);
 
-        if (!review.getReviewer().getUser().getUserId().equals(currentUser.getUserId())) {
+        boolean isReviewer = review.getReviewer() != null && 
+                review.getReviewer().getUser() != null && 
+                review.getReviewer().getUser().getUserId().equals(currentUser.getUserId());
+        boolean isOwnerOrAdmin = accessControlService.isOwnerOrAdmin() || (currentUser != null && currentUser.isSystemAdminAccount());
+        boolean hasCreatePermission = false;
+        try {
+            accessControlService.checkReviewCreatePermission();
+            hasCreatePermission = true;
+        } catch (ForbiddenException ignored) {}
+
+        if (!isReviewer && !isOwnerOrAdmin && !hasCreatePermission) {
             throw new ForbiddenException("Only the reviewer can submit for approval");
         }
 
-        if (review.getStatus() != ReviewStatus.IN_PROGRESS) {
-            throw new BadRequestException("Can only submit draft reviews");
+        if (review.getStatus() != ReviewStatus.IN_PROGRESS && review.getStatus() != ReviewStatus.REJECTED) {
+            throw new BadRequestException("Can only submit draft or rejected reviews");
         }
 
         log.info("User {} submitting review ID: {} for approval", currentUser.getUsername(), id);
@@ -402,11 +427,14 @@ public class ReviewService {
 
         review = reviewRepository.save(review);
 
-        // 6. Update Issue status to Done
-        IssueStatus doneStatus = issueStatusRepository.findByName("Done")
+        // 6. Update Issue status to Done using the same transition pipeline as Kanban
+        issue.setPerformanceScore(perf);
+        IssueStatus doneStatus = issueStatusRepository.findAll().stream()
+                .filter(IssueStatus::isDone)
+                .sorted(java.util.Comparator.comparing(IssueStatus::getOrderIndex, java.util.Comparator.nullsLast(Integer::compareTo)))
+                .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái Done"));
-        issue.changeStatus(doneStatus);
-        issueRepository.save(issue);
+        issueService.completeIssueFromQuickReview(issue, doneStatus, currentUser);
 
         // Publish Event
         eventPublisher.publishEvent(new DoAn.BE.hrm.event.HrmEvent(this, DoAn.BE.hrm.event.HrmEvent.Type.REVIEW_CREATED,

@@ -93,10 +93,12 @@ export default function MyTimelogsPage() {
         setEditDesc('');
     };
 
-    const saveEdit = async (logId) => {
+    const saveEdit = async (log) => {
         await updateMutation.mutateAsync({
-            logId,
+            logId: log.logId,
             data: {
+                issueId: log.issueId,
+                workDate: log.workDate,
                 loggedHours: parseFloat(editHours),
                 description: editDesc.trim() || undefined,
             },
@@ -219,7 +221,7 @@ export default function MyTimelogsPage() {
                                                     editDesc={editDesc}
                                                     onStartEdit={() => startEdit(log)}
                                                     onCancelEdit={cancelEdit}
-                                                    onSaveEdit={() => saveEdit(log.logId)}
+                                                    onSaveEdit={() => saveEdit(log)}
                                                     onSetHours={setEditHours}
                                                     onSetDesc={setEditDesc}
                                                     onDelete={() => handleDelete(log.logId)}

@@ -37,7 +37,7 @@ public class SprintHealthService {
         // 1. Completion Rate (30%)
         long total = issues.size();
         long completed = issues.stream()
-                .filter(i -> i.getIssueStatus() != null && "Done".equals(i.getIssueStatus().getName()))
+                .filter(Issue::isDone)
                 .count();
         int completionRate = total > 0 ? (int) (completed * 100 / total) : 0;
 
@@ -71,7 +71,7 @@ public class SprintHealthService {
         // 5. Burnout Risk (10%)
         Map<Long, Long> assigneeTaskCount = new HashMap<>();
         for (Issue i : issues) {
-            if ((i.getIssueStatus() == null || !"Done".equals(i.getIssueStatus().getName())) && i.getAssignee() != null) {
+            if (!i.isDone() && i.getAssignee() != null) {
                 assigneeTaskCount.merge(i.getAssignee().getUserId(), 1L, (a, b) -> a + b);
             }
         }

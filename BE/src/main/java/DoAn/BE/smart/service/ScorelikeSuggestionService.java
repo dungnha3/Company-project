@@ -249,7 +249,7 @@ public class ScorelikeSuggestionService {
             if (employeeUser != null) {
                 List<Issue> userIssues = issueRepository.findByAssignee_UserId(employeeUser.getUserId());
                 List<Issue> completedIssues = userIssues.stream()
-                        .filter(i -> i.getIssueStatus() != null && "Done".equals(i.getIssueStatus().getName()))
+                        .filter(Issue::isDone)
                         .toList();
                 if (!completedIssues.isEmpty()) {
                     long onTime = completedIssues.stream()

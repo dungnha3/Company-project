@@ -140,7 +140,15 @@ public class LeaveRequestService {
     public LeaveRequest updateLeaveRequest(Long id, LeaveRequestRequest request, User currentUser) {
         LeaveRequest leaveRequest = getLeaveRequestById(id, currentUser);
 
-        if (!leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
+        boolean hasPermission;
+        try {
+            accessControlService.checkLeaveApprovePermission();
+            hasPermission = true;
+        } catch (ForbiddenException e) {
+            hasPermission = false;
+        }
+
+        if (!hasPermission && !leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
             throw new ForbiddenException("You can only update your own leave requests");
         }
 
@@ -225,10 +233,7 @@ public class LeaveRequestService {
 
         log.info("User {} approving leave request ID: {}", currentUser.getUsername(), id);
         LeaveRequest leaveRequest = getLeaveRequestById(id);
-        if (leaveRequest.getEmployee() != null && leaveRequest.getEmployee().getUser() != null
-                && leaveRequest.getEmployee().getUser().getUserId().equals(currentUser.getUserId())) {
-            throw new ForbiddenException("Không thể tự phê duyệt đơn nghỉ phép của chính mình");
-        }
+
 
         if (leaveRequest.getStatus() != LeaveStatus.PENDING) {
             throw new BadRequestException("Request is not pending or already processed");

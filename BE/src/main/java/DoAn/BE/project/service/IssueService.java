@@ -1,6 +1,10 @@
 package DoAn.BE.project.service;
 
+import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.*;
+import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.project.dto.CreateIssueRequest;
 import DoAn.BE.project.dto.IssueDTO;
 import DoAn.BE.project.dto.UpdateIssueRequest;
@@ -46,6 +50,7 @@ public class IssueService {
     private final DoAn.BE.project.repository.ProjectPhaseRepository projectPhaseRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final jakarta.persistence.EntityManager entityManager;
+    private final AccessControlService accessControlService;
 
     @Transactional
     public IssueDTO createIssue(CreateIssueRequest request, Long userId) {
@@ -83,10 +88,7 @@ public class IssueService {
         issue.setIssueKey(issueKey);
         issue.setTitle(request.getTitle());
         issue.setDescription(request.getDescription());
-        issue.setIssueStatus(status);
-        if (status != null && ("In Progress".equalsIgnoreCase(status.getName()) || "Đang thực hiện".equalsIgnoreCase(status.getName()))) {
-            issue.setInProgressAt(LocalDateTime.now());
-        }
+        issue.changeStatus(status);
         issue.setPriority(request.getPriority() != null ? request.getPriority() : Issue.Priority.MEDIUM);
         issue.setIssueType(request.getIssueType() != null ? request.getIssueType() : Issue.IssueType.TASK);
         issue.setReporter(reporter);
@@ -313,7 +315,7 @@ public class IssueService {
         if (request.getStatusId() != null) {
             IssueStatus status = issueStatusRepository.findById(request.getStatusId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái"));
-            issue.setIssueStatus(status);
+            applyStatusTransition(issue, status, actor);
         }
         if (request.getPriority() != null) {
             issue.setPriority(request.getPriority());
@@ -449,10 +451,20 @@ public class IssueService {
 
         String oldAssigneeName = issue.getAssignee() != null ? issue.getAssignee().getUsername() : null;
 
+        if (assigneeId == null) {
+            issue.assignTo(null);
+            issue = issueRepository.save(issue);
+
+            issueActivityRepository.save(new IssueActivity(issue, actor, ActivityType.ASSIGNEE_CHANGED,
+                    "Assignee", oldAssigneeName, null));
+
+            return convertToDTO(issue);
+        }
+
         User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người được giao việc"));
         validateProjectAccess(issue.getProject().getProjectId(), assigneeId);
-        
+
         validateAssigneeLeaveStatus(assignee.getUserId(), issue.getStartDate(), issue.getDueDate());
 
         issue.assignTo(assignee);
@@ -481,65 +493,59 @@ public class IssueService {
 
         validateProjectAccess(issue.getProject().getProjectId(), userId);
 
-        // Validate status
         IssueStatus status = issueStatusRepository.findById(statusId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái"));
-
-        // Get user for activity log
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        // Save old status for activity log
-        String oldStatus = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : "";
-        String newStatus = status.getName();
-
-        // Change status
-        String oldNameLower = oldStatus.toLowerCase();
-        String newNameLower = newStatus.toLowerCase();
-
-        // Check for Rework (moving backwards from Review/Testing/Done to ToDo/InProgress)
-        boolean isOldForward = oldNameLower.contains("review") || oldNameLower.contains("test") || oldNameLower.contains("done") || oldNameLower.contains("kiểm tra") || oldNameLower.contains("đánh giá") || oldNameLower.contains("hoàn thành");
-        boolean isNewBackward = newNameLower.contains("progress") || newNameLower.contains("to do") || newNameLower.contains("đang thực hiện") || newNameLower.contains("chưa bắt đầu") || newNameLower.contains("mở");
-
-        if (isOldForward && isNewBackward) {
-            issue.setReworkCount((issue.getReworkCount() == null ? 0 : issue.getReworkCount()) + 1);
-        }
-
-        issue.changeStatus(status);
+        applyStatusTransition(issue, status, user);
         if (orderIndex != null) {
             issue.setOrderIndex(orderIndex);
         }
         issue = issueRepository.save(issue);
 
-        // Create activity log for status change
-        if (!oldStatus.equals(newStatus)) {
+        return convertToDTO(issue);
+    }
+
+    @Transactional
+    public Issue completeIssueFromQuickReview(Issue issue, IssueStatus doneStatus, User actor) {
+        applyStatusTransition(issue, doneStatus, actor);
+        return issueRepository.save(issue);
+    }
+
+    private void applyStatusTransition(Issue issue, IssueStatus newStatus, User actor) {
+        String oldStatus = issue.getIssueStatus() != null ? issue.getIssueStatus().getName() : "";
+        String newStatusName = newStatus != null ? newStatus.getName() : "";
+        boolean oldForward = issue.isForwardFlowStatus();
+
+        issue.changeStatus(newStatus);
+
+        if (oldForward && issue.isBackwardFlowStatus()) {
+            issue.setReworkCount((issue.getReworkCount() == null ? 0 : issue.getReworkCount()) + 1);
+        }
+
+        if (!oldStatus.equals(newStatusName)) {
             IssueActivity activity = new IssueActivity(
                     issue,
-                    user,
+                    actor,
                     ActivityType.STATUS_CHANGED,
                     "Status",
                     oldStatus,
-                    newStatus);
+                    newStatusName);
             activity.setDescription(
-                    user.getUsername() + " đã chuyển '" + issue.getTitle() + "' từ " + oldStatus + " → " + newStatus);
+                    actor.getUsername() + " đã chuyển '" + issue.getTitle() + "' từ " + oldStatus + " → " + newStatusName);
             issueActivityRepository.save(activity);
         }
 
         updatePhaseStatusIfNeeded(issue);
 
-        // Only send notifications for parent issues (subtasks are updated as part of parent workflow)
         if (issue.getParentIssue() == null) {
-            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, userId);
-
-            // Thông báo email đến Assignee + Reporter về sự thay đổi trạng thái
-            // changeDetail dạng "To Do → In Progress" để hiển thị rõ trong email
-            if (!oldStatus.equals(newStatus)) {
-                String changeDetail = oldStatus + " → " + newStatus;
-                publishIssueUpdatedEvent(issue, user, "Cập nhật trạng thái", changeDetail);
+            publishIssueEvent(DoAn.BE.project.event.IssueEvent.EventType.STATUS_CHANGED, issue, actor.getUserId());
+            if (!oldStatus.equals(newStatusName)) {
+                String changeDetail = oldStatus + " → " + newStatusName;
+                publishIssueUpdatedEvent(issue, actor, "Cập nhật trạng thái", changeDetail);
             }
         }
-
-        return convertToDTO(issue);
     }
 
     private void updatePhaseStatusIfNeeded(Issue issue) {
@@ -562,8 +568,7 @@ public class IssueService {
                 if (!i.isDone()) {
                     allDone = false;
                 }
-                String statusName = i.getIssueStatus().getName().toLowerCase();
-                if (statusName.contains("progress") || statusName.contains("đang thực hiện")) {
+                if (i.isInProgress()) {
                     anyInProgress = true;
                 }
             } else {
@@ -580,6 +585,17 @@ public class IssueService {
     }
 
     private void validateProjectAccess(Long projectId, Long userId) {
+        CompanyMember currentMember = accessControlService.getCurrentMember();
+        Long companyId = TenantContext.getCompanyId();
+        if (currentMember != null
+                && currentMember.hasAnyRole(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN)
+                && companyId != null) {
+            Project project = entityManager.find(Project.class, projectId);
+            if (project != null && project.getCompany() != null && companyId.equals(project.getCompany().getCompanyId())) {
+                return;
+            }
+        }
+
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
     }
@@ -672,6 +688,7 @@ public class IssueService {
         dto.setCompletedAt(issue.getCompletedAt());
         dto.setInProgressAt(issue.getInProgressAt());
         dto.setReworkCount(issue.getReworkCount());
+        dto.setPerformanceScore(issue.getPerformanceScore());
         dto.setCreatedAt(issue.getCreatedAt());
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setIsOverdue(issue.isOverdue());
@@ -733,9 +750,7 @@ public class IssueService {
         log.info("Initializing inProgressAt timestamps for In Progress issues...");
         try {
             java.util.List<Issue> inProgressIssues = issueRepository.findAll().stream()
-                .filter(i -> i.getIssueStatus() != null && 
-                            ("In Progress".equalsIgnoreCase(i.getIssueStatus().getName()) || 
-                             "Đang thực hiện".equalsIgnoreCase(i.getIssueStatus().getName())))
+                .filter(Issue::isInProgress)
                 .filter(i -> i.getInProgressAt() == null)
                 .collect(java.util.stream.Collectors.toList());
 

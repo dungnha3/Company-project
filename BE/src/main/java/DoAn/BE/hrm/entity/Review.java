@@ -71,7 +71,7 @@ public class Review extends TenantScopedEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private ReviewStatus status = ReviewStatus.IN_PROGRESS;
+    private ReviewStatus status = ReviewStatus.PENDING;
 
     @Column(name = "start_date")
     private LocalDate startDate;

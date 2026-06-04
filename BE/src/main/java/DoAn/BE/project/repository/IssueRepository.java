@@ -127,7 +127,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
                         "LEFT JOIN FETCH i.issueStatus " +
                         "LEFT JOIN FETCH i.assignee " +
                         "WHERE i.dueDate < :date " +
-                        "AND i.issueStatus.name <> 'Done' " +
+                        "AND (i.issueStatus IS NULL OR (LOWER(i.issueStatus.name) NOT LIKE '%done%' AND LOWER(i.issueStatus.name) NOT LIKE '%completed%' AND LOWER(i.issueStatus.name) NOT LIKE '%hoan thanh%')) " +
                         "AND i.assignee IS NOT NULL")
         List<Issue> findOverdueIssuesWithRelations(@Param("date") LocalDate date);
 
@@ -136,18 +136,18 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
                         "LEFT JOIN FETCH i.issueStatus " +
                         "LEFT JOIN FETCH i.assignee " +
                         "WHERE i.dueDate = :date " +
-                        "AND i.issueStatus.name <> 'Done' " +
+                        "AND (i.issueStatus IS NULL OR (LOWER(i.issueStatus.name) NOT LIKE '%done%' AND LOWER(i.issueStatus.name) NOT LIKE '%completed%' AND LOWER(i.issueStatus.name) NOT LIKE '%hoan thanh%')) " +
                         "AND i.assignee IS NOT NULL")
         List<Issue> findUpcomingDeadlinesWithRelations(@Param("date") LocalDate date);
 
         // [Paginated overdue - for large datasets]
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
-        @Query("SELECT i FROM Issue i WHERE i.dueDate < :date AND i.issueStatus.name <> 'Done' AND i.assignee IS NOT NULL")
+        @Query("SELECT i FROM Issue i WHERE i.dueDate < :date AND (i.issueStatus IS NULL OR (LOWER(i.issueStatus.name) NOT LIKE '%done%' AND LOWER(i.issueStatus.name) NOT LIKE '%completed%' AND LOWER(i.issueStatus.name) NOT LIKE '%hoan thanh%')) AND i.assignee IS NOT NULL")
         Page<Issue> findOverdueIssues(@Param("date") LocalDate date, Pageable pageable);
 
         // [Paginated upcoming - for large datasets]
         @EntityGraph(attributePaths = { "project", "issueStatus", "reporter", "assignee" })
-        @Query("SELECT i FROM Issue i WHERE i.dueDate = :date AND i.issueStatus.name <> 'Done' AND i.assignee IS NOT NULL")
+        @Query("SELECT i FROM Issue i WHERE i.dueDate = :date AND (i.issueStatus IS NULL OR (LOWER(i.issueStatus.name) NOT LIKE '%done%' AND LOWER(i.issueStatus.name) NOT LIKE '%completed%' AND LOWER(i.issueStatus.name) NOT LIKE '%hoan thanh%')) AND i.assignee IS NOT NULL")
         Page<Issue> findUpcomingDeadlines(@Param("date") LocalDate date, Pageable pageable);
 
         @org.springframework.data.jpa.repository.Modifying
@@ -164,7 +164,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         void unassignByGlobalUser(@Param("userId") Long userId);
         long countBySprint_SprintId(Long sprintId);
 
-        @Query("SELECT COUNT(i) FROM Issue i WHERE i.sprint.sprintId = :sprintId AND i.issueStatus.name = 'Done'")
+        @Query("SELECT COUNT(i) FROM Issue i WHERE i.sprint.sprintId = :sprintId AND LOWER(i.issueStatus.name) IN ('done', 'hoàn thành', 'hoan thanh', 'completed', 'đã hoàn thành')")
         long countCompletedBySprint(@Param("sprintId") Long sprintId);
         @Query("SELECT MAX(CAST(SUBSTRING(i.issueKey, LENGTH(i.project.keyProject) + 2) AS long)) FROM Issue i WHERE i.project.projectId = :projectId")
         Long findMaxIssueNumberByProjectId(@Param("projectId") Long projectId);
@@ -184,8 +184,14 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         // Smart Assistant: Tổng weight active theo assignee
         @Query("SELECT COALESCE(SUM(i.weight), 0) FROM Issue i " +
                "WHERE i.assignee.userId = :userId " +
-               "AND i.issueStatus.name <> 'Done'")
+               "AND (i.issueStatus IS NULL OR (LOWER(i.issueStatus.name) NOT LIKE '%done%' AND LOWER(i.issueStatus.name) NOT LIKE '%completed%' AND LOWER(i.issueStatus.name) NOT LIKE '%hoan thanh%'))")
         Integer sumActiveWeightByAssignee(@Param("userId") Long userId);
+
+        @Query("SELECT COALESCE(SUM(i.weight), 0) FROM Issue i " +
+               "WHERE i.assignee.userId = :userId " +
+               "AND i.project.projectId = :projectId " +
+               "AND (i.issueStatus IS NULL OR (LOWER(i.issueStatus.name) NOT LIKE '%done%' AND LOWER(i.issueStatus.name) NOT LIKE '%completed%' AND LOWER(i.issueStatus.name) NOT LIKE '%hoan thanh%'))")
+        Integer sumActiveWeightByAssigneeAndProject(@Param("userId") Long userId, @Param("projectId") Long projectId);
 
         // Smart Assistant: Issue chưa giao trong project
         @EntityGraph(attributePaths = { "project", "sprint", "issueStatus", "reporter", "assignee" })

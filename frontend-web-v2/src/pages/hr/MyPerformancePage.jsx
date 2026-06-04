@@ -1,10 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-         RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-         LineChart, Line, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 
 // Minimalist chart colors - distinct colors for each metric
 const CHART_COLORS = {
@@ -54,11 +52,12 @@ const BADGE_COLORS = {
 };
 
 function ScoreBadge({ value, label, metric }) {
+    const isNA = value === null || value === undefined;
     const score = Number(value) || 0;
     const colors = BADGE_COLORS[metric] || { border: '#f3f4f6', bg: '#f9fafb', text: '#374151' };
     return (
         <div className="rounded-lg border p-4 flex flex-col items-center gap-1" style={{ backgroundColor: colors.bg, borderColor: colors.border }}>
-            <span className="text-2xl font-semibold leading-none" style={{ color: colors.text }}>{score.toFixed(1)}</span>
+            <span className="text-2xl font-semibold leading-none" style={{ color: colors.text }}>{isNA ? '—' : score.toFixed(1)}</span>
             <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: colors.text, opacity: 0.8 }}>{label}</span>
         </div>
     );
@@ -111,51 +110,6 @@ function RadarScores({ scores }) {
     );
 }
 
-function PerformanceTrend({ history }) {
-    if (!history || history.length === 0) return (
-        <div className="border border-gray-100 bg-white rounded-xl p-5 shadow-sm">
-            <h3 className="font-medium text-gray-900 mb-1">Xu hướng hiệu suất</h3>
-            <p className="text-xs text-gray-500 mb-3">Điểm trung bình theo tuần</p>
-            <div className="h-[160px] flex items-center justify-center text-gray-300 text-sm">
-                <i className="fa-solid fa-chart-line text-3xl mr-2" />
-                Chưa có dữ liệu
-            </div>
-        </div>
-    );
-    return (
-        <div className="border border-gray-100 bg-white rounded-xl p-5 shadow-sm">
-            <h3 className="font-medium text-gray-900 mb-1">Xu hướng hiệu suất</h3>
-            <p className="text-xs text-gray-500 mb-3">Điểm trung bình theo tuần</p>
-            <ResponsiveContainer width="100%" height={160}>
-                <LineChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: '#1f2937', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12 }} formatter={(v) => [v.toFixed(1)]} />
-                    <Line type="monotone" dataKey="performance" stroke={CHART_COLORS.performance} strokeWidth={2} dot={{ r: 4, fill: CHART_COLORS.performance }} name="Hiệu suất" />
-                    <Line type="monotone" dataKey="speed" stroke={CHART_COLORS.speed} strokeWidth={2} dot={{ r: 4, fill: CHART_COLORS.speed }} name="Tốc độ" />
-                    <Line type="monotone" dataKey="quality" stroke={CHART_COLORS.quality} strokeWidth={2} dot={{ r: 4, fill: CHART_COLORS.quality }} name="Chất lượng" />
-                </LineChart>
-            </ResponsiveContainer>
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-3 mt-3">
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.performance }} />
-                    <span className="text-xs text-gray-500">Hiệu suất</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.speed }} />
-                    <span className="text-xs text-gray-500">Tốc độ</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS.quality }} />
-                    <span className="text-xs text-gray-500">Chất lượng</span>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 function ComparisonTable({ myId, comparisonData }) {
     const rows = useMemo(() => {
         if (!Array.isArray(comparisonData)) return [];
@@ -176,10 +130,10 @@ function ComparisonTable({ myId, comparisonData }) {
                         <tr>
                             <th className="px-4 py-2 text-left font-medium">#</th>
                             <th className="px-4 py-2 text-left font-medium">Nhân sự</th>
-                            <th className="px-4 py-2 text-center font-medium">Hiệu suất</th>
+                            <th className="px-4 py-2 text-center font-medium">Tổng điểm</th>
                             <th className="px-4 py-2 text-center font-medium">Tốc độ</th>
                             <th className="px-4 py-2 text-center font-medium">Chất lượng</th>
-                            <th className="px-4 py-2 text-center font-medium">Hoàn thành</th>
+                            <th className="px-4 py-2 text-center font-medium">Số task hoàn thành</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -205,7 +159,7 @@ function ComparisonTable({ myId, comparisonData }) {
                                     </td>
                                     <td className="px-4 py-2.5 text-center font-medium text-gray-900">{Number(r.totalPerformanceScore || 0).toFixed(1)}</td>
                                     <td className="px-4 py-2.5 text-center text-gray-600">{Number(r.speedScore || 0).toFixed(1)}</td>
-                                    <td className="px-4 py-2.5 text-center text-gray-600">{Number(r.qualityScore || 0).toFixed(1)}</td>
+                                    <td className="px-4 py-2.5 text-center text-gray-600">{r.qualityScore != null ? Number(r.qualityScore).toFixed(1) : '—'}</td>
                                     <td className="px-4 py-2.5 text-center text-gray-500">{r.completedTasks || 0}</td>
                                 </tr>
                             );
@@ -226,7 +180,8 @@ const KPI_COLORS = {
 };
 
 function KpiBar({ label, current, max = 10, metric }) {
-    const pct = Math.min((Number(current) / max) * 100, 100);
+    const isNA = current === null || current === undefined;
+    const pct = isNA ? 0 : Math.min((Number(current) / max) * 100, 100);
     const barColor = KPI_COLORS[metric] || '#374151';
     return (
         <div className="flex items-center gap-3">
@@ -234,7 +189,34 @@ function KpiBar({ label, current, max = 10, metric }) {
             <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
             </div>
-            <span className="text-xs font-medium text-gray-900 w-12 text-right">{Number(current).toFixed(1)}/{max}</span>
+            <span className="text-xs font-medium text-gray-900 w-12 text-right">{isNA ? '—' : Number(current).toFixed(1)}/{max}</span>
+        </div>
+    );
+}
+
+function ScoreSummary({ title, caption, scores }) {
+    return (
+        <div className="border border-gray-100 bg-white rounded-xl p-5 shadow-sm">
+            <div className="mb-4">
+                <h3 className="font-medium text-gray-900">{title}</h3>
+                <p className="text-xs text-gray-500 mt-1">{caption}</p>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <ScoreBadge value={scores.performance} label="Tổng điểm" metric="performance" />
+                <ScoreBadge value={scores.speed} label="Tốc độ" metric="speed" />
+                <ScoreBadge value={scores.quality} label="Chất lượng" metric="quality" />
+                <ScoreBadge value={scores.volume} label="Khối lượng" metric="volume" />
+            </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-3">
+                    <KpiBar label="Tổng điểm" current={scores.performance} metric="performance" />
+                    <KpiBar label="Tốc độ" current={scores.speed} metric="speed" />
+                </div>
+                <div className="space-y-3">
+                    <KpiBar label="Chất lượng" current={scores.quality} metric="quality" />
+                    <KpiBar label="Khối lượng" current={scores.volume} metric="volume" />
+                </div>
+            </div>
         </div>
     );
 }
@@ -242,13 +224,21 @@ function KpiBar({ label, current, max = 10, metric }) {
 // ─── Performance Tab ────────────────────────────────────────────────────────
 function PerformanceTab() {
     const [selectedProjectId, setSelectedProjectId] = useState(null);
-    const queryClient = useQueryClient();
 
     const { data: myProjects = [] } = useQuery({
         queryKey: ['my-projects-for-performance'],
         queryFn: async () => {
             const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
             return Array.isArray(res.data) ? res.data : (res.data?.content || []);
+        },
+    });
+
+    const { data: myStats } = useQuery({
+        queryKey: ['performance', 'my-stats', selectedProjectId],
+        enabled: !!selectedProjectId,
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.PERFORMANCE.MY_STATS);
+            return res.data || null;
         },
     });
 
@@ -268,9 +258,18 @@ function PerformanceTab() {
         },
     });
 
-    const radarScores = useMemo(() => {
-        if (comparisonData.length === 0) return { performance: 0, speed: 0, quality: 0, volume: 0 };
-        const avg = (key) => comparisonData.reduce((s, r) => s + (Number(r[key]) || 0), 0) / comparisonData.length;
+    const selectedProjectName = useMemo(() => {
+        const project = myProjects.find(p => String(p.projectId || p.id) === String(selectedProjectId));
+        return project?.name || 'dự án đã chọn';
+    }, [myProjects, selectedProjectId]);
+
+    const teamAverageScores = useMemo(() => {
+        if (comparisonData.length === 0) return { performance: 0, speed: 0, quality: null, volume: 0 };
+        const avg = (key) => {
+            const list = comparisonData.map(r => r[key]).filter(v => v !== null && v !== undefined);
+            if (list.length === 0) return key === 'qualityScore' ? null : 0;
+            return list.reduce((s, v) => s + Number(v), 0) / list.length;
+        };
         return {
             performance: avg('totalPerformanceScore'),
             speed: avg('speedScore'),
@@ -279,16 +278,15 @@ function PerformanceTab() {
         };
     }, [comparisonData]);
 
-    const weeklyHistory = useMemo(() => {
-        const weeks = ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'];
-        const base = radarScores;
-        return weeks.map((week, i) => ({
-            week,
-            performance: Math.max(0, Math.min(10, (base.performance || 5) + Math.sin(i * 1.5) * 1.5)),
-            speed: Math.max(0, Math.min(10, (base.speed || 5) + Math.cos(i * 1.2) * 1.2)),
-            quality: Math.max(0, Math.min(10, (base.quality || 5) + Math.sin(i + 1) * 0.8)),
-        }));
-    }, [radarScores]);
+    const myScoreSummary = useMemo(() => {
+        if (!myStats) return { performance: 0, speed: 0, quality: null, volume: 0 };
+        return {
+            performance: myStats.totalPerformanceScore ?? myStats.performance ?? 0,
+            speed: myStats.speedScore ?? myStats.speed ?? 0,
+            quality: myStats.qualityScore ?? null,
+            volume: myStats.volumeScore ?? myStats.volume ?? 0,
+        };
+    }, [myStats]);
 
     const completedTasks = comparisonData.reduce((s, r) => s + (r.completedTasks || 0), 0);
     const overdueTasks = comparisonData.reduce((s, r) => s + (r.overdueTasks || 0), 0);
@@ -309,23 +307,38 @@ function PerformanceTab() {
                 </a>
             </div>
 
-            {/* KPI Cards - Clean minimal */}
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-                <ScoreBadge value={radarScores.performance} label="Hiệu suất" metric="performance" />
-                <ScoreBadge value={radarScores.speed} label="Tốc độ" metric="speed" />
-                <ScoreBadge value={radarScores.quality} label="Chất lượng" metric="quality" />
-                <ScoreBadge value={radarScores.volume} label="Khối lượng" metric="volume" />
                 <MiniStat title="Task hoàn thành" value={completedTasks} tone="success" />
                 <MiniStat title="Task quá hạn" value={overdueTasks} tone={overdueTasks > 0 ? 'danger' : 'default'} />
+                <MiniStat title="Dự án đang xem" value={selectedProjectName} sub="nguồn dữ liệu so sánh" />
+                <MiniStat title="Chất lượng review" value={myScoreSummary.quality == null ? 'Chưa có' : Number(myScoreSummary.quality).toFixed(1)} sub="chỉ tính review đã duyệt" />
+                <MiniStat title="Điểm nhóm TB" value={Number(teamAverageScores.performance || 0).toFixed(1)} sub="trong dự án đã chọn" />
+                <MiniStat title="Điểm của tôi" value={Number(myScoreSummary.performance || 0).toFixed(1)} sub="trung bình trên các dự án của tôi" />
             </div>
 
-            {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <RadarScores scores={radarScores} />
-                <PerformanceTrend history={weeklyHistory} />
+                <ScoreSummary
+                    title="Điểm của tôi"
+                    caption="Tổng hợp từ dữ liệu hiệu suất cá nhân hiện có. Chất lượng chỉ xuất hiện khi đã có review được duyệt."
+                    scores={myScoreSummary}
+                />
+                <ScoreSummary
+                    title="Điểm trung bình của nhóm trong dự án"
+                    caption={`Giá trị này là trung bình của các thành viên trong ${selectedProjectName}, dùng để tham chiếu so sánh.`}
+                    scores={teamAverageScores}
+                />
             </div>
 
-            {/* Comparison Table */}
+            <div className="border border-dashed border-amber-200 bg-amber-50 rounded-xl p-4 text-sm text-amber-800">
+                <div className="flex items-start gap-3">
+                    <i className="fa-solid fa-circle-info mt-0.5" />
+                    <div>
+                        <p className="font-medium">Xu hướng theo tuần chưa hiển thị vì chưa có dữ liệu lịch sử đáng tin cậy.</p>
+                        <p className="mt-1 text-amber-700">Biểu đồ mô phỏng đã được gỡ để tránh hiểu nhầm đây là số liệu thật.</p>
+                    </div>
+                </div>
+            </div>
+
             {selectedProjectId ? (
                 loadingComparison ? (
                     <div className="border border-gray-100 bg-white rounded-xl p-10 flex items-center justify-center shadow-sm">
@@ -338,23 +351,6 @@ function PerformanceTab() {
                 <div className="border border-dashed border-gray-300 bg-white rounded-xl p-10 text-center shadow-sm">
                     <i className="fa-solid fa-users-viewfinder text-3xl text-gray-200 mb-2 block" />
                     <p className="font-medium text-gray-500">Chọn dự án để xem so sánh</p>
-                </div>
-            )}
-
-            {/* KPI Bars */}
-            {comparisonData.length > 0 && (
-                <div className="border border-gray-100 bg-white rounded-xl p-5 shadow-sm">
-                    <h3 className="font-medium text-gray-900 mb-4">Chi tiết KPI</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-3">
-                            <KpiBar label="Hiệu suất" current={radarScores.performance} metric="performance" />
-                            <KpiBar label="Tốc độ" current={radarScores.speed} metric="speed" />
-                        </div>
-                        <div className="space-y-3">
-                            <KpiBar label="Chất lượng" current={radarScores.quality} metric="quality" />
-                            <KpiBar label="Khối lượng" current={radarScores.volume} metric="volume" />
-                        </div>
-                    </div>
                 </div>
             )}
         </div>

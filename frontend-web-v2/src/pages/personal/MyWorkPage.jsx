@@ -98,10 +98,10 @@ export default function MyWorkPage() {
     const perfScores = useMemo(() => {
         if (!perfStats) return null;
         return {
-            performance: perfStats.totalPerformanceScore || perfStats.performance || 0,
-            speed: perfStats.speedScore || perfStats.speed || 0,
-            quality: perfStats.qualityScore || perfStats.quality || 0,
-            volume: perfStats.volumeScore || perfStats.volume || 0,
+            performance: perfStats.totalPerformanceScore ?? perfStats.performance ?? 0,
+            speed: perfStats.speedScore ?? perfStats.speed ?? 0,
+            quality: perfStats.qualityScore ?? null,
+            volume: perfStats.volumeScore ?? perfStats.volume ?? 0,
         };
     }, [perfStats]);
 
@@ -372,11 +372,11 @@ function TimeLogRow({ log }) {
 }
 
 function ScoreBox({ label, value }) {
-    const score = Number(value) || 0;
+    const isNA = value === null || value === undefined;
     return (
         <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-center">
             <p className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-1">{label}</p>
-            <p className="text-xl font-semibold text-gray-900">{score.toFixed(1)}</p>
+            <p className="text-xl font-semibold text-gray-900">{isNA ? '—' : Number(value).toFixed(1)}</p>
         </div>
     );
 }

@@ -335,7 +335,9 @@ export const ENDPOINTS = {
         MY_ISSUES: '/api/issues/my-issues',
         MY_REPORTED: '/api/issues/my-reported',
         UPDATE_STATUS_TO: (id, statusId) => `/api/issues/${id}/status/${statusId}`,
-        ASSIGN: (id, assigneeId) => `/api/issues/${id}/assign/${assigneeId}`,
+        ASSIGN: (id, assigneeId) => assigneeId == null || assigneeId === ''
+            ? `/api/issues/${id}/assign`
+            : `/api/issues/${id}/assign?assigneeId=${encodeURIComponent(assigneeId)}`,
     },
 
     // Issue Statuses (Kanban columns)

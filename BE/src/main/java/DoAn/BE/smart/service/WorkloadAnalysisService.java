@@ -32,7 +32,7 @@ public class WorkloadAnalysisService {
 
             List<Issue> issues = issueRepository.findByAssignee_UserId(userId);
             List<Issue> active = issues.stream()
-                    .filter(i -> i.getIssueStatus() != null && !"Done".equals(i.getIssueStatus().getName()))
+                    .filter(i -> !i.isDone())
                     .toList();
 
             int activeTasks = active.size();

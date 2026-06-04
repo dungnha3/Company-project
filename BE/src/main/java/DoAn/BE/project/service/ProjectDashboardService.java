@@ -1,7 +1,10 @@
 package DoAn.BE.project.service;
 
+import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.*;
 import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanyRole;
 import DoAn.BE.project.dto.*;
 import DoAn.BE.project.entity.*;
 import DoAn.BE.project.entity.Sprint.SprintStatus;
@@ -73,9 +76,9 @@ public class ProjectDashboardService {
 
                 if (issue.isDone()) {
                     completedIssues++;
-                } else if ("In Progress".equals(statusName)) {
+                } else if (issue.isInProgress()) {
                     inProgressIssues++;
-                } else if ("To Do".equals(statusName)) {
+                } else if (issue.getIssueStatus() != null && issue.getIssueStatus().isToDo()) {
                     todoIssues++;
                 }
             }
@@ -227,6 +230,18 @@ public class ProjectDashboardService {
     }
 
     private void validateProjectAccess(Long projectId, Long userId) {
+        CompanyMember currentMember = accessControlService.getCurrentMember();
+        Long companyId = TenantContext.getCompanyId();
+        if (currentMember != null
+                && currentMember.hasAnyRole(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN)
+                && companyId != null) {
+            Project project = projectRepository.findById(projectId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+            if (project.getCompany() != null && companyId.equals(project.getCompany().getCompanyId())) {
+                return;
+            }
+        }
+
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
     }

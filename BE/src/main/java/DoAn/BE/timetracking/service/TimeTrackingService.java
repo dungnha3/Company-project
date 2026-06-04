@@ -131,8 +131,9 @@ public class TimeTrackingService {
         TimeLog timeLog = timeLogRepository.findById(logId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy time log"));
 
-        // Only owner can update
-        if (!timeLog.getUser().getUserId().equals(currentUser.getUserId())) {
+        // Only owner or admin can update
+        if (!timeLog.getUser().getUserId().equals(currentUser.getUserId())
+                && !accessControlService.isOwnerOrAdmin()) {
             throw new ForbiddenException("Bạn chỉ có thể sửa time log của mình");
         }
 

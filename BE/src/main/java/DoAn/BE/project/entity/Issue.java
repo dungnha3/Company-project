@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -116,6 +117,10 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     @Column(name = "rework_count")
     private Integer reworkCount = 0;
 
+    // Điểm đánh giá chất lượng công việc (1-10) sau khi hoàn thành
+    @Column(name = "performance_score", precision = 3, scale = 1)
+    private BigDecimal performanceScore;
+
     // Parent-child relationship for subtasks
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_issue_id")
@@ -136,13 +141,19 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
     }
 
     public boolean isDone() {
-        if (this.issueStatus == null || this.issueStatus.getName() == null) {
-            return false;
-        }
-        String name = this.issueStatus.getName().toLowerCase();
-        return name.equals("done") || name.equals("hoàn thành") || name.equals("hoan thanh")
-                || name.equals("completed") || name.equals("đã hoàn thành")
-                || name.equals("đã xong") || name.equals("da xong");
+        return IssueStatusClassifier.isDone(this.issueStatus);
+    }
+
+    public boolean isInProgress() {
+        return IssueStatusClassifier.isInProgress(this.issueStatus);
+    }
+
+    public boolean isBackwardFlowStatus() {
+        return IssueStatusClassifier.isBackwardFlow(this.issueStatus);
+    }
+
+    public boolean isForwardFlowStatus() {
+        return IssueStatusClassifier.isForwardFlow(this.issueStatus);
     }
 
     public boolean isAssigned() {
@@ -158,24 +169,91 @@ public class Issue extends DoAn.BE.common.entity.BaseEntity {
         this.issueStatus = newStatus;
         this.setUpdatedAt(LocalDateTime.now());
         
-        // Auto-set completedAt when status changes to Done
-        if ("Done".equals(newStatus.getName())) {
+        // Auto-set completedAt when status changes to a completed column
+        if (IssueStatusClassifier.isDone(newStatus)) {
             if (this.completedAt == null) {
                 this.completedAt = LocalDateTime.now();
             }
         } else {
             this.completedAt = null; // Reset if moved away from Done
+            this.performanceScore = null; // Clear quality score if moved away from Done
         }
 
-        // Auto-set inProgressAt when status changes to In Progress
-        if (newStatus != null && newStatus.getName() != null && 
-            ("In Progress".equalsIgnoreCase(newStatus.getName()) || 
-             "Đang thực hiện".equalsIgnoreCase(newStatus.getName()))) {
+        // Auto-set inProgressAt when status changes to an active working column
+        if (IssueStatusClassifier.isInProgress(newStatus)) {
             if (this.inProgressAt == null) {
                 this.inProgressAt = LocalDateTime.now();
             }
         } else {
             this.inProgressAt = null; // Reset if moved away from In Progress
+        }
+    }
+
+    private static final class IssueStatusClassifier {
+        private static final int TODO_ORDER_INDEX = 0;
+        private static final int IN_PROGRESS_ORDER_INDEX = 1;
+        private static final int REVIEW_ORDER_INDEX = 2;
+        private static final int DONE_ORDER_INDEX = 3;
+
+        private static final List<String> DONE_KEYWORDS = List.of(
+                "done", "complete", "completed", "finish", "finished", "resolved",
+                "hoan thanh", "da hoan thanh", "da xong", "xong"
+        );
+        private static final List<String> IN_PROGRESS_KEYWORDS = List.of(
+                "progress", "doing", "develop", "development", "implement", "working",
+                "dang thuc hien", "thuc hien", "xu ly"
+        );
+        private static final List<String> REVIEW_KEYWORDS = List.of(
+                "review", "qa", "qc", "test", "testing", "verify", "verification",
+                "approve", "approval", "danh gia", "kiem tra", "nghiem thu"
+        );
+        private static final List<String> TODO_KEYWORDS = List.of(
+                "todo", "to do", "backlog", "open", "new", "draft", "pending",
+                "chua bat dau", "mo", "san sang"
+        );
+
+        private static boolean isDone(IssueStatus status) {
+            return hasKeyword(status, DONE_KEYWORDS) || hasOrderIndex(status, DONE_ORDER_INDEX);
+        }
+
+        private static boolean isInProgress(IssueStatus status) {
+            return hasKeyword(status, IN_PROGRESS_KEYWORDS) || hasOrderIndex(status, IN_PROGRESS_ORDER_INDEX);
+        }
+
+        private static boolean isReview(IssueStatus status) {
+            return hasKeyword(status, REVIEW_KEYWORDS) || hasOrderIndex(status, REVIEW_ORDER_INDEX);
+        }
+
+        private static boolean isTodo(IssueStatus status) {
+            return hasKeyword(status, TODO_KEYWORDS) || hasOrderIndex(status, TODO_ORDER_INDEX);
+        }
+
+        private static boolean isBackwardFlow(IssueStatus status) {
+            return isTodo(status) || isInProgress(status);
+        }
+
+        private static boolean isForwardFlow(IssueStatus status) {
+            return isReview(status) || isDone(status);
+        }
+
+        private static boolean hasOrderIndex(IssueStatus status, int expectedOrderIndex) {
+            return status != null && status.getOrderIndex() != null && status.getOrderIndex() == expectedOrderIndex;
+        }
+
+        private static boolean hasKeyword(IssueStatus status, List<String> keywords) {
+            if (status == null || status.getName() == null) {
+                return false;
+            }
+            String normalized = normalize(status.getName());
+            return keywords.stream().anyMatch(normalized::contains);
+        }
+
+        private static String normalize(String value) {
+            String normalized = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}+", "")
+                    .toLowerCase(Locale.ROOT)
+                    .trim();
+            return normalized.replace('-', ' ').replace('_', ' ');
         }
     }
 

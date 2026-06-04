@@ -1,7 +1,10 @@
 package DoAn.BE.project.service;
 
+import DoAn.BE.common.context.TenantContext;
 import DoAn.BE.common.exception.*;
 import DoAn.BE.common.service.AccessControlService;
+import DoAn.BE.company.entity.CompanyMember;
+import DoAn.BE.company.entity.CompanyRole;
 
 
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +80,11 @@ public class ProjectService {
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
         project.setCreatedBy(currentUser);
+        if (TenantContext.getCompanyId() != null) {
+            DoAn.BE.company.entity.Company company = new DoAn.BE.company.entity.Company();
+            company.setCompanyId(TenantContext.getCompanyId());
+            project.setCompany(company);
+        }
 
         project.setStatus(Project.ProjectStatus.ACTIVE);
         project.setIsActive(true);
@@ -141,7 +149,18 @@ public class ProjectService {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
-        // Tất cả user đều xem dự án mình tham gia
+        CompanyMember currentMember = accessControlService.getCurrentMember();
+        Long companyId = TenantContext.getCompanyId();
+        if (currentMember != null
+                && currentMember.hasAnyRole(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN)
+                && companyId != null) {
+            return projectRepository.findByCompany_CompanyIdAndIsActiveTrue(companyId).stream()
+                    .filter(project -> project.getStatus() != Project.ProjectStatus.CANCELLED)
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        }
+
+        // Tất cả user thường xem dự án mình tham gia
         return getMyProjects(currentUser.getUserId());
     }
 
@@ -152,7 +171,20 @@ public class ProjectService {
             throw new ForbiddenException("Bạn không có quyền truy cập dự án");
         }
 
-        // Tất cả user đều xem dự án mình tham gia
+        CompanyMember currentMember = accessControlService.getCurrentMember();
+        Long companyId = TenantContext.getCompanyId();
+        if (currentMember != null
+                && currentMember.hasAnyRole(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN)
+                && companyId != null) {
+            Page<Project> projectPage = projectRepository.findByCompanyIdPaged(companyId, pageable);
+            List<ProjectDTO> pageContent = projectPage.getContent().stream()
+                    .filter(project -> project.getStatus() != Project.ProjectStatus.CANCELLED)
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+            return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, projectPage.getTotalElements());
+        }
+
+        // Tất cả user thường xem dự án mình tham gia
         return getMyProjectsPaged(currentUser.getUserId(), pageable);
     }
 
@@ -304,6 +336,18 @@ public class ProjectService {
     }
 
     private void validateProjectAccess(Long projectId, Long userId) {
+        CompanyMember currentMember = accessControlService.getCurrentMember();
+        Long companyId = TenantContext.getCompanyId();
+        if (currentMember != null
+                && currentMember.hasAnyRole(CompanyRole.OWNER, CompanyRole.COMPANY_ADMIN)
+                && companyId != null) {
+            Project project = projectRepository.findById(projectId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dự án"));
+            if (project.getCompany() != null && companyId.equals(project.getCompany().getCompanyId())) {
+                return;
+            }
+        }
+
         projectMemberRepository.findByProject_ProjectIdAndUser_UserId(projectId, userId)
                 .orElseThrow(() -> new ProjectAccessDeniedException("Bạn không có quyền truy cập dự án này"));
     }

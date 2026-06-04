@@ -39,7 +39,7 @@ export default function ProjectCostPage() {
     const { data: myProjects = [] } = useQuery({
         queryKey: ['cost-page-projects'],
         queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
+            const res = await apiClient.get(ENDPOINTS.PROJECTS.LIST);
             return Array.isArray(res.data) ? res.data : (res.data?.content || []);
         },
     });

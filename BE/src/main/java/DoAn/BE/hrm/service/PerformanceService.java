@@ -51,13 +51,18 @@ public class PerformanceService {
             int overdueTasks = 0;
             int lateTasks = 0;
             int reworks = 0;
+            int totalStoryPoints = 0;
             BigDecimal totalEstimated = BigDecimal.ZERO;
             BigDecimal totalActual = BigDecimal.ZERO;
 
             for (Issue issue : issues) {
                 if (issue.isDone()) {
                     completedTasks++;
-                    BigDecimal est = issue.getEstimatedHours() != null ? issue.getEstimatedHours() : BigDecimal.ZERO;
+                    // Accumulate actual story points (weight field)
+                    if (issue.getWeight() != null && issue.getWeight() > 0) {
+                        totalStoryPoints += issue.getWeight();
+                    }
+                    BigDecimal est = BigDecimal.valueOf(8.0); // Baseline task hours (scales with weight and priority below)
                     BigDecimal act = issue.getActualHours() != null ? issue.getActualHours() : BigDecimal.ZERO;
 
                     // Priority modifier
@@ -83,9 +88,8 @@ public class PerformanceService {
                     // Deadline Adherence
                     if (issue.getDueDate() != null && issue.getCompletedAt() != null) {
                         if (issue.getCompletedAt().toLocalDate().isAfter(issue.getDueDate())) {
-                            // Late: -20%
                             lateTasks++;
-                            baseVolume = baseVolume.multiply(new BigDecimal("0.8"));
+                            // No volume penalty here to avoid double penalization (speed score handles late penalty)
                         } else {
                             // Early/On Time: +10%
                             baseVolume = baseVolume.multiply(new BigDecimal("1.1"));
@@ -112,7 +116,7 @@ public class PerformanceService {
                 maxVolume = totalEstimated;
             }
 
-            MemberStats stats = new MemberStats(pm.getUser().getUserId(), emp, totalEstimated, totalActual, completedTasks, overdueTasks, lateTasks, reworks);
+            MemberStats stats = new MemberStats(pm.getUser().getUserId(), emp, totalEstimated, totalActual, completedTasks, overdueTasks, lateTasks, reworks, totalStoryPoints);
             statsList.add(stats);
         }
 
@@ -127,7 +131,7 @@ public class PerformanceService {
             }
 
             dto.setCompletedTasks(stats.completedTasks);
-            dto.setTotalStoryPoints(stats.totalEstimated.intValue());
+            dto.setTotalStoryPoints(stats.totalStoryPoints);
             dto.setOverdueTasks(stats.overdueTasks);
             dto.setLateTasks(stats.lateTasks);
             dto.setReworks(stats.reworks);
@@ -180,8 +184,8 @@ public class PerformanceService {
             BigDecimal systemScore = volumeScore.add(speedScore).divide(new BigDecimal(2), 1, RoundingMode.HALF_UP);
             dto.setSystemScore(systemScore);
 
-            // 3. Quality Score (From Review)
-            List<Review> reviews = reviewRepository.findByProjectId(projectId);
+            // 3. Quality Score (From approved reviews only)
+            List<Review> reviews = reviewRepository.findApprovedByProjectId(projectId);
             BigDecimal qualityScore = BigDecimal.ZERO;
             long reviewCount = 0;
             for (Review r : reviews) {
@@ -192,13 +196,17 @@ public class PerformanceService {
                     }
                 }
             }
+            BigDecimal totalScore;
             if (reviewCount > 0) {
                 qualityScore = qualityScore.divide(new BigDecimal(reviewCount), 1, RoundingMode.HALF_UP);
+                dto.setQualityScore(qualityScore);
+                // Total Performance = (System + Quality) / 2
+                totalScore = systemScore.add(qualityScore).divide(new BigDecimal(2), 1, RoundingMode.HALF_UP);
+            } else {
+                dto.setQualityScore(null);
+                // If there are no reviews, total score is based solely on System Score
+                totalScore = systemScore;
             }
-            dto.setQualityScore(qualityScore);
-
-            // Total Performance = (System + Quality) / 2
-            BigDecimal totalScore = systemScore.add(qualityScore).divide(new BigDecimal(2), 1, RoundingMode.HALF_UP);
             dto.setTotalPerformanceScore(totalScore.setScale(1, RoundingMode.HALF_UP));
 
             rankings.add(dto);
@@ -233,7 +241,9 @@ public class PerformanceService {
         BigDecimal totalSpeed = BigDecimal.ZERO;
         BigDecimal totalQuality = BigDecimal.ZERO;
         BigDecimal totalVolume = BigDecimal.ZERO;
+        BigDecimal totalPerfScoreSum = BigDecimal.ZERO;
         int projectCount = 0;
+        int reviewedProjectCount = 0;
 
         for (ProjectMember pm : allMemberships) {
             Long projectId = pm.getProject().getProjectId();
@@ -245,17 +255,21 @@ public class PerformanceService {
                     totalLate += r.getLateTasks() != null ? r.getLateTasks() : 0;
                     totalReworks += r.getReworks() != null ? r.getReworks() : 0;
                     totalSpeed = totalSpeed.add(r.getSpeedScore() != null ? r.getSpeedScore() : BigDecimal.ZERO);
-                    totalQuality = totalQuality.add(r.getQualityScore() != null ? r.getQualityScore() : BigDecimal.ZERO);
                     totalVolume = totalVolume.add(r.getVolumeScore() != null ? r.getVolumeScore() : BigDecimal.ZERO);
+                    if (r.getQualityScore() != null) {
+                        totalQuality = totalQuality.add(r.getQualityScore());
+                        reviewedProjectCount++;
+                    }
+                    totalPerfScoreSum = totalPerfScoreSum.add(r.getTotalPerformanceScore() != null ? r.getTotalPerformanceScore() : BigDecimal.ZERO);
                     projectCount++;
                 }
             }
         }
 
         BigDecimal avgSpeed = projectCount > 0 ? totalSpeed.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal avgQuality = projectCount > 0 ? totalQuality.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgQuality = reviewedProjectCount > 0 ? totalQuality.divide(new BigDecimal(reviewedProjectCount), 1, RoundingMode.HALF_UP) : null;
         BigDecimal avgVolume = projectCount > 0 ? totalVolume.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal totalScore = avgSpeed.add(avgQuality).add(avgVolume).divide(new BigDecimal(3), 1, RoundingMode.HALF_UP);
+        BigDecimal totalScore = projectCount > 0 ? totalPerfScoreSum.divide(new BigDecimal(projectCount), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
         // Total hours from timelog
         BigDecimal totalHours = timeLogRepository.sumHoursByUser(currentUser.getUserId(), TenantContext.getCompanyId());
@@ -313,7 +327,9 @@ public class PerformanceService {
         BigDecimal totalSpeed = BigDecimal.ZERO;
         BigDecimal totalQuality = BigDecimal.ZERO;
         BigDecimal totalVolume = BigDecimal.ZERO;
+        BigDecimal totalPerfScoreSum = BigDecimal.ZERO;
         int count = 0;
+        int reviewedProjectCount = 0;
         List<String> projectNames = new ArrayList<>();
 
         for (ProjectMember pm : memberships) {
@@ -324,8 +340,12 @@ public class PerformanceService {
                     totalOverdue += r.getOverdueTasks() != null ? r.getOverdueTasks() : 0;
                     totalReworks += r.getReworks() != null ? r.getReworks() : 0;
                     totalSpeed = totalSpeed.add(r.getSpeedScore() != null ? r.getSpeedScore() : BigDecimal.ZERO);
-                    totalQuality = totalQuality.add(r.getQualityScore() != null ? r.getQualityScore() : BigDecimal.ZERO);
                     totalVolume = totalVolume.add(r.getVolumeScore() != null ? r.getVolumeScore() : BigDecimal.ZERO);
+                    if (r.getQualityScore() != null) {
+                        totalQuality = totalQuality.add(r.getQualityScore());
+                        reviewedProjectCount++;
+                    }
+                    totalPerfScoreSum = totalPerfScoreSum.add(r.getTotalPerformanceScore() != null ? r.getTotalPerformanceScore() : BigDecimal.ZERO);
                     count++;
                     if (pm.getProject().getName() != null) {
                         projectNames.add(pm.getProject().getName());
@@ -335,9 +355,9 @@ public class PerformanceService {
         }
 
         BigDecimal avgSpeed = count > 0 ? totalSpeed.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal avgQuality = count > 0 ? totalQuality.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgQuality = reviewedProjectCount > 0 ? totalQuality.divide(new BigDecimal(reviewedProjectCount), 1, RoundingMode.HALF_UP) : null;
         BigDecimal avgVolume = count > 0 ? totalVolume.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal overall = avgSpeed.add(avgQuality).add(avgVolume).divide(new BigDecimal(3), 1, RoundingMode.HALF_UP);
+        BigDecimal overall = count > 0 ? totalPerfScoreSum.divide(new BigDecimal(count), 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
         return PerformanceDashboardDTO.EmployeeSummary.builder()
                 .employeeId(emp.getEmployeeId())
@@ -402,10 +422,15 @@ public class PerformanceService {
                     .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
                     .divide(new BigDecimal(allSummaries.size()), 1, RoundingMode.HALF_UP);
-            avgQual = allSummaries.stream().map(PerformanceDashboardDTO.EmployeeSummary::getQualityScore)
+            
+            List<BigDecimal> nonNullQualities = allSummaries.stream()
+                    .map(PerformanceDashboardDTO.EmployeeSummary::getQualityScore)
                     .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(new BigDecimal(allSummaries.size()), 1, RoundingMode.HALF_UP);
+                    .collect(Collectors.toList());
+            avgQual = !nonNullQualities.isEmpty()
+                    ? nonNullQualities.stream().reduce(BigDecimal.ZERO, BigDecimal::add).divide(new BigDecimal(nonNullQualities.size()), 1, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
             avgVol = allSummaries.stream().map(PerformanceDashboardDTO.EmployeeSummary::getVolumeScore)
                     .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
@@ -442,8 +467,9 @@ public class PerformanceService {
         int overdueTasks;
         int lateTasks;
         int reworks;
+        int totalStoryPoints;
 
-        public MemberStats(Long userId, Employee emp, BigDecimal totalEstimated, BigDecimal totalActual, int completedTasks, int overdueTasks, int lateTasks, int reworks) {
+        public MemberStats(Long userId, Employee emp, BigDecimal totalEstimated, BigDecimal totalActual, int completedTasks, int overdueTasks, int lateTasks, int reworks, int totalStoryPoints) {
             this.userId = userId;
             this.emp = emp;
             this.totalEstimated = totalEstimated;
@@ -452,6 +478,7 @@ public class PerformanceService {
             this.overdueTasks = overdueTasks;
             this.lateTasks = lateTasks;
             this.reworks = reworks;
+            this.totalStoryPoints = totalStoryPoints;
         }
     }
 }

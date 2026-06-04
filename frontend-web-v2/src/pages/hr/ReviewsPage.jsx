@@ -22,7 +22,6 @@ function ReviewsFAB() {
 }
 
 export default function ReviewsPage() {
-    const [activeTab, setActiveTab] = useState('all-reviews');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [editingReview, setEditingReview] = useState(null);
@@ -84,39 +83,13 @@ export default function ReviewsPage() {
             {/* Stats Cards */}
             <ReviewStats />
 
-            {/* Tabs */}
-            <div className="bg-white rounded-xl border border-gray-100 px-4 shadow-sm">
-                <nav className="flex space-x-8" aria-label="Tabs">
-                    <button
-                        onClick={() => setActiveTab('all-reviews')}
-                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all-reviews' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                    >
-                        Tất cả đánh giá
-                    </button>
-                    {canApprove && (
-                        <button
-                            onClick={() => setActiveTab('pending-approval')}
-                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'pending-approval' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                        >
-                            Chờ duyệt
-                            <span className="ml-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-xs font-medium">!</span>
-                        </button>
-                    )}
-                </nav>
-            </div>
-
             {/* Content */}
             <div className="min-h-[400px]">
-                {activeTab === 'all-reviews' && (
-                    <AllReviewsTable
-                        onEdit={(review) => { setEditingReview(review); setShowCreateModal(true); }}
-                        canCreate={canCreate}
-                        canApprove={canApprove}
-                    />
-                )}
-                {activeTab === 'pending-approval' && (
-                    <PendingReviewsTable canApprove={canApprove} />
-                )}
+                <AllReviewsTable
+                    onEdit={(review) => { setEditingReview(review); setShowCreateModal(true); }}
+                    canCreate={canCreate}
+                    canApprove={canApprove}
+                />
             </div>
 
             {/* Modal */}
@@ -204,6 +177,8 @@ function StatCard({ label, value, icon, accent, success }) {
 function AllReviewsTable({ onEdit, canCreate, canApprove }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+    const [rejectingId, setRejectingId] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
 
     const { data: reviews, isLoading, error } = useQuery({
         queryKey: ['reviews'],
@@ -234,9 +209,30 @@ function AllReviewsTable({ onEdit, canCreate, canApprove }) {
         onSuccess: () => {
             showToast('Đã duyệt đánh giá', 'success');
             queryClient.invalidateQueries(['reviews']);
+            queryClient.invalidateQueries(['reviews-stats']);
         },
         onError: (err) => showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
     });
+
+    const rejectMutation = useMutation({
+        mutationFn: ({ id, reason }) => apiClient.patch(ENDPOINTS.REVIEWS.REJECT(id), { reason }),
+        onSuccess: () => {
+            showToast('Đã từ chối đánh giá', 'success');
+            queryClient.invalidateQueries(['reviews']);
+            queryClient.invalidateQueries(['reviews-stats']);
+            setRejectingId(null);
+            setRejectReason('');
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
+    });
+
+    const handleReject = () => {
+        if (!rejectReason.trim()) {
+            showToast('Vui lòng nhập lý do từ chối', 'warning');
+            return;
+        }
+        rejectMutation.mutate({ id: rejectingId, reason: rejectReason });
+    };
 
     if (error) {
         const status = error?.response?.status;
@@ -322,7 +318,7 @@ function AllReviewsTable({ onEdit, canCreate, canApprove }) {
                         <i className="fa-solid fa-eye text-sm" />
                     </button>
 
-                    {canCreate && row.status === 'IN_PROGRESS' && (
+                    {canCreate && (row.status === 'IN_PROGRESS' || row.status === 'PENDING' || row.status === 'REJECTED') && (
                         <button
                             onClick={() => onEdit(row)}
                             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
@@ -332,27 +328,26 @@ function AllReviewsTable({ onEdit, canCreate, canApprove }) {
                         </button>
                     )}
 
-                    {canCreate && row.status === 'IN_PROGRESS' && (
-                        <button
-                            onClick={() => submitMutation.mutate(row.reviewId || row.id)}
-                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all"
-                            title="Gửi duyệt"
-                        >
-                            <i className="fa-solid fa-paper-plane text-sm" />
-                        </button>
+                    {canApprove && (row.status === 'PENDING' || row.status === 'IN_PROGRESS') && (
+                        <div className="flex gap-0.5">
+                            <button
+                                onClick={() => approveMutation.mutate(row.reviewId || row.id)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all"
+                                title="Duyệt"
+                            >
+                                <i className="fa-solid fa-check text-sm" />
+                            </button>
+                            <button
+                                onClick={() => setRejectingId(row.reviewId || row.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                                title="Từ chối"
+                            >
+                                <i className="fa-solid fa-xmark text-sm" />
+                            </button>
+                        </div>
                     )}
 
-                    {canApprove && row.status === 'PENDING' && (
-                        <button
-                            onClick={() => approveMutation.mutate(row.reviewId || row.id)}
-                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all"
-                            title="Duyệt"
-                        >
-                            <i className="fa-solid fa-check text-sm" />
-                        </button>
-                    )}
-
-                    {canCreate && row.status === 'IN_PROGRESS' && (
+                    {canCreate && (row.status === 'IN_PROGRESS' || row.status === 'PENDING' || row.status === 'REJECTED') && (
                         <button
                             onClick={() => {
                                 if (window.confirm('Xác nhận xóa đánh giá này?')) {
@@ -365,123 +360,6 @@ function AllReviewsTable({ onEdit, canCreate, canApprove }) {
                             <i className="fa-solid fa-trash text-sm" />
                         </button>
                     )}
-                </div>
-            )
-        }
-    ];
-
-    const data = Array.isArray(reviews) ? reviews : reviews?.content || [];
-
-    return <DataTable columns={columns} data={data} loading={isLoading} />;
-}
-
-// Pending Reviews Table
-function PendingReviewsTable({ canApprove }) {
-    const queryClient = useQueryClient();
-    const { showToast } = useToast();
-    const [rejectingId, setRejectingId] = useState(null);
-    const [rejectReason, setRejectReason] = useState('');
-
-    const { data: reviews, isLoading } = useQuery({
-        queryKey: ['pending-reviews'],
-        queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.REVIEWS.PENDING);
-            return res.data || [];
-        },
-        enabled: canApprove,
-        retry: false,
-    });
-
-    const approveMutation = useMutation({
-        mutationFn: (id) => apiClient.patch(ENDPOINTS.REVIEWS.APPROVE(id), {}),
-        onSuccess: () => {
-            showToast('Đã duyệt đánh giá', 'success');
-            queryClient.invalidateQueries(['pending-reviews']);
-            queryClient.invalidateQueries(['reviews']);
-        },
-        onError: (err) => showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
-    });
-
-    const rejectMutation = useMutation({
-        mutationFn: ({ id, reason }) => apiClient.patch(ENDPOINTS.REVIEWS.REJECT(id), { reason }),
-        onSuccess: () => {
-            showToast('Đã từ chối đánh giá', 'success');
-            queryClient.invalidateQueries(['pending-reviews']);
-            queryClient.invalidateQueries(['reviews']);
-            setRejectingId(null);
-            setRejectReason('');
-        },
-        onError: (err) => showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
-    });
-
-    const handleReject = () => {
-        if (!rejectReason.trim()) {
-            showToast('Vui lòng nhập lý do từ chối', 'warning');
-            return;
-        }
-        rejectMutation.mutate({ id: rejectingId, reason: rejectReason });
-    };
-
-    const columns = [
-        {
-            header: 'Nhân viên',
-            accessorKey: 'employeeName',
-            cell: (row) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm">
-                        {(row.employeeName || row.employee?.fullName || 'N')?.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <div className="font-medium text-gray-900">{row.employeeName || row.employee?.fullName}</div>
-                        <div className="text-xs text-gray-500">{row.employee?.department?.name}</div>
-                    </div>
-                </div>
-            )
-        },
-        {
-            header: 'Kỳ đánh giá',
-            accessorKey: 'reviewPeriod',
-            cell: (row) => <span className="font-medium text-gray-700">{row.reviewPeriod}</span>
-        },
-        {
-            header: 'Loại',
-            accessorKey: 'reviewType',
-            cell: (row) => <ReviewTypeBadge type={row.reviewType} />
-        },
-        {
-            header: 'Điểm TB',
-            accessorKey: 'averageScore',
-            cell: (row) => {
-                const scores = [row.technicalScore, row.attitudeScore, row.teamworkScore, row.leadershipScore].filter(s => s != null);
-                const avg = scores.length > 0 ? formatNumber(scores.reduce((a, b) => a + b, 0) / scores.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-';
-                return <ScoreBadge score={avg} />;
-            }
-        },
-        {
-            header: 'Người đánh giá',
-            accessorKey: 'reviewer',
-            cell: (row) => (
-                <span className="text-gray-600">{row.reviewer?.fullName || row.reviewerName || '-'}</span>
-            )
-        },
-        {
-            header: 'Thao tác',
-            accessorKey: 'actions',
-            cell: (row) => canApprove && (
-                <div className="flex gap-1.5">
-                    <button
-                        onClick={() => approveMutation.mutate(row.reviewId || row.id)}
-                        disabled={approveMutation.isPending}
-                        className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                    >
-                        <i className="fa-solid fa-check mr-1" /> Duyệt
-                    </button>
-                    <button
-                        onClick={() => setRejectingId(row.reviewId || row.id)}
-                        className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors"
-                    >
-                        <i className="fa-solid fa-xmark mr-1" /> Từ chối
-                    </button>
                 </div>
             )
         }
@@ -534,12 +412,12 @@ function PendingReviewsTable({ canApprove }) {
 // Badge Components
 function StatusBadge({ status }) {
     const styles = {
-        IN_PROGRESS: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đang đánh giá' },
+        IN_PROGRESS: { bg: 'bg-slate-100', text: 'text-slate-700', label: 'Bản nháp' },
         PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Chờ duyệt' },
         APPROVED: { bg: 'bg-green-50', text: 'text-green-700', label: 'Đã duyệt' },
         REJECTED: { bg: 'bg-red-50', text: 'text-red-700', label: 'Từ chối' },
     };
-    const s = styles[status] || styles.IN_PROGRESS;
+    const s = styles[status] || styles.PENDING;
     return <span className={`inline-flex items-center gap-1 ${s.bg} ${s.text} text-xs px-2 py-1 rounded-md font-medium`}>{s.label}</span>;
 }
 

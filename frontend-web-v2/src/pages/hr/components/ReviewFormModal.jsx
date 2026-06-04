@@ -11,7 +11,7 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const { hasPermission } = useAccessControl();
-    const canManageReviews = hasPermission('HR.MANAGE_REVIEWS');
+    const canManageReviews = hasPermission('REVIEW.CREATE') || hasPermission('HR.MANAGE_REVIEWS');
     const isEdit = !!review;
 
     const [formData, setFormData] = useState({
@@ -107,7 +107,8 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
     };
 
     const isPending = createMutation.isPending || updateMutation.isPending;
-    const employeeList = Array.isArray(employees) ? employees : employees?.content || [];
+    const employeeList = (Array.isArray(employees) ? employees : employees?.content || [])
+        .filter(emp => emp.status !== 'RESIGNED');
 
     // Calculate average score
     const scores = [formData.technicalScore, formData.attitudeScore, formData.softSkillsScore, formData.teamworkScore]

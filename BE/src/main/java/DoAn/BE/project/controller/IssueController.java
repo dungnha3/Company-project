@@ -159,11 +159,11 @@ public class IssueController {
         return ResponseEntity.ok(issues);
     }
 
-    @PatchMapping("/{issueId}/assign/{assigneeId}")
+    @PatchMapping("/{issueId}/assign")
     @Transactional
     public ResponseEntity<IssueDTO> assignIssue(
             @PathVariable Long issueId,
-            @PathVariable Long assigneeId,
+            @RequestParam(required = false) Long assigneeId,
             Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         IssueDTO issue = issueService.assignIssue(issueId, assigneeId, user.getUserId());

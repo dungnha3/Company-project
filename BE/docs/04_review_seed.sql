@@ -185,7 +185,7 @@ VALUES
 (6, 6, 1, 1, 'HR Management System', 'Quick-HRMS-23', 'SPRINT_REVIEW',
     NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL,
-    'IN_PROGRESS', CURRENT_DATE - INTERVAL '7 days', CURRENT_DATE, NULL, NOW(), NOW()),
+    'PENDING', CURRENT_DATE - INTERVAL '7 days', CURRENT_DATE, NULL, NOW(), NOW()),
 
 -- Pending review
 (8, 6, 1, 1, 'HR Management System', 'Quick-HRMS-24', 'SPRINT_REVIEW',

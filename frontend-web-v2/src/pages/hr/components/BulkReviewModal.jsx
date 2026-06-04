@@ -17,7 +17,7 @@ export default function BulkReviewModal({ isOpen, onClose }) {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const { hasPermission } = useAccessControl();
-    const canManageReviews = hasPermission('HR.MANAGE_REVIEWS');
+    const canManageReviews = hasPermission('REVIEW.CREATE') || hasPermission('HR.MANAGE_REVIEWS');
 
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
@@ -6,13 +6,6 @@ import TimeLogSection from './TimeLogSection';
 import { useToast } from '@app/providers/ToastProvider';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
-
-const STATUSES = [
-    { value: 1, label: 'Chờ xử lý', color: 'bg-gray-100 text-gray-700' },
-    { value: 2, label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700' },
-    { value: 3, label: 'Đang review', color: 'bg-purple-100 text-purple-700' },
-    { value: 4, label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
-];
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
@@ -49,7 +42,28 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         return () => window.removeEventListener('timelog-updated', handler);
     }, [issue?.issueId]);
 
-    // Fetch full issue details
+    const { data: issueStatuses = [] } = useQuery({
+        queryKey: ['issue-statuses'],
+        queryFn: async () => {
+            const res = await apiClient.get(ENDPOINTS.ISSUE_STATUSES.LIST);
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        staleTime: 60000,
+    });
+
+    const statusOptions = useMemo(() => issueStatuses.map((status) => ({
+        value: status.statusId,
+        label: status.name,
+        color: 'bg-gray-100 text-gray-700',
+    })), [issueStatuses]);
+
+    const fallbackStatusOptions = statusOptions.length > 0 ? statusOptions : [
+        { value: 1, label: 'To Do', color: 'bg-gray-100 text-gray-700' },
+        { value: 2, label: 'In Progress', color: 'bg-indigo-100 text-indigo-700' },
+        { value: 3, label: 'Review', color: 'bg-purple-100 text-purple-700' },
+        { value: 4, label: 'Done', color: 'bg-green-100 text-green-700' },
+    ];
+
     const { data: fullIssue, isLoading } = useQuery({
         queryKey: ['issue', issue?.issueId],
         queryFn: async () => (await apiClient.get(ENDPOINTS.ISSUES.BY_ID(issue.issueId))).data,
@@ -81,7 +95,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
             await queryClient.cancelQueries({ queryKey: ['issue', issue.issueId] });
             const snapshot = queryClient.getQueryData(['issue', issue.issueId]);
             queryClient.setQueryData(['issue', issue.issueId], (old) =>
-                old ? { ...old, statusId, statusName: STATUSES.find(s => s.value === statusId)?.label } : old
+                old ? { ...old, statusId, statusName: issueStatuses.find(s => s.statusId === statusId)?.name || old.statusName } : old
             );
             return { snapshot };
         },
@@ -93,7 +107,10 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId] });
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
             queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
         },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
@@ -123,6 +140,10 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId] });
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
+            queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
         },
         onSuccess: () => {
             toast.success('Đã giao việc');
@@ -212,7 +233,6 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                 priority: currentIssue.priority,
                 issueType: currentIssue.issueType,
                 assigneeId: currentIssue.assigneeId,
-                estimatedHours: currentIssue.estimatedHours,
                 actualHours: currentIssue.actualHours,
                 startDate: currentIssue.startDate,
                 dueDate: currentIssue.dueDate,
@@ -238,7 +258,10 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId] });
+            queryClient.invalidateQueries({ queryKey: ['issues'] });
             queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['myReportedIssues'] });
+            queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
         },
         onSuccess: () => {
             toast.success('Đã cập nhật thẻ');
@@ -330,12 +353,12 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                         <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <select
-                                value={currentIssue.statusId || 1}
+                                value={currentIssue.statusId || fallbackStatusOptions[0]?.value || 1}
                                 onChange={(e) => canManageIssues && statusMutation.mutate(Number(e.target.value))}
                                 disabled={!canManageIssues || statusMutation.isPending}
                                 className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-gray-300 ${!canManageIssues ? 'bg-gray-50' : ''}`}
                             >
-                                {STATUSES.map(s => (
+                                {fallbackStatusOptions.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
                                 ))}
                             </select>
@@ -433,7 +456,8 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             {/* Subtasks Section */}
                             <SubtasksSection
                                 subtasks={currentIssue.subtasks || []}
-                                projectId={currentIssue.projectId}
+                                issueId={currentIssue.issueId}
+                                issueStatuses={issueStatuses}
                                 onUpdate={() => {
                                     queryClient.invalidateQueries(['issue', currentIssue.issueId]);
                                     onUpdate?.();
@@ -441,7 +465,7 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             />
 
                             {/* New Fields: Weight, Start Date, Important/Urgent, Eisenhower */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-4 border-t border-gray-100">
                                 {/* Start Date */}
                                 <div>
                                     <span className="text-xs text-gray-500">Ngày bắt đầu</span>
@@ -461,6 +485,13 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     <span className="text-xs text-gray-500">Hoàn thành lúc</span>
                                     <div className="text-sm font-medium text-emerald-600">
                                         {currentIssue.completedAt ? formatDateTime(currentIssue.completedAt) : '—'}
+                                    </div>
+                                </div>
+                                {/* Issue quality score */}
+                                <div>
+                                    <span className="text-xs text-gray-500">Điểm chất lượng task</span>
+                                    <div className="text-sm font-bold text-amber-600">
+                                        {currentIssue.performanceScore != null ? `⭐ ${Number(currentIssue.performanceScore).toFixed(1)}` : '—'}
                                     </div>
                                 </div>
                                 {/* Weight */}
@@ -512,10 +543,6 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                     <div className="text-sm font-medium text-gray-900">
                                         {currentIssue.createdAt ? formatDate(currentIssue.createdAt) : 'N/A'}
                                     </div>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-gray-500">Ước tính</span>
-                                    <div className="text-sm font-medium text-gray-900">{currentIssue.estimatedHours || 0}h</div>
                                 </div>
                                 <div>
                                     <span className="text-xs text-gray-500">Đã log</span>
@@ -778,7 +805,6 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                             <TimeLogSection
                                 key={timelogKey}
                                 issueId={currentIssue.issueId}
-                                estimatedHours={currentIssue.estimatedHours || 0}
                                 onUpdate={() => {
                                     queryClient.invalidateQueries(['issue', currentIssue.issueId]);
                                     onUpdate?.();
@@ -866,8 +892,8 @@ function CustomFieldsSection({ projectId, issueId, initialValues }) {
         <div className="pt-4 border-t border-gray-100 mt-4">
             <h3 className="text-sm font-medium text-gray-500 mb-3">Thông tin thêm</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {fields.map(field => (
-                    <div key={field.id} className="space-y-1">
+                {fields.map((field, index) => (
+                    <div key={field.id ?? field.fieldId ?? field.name ?? `custom-field-${index}`} className="space-y-1">
                         <label className="text-xs text-gray-500 block">{field.name}</label>
                         {field.type === 'TEXT' && (
                             <input
@@ -989,24 +1015,38 @@ function ActivityLogTab({ issueId }) {
     );
 }
 
-function SubtasksSection({ subtasks, projectId, onUpdate }) {
+function SubtasksSection({ subtasks, issueId, issueStatuses, onUpdate }) {
     const queryClient = useQueryClient();
     const toast = useToast();
     const [expandedSubtaskId, setExpandedSubtaskId] = useState(null);
+
+    const STATUS_OPTIONS = issueStatuses.map(status => ({
+        value: status.statusId,
+        label: status.name,
+        shortLabel: status.name,
+        color: 'bg-gray-100 text-gray-600',
+    }));
+
+    const fallbackStatusOptions = STATUS_OPTIONS.length > 0 ? STATUS_OPTIONS : [
+        { value: 1, label: 'To Do', shortLabel: 'To Do', color: 'bg-gray-100 text-gray-600' },
+        { value: 2, label: 'In Progress', shortLabel: 'In Progress', color: 'bg-indigo-100 text-indigo-600' },
+        { value: 3, label: 'Review', shortLabel: 'Review', color: 'bg-purple-100 text-purple-600' },
+        { value: 4, label: 'Done', shortLabel: 'Done', color: 'bg-green-100 text-green-600' },
+    ];
 
     const statusMutation = useMutation({
         mutationFn: async ({ subtaskId, statusId }) => {
             await apiClient.patch(ENDPOINTS.ISSUES.UPDATE_STATUS_TO(subtaskId, statusId));
         },
         onMutate: async ({ subtaskId, statusId }) => {
-            await queryClient.cancelQueries({ queryKey: ['issue', projectId] });
-            const snapshot = queryClient.getQueryData(['issue', projectId]);
-            queryClient.setQueryData(['issue', projectId], (old) =>
+            await queryClient.cancelQueries({ queryKey: ['issue', issueId] });
+            const snapshot = queryClient.getQueryData(['issue', issueId]);
+            queryClient.setQueryData(['issue', issueId], (old) =>
                 old ? {
                     ...old,
                     subtasks: (old.subtasks || []).map(s =>
                         s.issueId === subtaskId
-                            ? { ...s, statusId, statusName: STATUS_OPTIONS.find(o => o.value === statusId)?.label }
+                            ? { ...s, statusId, statusName: fallbackStatusOptions.find(o => o.value === statusId)?.label }
                             : s
                     )
                 } : old
@@ -1016,11 +1056,11 @@ function SubtasksSection({ subtasks, projectId, onUpdate }) {
         onError: (err, vars, context) => {
             toast.error('Lỗi cập nhật trạng thái');
             if (context?.snapshot) {
-                queryClient.setQueryData(['issue', projectId], context.snapshot);
+                queryClient.setQueryData(['issue', issueId], context.snapshot);
             }
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['issue', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['issue', issueId] });
         },
         onSuccess: () => {
             toast.success('Đã cập nhật trạng thái');
@@ -1033,15 +1073,8 @@ function SubtasksSection({ subtasks, projectId, onUpdate }) {
     const completedCount = subtasks.filter(s => s.statusName?.toLowerCase().includes('done') || s.statusName?.toLowerCase().includes('hoàn thành')).length;
     const progress = subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0;
 
-    const STATUS_OPTIONS = [
-        { value: 1, label: 'Chờ xử lý', shortLabel: 'Chờ', color: 'bg-gray-100 text-gray-600' },
-        { value: 2, label: 'Đang thực hiện', shortLabel: 'Làm', color: 'bg-indigo-100 text-indigo-600' },
-        { value: 3, label: 'Đang review', shortLabel: 'Review', color: 'bg-purple-100 text-purple-600' },
-        { value: 4, label: 'Hoàn thành', shortLabel: 'Done', color: 'bg-green-100 text-green-600' },
-    ];
-
     const getStatusStyle = (statusId) => {
-        const found = STATUS_OPTIONS.find(s => s.value === statusId);
+        const found = fallbackStatusOptions.find(s => s.value === statusId);
         return found ? found.color : 'bg-gray-100 text-gray-600';
     };
 
@@ -1097,7 +1130,7 @@ function SubtasksSection({ subtasks, projectId, onUpdate }) {
                                     disabled={statusMutation.isPending}
                                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold border-0 cursor-pointer focus:ring-1 focus:ring-violet-400 ${getStatusStyle(subtask.statusId)}`}
                                 >
-                                    {STATUS_OPTIONS.map(s => (
+                                    {fallbackStatusOptions.map(s => (
                                         <option key={s.value} value={s.value}>{s.shortLabel}</option>
                                     ))}
                                 </select>

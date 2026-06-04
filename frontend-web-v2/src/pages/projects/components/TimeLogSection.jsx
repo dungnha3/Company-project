@@ -197,7 +197,7 @@ function DailyChart({ logs }) {
  * Time logging section embedded inside IssueDetailModal
  * Shows: mini timer (if this issue is active), daily chart, quick log form, and log history
  */
-export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
+export default function TimeLogSection({ issueId, onUpdate }) {
     const { hasPermission } = useAccessControl();
     const isManager = hasPermission('PROJECT.MANAGE_ISSUES') || hasPermission('PROJECT.MANAGE_ALL');
     const [timelogs, setTimelogs] = useState([]);
@@ -269,11 +269,6 @@ export default function TimeLogSection({ issueId, estimatedHours, onUpdate }) {
             console.error('Failed to delete timelog:', error);
         }
     };
-
-    const progress = estimatedHours > 0
-        ? Math.min((totalHours / estimatedHours) * 100, 100)
-        : null;
-    const remaining = (estimatedHours || 0) - totalHours;
 
     if (loading) {
         return (

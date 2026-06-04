@@ -1,6 +1,7 @@
 package DoAn.BE.project.entity;
 
 import java.util.List;
+import java.util.Locale;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -43,14 +44,54 @@ public class IssueStatus {
     }
 
     public boolean isToDo() {
-        return "To Do".equals(this.name);
+        return matchesAnyKeyword("todo", "to do", "backlog", "open", "new", "draft", "pending", "chua bat dau", "mo", "san sang")
+                || hasOrderIndex(1, 0);
     }
 
     public boolean isInProgress() {
-        return "In Progress".equals(this.name);
+        return matchesAnyKeyword("progress", "doing", "develop", "development", "implement", "working", "dang thuc hien", "thuc hien", "xu ly")
+                || hasOrderIndex(2, 1);
+    }
+
+    public boolean isReview() {
+        return matchesAnyKeyword("review", "qa", "qc", "test", "testing", "verify", "verification", "approve", "approval", "danh gia", "kiem tra", "nghiem thu")
+                || hasOrderIndex(3, 2);
     }
 
     public boolean isDone() {
-        return "Done".equals(this.name);
+        return matchesAnyKeyword("done", "complete", "completed", "finish", "finished", "resolved", "hoan thanh", "da hoan thanh", "da xong", "xong")
+                || hasOrderIndex(4, 3);
+    }
+
+    private boolean hasOrderIndex(int... indices) {
+        if (orderIndex == null) {
+            return false;
+        }
+        for (int index : indices) {
+            if (orderIndex == index) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean matchesAnyKeyword(String... keywords) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String normalized = normalize(name);
+        for (String keyword : keywords) {
+            if (normalized.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalize(String value) {
+        return java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .trim();
     }
 }

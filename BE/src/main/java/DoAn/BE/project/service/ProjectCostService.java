@@ -90,8 +90,8 @@ public class ProjectCostService {
             // Daily rate = Base Salary / 22 (assuming 22 working days)
             BigDecimal dailyRate = emp.getBaseSalary().divide(new BigDecimal(22), 2, RoundingMode.HALF_UP);
             
-            // Allocation
-            Integer allocRate = pm.getAllocationRate() != null ? pm.getAllocationRate() : 100;
+            // Allocation (defaults to 100% since manual planning is removed)
+            Integer allocRate = (pm.getAllocationRate() != null && pm.getAllocationRate() > 0) ? pm.getAllocationRate() : 100;
             BigDecimal allocation = new BigDecimal(allocRate).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
 
             // Total Cost for this member = days * dailyRate * allocation

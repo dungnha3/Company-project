@@ -566,7 +566,6 @@ function EditMemberModal({ member, projectId, onClose, canManage }) {
     const queryClient = useQueryClient();
     const [form, setForm] = useState({
         position: member.position || '',
-        allocationRate: member.allocationRate ?? 100,
         memberStatus: member.memberStatus || 'ACTIVE',
         yearsOfExperience: member.yearsOfExperience ?? '',
         billingRate: member.billingRate ?? '',
@@ -588,7 +587,6 @@ function EditMemberModal({ member, projectId, onClose, canManage }) {
         e.preventDefault();
         const payload = {
             ...form,
-            allocationRate: form.allocationRate ? Number(form.allocationRate) : null,
             yearsOfExperience: form.yearsOfExperience ? Number(form.yearsOfExperience) : null,
             billingRate: form.billingRate ? Number(form.billingRate) : null,
             joinDate: form.joinDate || null,
@@ -647,17 +645,7 @@ function EditMemberModal({ member, projectId, onClose, canManage }) {
                                 <option value="PENDING">Chờ xác nhận</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Allocation (%)
-                            </label>
-                            <input
-                                type="number" min="0" max="100"
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                                value={form.allocationRate}
-                                onChange={(e) => setForm({ ...form, allocationRate: e.target.value })}
-                            />
-                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Năm KN</label>
                             <input

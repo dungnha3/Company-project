@@ -19,7 +19,6 @@ import { useAccessControl } from '@shared/hooks/useAccessControl';
 import IssueDetailModal from '../components/IssueDetailModal';
 import CreateIssueModal from '../components/CreateIssueModal';
 import TimeLogSection from '../components/TimeLogSection';
-import BoardTimeLogPanel from '../components/BoardTimeLogPanel';
 import QuickReviewModal from '../components/QuickReviewModal';
 import SubmitTaskModal from '../components/SubmitTaskModal';
 import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
@@ -133,10 +132,6 @@ export default function ProjectBoard({ project }) {
     // ── Backlog panel
     const [showBacklog, setShowBacklog] = useState(false);
 
-    // ── Time Log panel
-    const [showTimeLog, setShowTimeLog] = useState(false);
-    const [activeTimeLogIssueId, setActiveTimeLogIssueId] = useState(null);
-
     // ── Permissions
     const { hasPermission } = useAccessControl();
     const canManageIssues = hasPermission('PROJECT.MANAGE_ISSUES');
@@ -151,16 +146,6 @@ export default function ProjectBoard({ project }) {
     useEffect(() => {
         saveWipLimits(project.projectId, wipLimits);
     }, [wipLimits, project.projectId]);
-
-    // Auto-open time log panel when timer starts from Kanban drag
-    useEffect(() => {
-        const handler = (e) => {
-            setShowTimeLog(true);
-            setActiveTimeLogIssueId(e.detail.issueId);
-        };
-        window.addEventListener('auto-start-timer', handler);
-        return () => window.removeEventListener('auto-start-timer', handler);
-    }, []);
 
     // ── Fetch statuses (columns) from API
     const { data: statuses = FALLBACK_STATUSES } = useQuery({
@@ -716,17 +701,6 @@ export default function ProjectBoard({ project }) {
                         <i className="fa-solid fa-inbox mr-1.5" />Backlog
                     </button>
 
-                    {/* Time Log toggle */}
-                    <button
-                        onClick={() => setShowTimeLog(p => !p)}
-                        className={`px-3 py-1.5 text-xs rounded-lg border transition-all font-medium ${showTimeLog
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <i className="fa-solid fa-clock mr-1.5" />Nhật ký
-                    </button>
-
                     <div className="w-px h-6 bg-gray-200" />
 
                     {/* My Issues */}
@@ -834,24 +808,6 @@ export default function ProjectBoard({ project }) {
             </div>
 
             {/* ═══ Board ═══════════════════════════════════════════════════ */}
-            {showTimeLog && (
-                <div className="mb-4 bg-slate-800 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <i className="fa-solid fa-clock text-emerald-400" />
-                            <span className="text-white font-semibold text-sm">Nhật ký giờ làm</span>
-                        </div>
-                        <button
-                            onClick={() => setShowTimeLog(false)}
-                            className="text-slate-400 hover:text-white transition-colors"
-                        >
-                            <i className="fa-solid fa-times" />
-                        </button>
-                    </div>
-                    <BoardTimeLogPanel issueId={activeTimeLogIssueId} />
-                </div>
-            )}
-
             <DndContext
                 sensors={sensors}
                 collisionDetection={kanbanCollisionDetection}
@@ -1746,10 +1702,18 @@ function IssueCard({ issue, isOverlay, onClick }) {
                         Nộp
                     </button>
                 )}
-                {canManageIssues && issue.statusName === 'Done' && (
-                    <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
-                        <i className="fa-solid fa-check mr-1 text-[8px]" />
-                    </span>
+                {issue.statusName === 'Done' && (
+                    <div className="flex items-center gap-1.5">
+                        {issue.performanceScore != null && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-bold" title="Điểm chất lượng">
+                                <i className="fa-solid fa-star text-[8px] text-amber-500" />
+                                {Number(issue.performanceScore).toFixed(1)}
+                            </span>
+                        )}
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded font-medium">
+                            <i className="fa-solid fa-check text-[8px]" /> Done
+                        </span>
+                    </div>
                 )}
             </div>
         </div>

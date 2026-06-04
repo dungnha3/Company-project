@@ -294,6 +294,10 @@ public class ProjectMemberService {
             dto.setCompletedIssues(issueRepository.countCompletedByProjectAndAssignee(projectId, uid));
             java.math.BigDecimal hours = timeLogRepository.sumHoursByUserAndProject(uid, projectId);
             dto.setTotalLoggedHours(hours != null ? hours.doubleValue() : 0.0);
+            
+            // Dynamic allocation based on active tasks weights (Story Points)
+            int activeWeight = issueRepository.sumActiveWeightByAssigneeAndProject(uid, projectId);
+            dto.setAllocationRate(activeWeight * 10);
         }
 
         return dto;
@@ -362,7 +366,8 @@ public class ProjectMemberService {
                                 slot.setProjectName(m.getProject().getName());
                                 slot.setRole(m.getRole() != null ? m.getRole().name() : null);
                                 slot.setPosition(m.getPosition());
-                                slot.setAllocationRate(m.getAllocationRate());
+                                int activeWeight = issueRepository.sumActiveWeightByAssigneeAndProject(m.getUser().getUserId(), m.getProject().getProjectId());
+                                slot.setAllocationRate(activeWeight * 10);
                                 slot.setMemberStatus(m.getMemberStatus() != null ? m.getMemberStatus().name() : null);
                                 Double hours = hoursMap.get(m.getUser().getUserId() + "_" + m.getProject().getProjectId());
                                 slot.setTotalLoggedHours(hours != null ? hours : 0.0);

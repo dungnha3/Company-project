@@ -19,6 +19,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
+        @Override
+        @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer", "reviewer.user" })
+        Optional<Review> findById(Long id);
+
         @EntityGraph(attributePaths = { "employee", "reviewer" })
         List<Review> findByEmployee_EmployeeIdOrderByCreatedAtDesc(Long employeeId);
 
@@ -91,6 +95,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
         @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
         @Query("SELECT r FROM Review r WHERE r.projectId = :projectId ORDER BY r.createdAt DESC")
         List<Review> findByProjectId(@Param("projectId") Long projectId);
+
+        @EntityGraph(attributePaths = { "employee", "employee.user", "reviewer" })
+        @Query("SELECT r FROM Review r WHERE r.projectId = :projectId AND r.status = 'APPROVED' ORDER BY r.createdAt DESC")
+        List<Review> findApprovedByProjectId(@Param("projectId") Long projectId);
 
         @Query("SELECT AVG(r.totalScore) FROM Review r " +
                "WHERE r.employee.employeeId = :empId " +

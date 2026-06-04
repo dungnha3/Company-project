@@ -258,13 +258,10 @@ public class GanttService {
         int progress = 0;
         if (issue.isDone()) {
             progress = 100;
-        } else if (issue.getIssueStatus() != null) {
-            String statusName = issue.getIssueStatus().getName().toLowerCase();
-            if (statusName.contains("progress") || statusName.contains("đang")) {
-                progress = 50;
-            } else if (statusName.contains("review") || statusName.contains("testing")) {
-                progress = 75;
-            }
+        } else if (issue.isInProgress()) {
+            progress = 50;
+        } else if (issue.isForwardFlowStatus()) {
+            progress = 75;
         }
 
         // Get predecessor IDs
