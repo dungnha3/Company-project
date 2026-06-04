@@ -5,6 +5,7 @@ import DoAn.BE.auth.dto.GoogleLoginRequest;
 import DoAn.BE.auth.dto.LoginRequest;
 import DoAn.BE.auth.dto.RegisterRequest;
 import DoAn.BE.auth.dto.SelectCompanyRequest;
+import DoAn.BE.auth.dto.ActivateRequest;
 import DoAn.BE.auth.dto.Verify2faRequest;
 import DoAn.BE.auth.service.AuthService;
 import DoAn.BE.common.exception.BadRequestException;
@@ -260,6 +261,24 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Đặt lại mật khẩu thành công");
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/activate")
+    public ResponseEntity<AuthResponse> activate(
+            @Valid @RequestBody ActivateRequest request,
+            HttpServletRequest httpRequest) {
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        AuthResponse response = authService.activateAccount(
+                request.getToken(), request.getPassword(), ipAddress, userAgent);
+
+        ResponseCookie cookie = createRefreshTokenCookie(response.getRefreshToken());
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
     @PostMapping("/change-password")

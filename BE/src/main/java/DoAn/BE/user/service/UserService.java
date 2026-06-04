@@ -318,4 +318,8 @@ public class UserService {
     public Optional<User> findByResetPasswordToken(String token) {
         return userRepository.findByResetPasswordToken(token);
     }
+
+    public Optional<User> findByActivationToken(String token) {
+        return userRepository.findByActivationToken(token);
+    }
 }

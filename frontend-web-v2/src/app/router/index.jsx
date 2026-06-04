@@ -17,6 +17,7 @@ import LoginPage from '@pages/auth/LoginPage';
 import LandingPage from '@pages/public/LandingPage';
 import OnboardingPage from '@pages/auth/OnboardingPage';
 import RegisterPage from '@pages/auth/RegisterPage';
+import ActivatePage from '@pages/auth/ActivatePage';
 
 // Lazy load logout page
 const LogoutPage = lazy(() => import('@pages/auth/LogoutPage'));
@@ -82,6 +83,7 @@ const router = createBrowserRouter([
         children: [
             { path: '/login', element: <LoginPage /> },
             { path: '/register', element: <RegisterPage /> },
+            { path: '/activate', element: <ActivatePage /> },
             { path: '/logout', element: <Suspense fallback={<PageLoader />}><LogoutPage /></Suspense> },
             { path: '/forgot-password', element: <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense> },
             { path: '/reset-password', element: <Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense> },

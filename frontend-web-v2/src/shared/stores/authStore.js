@@ -115,6 +115,36 @@ export const useAuthStore = create(
                 }
             },
 
+            activate: async (token, password) => {
+                try {
+                    const response = await apiClient.post(ENDPOINTS.AUTH.ACTIVATE, { token, password });
+                    const { accessToken, refreshToken, user, expiresIn } = response.data;
+
+                    if (user && user.userId) {
+                        user.id = user.userId;
+                    }
+
+                    const expiresAt = Date.now() + (expiresIn || 30 * 60 * 1000);
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('expiresAt', String(expiresAt));
+
+                    set({
+                        user,
+                        accessToken,
+                        refreshToken,
+                        isAuthenticated: true,
+                    });
+
+                    return { success: true, user };
+                } catch (error) {
+                    console.error('Activation error:', error);
+                    return {
+                        success: false,
+                        error: error.response?.data?.message || 'Kích hoạt tài khoản thất bại'
+                    };
+                }
+            },
+
             loginWithGoogle: async (idToken) => {
                 try {
                     const response = await apiClient.post(ENDPOINTS.AUTH.GOOGLE_LOGIN, { token: idToken });

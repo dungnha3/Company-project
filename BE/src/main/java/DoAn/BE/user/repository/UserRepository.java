@@ -66,4 +66,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "(LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     org.springframework.data.domain.Page<User> searchByKeywordPaged(@Param("keyword") String keyword,
             org.springframework.data.domain.Pageable pageable);
+
+    Optional<User> findByActivationToken(String token);
 }

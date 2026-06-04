@@ -236,13 +236,7 @@ export default function LoginPage() {
                         {/* Social Login */}
                         <GoogleLoginButton text="Tiếp tục với Google" />
 
-                        {/* Register Link */}
-                        <p className="text-center mt-6 text-gray-600">
-                            Chưa có tài khoản?{' '}
-                            <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-500">
-                                Đăng ký miễn phí
-                            </Link>
-                        </p>
+
                     </div>
 
                     {/* Footer */}

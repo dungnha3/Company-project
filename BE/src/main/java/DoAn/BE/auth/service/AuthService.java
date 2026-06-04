@@ -640,4 +640,61 @@ public class AuthService {
 
         return googleUser;
     }
+
+    @Transactional
+    public AuthResponse activateAccount(String token, String password, String ipAddress, String userAgent) {
+        if (token == null || token.isBlank() || password == null || password.isBlank()) {
+            throw new BadRequestException("Token và mật khẩu không được để trống");
+        }
+
+        User user = userService.findByActivationToken(token)
+                .orElseThrow(() -> new BadRequestException("Đường dẫn kích hoạt không hợp lệ hoặc đã được sử dụng"));
+
+        if (user.getStatus() != User.UserStatus.PENDING_ACTIVATION) {
+            throw new BadRequestException("Tài khoản này đã được kích hoạt trước đó");
+        }
+
+        if (user.getCreatedAt() != null && user.getCreatedAt().plusDays(3).isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Đường dẫn kích hoạt đã hết hạn (chỉ có hiệu lực trong 3 ngày)");
+        }
+
+        // Activate User
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setIsActive(true);
+        user.setStatus(User.UserStatus.ACTIVE);
+        user.setActivationToken(null);
+        userService.save(user);
+
+        // Activate memberships
+        List<CompanyMember> memberships = companyMemberRepository.findByUser_UserIdAndIsActiveFalse(user.getUserId());
+        for (CompanyMember member : memberships) {
+            member.setIsActive(true);
+            member.setJoinedAt(LocalDateTime.now());
+            companyMemberRepository.save(member);
+        }
+
+        log.info("User {} activated their account via token successfully", user.getEmail());
+
+        // Log in immediately
+        updateUserLoginStatus(user);
+        sessionService.createSession(user, ipAddress, userAgent);
+
+        // Fetch activated memberships
+        List<CompanyMember> activeMemberships = companyMemberRepository.findByUser_UserIdAndIsActiveTrue(user.getUserId());
+
+        String accessToken;
+        Long selectedCompanyId = null;
+        if (activeMemberships.size() == 1) {
+            CompanyMember singleMember = activeMemberships.get(0);
+            selectedCompanyId = singleMember.getCompany().getCompanyId();
+            CompanyRole primaryRole = singleMember.getRoles().stream().findFirst()
+                    .orElse(CompanyRole.EMPLOYEE);
+            accessToken = jwtService.generateToken(user, selectedCompanyId, primaryRole);
+        } else {
+            accessToken = jwtService.generateToken(user);
+        }
+        String refreshToken = createRefreshToken(user);
+
+        return buildAuthResponse(accessToken, refreshToken, user, activeMemberships, selectedCompanyId);
+    }
 }

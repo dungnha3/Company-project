@@ -19,6 +19,7 @@ export const ENDPOINTS = {
         RESET_PASSWORD: '/api/auth/reset-password',
         CHANGE_PASSWORD: '/api/auth/change-password',
         VERIFY_2FA: '/api/auth/verify-2fa',
+        ACTIVATE: '/api/auth/activate',
     },
 
 

@@ -16,8 +16,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EmployeeRequest {
 
-    @NotNull(message = "User ID cannot be null")
     private Long userId;
+
+    private String email;
 
     @NotBlank(message = "Full name cannot be empty")
     private String fullName;

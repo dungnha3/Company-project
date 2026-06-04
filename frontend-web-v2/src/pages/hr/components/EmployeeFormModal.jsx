@@ -15,13 +15,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 
     const isEditMode = !!employeeId;
 
-    // Fetch users for dropdown (only needed in Create mode)
-    const { data: users } = useQuery({
-        queryKey: ['users-available'],
-        queryFn: async () => (await apiClient.get(ENDPOINTS.USERS.LIST)).data, // Should ideally filter users without employee profile
-        initialData: [],
-        enabled: isOpen && !isEditMode
-    });
+    // No users query needed since we use official email input
 
     // Fetch employee details if Edit mode
     useQuery({
@@ -52,7 +46,8 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
     const mutation = useMutation({
         mutationFn: async (data) => {
             const payload = {
-                userId: Number(data.userId),
+                userId: data.userId ? Number(data.userId) : null,
+                email: data.email,
                 fullName: data.fullName,
                 gender: data.gender,
                 dateOfBirth: data.dateOfBirth,
@@ -91,7 +86,13 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 
     const validate = () => {
         const newErrors = {};
-        if (!formData.userId && !isEditMode) newErrors.userId = 'Vui lòng chọn tài khoản User';
+        if (!isEditMode) {
+            if (!formData.email) {
+                newErrors.email = 'Vui lòng nhập Email chính thức';
+            } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+                newErrors.email = 'Email không đúng định dạng';
+            }
+        }
         if (!formData.fullName) newErrors.fullName = 'Vui lòng nhập họ tên';
         if (!formData.startDate) newErrors.startDate = 'Vui lòng chọn ngày vào làm';
 
@@ -105,16 +106,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
         }
     };
 
-    // --- AUTO FILL NAME ---
-    // When selecting user, auto-fill full name from user account if available
-    useEffect(() => {
-        if (!isEditMode && formData.userId) {
-            const selectedUser = users.find(u => String(u.userId) === String(formData.userId));
-            if (selectedUser) {
-                setFormData(prev => ({ ...prev, fullName: selectedUser.fullName || prev.fullName, email: selectedUser.email }));
-            }
-        }
-    }, [formData.userId, users, isEditMode]);
+    // No auto-fill effect needed anymore
 
     if (!isOpen) return null;
 
@@ -135,25 +127,33 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
                 <div className="p-6 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        {/* Account Selection (Create Mode Only) */}
+                        {/* Email chính thức (Create Mode Only) */}
                         {!isEditMode && (
                             <div className="md:col-span-2">
-                                <label className="label-required">Tài khoản User</label>
-                                <select
-                                    name="userId"
-                                    className={`input w-full ${errors.userId ? 'border-red-500' : ''}`}
-                                    value={formData.userId}
+                                <label className="label-required">Email chính thức</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    className={`input w-full ${errors.email ? 'border-red-500' : ''}`}
+                                    value={formData.email}
                                     onChange={handleChange}
-                                >
-                                    <option value="">-- Chọn User chưa có hồ sơ nhân viên --</option>
-                                    {users.map(u => (
-                                        <option key={u.userId} value={u.userId}>
-                                            {u.username} ({u.email}) - {u.fullName}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId}</p>}
-                                <p className="text-xs text-gray-400 mt-1">Chỉ những user đã được mời vào Workspace mới hiển thị ở đây.</p>
+                                    placeholder="VD: nv.an@company.com"
+                                />
+                                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                                <p className="text-xs text-gray-400 mt-1">Một email chào mừng kèm link kích hoạt tài khoản sẽ được tự động gửi đến địa chỉ này.</p>
+                            </div>
+                        )}
+
+                        {/* Email liên kết (Edit Mode Only - Read Only) */}
+                        {isEditMode && (
+                            <div className="md:col-span-2">
+                                <label className="label text-gray-400">Email liên kết</label>
+                                <input
+                                    type="email"
+                                    className="input w-full bg-gray-100/50 cursor-not-allowed text-gray-500"
+                                    value={formData.email}
+                                    readOnly
+                                />
                             </div>
                         )}
 
@@ -265,6 +265,7 @@ export default function EmployeeFormModal({ isOpen, onClose, employeeId = null }
 
 const INITIAL_STATE = {
     userId: '',
+    email: '',
     fullName: '',
     gender: 'MALE',
     dateOfBirth: '',

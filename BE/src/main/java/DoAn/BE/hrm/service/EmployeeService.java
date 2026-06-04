@@ -18,6 +18,12 @@ import DoAn.BE.hrm.entity.Employee;
 import DoAn.BE.hrm.entity.Employee.EmployeeStatus;
 import DoAn.BE.hrm.repository.EmployeeRepository;
 import DoAn.BE.user.entity.User;
+import DoAn.BE.user.repository.UserRepository;
+import DoAn.BE.company.repository.CompanyRepository;
+import DoAn.BE.company.repository.CompanyMemberRepository;
+import DoAn.BE.notification.service.EmailNotificationService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,6 +36,14 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final AccessControlService accessControlService;
     private final EntityManager entityManager;
+    private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
+    private final CompanyMemberRepository companyMemberRepository;
+    private final EmailNotificationService emailService;
+    private final PasswordEncoder passwordEncoder;
+
+    @org.springframework.beans.factory.annotation.Value("${app.client.url:http://localhost:3000}")
+    private String clientUrl;
 
     @Transactional(readOnly = true)
     public Employee getEmployeeById(Long id, User currentUser) {
@@ -195,15 +209,20 @@ public class EmployeeService {
     }
 
     public Employee createEmployee(EmployeeRequest request, User currentUser) {
-        if (request == null || request.getUserId() == null) {
-            throw new BadRequestException("Invalid data: userId is required");
+        if (request == null) {
+            throw new BadRequestException("Invalid data");
         }
 
         accessControlService.checkHrCreateEmployeePermission();
 
-        // Check if user already has an employee profile (tenant-scoped)
-        if (employeeRepository.findByUser_UserId(request.getUserId()).isPresent()) {
-            throw new DuplicateException("User already has an employee profile");
+        // Validate email presence
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new BadRequestException("Email is required for creating a new employee");
+        }
+        
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new DuplicateException("Email already has a user account");
         }
 
         // Validate idCard uniqueness
@@ -212,16 +231,38 @@ public class EmployeeService {
             throw new DuplicateException("ID Card already exists");
         }
 
-        log.info("HR Manager {} creating employee profile for userId: {}",
-                currentUser.getUsername(), request.getUserId());
+        log.info("HR Manager {} creating employee profile and shadow user for email: {}",
+                currentUser.getUsername(), email);
 
+        // Create shadow user
+        User newUser = new User();
+        newUser.setEmail(email);
+        newUser.setUsername(email);
+        newUser.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+        newUser.setStatus(User.UserStatus.PENDING_ACTIVATION);
+        newUser.setActivationToken(java.util.UUID.randomUUID().toString());
+        newUser.setIsActive(false);
+        userRepository.save(newUser);
+
+        // Create company member
+        Long companyId = DoAn.BE.common.context.TenantContext.getCompanyId();
+        DoAn.BE.company.entity.Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
+        
+        DoAn.BE.company.entity.CompanyMember member = new DoAn.BE.company.entity.CompanyMember();
+        member.setUser(newUser);
+        member.setCompany(company);
+        member.getRoles().add(DoAn.BE.company.entity.CompanyRole.EMPLOYEE);
+        member.setPermissions(DoAn.BE.company.entity.UserPermissions.defaultFor(DoAn.BE.company.entity.CompanyRole.EMPLOYEE));
+        member.setInvitedAt(LocalDateTime.now());
+        member.setJoinedAt(LocalDateTime.now());
+        member.setIsActive(false);
+        companyMemberRepository.save(member);
+
+        // Create employee
         Employee employee = new Employee();
-
-        // Link to user — use a proxy reference to avoid extra query
-        User userRef = new User();
-        userRef.setUserId(request.getUserId());
-        employee.setUser(userRef);
-
+        employee.setUser(newUser);
+        employee.setCompanyMember(member);
         employee.setFullName(request.getFullName());
         employee.setDateOfBirth(request.getDateOfBirth());
         employee.setGender(request.getGender());
@@ -231,11 +272,24 @@ public class EmployeeService {
         employee.setBaseSalary(request.getBaseSalary() != null ? request.getBaseSalary() : java.math.BigDecimal.ZERO);
         employee.setAllowance(request.getAllowance() != null ? request.getAllowance() : java.math.BigDecimal.ZERO);
 
+        Employee savedEmployee = employeeRepository.save(employee);
 
+        // Send welcome activation email
+        sendNewEmployeeWelcomeEmail(email, company.getName(), newUser.getActivationToken());
 
-        // TenantScopedEntity.prePersistTenant() will auto-set company from
-        // TenantContext
-        return employeeRepository.save(employee);
+        return savedEmployee;
+    }
+
+    private void sendNewEmployeeWelcomeEmail(String email, String companyName, String activationToken) {
+        String accessUrl = clientUrl + "/activate?token=" + activationToken;
+        String subject = "Chào mừng thành viên mới của " + companyName;
+        String content = String.format(
+                "Xin chào,\n\nChào mừng bạn đã gia nhập %s!\n" +
+                "Tài khoản nhân viên của bạn đã được tạo sẵn và đang chờ kích hoạt.\n" +
+                "Vui lòng nhấn vào đường link bảo mật dưới đây để kích hoạt tài khoản của bạn (đường link có hiệu lực trong vòng 3 ngày):\n%s\n\n" +
+                "Trân trọng,\nĐội ngũ Nhân sự %s",
+                companyName, accessUrl, companyName);
+        emailService.sendSimpleEmail(email, subject, content);
     }
 
     public Employee updateEmployee(Long id, EmployeeRequest request, User currentUser) {
