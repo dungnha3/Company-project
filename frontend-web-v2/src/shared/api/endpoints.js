@@ -457,4 +457,10 @@ export const ENDPOINTS = {
         FILE_METADATA: (fileId) => `/api/storage/files/${fileId}/metadata`,
         DELETE_FILE: (fileId) => `/api/storage/files/${fileId}`,
     },
+
+    // Smart Assistant (AI Chatbot)
+    SMART: {
+        CHAT: '/api/smart/chat',
+        INSIGHTS: (projectId) => `/api/smart/insights?projectId=${projectId}`,
+    },
 };

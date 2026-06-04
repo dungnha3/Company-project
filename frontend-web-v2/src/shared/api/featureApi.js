@@ -139,3 +139,20 @@ export const leaveApi = {
     }
 };
 
+/**
+ * Smart Assistant API Service
+ */
+export const smartApi = {
+    // Send a message to AI assistant
+    chat: async (projectId, contents) => {
+        const response = await apiClient.post(ENDPOINTS.SMART.CHAT, { projectId, contents });
+        return response.data;
+    },
+
+    // Get proactive insights for a project
+    getInsights: async (projectId) => {
+        const response = await apiClient.get(ENDPOINTS.SMART.INSIGHTS(projectId));
+        return response.data;
+    }
+};
+

@@ -5,6 +5,7 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import BurndownChart from '../components/BurndownChart';
 import { formatDate } from '@shared/utils/formatters';
+import { smartApi } from '@shared/api/featureApi';
 
 export default function ProjectDashboardTab({ projectId, project }) {
     // Fetch project stats
@@ -47,6 +48,14 @@ export default function ProjectDashboardTab({ projectId, project }) {
             return arr.slice(0, 10);
         },
         staleTime: 30 * 1000,
+    });
+
+    // Fetch proactive AI insights
+    const { data: aiInsightData } = useQuery({
+        queryKey: ['project-proactive-insight', projectId],
+        queryFn: () => smartApi.getInsights(projectId),
+        staleTime: 5 * 60 * 1000,
+        enabled: !!projectId,
     });
 
     // Fetch team performance
@@ -95,6 +104,27 @@ export default function ProjectDashboardTab({ projectId, project }) {
                     </span>
                 </div>
             </div>
+
+            {/* Proactive AI Insight Banner */}
+            {aiInsightData?.insight && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200/60 rounded-xl p-4 flex items-start justify-between gap-3 shadow-sm animate-fade-in">
+                    <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                            <i className="fa-solid fa-sparkles text-sm animate-pulse" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider">Trợ lý AI Gợi ý</h4>
+                            <p className="text-xs font-semibold text-amber-950 mt-1 leading-relaxed">{aiInsightData.insight}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-ai-chatbot'))}
+                        className="shrink-0 self-center text-[10px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm border border-amber-300/40"
+                    >
+                        <i className="fa-solid fa-comments text-[9px]" /> Chat ngay
+                    </button>
+                </div>
+            )}
 
             {/* Quick Stats - Clean minimal cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

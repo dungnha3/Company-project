@@ -5,6 +5,7 @@ import { useAuthStore } from '@shared/stores/authStore';
 import { useUIStore } from '@shared/stores/uiStore';
 import useThemeStore from '@shared/stores/themeStore';
 import { useKeyboardShortcuts } from '@shared/components/ShortcutsModal';
+import AiChatbotWidget from '../../components/smart-assistant/AiChatbotWidget';
 
 import { useTimerStore } from '@shared/stores/timerStore';
 
@@ -42,6 +43,8 @@ export default function DashboardLayout() {
             {/* Keyboard Shortcuts Modal */}
             <ShortcutsModal />
 
+            {/* AI Chatbot Floating Widget */}
+            <AiChatbotWidget />
         </div>
     );
 }
