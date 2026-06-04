@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
-import ScoreSuggestionPanel from '@components/smart-assistant/ScoreSuggestionPanel';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function QuickReviewModal({ issue, onClose, onSuccess }) {
@@ -112,12 +111,6 @@ export default function QuickReviewModal({ issue, onClose, onSuccess }) {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Điểm chất lượng (1-10) <span className="text-red-500">*</span>
-                                <span className="ml-2">
-                                    <ScoreSuggestionPanel
-                                        issueId={issue.issueId}
-                                        onApply={(score) => setForm(prev => ({ ...prev, performanceScore: score }))}
-                                    />
-                                </span>
                             </label>
                             <div className="flex items-center gap-3">
                                 <input

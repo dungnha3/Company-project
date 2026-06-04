@@ -4,6 +4,15 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useWorkspaceStore } from './workspaceStore';
 
+const normalizeEmail = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const normalizePassword = (value) => (typeof value === 'string' ? value : '');
+
+const buildLoginPayload = (credentials = {}) => ({
+    email: normalizeEmail(credentials.email),
+    password: normalizePassword(credentials.password),
+});
+
 export const useAuthStore = create(
     persist(
         (set, get) => ({
@@ -43,7 +52,8 @@ export const useAuthStore = create(
 
             login: async (credentials) => {
                 try {
-                    const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, credentials);
+                    const payload = buildLoginPayload(credentials);
+                    const response = await apiClient.post(ENDPOINTS.AUTH.LOGIN, payload);
                     const data = response.data;
 
                     // 2FA required — return partial result
@@ -147,7 +157,7 @@ export const useAuthStore = create(
 
             loginWithGoogle: async (idToken) => {
                 try {
-                    const response = await apiClient.post(ENDPOINTS.AUTH.GOOGLE_LOGIN, { token: idToken });
+                    const response = await apiClient.post(ENDPOINTS.AUTH.GOOGLE_LOGIN, { idToken });
                     const { accessToken, refreshToken, user, expiresIn } = response.data;
 
                     // [FIX] Normalize User ID

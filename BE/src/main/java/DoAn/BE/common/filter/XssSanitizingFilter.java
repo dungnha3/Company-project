@@ -50,7 +50,14 @@ public class XssSanitizingFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String ct = request.getContentType();
-        return ct != null && ct.toLowerCase().contains("multipart/form-data");
+        if (ct != null) {
+            String normalizedContentType = ct.toLowerCase();
+            if (normalizedContentType.contains("multipart/form-data")
+                    || normalizedContentType.contains("application/json")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

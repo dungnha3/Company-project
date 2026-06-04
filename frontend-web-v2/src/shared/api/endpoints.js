@@ -442,35 +442,6 @@ export const ENDPOINTS = {
     // Salary Proposals (PENDING: requires backend ProposalsController)
     HR_PROPOSALS: '/api/hr/proposals',
 
-    // Smart Assistant (Module 5)
-    SMART_ASSISTANT: {
-        BASE: '/api/smart-assistant',
-        SUMMARY: (projectId, sprintId) => `/api/smart-assistant?action=summary&projectId=${projectId}${sprintId ? `&sprintId=${sprintId}` : ''}`,
-        TASK_ASSIGNMENT: (projectId) => `/api/smart-assistant?action=task-assignment&projectId=${projectId}`,
-        SCORE_SUGGESTION_ISSUE: (issueId) => `/api/smart-assistant?action=score-suggestion&issueId=${issueId}`,
-        SCORE_SUGGESTION_EMPLOYEE: (employeeId, reviewPeriod) => `/api/smart-assistant?action=score-suggestion&employeeId=${employeeId}&reviewPeriod=${encodeURIComponent(reviewPeriod)}`,
-        SPRINT_HEALTH: (sprintId) => `/api/smart-assistant?action=sprint-health&sprintId=${sprintId}`,
-        SPRINT_PREDICTION: (sprintId) => `/api/smart-assistant/sprint-prediction/${sprintId}`,
-        ESTIMATE: (projectId, issueType, weight, assigneeId) => {
-            const params = new URLSearchParams();
-            if (projectId) params.append('projectId', projectId);
-            if (issueType) params.append('issueType', issueType);
-            if (weight) params.append('weight', weight);
-            if (assigneeId) params.append('assigneeId', assigneeId);
-            return `/api/smart-assistant/estimate?${params.toString()}`;
-        },
-        WORKLOAD: (projectId) => `/api/smart-assistant?action=workload&projectId=${projectId}`,
-        PROJECT_RISK: (projectId) => `/api/smart-assistant?action=project-risk&projectId=${projectId}`,
-        SUGGEST_ASSIGNEE: (projectId) => `/api/smart-assistant/suggest-assignee?projectId=${projectId}`,
-        BATCH_ASSIGN: '/api/smart-assistant/assign',
-        SUGGEST_SUBTASKS: (title, description) => {
-            const params = new URLSearchParams();
-            params.append('title', title);
-            if (description) params.append('description', description);
-            return `/api/smart-assistant/suggest-subtasks?${params.toString()}`;
-        },
-    },
-
     // Storage (Google Drive Integration)
     STORAGE: {
         OAUTH_AUTHORIZE: '/api/storage/oauth2/authorize',

@@ -7,7 +7,6 @@ import { formatDate } from '@shared/utils/formatters';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 import SprintOverview from '../components/BurndownChart';
 import IssueDetailModal from '../components/IssueDetailModal';
-import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
 
 // ─── Constants ─────────────────────────────────────────────────────────
 const SPRINT_STATUS = {
@@ -111,14 +110,6 @@ function SprintView({ projectId }) {
         },
     });
 
-    const { data: sprintPrediction } = useQuery({
-        queryKey: ['smart-sprint-prediction', activeSprint?.sprintId],
-        queryFn: async () => {
-            return (await apiClient.get(ENDPOINTS.SMART_ASSISTANT.SPRINT_PREDICTION(activeSprint.sprintId))).data;
-        },
-        enabled: !!activeSprint?.sprintId,
-        staleTime: 2 * 60 * 1000,
-    });
 
     if (isLoading) {
         return <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-3xl text-indigo-500" /></div>;
@@ -186,9 +177,6 @@ function SprintView({ projectId }) {
                             <p className="mt-3 text-sm text-gray-600 border-t border-indigo-200 pt-3">
                                 <strong>Goal:</strong> {activeSprint.goal}
                             </p>
-                        )}
-                        {sprintPrediction && sprintPrediction.alertLevel !== 'OK' && (
-                            <SprintAlertBanner prediction={sprintPrediction} />
                         )}
                         {expandedSprint === activeSprint.sprintId && (
                             <SprintIssueList
@@ -338,7 +326,6 @@ function SprintView({ projectId }) {
                 />
             )}
 
-            <SmartAssistantFAB project={null} projectId={projectId} sprint={activeSprint} />
         </div>
     );
 }

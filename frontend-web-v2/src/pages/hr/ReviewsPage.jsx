@@ -9,17 +9,6 @@ import { ExportButton, ImportButton } from '@shared/components/ui/index';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import ReviewFormModal from './components/ReviewFormModal';
 import BulkReviewModal from './components/BulkReviewModal';
-import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
-
-// FAB wrapper for HR Reviews page (company-wide context)
-function ReviewsFAB() {
-    const currentWorkspace = useWorkspaceStore(state => state.currentWorkspace);
-    const companyId = currentWorkspace?.companyId;
-
-    // For HR page without project context, FAB still useful for quick insights
-    // We pass minimal context - the FAB will show limited info but still functional
-    return <SmartAssistantFAB projectId={companyId ? -1 : null} />;
-}
 
 export default function ReviewsPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -107,7 +96,6 @@ export default function ReviewsPage() {
                 />
             )}
 
-            <ReviewsFAB />
         </div>
     );
 }

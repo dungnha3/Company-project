@@ -4,7 +4,6 @@ import { useToast } from '@app/providers/ToastProvider';
 import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatNumber } from '@shared/utils/formatters';
-import ScoreSuggestionPanel from '@components/smart-assistant/ScoreSuggestionPanel';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 export default function ReviewFormModal({ isOpen, onClose, review }) {
@@ -207,41 +206,6 @@ export default function ReviewFormModal({ isOpen, onClose, review }) {
 
                         {/* Score Grid */}
                         <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-4">
-                            <div className="flex justify-between items-center">
-                                <h3 className="font-semibold text-gray-700">Điểm đánh giá (0-10)</h3>
-                                <div className="text-sm">
-                                    Điểm TB: <span className={`font-bold ${avgScore >= 8 ? 'text-green-600' : avgScore >= 6 ? 'text-indigo-600' : avgScore >= 4 ? 'text-yellow-600' : 'text-gray-600'}`}>
-                                        {avgScore}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* AI Suggestion Panel */}
-                            {formData.employeeId && formData.reviewPeriod && (
-                                <ScoreSuggestionPanel
-                                    employeeId={parseInt(formData.employeeId)}
-                                    reviewPeriod={formData.reviewPeriod}
-                                    onApply={(scores) => {
-                                        const toStr = (v) => {
-                                            if (v == null) return '7.0';
-                                            if (typeof v === 'number') return v.toFixed(1);
-                                            return String(v);
-                                        };
-                                        if (typeof scores === 'number') {
-                                            setFormData(prev => ({ ...prev, technicalScore: toStr(scores) }));
-                                        } else {
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                technicalScore: toStr(scores.technicalScore),
-                                                attitudeScore: toStr(scores.attitudeScore),
-                                                softSkillsScore: toStr(scores.softSkillsScore),
-                                                teamworkScore: toStr(scores.teamworkScore),
-                                            }));
-                                        }
-                                    }}
-                                />
-                            )}
-
                             <div className="grid grid-cols-2 gap-4">
                                 <ScoreInput label="Chuyên môn" name="technicalScore" value={formData.technicalScore} onChange={handleChange} icon="fa-code" />
                                 <ScoreInput label="Thái độ" name="attitudeScore" value={formData.attitudeScore} onChange={handleChange} icon="fa-heart" />

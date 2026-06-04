@@ -61,7 +61,7 @@ export default function IssueTrackerSummary({ issueSummaries }) {
                                 <div className="flex gap-2 pt-2.5 border-t border-gray-100">
                                     {summary.aiScore != null && (
                                         <span className="text-[10px] font-semibold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100/30">
-                                            AI: {Number(summary.aiScore).toFixed(1)}
+                                            Hệ thống: {Number(summary.aiScore).toFixed(1)}
                                         </span>
                                     )}
                                     {summary.humanScore != null && (

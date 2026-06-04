@@ -590,10 +590,10 @@ export default function IssueDetailModal({ issue, onClose, onUpdate }) {
                                         })}
                                     </div>
 
-                                    {/* AI / Human / Total Score */}
+                                    {/* System / Human / Total Score */}
                                     <div className="grid grid-cols-3 gap-3 mb-3">
                                         <div className={`rounded-xl px-3 py-2.5 text-center ${currentIssue.aiScore != null ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-50 border border-gray-100'}`}>
-                                            <div className="text-[10px] uppercase tracking-wide text-indigo-400 font-semibold mb-1">AI Score</div>
+                                            <div className="text-[10px] uppercase tracking-wide text-indigo-400 font-semibold mb-1">Điểm hệ thống</div>
                                             <div className={`text-xl font-black ${currentIssue.aiScore != null ? 'text-indigo-600' : 'text-gray-300'}`}>
                                                 {currentIssue.aiScore != null ? Number(currentIssue.aiScore).toFixed(1) : '—'}
                                             </div>

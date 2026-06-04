@@ -21,7 +21,6 @@ import CreateIssueModal from '../components/CreateIssueModal';
 import TimeLogSection from '../components/TimeLogSection';
 import QuickReviewModal from '../components/QuickReviewModal';
 import SubmitTaskModal from '../components/SubmitTaskModal';
-import SmartAssistantFAB from '@components/smart-assistant/SmartAssistantFAB';
 import { ExportButton, ImportButton } from '@shared/components/ui/index';
 
 // Statuses considered "forward" (not rework)
@@ -1022,7 +1021,6 @@ export default function ProjectBoard({ project }) {
                 />
             )}
 
-            <SmartAssistantFAB project={project} />
         </>
     );
 }

@@ -34,3 +34,9 @@ pnpm-debug.log*
 # Local cache
 .cache/
 *.local
+
+# Playwright test results
+test-results/
+playwright-report/
+blob-report/
+

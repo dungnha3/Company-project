@@ -4,7 +4,6 @@ import apiClient from '@shared/api/client';
 import { ENDPOINTS } from '@shared/api/endpoints';
 import { useToast } from '@app/providers/ToastProvider';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
-import SubtaskSuggestionPanel from '@components/smart-assistant/SubtaskSuggestionPanel';
 
 const PRIORITIES = [
     { value: 'LOW', label: 'Thấp', icon: 'fa-arrow-down', color: 'text-gray-500' },
@@ -37,7 +36,6 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
         storageFolder: '',
     });
     const [selectedFiles, setSelectedFiles] = useState([]);
-    const [acceptedSubtasks, setAcceptedSubtasks] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef(null);
     const toast = useToast();
@@ -135,21 +133,7 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             const parentIssue = parentResponse.data;
             const parentIssueId = parentIssue.issueId;
 
-            // Step 3: Create child issues for each accepted subtask
-            if (acceptedSubtasks.length > 0) {
-                for (const subtask of acceptedSubtasks) {
-                    const subtaskPayload = {
-                        ...parentPayload,
-                        title: subtask.title,
-                        description: `Subtask (${subtask.category || 'general'}) được gợi ý bởi AI cho issue: ${form.title.trim()}`,
-                        parentIssueId: parentIssueId,
-                    };
-                    await apiClient.post(ENDPOINTS.ISSUES.CREATE, subtaskPayload);
-                }
-                toast.success(`Đã tạo ${acceptedSubtasks.length} sub-task cho issue chính!`);
-            }
-
-            // Step 4: Upload files linked to parent issue
+            // Step 3: Upload files linked to parent issue
             if (selectedFiles.length > 0 && parentIssueId) {
                 const folderParam = form.storageFolder ? `?folder=${encodeURIComponent(form.storageFolder)}` : '';
                 for (const file of selectedFiles) {
@@ -201,7 +185,6 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
             storageFolder: '',
         });
         setSelectedFiles([]);
-        setAcceptedSubtasks([]);
         setIsSubmitting(false);
         onClose();
     };
@@ -301,36 +284,6 @@ export default function CreateIssueModal({ isOpen, onClose, onSuccess, defaultPr
                                 rows={3}
                             />
                         </div>
-
-                        {/* Smart Subtask Suggestion */}
-                        <SubtaskSuggestionPanel
-                            title={form.title}
-                            description={form.description}
-                            onAccept={(selected) => setAcceptedSubtasks(selected)}
-                        />
-
-                        {/* Accepted Subtasks Preview */}
-                        {acceptedSubtasks.length > 0 && (
-                            <div className="border border-green-200 rounded-lg p-3 bg-green-50">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <i className="fa-solid fa-check-circle text-green-500 text-sm" />
-                                    <span className="text-sm font-semibold text-green-700">
-                                        Đã chọn {acceptedSubtasks.length} sub-task
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {acceptedSubtasks.map((st, idx) => (
-                                        <span
-                                            key={idx}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-green-200 rounded-full text-xs text-green-700"
-                                        >
-                                            <i className="fa-solid fa-check text-green-400 text-[8px]" />
-                                            {st.title}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {/* Sprint & Assignee Row */}
                         <div className="grid grid-cols-2 gap-4">
