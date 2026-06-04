@@ -267,6 +267,7 @@ export default function EmployeesPage() {
                                     templateFilename="Template_NhanVien.xlsx"
                                     label="Nhập"
                                     className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm !px-3"
+                                    onSuccess={() => queryClient.invalidateQueries(['employees'])}
                                 />
                             </div>
                         </>

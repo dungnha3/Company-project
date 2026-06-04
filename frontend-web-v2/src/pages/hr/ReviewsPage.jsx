@@ -11,6 +11,7 @@ import ReviewFormModal from './components/ReviewFormModal';
 import BulkReviewModal from './components/BulkReviewModal';
 
 export default function ReviewsPage() {
+    const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [editingReview, setEditingReview] = useState(null);
@@ -53,6 +54,10 @@ export default function ReviewsPage() {
                                     endpoint={ENDPOINTS.IMPORT.REVIEWS}
                                     label="Nhập"
                                     className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm !px-3"
+                                    onSuccess={() => {
+                                        queryClient.invalidateQueries(['reviews']);
+                                        queryClient.invalidateQueries(['reviews-stats']);
+                                    }}
                                 />
                             </div>
                             <button

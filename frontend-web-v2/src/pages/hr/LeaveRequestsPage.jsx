@@ -10,6 +10,7 @@ import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 
 export default function LeaveRequestsPage() {
+    const queryClient = useQueryClient();
     const { hasPermission } = useWorkspaceStore();
     const [activeTab, setActiveTab] = useState('my-requests');
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -59,6 +60,12 @@ export default function LeaveRequestsPage() {
                                 templateFilename="Template_NghiPhep.xlsx"
                                 label="Nhập"
                                 className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-sm !px-3"
+                                onSuccess={() => {
+                                    queryClient.invalidateQueries(['my-leave-requests']);
+                                    queryClient.invalidateQueries(['leave-balance']);
+                                    queryClient.invalidateQueries(['pending-leave-requests']);
+                                    queryClient.invalidateQueries(['pending-leave-count']);
+                                }}
                             />
                         </div>
                     )}

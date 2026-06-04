@@ -16,6 +16,8 @@ import DoAn.BE.hrm.repository.ReviewRepository;
 import DoAn.BE.timetracking.repository.TimeLogRepository;
 import DoAn.BE.user.entity.User;
 import DoAn.BE.user.repository.UserRepository;
+import DoAn.BE.notification.service.EmailNotificationService;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -58,6 +60,10 @@ public class ImportService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailNotificationService emailService;
+
+    @Value("${app.client.url:http://localhost:3000}")
+    private String clientUrl;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter[] DATE_FMTS = {
@@ -153,14 +159,18 @@ public class ImportService {
                             .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
 
                     CompanyMember member = null;
+                    boolean isNewUser = false;
+                    String activationToken = null;
                     if (user == null) {
+                        isNewUser = true;
+                        activationToken = java.util.UUID.randomUUID().toString();
                         // Create shadow user
                         user = new User();
                         user.setEmail(email);
                         user.setUsername(email);
                         user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                         user.setStatus(User.UserStatus.PENDING_ACTIVATION);
-                        user.setActivationToken(java.util.UUID.randomUUID().toString());
+                        user.setActivationToken(activationToken);
                         user.setIsActive(false);
                         user = userRepository.save(user);
 
@@ -279,6 +289,14 @@ public class ImportService {
                     employeeRepository.save(emp);
                     successCount++;
 
+                    if (isNewUser) {
+                        try {
+                            sendNewEmployeeWelcomeEmail(email, company.getName(), activationToken);
+                        } catch (Exception ex) {
+                            log.error("Failed to send welcome email to new employee during import: {}", email, ex);
+                        }
+                    }
+
                 } catch (Exception e) {
                     errors.add("Row " + (rowNum + 1) + ": " + e.getMessage());
                     errorCount++;
@@ -287,6 +305,18 @@ public class ImportService {
         }
 
         return new EmployeeImportResult(successCount, errorCount, errors);
+    }
+
+    private void sendNewEmployeeWelcomeEmail(String email, String companyName, String activationToken) {
+        String accessUrl = clientUrl + "/activate?token=" + activationToken;
+        String subject = "Chào mừng thành viên mới của " + companyName;
+        String content = String.format(
+                "Xin chào,\n\nChào mừng bạn đã gia nhập %s!\n" +
+                "Tài khoản nhân viên của bạn đã được tạo sẵn và đang chờ kích hoạt.\n" +
+                "Vui lòng nhấn vào đường link bảo mật dưới đây để kích hoạt tài khoản của bạn (đường link có hiệu lực trong vòng 3 ngày):\n%s\n\n" +
+                "Trân trọng,\nĐội ngũ Nhân sự %s",
+                companyName, accessUrl, companyName);
+        emailService.sendSimpleEmail(email, subject, content);
     }
 
     // ========== LEAVES IMPORT ==========
