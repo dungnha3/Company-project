@@ -129,9 +129,9 @@ export default function AiChatbotWidget() {
                 {isOpen ? (
                     <i className="fa-solid fa-xmark text-xl" />
                 ) : (
-                    <div className="relative">
-                        <i className="fa-solid fa-sparkles text-xl animate-pulse" />
-                        <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
+                    <div className="relative flex items-center justify-center">
+                        <i className="fa-solid fa-robot text-xl" />
+                        <span className="absolute -top-2.5 -right-2.5 flex h-3.5 w-3.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-white"></span>
                         </span>

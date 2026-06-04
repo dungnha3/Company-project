@@ -54,27 +54,27 @@ public class SmartAssistantService {
     }
 
     public SmartChatResponse generateResponse(SmartChatRequest request) {
-        if (geminiApiKey == null || geminiApiKey.isBlank()) {
-            return SmartChatResponse.builder()
-                    .text("AI Assistant chưa được cấu hình. Vui lòng thiết lập biến môi trường GEMINI_API_KEY trong file .env để bắt đầu trò chuyện.")
-                    .build();
-        }
-
-        Long projectId = request.getProjectId();
-        String systemInstruction = buildSystemInstruction(projectId);
-
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("contents", request.getContents());
-
-        Map<String, Object> systemInstructionMap = new HashMap<>();
-        Map<String, Object> partMap = new HashMap<>();
-        partMap.put("text", systemInstruction);
-        systemInstructionMap.put("parts", List.of(partMap));
-        requestBody.put("systemInstruction", systemInstructionMap);
-
         try {
+            if (geminiApiKey == null || geminiApiKey.isBlank()) {
+                return SmartChatResponse.builder()
+                        .text("AI Assistant chưa được cấu hình. Vui lòng thiết lập biến môi trường GEMINI_API_KEY trong file .env để bắt đầu trò chuyện.")
+                        .build();
+            }
+
+            Long projectId = request.getProjectId();
+            String systemInstruction = buildSystemInstruction(projectId);
+
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("contents", request.getContents());
+
+            Map<String, Object> systemInstructionMap = new HashMap<>();
+            Map<String, Object> partMap = new HashMap<>();
+            partMap.put("text", systemInstruction);
+            systemInstructionMap.put("parts", List.of(partMap));
+            requestBody.put("systemInstruction", systemInstructionMap);
+
             @SuppressWarnings("unchecked")
             Map<String, Object> responseMap = restTemplate.postForObject(url, requestBody, Map.class);
             String aiResponse = extractTextFromResponse(responseMap);
@@ -82,42 +82,49 @@ public class SmartAssistantService {
         } catch (Exception e) {
             log.error("Failed to call Gemini API for project chat", e);
             return SmartChatResponse.builder()
-                    .text("Xin lỗi, đã xảy ra lỗi khi kết nối với AI Assistant. Vui lòng thử lại sau.")
+                    .text("Xin lỗi, đã xảy ra lỗi khi kết nối với AI Assistant: " + e.getMessage() + ". Vui lòng liên hệ quản trị viên hoặc kiểm tra log.")
                     .build();
         }
     }
 
     public SmartInsightResponse generateProactiveInsight(Long projectId) {
-        if (geminiApiKey == null || geminiApiKey.isBlank()) {
-            return SmartInsightResponse.builder()
-                    .insight("AI Assistant chưa được cấu hình. Vui lòng thiết lập GEMINI_API_KEY trong file .env.")
-                    .build();
-        }
-
-        String projectContext = buildProjectSummaryContext(projectId);
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
-
-        String prompt = "Dựa trên dữ liệu tóm tắt dự án dưới đây:\n" +
-                "------------------\n" +
-                projectContext + "\n" +
-                "------------------\n" +
-                "Hãy đưa ra đúng 1 câu cảnh báo chủ động và ngắn gọn (khoảng 20-30 từ) về tình hình trễ hạn, quá tải nhân sự, hoặc rủi ro Sprint hiện tại để nhắc nhở người quản lý khi họ truy cập dashboard. Bạn phải nêu đích danh tên nhân sự hoặc chỉ ra rủi ro cụ thể nếu phát hiện vấn đề (ví dụ: quá tải, trễ deadline). Trả lời bằng tiếng Việt, giọng điệu chuyên nghiệp, chu đáo. Không viết thêm lời mở đầu hay giải thích gì khác.";
-
-        Map<String, Object> requestBody = new HashMap<>();
-        Map<String, Object> contentMap = new HashMap<>();
-        Map<String, Object> partMap = new HashMap<>();
-        partMap.put("text", prompt);
-        contentMap.put("role", "user");
-        contentMap.put("parts", List.of(partMap));
-        requestBody.put("contents", List.of(contentMap));
-
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> responseMap = restTemplate.postForObject(url, requestBody, Map.class);
-            String insightText = extractTextFromResponse(responseMap);
-            return SmartInsightResponse.builder().insight(insightText.trim()).build();
+            if (geminiApiKey == null || geminiApiKey.isBlank()) {
+                return SmartInsightResponse.builder()
+                        .insight("AI Assistant chưa được cấu hình. Vui lòng thiết lập GEMINI_API_KEY trong file .env.")
+                        .build();
+            }
+
+            String projectContext = buildProjectSummaryContext(projectId);
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+
+            String prompt = "Dựa trên dữ liệu tóm tắt dự án dưới đây:\n" +
+                    "------------------\n" +
+                    projectContext + "\n" +
+                    "------------------\n" +
+                    "Hãy đưa ra đúng 1 câu cảnh báo chủ động và ngắn gọn (khoảng 20-30 từ) về tình hình trễ hạn, quá tải nhân sự, hoặc rủi ro Sprint hiện tại để nhắc nhở người quản lý khi họ truy cập dashboard. Bạn phải nêu đích danh tên nhân sự hoặc chỉ ra rủi ro cụ thể nếu phát hiện vấn đề (ví dụ: quá tải, trễ deadline). Trả lời bằng tiếng Việt, giọng điệu chuyên nghiệp, chu đáo. Không viết thêm lời mở đầu hay giải thích gì khác.";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            Map<String, Object> contentMap = new HashMap<>();
+            Map<String, Object> partMap = new HashMap<>();
+            partMap.put("text", prompt);
+            contentMap.put("role", "user");
+            contentMap.put("parts", List.of(partMap));
+            requestBody.put("contents", List.of(contentMap));
+
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> responseMap = restTemplate.postForObject(url, requestBody, Map.class);
+                String insightText = extractTextFromResponse(responseMap);
+                return SmartInsightResponse.builder().insight(insightText.trim()).build();
+            } catch (Exception e) {
+                log.error("Failed to generate proactive insights from Gemini API", e);
+                return SmartInsightResponse.builder()
+                        .insight("Dự án hiện tại đang duy trì tiến độ bình thường. Không phát hiện rủi ro khẩn cấp.")
+                        .build();
+            }
         } catch (Exception e) {
-            log.error("Failed to generate proactive insights from Gemini API", e);
+            log.error("Failed to generate proactive insights context", e);
             return SmartInsightResponse.builder()
                     .insight("Dự án hiện tại đang duy trì tiến độ bình thường. Không phát hiện rủi ro khẩn cấp.")
                     .build();
