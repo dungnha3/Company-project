@@ -13,6 +13,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import org.springframework.scheduling.annotation.Async;
 
 @Service
 @Slf4j
@@ -35,6 +36,7 @@ public class EmailNotificationService {
     @Value("${app.base-url:http://localhost:3000}")
     private String baseUrl;
 
+    @Async("notificationExecutor")
     public void sendNotificationEmail(Notification notification) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật hoặc chưa config, bỏ qua gửi email cho thông báo {}",
@@ -68,6 +70,7 @@ public class EmailNotificationService {
         }
     }
 
+    @Async("notificationExecutor")
     public void sendSimpleEmail(String to, String subject, String content) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật hoặc chưa config, bỏ qua gửi email đến {}", to);
@@ -90,6 +93,7 @@ public class EmailNotificationService {
         }
     }
 
+    @Async("notificationExecutor")
     public void sendContractExpiryEmail(String email, String employeeName, String contractType, String expiryDate) {
         String subject = "Thông báo: Hợp đồng sắp hết hạn";
         String content = String.format(
@@ -103,6 +107,7 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    @Async("notificationExecutor")
     public void sendLeaveApprovedEmail(String email, String employeeName, String leaveType, String startDate,
             String endDate) {
         String subject = "Đơn nghỉ phép đã được duyệt";
@@ -116,6 +121,7 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    @Async("notificationExecutor")
     public void sendSalaryApprovedEmail(String email, String employeeName, String period, String amount) {
         String subject = "Lương đã được duyệt";
         String content = String.format(
@@ -129,6 +135,7 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    @Async("notificationExecutor")
     public void sendWelcomeEmail(String email, String employeeName, String username, String tempPassword) {
         String subject = "Chào mừng bạn đến với công ty";
         String content = String.format(
@@ -146,6 +153,7 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    @Async("notificationExecutor")
     public void sendProjectMemberAddedEmail(
             String email,
             String memberName,
@@ -215,6 +223,7 @@ public class EmailNotificationService {
         }
     }
 
+    @Async("notificationExecutor")
     public void sendIssueAssignedEmail(
             String email,
             String assigneeName,
@@ -282,6 +291,7 @@ public class EmailNotificationService {
         }
     }
 
+    @Async("notificationExecutor")
     public void sendPasswordResetEmail(String email, String username, String newPassword) {
         String subject = "Thông báo: Mật khẩu tài khoản đã được đặt lại";
         String content = String.format(
@@ -299,6 +309,7 @@ public class EmailNotificationService {
         sendSimpleEmail(email, subject, content);
     }
 
+    @Async("notificationExecutor")
     public void sendWorkspaceJoinApprovedEmail(String email, String fullName, String companyName) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật, bỏ qua gửi email duyệt vào công ty đến {}", email);
@@ -360,6 +371,7 @@ public class EmailNotificationService {
      * @param changeDetail Mô tả chi tiết thay đổi, VD: "To Do → In Progress"
      * @param actorName    Tên người thực hiện thay đổi
      */
+    @Async("notificationExecutor")
     public void sendIssueUpdatedEmail(
             String email,
             String recipientName,
@@ -500,6 +512,7 @@ public class EmailNotificationService {
      * @param projectName   Tên dự án
      * @param issueKeys     Danh sách issue keys được giao cho user này trong sprint
      */
+    @Async("notificationExecutor")
     public void sendSprintStartedBatchEmail(User user, String sprintName, String projectName, List<String> issueKeys) {
         if (!emailEnabled || mailSender == null) {
             log.info("Email không được bật, bỏ qua gửi email sprint bắt đầu đến {}", user.getEmail());

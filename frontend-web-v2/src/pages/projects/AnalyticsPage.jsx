@@ -24,48 +24,48 @@ function ProjectKpisSection({ statusDist, velocity, workload }) {
 
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
+            <div className="bg-white border border-indigo-100/85 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-indigo-300 hover:-translate-y-0.5 transition-all duration-300">
                 <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-100">Tổng công việc</span>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <i className="fa-solid fa-list-check text-sm text-indigo-100" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Tổng công việc</span>
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                        <i className="fa-solid fa-list-check text-sm text-indigo-600" />
                     </div>
                 </div>
-                <h3 className="text-3xl font-black mt-3 leading-tight">{totalIssues}</h3>
-                <p className="text-[10px] text-indigo-100/80 mt-1 font-medium">Tổng số issues trong dự án</p>
+                <h3 className="text-3xl font-black mt-3 leading-tight text-gray-900">{totalIssues}</h3>
+                <p className="text-[10px] text-gray-450 mt-1.5 font-medium">Tổng số issues trong dự án</p>
             </div>
 
-            <div className="bg-gradient-to-br from-emerald-500 to-emerald-650 rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
+            <div className="bg-white border border-emerald-100/85 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-emerald-300 hover:-translate-y-0.5 transition-all duration-300">
                 <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-100">Tỷ lệ hoàn thành</span>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <i className="fa-solid fa-circle-check text-sm text-emerald-100" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Tỷ lệ hoàn thành</span>
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                        <i className="fa-solid fa-circle-check text-sm text-emerald-600" />
                     </div>
                 </div>
-                <h3 className="text-3xl font-black mt-3 leading-tight">{completionRate}%</h3>
-                <p className="text-[10px] text-emerald-100/80 mt-1 font-medium">{doneCount} trên tổng số {totalIssues} Done</p>
+                <h3 className="text-3xl font-black mt-3 leading-tight text-gray-900">{completionRate}%</h3>
+                <p className="text-[10px] text-gray-450 mt-1.5 font-medium">{doneCount} trên tổng số {totalIssues} Done</p>
             </div>
 
-            <div className="bg-gradient-to-br from-amber-550 to-amber-600 rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
+            <div className="bg-white border border-amber-100/85 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-amber-300 hover:-translate-y-0.5 transition-all duration-300">
                 <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-100">Tốc độ Sprint</span>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <i className="fa-solid fa-bolt text-sm text-amber-100" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Tốc độ Sprint</span>
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                        <i className="fa-solid fa-bolt text-sm text-amber-600" />
                     </div>
                 </div>
-                <h3 className="text-3xl font-black mt-3 leading-tight">{avgVelocity}</h3>
-                <p className="text-[10px] text-amber-100/80 mt-1 font-medium">Issues hoàn thành trung bình mỗi Sprint</p>
+                <h3 className="text-3xl font-black mt-3 leading-tight text-gray-900">{avgVelocity}</h3>
+                <p className="text-[10px] text-gray-450 mt-1.5 font-medium">Issues hoàn thành trung bình mỗi Sprint</p>
             </div>
 
-            <div className="bg-gradient-to-br from-violet-500 to-violet-600 rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
+            <div className="bg-white border border-violet-100/85 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-violet-300 hover:-translate-y-0.5 transition-all duration-300">
                 <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-violet-100">Tổng giờ làm thực</span>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <i className="fa-solid fa-clock text-sm text-violet-100" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Tổng giờ làm thực</span>
+                    <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                        <i className="fa-solid fa-clock text-sm text-violet-600" />
                     </div>
                 </div>
-                <h3 className="text-3xl font-black mt-3 leading-tight">{totalLogged}h</h3>
-                <p className="text-[10px] text-violet-100/80 mt-1 font-medium">Tổng số giờ làm việc thực tế đã ghi nhận</p>
+                <h3 className="text-3xl font-black mt-3 leading-tight text-gray-900">{totalLogged}h</h3>
+                <p className="text-[10px] text-gray-450 mt-1.5 font-medium">Tổng số giờ làm việc thực tế đã ghi nhận</p>
             </div>
         </div>
     );

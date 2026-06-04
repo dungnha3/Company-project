@@ -405,6 +405,14 @@ public class AuthService {
                     }
                     userService.save(user);
                     log.info("Đã kích hoạt shadow user {} qua Google Login", user.getEmail());
+
+                    // Kích hoạt các company member memberships chưa kích hoạt
+                    List<CompanyMember> inactiveMemberships = companyMemberRepository.findByUser_UserIdAndIsActiveFalse(user.getUserId());
+                    for (CompanyMember member : inactiveMemberships) {
+                        member.setIsActive(true);
+                        member.setJoinedAt(LocalDateTime.now());
+                        companyMemberRepository.save(member);
+                    }
                 } else {
                     throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
                 }

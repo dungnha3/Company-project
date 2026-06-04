@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AUTH_CONFIG } from '../../config/authConfig';
 import { useAuthStore } from '../../shared/stores/authStore';
+import { useWorkspaceStore } from '../../shared/stores/workspaceStore';
 import { useNavigate } from 'react-router-dom';
 
 // Helper function to check if Google Client ID is properly configured
@@ -33,6 +34,8 @@ const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
                 const result = await loginWithGoogle(response.credential);
 
                 if (result.success) {
+                    await useWorkspaceStore.getState().clearWorkspace();
+                    await useWorkspaceStore.getState().fetchWorkspaces();
                     if (result.user.isSystemAdmin) {
                         navigate('/admin/companies', { replace: true });
                     } else {
@@ -49,21 +52,35 @@ const GoogleLoginButton = ({ text = "Đăng nhập với Google" }) => {
             }
         };
 
-        // Khởi tạo Google nếu script đã load
-        if (window.google && window.google.accounts && isGoogleConfigured()) {
-            window.google.accounts.id.initialize({
-                client_id: AUTH_CONFIG.GOOGLE_CLIENT_ID,
-                callback: handleCredentialResponse
-            });
+        const initGoogle = () => {
+            if (window.google && window.google.accounts && isGoogleConfigured()) {
+                window.google.accounts.id.initialize({
+                    client_id: AUTH_CONFIG.GOOGLE_CLIENT_ID,
+                    callback: handleCredentialResponse
+                });
 
-            // Render nút Google ẩn — dùng để nhận click thật
-            if (hiddenGoogleRef.current) {
-                window.google.accounts.id.renderButton(
-                    hiddenGoogleRef.current,
-                    { theme: "outline", size: "large", width: 400, shape: "rectangular" }
-                );
+                // Render nút Google ẩn — dùng để nhận click thật
+                if (hiddenGoogleRef.current) {
+                    window.google.accounts.id.renderButton(
+                        hiddenGoogleRef.current,
+                        { theme: "outline", size: "large", width: 400, shape: "rectangular" }
+                    );
+                }
+                return true;
             }
-        }
+            return false;
+        };
+
+        if (initGoogle()) return;
+
+        // Script might be loading asynchronously, poll for it
+        const interval = setInterval(() => {
+            if (initGoogle()) {
+                clearInterval(interval);
+            }
+        }, 100);
+
+        return () => clearInterval(interval);
     }, [loginWithGoogle, navigate]);
 
     if (!isGoogleConfigured()) {
