@@ -6,8 +6,7 @@ import { useToast } from '@app/providers/ToastProvider';
 import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUS_OPTIONS = [
-    { value: 'PLANNING', label: 'Lập kế hoạch', color: 'bg-gray-100 text-gray-700' },
-    { value: 'IN_PROGRESS', label: 'Đang thực hiện', color: 'bg-indigo-100 text-indigo-700' },
+    { value: 'ACTIVE', label: 'Đang hoạt động', color: 'bg-indigo-100 text-indigo-700' },
     { value: 'ON_HOLD', label: 'Tạm dừng', color: 'bg-yellow-100 text-yellow-700' },
     { value: 'COMPLETED', label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
     { value: 'CANCELLED', label: 'Đã hủy', color: 'bg-red-100 text-red-700' },
@@ -21,7 +20,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
         description: '',
         startDate: '',
         endDate: '',
-        status: 'PLANNING',
+        status: 'ACTIVE',
         budget: '',
     });
     const [memberEmail, setMemberEmail] = useState('');
@@ -40,7 +39,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }) {
                 description: project.description || '',
                 startDate: project.startDate?.split('T')[0] || '',
                 endDate: project.endDate?.split('T')[0] || '',
-                status: project.status || 'PLANNING',
+                status: project.status || 'ACTIVE',
                 budget: project.budget || '',
             });
         }

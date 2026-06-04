@@ -161,6 +161,7 @@ public class ProjectService {
         List<ProjectMember> memberships = projectMemberRepository.findByUser_UserId(userId);
         return memberships.stream()
                 .map(member -> member.getProject())
+                .filter(p -> p.getIsActive() != null && p.getIsActive() && p.getStatus() != Project.ProjectStatus.CANCELLED)
                 .distinct()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -171,6 +172,7 @@ public class ProjectService {
         List<ProjectMember> allMemberships = projectMemberRepository.findByUser_UserId(userId);
         List<Project> uniqueProjects = allMemberships.stream()
                 .map(ProjectMember::getProject)
+                .filter(p -> p.getIsActive() != null && p.getIsActive() && p.getStatus() != Project.ProjectStatus.CANCELLED)
                 .distinct()
                 .collect(Collectors.toList());
         long total = uniqueProjects.size();

@@ -208,7 +208,7 @@ function SprintView({ projectId }) {
             {planningSprints.length > 0 && (
                 <div>
                     <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <i className="fa-solid fa-clock text-gray-400" />Upcoming ({planningSprints.length})
+                        <i className="fa-solid fa-clock text-gray-400" />Sắp diễn ra ({planningSprints.length})
                     </h3>
                     <div className="space-y-3">
                         {planningSprints.map(sprint => (
@@ -273,7 +273,7 @@ function SprintView({ projectId }) {
             {completedSprints.length > 0 && (
                 <div>
                     <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <i className="fa-solid fa-check-circle text-green-500" />Completed ({completedSprints.length})
+                        <i className="fa-solid fa-check-circle text-green-500" />Đã hoàn thành ({completedSprints.length})
                     </h3>
                     <div className="space-y-3">
                         {completedSprints.slice(0, 5).map(sprint => (
@@ -383,7 +383,7 @@ function SprintIssueList({ sprintId, projectId, onAddIssue, onRemoveIssue, remov
                 <div className="space-y-2">
                     {issues.map(issue => {
                         const typeInfo = ISSUE_TYPE_ICONS[issue.issueType] || ISSUE_TYPE_ICONS.TASK;
-                        const statusColor = ISSUE_STATUS_COLORS[issue.status] || 'bg-gray-100 text-gray-700';
+                        const statusColor = issue.statusName === 'In Progress' ? 'bg-blue-100 text-blue-700' : issue.statusName === 'Review' ? 'bg-yellow-100 text-yellow-700' : issue.statusName === 'Done' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700';
                         return (
                             <div key={issue.issueId} className="flex items-center justify-between py-2 px-3 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-colors group">
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -399,7 +399,7 @@ function SprintIssueList({ sprintId, projectId, onAddIssue, onRemoveIssue, remov
                                             <i className="fa-solid fa-fire text-rose-500" /> Khẩn cấp
                                         </span>
                                     )}
-                                    <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${statusColor}`}>{issue.status?.replace(/_/g, ' ')}</span>
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${statusColor}`}>{issue.statusName || 'To Do'}</span>
                                     {issue.assigneeName && <span className="text-xs text-gray-400 whitespace-nowrap"><i className="fa-solid fa-user mr-1" />{issue.assigneeName}</span>}
                                 </div>
                                 {!readOnly && onRemoveIssue && (
@@ -500,15 +500,14 @@ function AddIssueToSprintModal({ projectId, sprintId, onClose, onSuccess }) {
                                     key={key}
                                     type="button"
                                     onClick={() => setEisenhowerFilter(key)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
-                                        isActive 
-                                            ? key === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${isActive
+                                        ? key === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                                             : key === 'DO_NOW' ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                                            : key === 'PLAN' ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                                            : key === 'DELEGATE' ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                            : 'bg-gray-600 text-white border-gray-600 shadow-sm'
-                                            : `${value.color}`
-                                    }`}
+                                                : key === 'PLAN' ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                                                    : key === 'DELEGATE' ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                        : 'bg-gray-600 text-white border-gray-600 shadow-sm'
+                                        : `${value.color}`
+                                        }`}
                                 >
                                     {value.label}
                                 </button>
@@ -527,7 +526,7 @@ function AddIssueToSprintModal({ projectId, sprintId, onClose, onSuccess }) {
                             {filteredIssues.map(issue => {
                                 const isSelected = selectedIssues.includes(issue.issueId);
                                 const typeInfo = ISSUE_TYPE_ICONS[issue.issueType] || ISSUE_TYPE_ICONS.TASK;
-                                const statusColor = ISSUE_STATUS_COLORS[issue.status] || 'bg-gray-100 text-gray-700';
+                                const statusColor = issue.statusName === 'In Progress' ? 'bg-blue-100 text-blue-700' : issue.statusName === 'Review' ? 'bg-yellow-100 text-yellow-700' : issue.statusName === 'Done' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700';
                                 return (
                                     <label key={issue.issueId} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-gray-50 border border-transparent'}`}>
                                         <input type="checkbox" checked={isSelected} onChange={() => toggleIssue(issue.issueId)}
@@ -550,7 +549,7 @@ function AddIssueToSprintModal({ projectId, sprintId, onClose, onSuccess }) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor}`}>{issue.status?.replace(/_/g, ' ')}</span>
+                                                <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor}`}>{issue.statusName || 'To Do'}</span>
                                                 {issue.assigneeName && <span className="text-xs text-gray-400">{issue.assigneeName}</span>}
                                             </div>
                                         </div>

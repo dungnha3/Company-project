@@ -8,8 +8,7 @@ import { useAccessControl } from '@shared/hooks/useAccessControl';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 
 const STATUS_OPTIONS = [
-    { value: 'PLANNING', label: 'Lập kế hoạch' },
-    { value: 'IN_PROGRESS', label: 'Đang thực hiện' },
+    { value: 'ACTIVE', label: 'Đang hoạt động' },
     { value: 'ON_HOLD', label: 'Tạm dừng' },
     { value: 'COMPLETED', label: 'Hoàn thành' },
     { value: 'CANCELLED', label: 'Đã hủy' },
@@ -23,7 +22,7 @@ export default function ProjectSettingsTab({ project }) {
         description: '',
         startDate: '',
         endDate: '',
-        status: 'PLANNING',
+        status: 'ACTIVE',
     });
     const [memberEmail, setMemberEmail] = useState('');
     const [searchError, setSearchError] = useState('');
@@ -44,7 +43,7 @@ export default function ProjectSettingsTab({ project }) {
                 description: project.description || '',
                 startDate: project.startDate?.split('T')[0] || '',
                 endDate: project.endDate?.split('T')[0] || '',
-                status: project.status || 'PLANNING',
+                status: project.status || 'ACTIVE',
             });
         }
     }, [project]);
@@ -325,7 +324,7 @@ export default function ProjectSettingsTab({ project }) {
             {canDelete && (
                 <div className="bg-red-50 rounded-xl shadow-sm border border-red-100 overflow-hidden">
                     <div className="p-6 border-b border-red-100">
-                        <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
+                        <h3 className="text-lg font-bold text-red-700">VÙNG NGUY HIỂM</h3>
                     </div>
                     <div className="p-6 flex items-center justify-between">
                         <div>

@@ -1,8 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { calendarApi } from '../../shared/api/featureApi';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { calendarApi, issueApi, leaveApi } from '../../shared/api/featureApi';
+import apiClient from '@shared/api/client';
+import { ENDPOINTS } from '@shared/api/endpoints';
 import { formatDate, formatDateTime } from '@shared/utils/formatters';
 import { useWorkspaceStore } from '@shared/stores/workspaceStore';
 import { useAuthStore } from '@shared/stores/authStore';
+import IssueDetailModal from '../projects/components/IssueDetailModal';
 
 // ─── Event type config - Minimalist colors ─────────────────────────────────
 const EVENT_TYPES = {
@@ -13,6 +16,14 @@ const EVENT_TYPES = {
     OTHER: { label: 'Khác', icon: 'fa-thumbtack', dot: 'bg-gray-400' },
 };
 
+const LEAVE_TYPE_LABELS = {
+    ANNUAL: { label: 'Nghỉ phép năm', color: 'bg-gray-100 text-gray-700', icon: 'fa-umbrella-beach' },
+    SICK: { label: 'Nghỉ ốm', color: 'bg-red-50 text-red-700', icon: 'fa-head-side-virus' },
+    UNPAID: { label: 'Nghỉ không lương', color: 'bg-gray-100 text-gray-600', icon: 'fa-clock' },
+    MATERNITY: { label: 'Thai sản', color: 'bg-pink-50 text-pink-700', icon: 'fa-baby' },
+    OTHER: { label: 'Khác', color: 'bg-gray-100 text-gray-600', icon: 'fa-ellipsis-h' },
+};
+
 const FILTER_OPTIONS = [
     { value: '', label: 'Tất cả loại', icon: 'fa-layer-group' },
     { value: 'MEETING', label: 'Cuộc họp', icon: 'fa-calendar-check' },
@@ -21,6 +32,7 @@ const FILTER_OPTIONS = [
     { value: 'HOLIDAY', label: 'Ngày nghỉ', icon: 'fa-umbrella-beach' },
     { value: 'OTHER', label: 'Khác', icon: 'fa-thumbtack' },
 ];
+
 
 // ─── Shared helpers ──────────────────────────────────────────────────────
 const HOUR_HEIGHT = 64;
@@ -41,17 +53,34 @@ export default function CalendarPage() {
 
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [currentWeek, setCurrentWeek] = useState(new Date());
     const [currentDay, setCurrentDay] = useState(new Date());
     const [viewMode, setViewMode] = useState('month');
+
+    // ── Virtual / Sync states
+    const [selectedVirtualIssue, setSelectedVirtualIssue] = useState(null);
+    const [projects, setProjects] = useState([]);
+
+    // ── Quick Create Popover state
+    const [quickCreatePopover, setQuickCreatePopover] = useState(null);
+
+    // ── Hover Tooltip state
+    const [hoveredEvent, setHoveredEvent] = useState(null);
+    const [hoverCoords, setHoverCoords] = useState({ x: 0, y: 0 });
+
+    // ── Drag Selection state (Month view)
+    const [dragStart, setDragStart] = useState(null);
+    const [dragCurrent, setDragCurrent] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     // ── Form state
     const [showForm, setShowForm] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [editingEvent, setEditingEvent] = useState(null);
     const [formData, setFormData] = useState({
-        title: '', description: '', startTime: '', endTime: '', eventType: 'MEETING', location: '', meetingLink: ''
+        title: '', description: '', startTime: '', endTime: '', eventType: 'MEETING', location: '', meetingLink: '', projectId: ''
     });
 
     // ── Filter state
@@ -68,12 +97,25 @@ export default function CalendarPage() {
         else setCurrentMonth(new Date());
     };
 
-    // ── Load events (query 3 months before to include past events)
+    // ── Load projects
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
+                const list = Array.isArray(res.data) ? res.data : (res.data?.content || []);
+                setProjects(list.filter(p => p.status !== 'CANCELLED'));
+            } catch (err) {
+                console.error('Failed to fetch projects:', err);
+            }
+        };
+        fetchProjects();
+    }, []);
+
+    // ── Load events (query 3 months before to include past events + tasks + leaves)
     const loadEvents = useCallback(async () => {
         try {
             setLoading(true);
             let start, end;
-            // Query 3 months before current month to show historical events
             if (viewMode === 'month') {
                 start = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 3, 1);
                 end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0, 23, 59, 59);
@@ -87,39 +129,103 @@ export default function CalendarPage() {
                 start = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate(), 0, 0, 0);
                 end = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate(), 23, 59, 59);
             }
+
+            // 1. Real Events
             const data = await calendarApi.getEvents(start.toISOString(), end.toISOString());
-            setEvents(data || []);
+            let mergedEvents = [...(data || [])];
+
+            // 2. Personal Tasks (Issues) with due dates
+            try {
+                const issuesRes = await issueApi.getMyIssues({ size: 100 });
+                const issuesList = issuesRes?.content || issuesRes || [];
+                const taskEvents = issuesList
+                    .filter(issue => issue.dueDate)
+                    .map(issue => {
+                        const dateStr = issue.dueDate; // YYYY-MM-DD
+                        return {
+                            eventId: `task-${issue.issueId}`,
+                            title: `[Task] [${issue.issueKey}] ${issue.title}`,
+                            description: issue.description || '',
+                            startTime: `${dateStr}T09:00:00`,
+                            endTime: `${dateStr}T10:00:00`,
+                            eventType: 'DEADLINE',
+                            isVirtual: true,
+                            issue: issue,
+                            projectName: issue.projectName
+                        };
+                    });
+                mergedEvents = [...mergedEvents, ...taskEvents];
+            } catch (err) {
+                console.error('Failed to load my issues for calendar:', err);
+            }
+
+            // 3. Approved Leave Requests
+            try {
+                const leavesRes = await leaveApi.getMyLeaves({ size: 100 });
+                const leavesList = leavesRes?.content || leavesRes || [];
+                const leaveEvents = leavesList
+                    .filter(leave => leave.status === 'APPROVED')
+                    .map(leave => {
+                        return {
+                            eventId: `leave-${leave.leaveRequestId}`,
+                            title: `[Nghỉ phép] ${LEAVE_TYPE_LABELS[leave.leaveType]?.label || 'Nghỉ phép'}`,
+                            description: leave.reason || '',
+                            startTime: `${leave.startDate}T00:00:00`,
+                            endTime: `${leave.endDate}T23:59:59`,
+                            eventType: 'HOLIDAY',
+                            isVirtual: true,
+                            leave: leave,
+                            projectName: leave.projectName
+                        };
+                    });
+                mergedEvents = [...mergedEvents, ...leaveEvents];
+            } catch (err) {
+                console.error('Failed to load my leaves for calendar:', err);
+            }
+
+            setEvents(mergedEvents);
         } catch (error) {
             console.error('Failed to load events:', error);
             setEvents([]);
         } finally {
             setLoading(false);
+            setIsInitialLoad(false);
         }
     }, [currentMonth, currentWeek, currentDay, viewMode]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
 
-    // ── Filter events
+    // Helper to check if event matches search
+    const matchesSearch = useCallback((event, query) => {
+        if (!query || !query.trim()) return true;
+        const q = query.toLowerCase();
+        return (
+            event.title?.toLowerCase().includes(q) ||
+            event.description?.toLowerCase().includes(q) ||
+            event.location?.toLowerCase().includes(q) ||
+            event.projectName?.toLowerCase().includes(q)
+        );
+    }, []);
+
+    // ── Filter events (strictly filters for 'organizer' & 'type' filters; search filtering is visual)
     const filteredEvents = useMemo(() => {
         let result = events;
         const uid = currentUser?.userId || currentUser?.id;
 
         if (filterMyEvents && uid) {
-            result = result.filter(e => e.organizer?.userId === uid || e.organizer?.id === uid);
+            result = result.filter(e => e.organizer?.userId === uid || e.organizer?.id === uid || e.isVirtual);
         }
         if (filterType) {
             result = result.filter(e => e.eventType === filterType);
         }
-        if (searchText.trim()) {
-            const q = searchText.toLowerCase();
-            result = result.filter(e =>
-                e.title?.toLowerCase().includes(q) ||
-                e.description?.toLowerCase().includes(q) ||
-                e.location?.toLowerCase().includes(q)
-            );
-        }
         return result;
-    }, [events, filterMyEvents, filterType, searchText, currentUser]);
+    }, [events, filterMyEvents, filterType, currentUser]);
+
+    // Matching count for search header display
+    const matchingCount = useMemo(() => {
+        if (!searchText.trim()) return filteredEvents.length;
+        return filteredEvents.filter(e => matchesSearch(e, searchText)).length;
+    }, [filteredEvents, searchText, matchesSearch]);
 
     // ── Navigation helpers
     const navigateMonth = (delta) => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1));
@@ -131,6 +237,33 @@ export default function CalendarPage() {
         else if (viewMode === 'week') setCurrentWeek(now);
         else setCurrentDay(now);
     };
+
+    // ── Drag selection window release handler
+    useEffect(() => {
+        const handleMouseUp = (e) => {
+            if (isDragging) {
+                setIsDragging(false);
+                if (dragStart && dragCurrent) {
+                    const d1 = new Date(dragStart);
+                    const d2 = new Date(dragCurrent);
+                    const start = d1 < d2 ? dragStart : dragCurrent;
+                    const end = d1 < d2 ? dragCurrent : dragStart;
+
+                    setQuickCreatePopover({
+                        x: e.clientX + window.scrollX,
+                        y: e.clientY + window.scrollY,
+                        startDateStr: start,
+                        endDateStr: end,
+                        title: ''
+                    });
+                }
+                setDragStart(null);
+                setDragCurrent(null);
+            }
+        };
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => window.removeEventListener('mouseup', handleMouseUp);
+    }, [isDragging, dragStart, dragCurrent]);
 
     // ── Month view helpers
     const getDaysInMonth = () => {
@@ -146,7 +279,12 @@ export default function CalendarPage() {
     const getEventsForDay = (day) => {
         if (!day) return [];
         const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        return filteredEvents.filter(e => e.startTime?.startsWith(dateStr));
+        return filteredEvents.filter(e => {
+            if (!e.startTime) return false;
+            const start = e.startTime.slice(0, 10);
+            const end = e.endTime ? e.endTime.slice(0, 10) : start;
+            return dateStr >= start && dateStr <= end;
+        });
     };
     const isToday = (day) => day === new Date().getDate()
         && currentMonth.getMonth() === new Date().getMonth()
@@ -158,7 +296,15 @@ export default function CalendarPage() {
         const start = getWeekStart(currentWeek);
         return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
     };
-    const getEventsForWeekDay = (date) => filteredEvents.filter(e => e.startTime?.startsWith(date.toISOString().slice(0, 10)));
+    const getEventsForWeekDay = (date) => {
+        const dateStr = date.toISOString().slice(0, 10);
+        return filteredEvents.filter(e => {
+            if (!e.startTime) return false;
+            const start = e.startTime.slice(0, 10);
+            const end = e.endTime ? e.endTime.slice(0, 10) : start;
+            return dateStr >= start && dateStr <= end;
+        });
+    };
     const getWeekNumber = (date) => {
         const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
         const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
@@ -172,10 +318,24 @@ export default function CalendarPage() {
         return d.getHours() === hour;
     });
 
+    // ── Hover handlers
+    const handleEventHover = useCallback((event, e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setHoveredEvent(event);
+        setHoverCoords({
+            x: rect.left + window.scrollX + rect.width / 2,
+            y: rect.top + window.scrollY - 10
+        });
+    }, []);
+
+    const handleEventHoverEnd = useCallback(() => {
+        setHoveredEvent(null);
+    }, []);
+
     // ── Form handlers
     const openCreateForm = () => {
         setEditingEvent(null);
-        setFormData({ title: '', description: '', startTime: '', endTime: '', eventType: 'MEETING', location: '', meetingLink: '' });
+        setFormData({ title: '', description: '', startTime: '', endTime: '', eventType: 'MEETING', location: '', meetingLink: '', projectId: '' });
         setShowForm(true);
     };
     const openEditForm = (event) => {
@@ -185,6 +345,7 @@ export default function CalendarPage() {
             startTime: event.startTime ? new Date(event.startTime).toISOString().slice(0, 16) : '',
             endTime: event.endTime ? new Date(event.endTime).toISOString().slice(0, 16) : '',
             eventType: event.eventType || 'MEETING', location: event.location || '', meetingLink: event.meetingLink || '',
+            projectId: event.projectId || ''
         });
         setShowForm(true);
         setSelectedEvent(null);
@@ -192,12 +353,59 @@ export default function CalendarPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const payload = { ...formData, startTime: new Date(formData.startTime).toISOString(), endTime: new Date(formData.endTime).toISOString() };
+            const payload = { 
+                ...formData, 
+                startTime: new Date(formData.startTime).toISOString(), 
+                endTime: new Date(formData.endTime).toISOString(),
+                projectId: formData.projectId ? Number(formData.projectId) : null
+            };
             if (editingEvent) await calendarApi.updateEvent(editingEvent.eventId, payload);
             else await calendarApi.createEvent(payload);
             setShowForm(false);
             loadEvents();
         } catch (error) { console.error('Failed to save event:', error); }
+    };
+
+    const handleQuickCreateSave = async (data) => {
+        try {
+            const startISO = new Date(`${data.startDateStr}T${data.startTimeStr}:00`).toISOString();
+            const endISO = new Date(`${data.endDateStr}T${data.endTimeStr}:00`).toISOString();
+            
+            const payload = {
+                title: data.title,
+                startTime: startISO,
+                endTime: endISO,
+                eventType: 'MEETING',
+                projectId: data.projectId,
+                allDay: data.startDateStr !== data.endDateStr,
+                description: '',
+                location: '',
+                meetingLink: ''
+            };
+            
+            await calendarApi.createEvent(payload);
+            setQuickCreatePopover(null);
+            loadEvents();
+        } catch (error) {
+            console.error('Failed to create event quickly:', error);
+            alert('Lỗi: ' + (error?.response?.data?.message || error?.message || 'Không thể tạo sự kiện'));
+        }
+    };
+
+    const handleQuickCreateEditDetails = (data) => {
+        setQuickCreatePopover(null);
+        setEditingEvent(null);
+        setFormData({
+            title: data.title || '',
+            description: '',
+            startTime: `${data.startDateStr}T${data.startTime || '09:00'}`,
+            endTime: `${data.endDateStr}T${data.endTime || '10:00'}`,
+            eventType: 'MEETING',
+            location: '',
+            meetingLink: '',
+            projectId: data.projectId || ''
+        });
+        setShowForm(true);
     };
     const handleDelete = async (eventId) => {
         if (!confirm('Xóa sự kiện này?')) return;
@@ -220,7 +428,7 @@ export default function CalendarPage() {
     const navigateHandler = () => { if (viewMode === 'month') return navigateMonth; if (viewMode === 'week') return navigateWeek; return navigateDay; };
 
     return (
-        <div className="max-w-full mx-auto p-6 space-y-6">
+        <div className="max-w-full mx-auto p-6 space-y-6 relative">
             {/* Header Banner - Clean white card */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-xl border border-gray-100 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -230,7 +438,7 @@ export default function CalendarPage() {
                     <div>
                         <h1 className="text-xl font-semibold text-gray-900">Lịch cá nhân</h1>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            {filteredEvents.length} sự kiện
+                            {searchText.trim() ? `${matchingCount} kết quả` : `${filteredEvents.length} sự kiện`}
                             {filteredEvents.length !== events.length && ` / ${events.length} tổng`}
                         </p>
                     </div>
@@ -326,23 +534,149 @@ export default function CalendarPage() {
             </div>
 
             {/* Calendar Views */}
-            {loading ? (<LoadingCalendar viewMode={viewMode} />) : (
-                <>
-                    {viewMode === 'month' && <MonthView days={getDaysInMonth()} getEventsForDay={getEventsForDay} isToday={isToday} onEventClick={setSelectedEvent} />}
-                    {viewMode === 'week' && <WeekView weekDays={getWeekDays()} getEventsForDay={getEventsForWeekDay} onEventClick={setSelectedEvent} currentMonth={currentMonth} />}
-                    {viewMode === 'day' && <DayView currentDay={currentDay} getEventsForHour={getEventsForHour} filteredEvents={filteredEvents} onEventClick={setSelectedEvent} />}
-                </>
+            {isInitialLoad ? (<LoadingCalendar viewMode={viewMode} />) : (
+                <div className={`transition-opacity duration-200 ${loading ? 'opacity-65 pointer-events-none' : ''}`}>
+                    {viewMode === 'month' && (
+                        <MonthView 
+                            days={getDaysInMonth()} 
+                            getEventsForDay={getEventsForDay} 
+                            isToday={isToday} 
+                            onEventClick={(event) => {
+                                if (event.isVirtual && event.eventType === 'DEADLINE') {
+                                    setSelectedVirtualIssue(event.issue);
+                                } else {
+                                    setSelectedEvent(event);
+                                }
+                            }}
+                            currentMonth={currentMonth}
+                            searchText={searchText}
+                            isDragging={isDragging}
+                            dragStart={dragStart}
+                            dragCurrent={dragCurrent}
+                            onMouseDownDay={(day, e) => {
+                                if (!day) return;
+                                if (e.button !== 0) return;
+                                if (e.target.closest('[data-no-drag="true"]') || e.target.closest('.event-chip') || e.target.closest('.event-card')) {
+                                    return;
+                                }
+                                const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                setDragStart(dateStr);
+                                setDragCurrent(dateStr);
+                                setIsDragging(true);
+                            }}
+                            onMouseEnterDay={(day) => {
+                                if (isDragging && day) {
+                                    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                    setDragCurrent(dateStr);
+                                }
+                            }}
+                            onHover={handleEventHover}
+                            onHoverEnd={handleEventHoverEnd}
+                        />
+                    )}
+                    {viewMode === 'week' && (
+                        <WeekView 
+                            weekDays={getWeekDays()} 
+                            getEventsForDay={getEventsForWeekDay} 
+                            onEventClick={(event) => {
+                                if (event.isVirtual && event.eventType === 'DEADLINE') {
+                                    setSelectedVirtualIssue(event.issue);
+                                } else {
+                                    setSelectedEvent(event);
+                                }
+                            }}
+                            currentMonth={currentMonth}
+                            searchText={searchText}
+                            onHover={handleEventHover}
+                            onHoverEnd={handleEventHoverEnd}
+                        />
+                    )}
+                    {viewMode === 'day' && (
+                        <DayView 
+                            currentDay={currentDay} 
+                            getEventsForHour={getEventsForHour} 
+                            filteredEvents={filteredEvents} 
+                            onEventClick={(event) => {
+                                if (event.isVirtual && event.eventType === 'DEADLINE') {
+                                    setSelectedVirtualIssue(event.issue);
+                                } else {
+                                    setSelectedEvent(event);
+                                }
+                            }}
+                            searchText={searchText}
+                            onHover={handleEventHover}
+                            onHoverEnd={handleEventHoverEnd}
+                        />
+                    )}
+                </div>
             )}
 
-            {/* Modals */}
-            {showForm && <EventFormModal formData={formData} setFormData={setFormData} onSubmit={handleSubmit} onClose={() => setShowForm(false)} isEditing={!!editingEvent} />}
-            {selectedEvent && <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onEdit={() => openEditForm(selectedEvent)} onDelete={() => handleDelete(selectedEvent.eventId)} canManage={canManage} />}
+            {/* Modals & Popovers */}
+            {showForm && (
+                <EventFormModal 
+                    formData={formData} 
+                    setFormData={setFormData} 
+                    onSubmit={handleSubmit} 
+                    onClose={() => setShowForm(false)} 
+                    isEditing={!!editingEvent} 
+                    projects={projects}
+                />
+            )}
+            {selectedEvent && (
+                <EventDetailModal 
+                    event={selectedEvent} 
+                    onClose={() => setSelectedEvent(null)} 
+                    onEdit={() => openEditForm(selectedEvent)} 
+                    onDelete={() => handleDelete(selectedEvent.eventId)} 
+                    canManage={canManage && !selectedEvent.isVirtual} 
+                />
+            )}
+            {selectedVirtualIssue && (
+                <IssueDetailModal 
+                    issue={selectedVirtualIssue} 
+                    onClose={() => setSelectedVirtualIssue(null)} 
+                    onUpdate={loadEvents}
+                />
+            )}
+            {quickCreatePopover && (
+                <QuickCreatePopover
+                    popover={quickCreatePopover}
+                    projects={projects}
+                    onClose={() => setQuickCreatePopover(null)}
+                    onSave={handleQuickCreateSave}
+                    onEditDetails={handleQuickCreateEditDetails}
+                />
+            )}
+            {hoveredEvent && (
+                <HoverTooltip event={hoveredEvent} coords={hoverCoords} />
+            )}
         </div>
     );
 }
 
 // ─── MONTH VIEW ─────────────────────────────────────────────────────────
-function MonthView({ days, getEventsForDay, isToday, onEventClick }) {
+function MonthView({ 
+    days, 
+    getEventsForDay, 
+    isToday, 
+    onEventClick, 
+    currentMonth, 
+    searchText, 
+    isDragging, 
+    dragStart, 
+    dragCurrent, 
+    onMouseDownDay, 
+    onMouseEnterDay, 
+    onHover, 
+    onHoverEnd 
+}) {
+    const isSearchActive = !!searchText.trim();
+
+    const getDateString = (day) => {
+        if (!day) return null;
+        return `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+
     return (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
             <div className="grid grid-cols-7 border-b border-gray-100">
@@ -352,18 +686,44 @@ function MonthView({ days, getEventsForDay, isToday, onEventClick }) {
                     </div>
                 ))}
             </div>
-            <div className="grid grid-cols-7">
+            <div className={`grid grid-cols-7 ${isDragging ? 'select-none' : ''}`}>
                 {days.map((day, idx) => {
                     const dayEvents = getEventsForDay(day);
                     const today = isToday(day);
+                    const dateStr = getDateString(day);
+
+                    // Check if day cell is in drag selection range
+                    const isSelected = dragStart && dragCurrent && (() => {
+                        const s = dragStart < dragCurrent ? dragStart : dragCurrent;
+                        const e = dragStart < dragCurrent ? dragCurrent : dragStart;
+                        return dateStr >= s && dateStr <= e;
+                    })();
+
+                    // Search fading logic
+                    const hasMatching = day && (!isSearchActive || dayEvents.some(e => {
+                        const q = searchText.toLowerCase();
+                        return (
+                            e.title?.toLowerCase().includes(q) ||
+                            e.description?.toLowerCase().includes(q) ||
+                            e.location?.toLowerCase().includes(q) ||
+                            e.projectName?.toLowerCase().includes(q)
+                        );
+                    }));
+                    const isFadedDay = day && isSearchActive && !hasMatching;
+
                     return (
                         <div key={idx}
-                            className={`min-h-[110px] p-2 border-b border-r border-gray-100 transition-colors group
-                                ${!day ? 'bg-gray-50/50' : 'hover:bg-gray-50/30'}
-                                ${today ? 'bg-gray-50 ring-1 ring-inset ring-gray-200' : ''}`}>
+                            onMouseDown={(e) => onMouseDownDay(day, e)}
+                            onMouseEnter={() => onMouseEnterDay(day)}
+                            className={`min-h-[110px] p-2 border-b border-r border-gray-100 transition-colors group relative
+                                ${!day ? 'bg-gray-50/50' : 'hover:bg-gray-50/30 cursor-pointer'}
+                                ${today ? 'bg-gray-50 ring-1 ring-inset ring-gray-200' : ''}
+                                ${isSelected ? 'bg-indigo-50/80 ring-2 ring-indigo-500/20 z-10' : ''}
+                                ${isFadedDay ? 'opacity-40 grayscale-[10%]' : ''}`}
+                        >
                             {day && (
                                 <>
-                                    <div className="flex justify-center mb-1.5">
+                                    <div className="flex justify-center mb-1.5 pointer-events-none">
                                         <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium transition-colors
                                             ${today ? 'bg-gray-900 text-white' : 'text-gray-600 group-hover:bg-gray-100'}
                                             ${idx % 7 === 0 ? 'text-red-500' : ''}`}>
@@ -371,9 +731,33 @@ function MonthView({ days, getEventsForDay, isToday, onEventClick }) {
                                         </span>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        {dayEvents.slice(0, 3).map(event => (
-                                            <EventChip key={event.eventId} event={event} onClick={() => onEventClick(event)} compact />
-                                        ))}
+                                        {dayEvents.slice(0, 3).map(event => {
+                                            const matches = !isSearchActive || (() => {
+                                                const q = searchText.toLowerCase();
+                                                return (
+                                                    event.title?.toLowerCase().includes(q) ||
+                                                    event.description?.toLowerCase().includes(q) ||
+                                                    event.location?.toLowerCase().includes(q) ||
+                                                    event.projectName?.toLowerCase().includes(q)
+                                                );
+                                            })();
+                                            const isFadedEvent = isSearchActive && !matches;
+
+                                            return (
+                                                <EventChip 
+                                                    key={event.eventId} 
+                                                    event={event} 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onEventClick(event);
+                                                    }}
+                                                    onMouseEnter={(e) => onHover(event, e)}
+                                                    onMouseLeave={onHoverEnd}
+                                                    compact
+                                                    className={`${isFadedEvent ? 'opacity-30 blur-[0.2px] scale-95' : ''} ${isSearchActive && matches ? 'ring-2 ring-indigo-500 shadow-md scale-105 z-10' : ''}`}
+                                                />
+                                            );
+                                        })}
                                         {dayEvents.length > 3 && (
                                             <span className="text-[10px] text-gray-400 pl-1">+{dayEvents.length - 3} sự kiện</span>
                                         )}
@@ -389,8 +773,10 @@ function MonthView({ days, getEventsForDay, isToday, onEventClick }) {
 }
 
 // ─── WEEK VIEW ─────────────────────────────────────────────────────────
-function WeekView({ weekDays, getEventsForDay, onEventClick, currentMonth }) {
+function WeekView({ weekDays, getEventsForDay, onEventClick, currentMonth, searchText, onHover, onHoverEnd }) {
     const hours = getHours();
+    const isSearchActive = !!searchText.trim();
+
     return (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
             <div className="grid grid-cols-8 border-b border-gray-100 sticky top-0 z-10 bg-white">
@@ -421,24 +807,67 @@ function WeekView({ weekDays, getEventsForDay, onEventClick, currentMonth }) {
                     {weekDays.map((date, dayIdx) => {
                         const dayEvents = getEventsForDay(date);
                         const isToday = date.toDateString() === new Date().toDateString();
+                        const colDateStr = date.toISOString().slice(0, 10);
+
+                        // Search fading logic for day column
+                        const hasMatching = !isSearchActive || dayEvents.some(e => {
+                            const q = searchText.toLowerCase();
+                            return (
+                                e.title?.toLowerCase().includes(q) ||
+                                e.description?.toLowerCase().includes(q) ||
+                                e.location?.toLowerCase().includes(q) ||
+                                e.projectName?.toLowerCase().includes(q)
+                            );
+                        });
+                        const isFadedDay = isSearchActive && !hasMatching;
+
                         return (
-                            <div key={dayIdx} className={`relative border-r border-gray-100 last:border-r-0 ${isToday ? 'bg-gray-50/30' : ''}`}>
+                            <div key={dayIdx} className={`relative border-r border-gray-100 last:border-r-0 ${isToday ? 'bg-gray-50/30' : ''} ${isFadedDay ? 'opacity-40 grayscale-[10%]' : ''}`}>
                                 {hours.map(h => (
                                     <div key={h} className="h-16 border-b border-gray-50 hover:bg-gray-50/30 transition-colors" />
                                 ))}
                                 {dayEvents.map(event => {
-                                    const startHour = new Date(event.startTime).getHours();
-                                    const startMin = new Date(event.startTime).getMinutes();
-                                    const endHour = new Date(event.endTime).getHours();
-                                    const endMin = new Date(event.endTime).getMinutes();
+                                    const startStr = event.startTime.slice(0, 10);
+                                    const endStr = event.endTime ? event.endTime.slice(0, 10) : startStr;
+
+                                    const startHour = startStr < colDateStr ? 0 : new Date(event.startTime).getHours();
+                                    const startMin = startStr < colDateStr ? 0 : new Date(event.startTime).getMinutes();
+
+                                    const endHour = endStr > colDateStr ? 24 : (event.endTime ? new Date(event.endTime).getHours() : 24);
+                                    const endMin = endStr > colDateStr ? 0 : (event.endTime ? new Date(event.endTime).getMinutes() : 0);
+
                                     const top = (startHour * HOUR_HEIGHT) + (startMin / 60 * HOUR_HEIGHT);
                                     const durationH = (endHour - startHour) + (endMin - startMin) / 60;
                                     const height = Math.max(durationH * HOUR_HEIGHT, 28);
                                     const type = EVENT_TYPES[event.eventType] || EVENT_TYPES.OTHER;
+
+                                    const matches = !isSearchActive || (() => {
+                                        const q = searchText.toLowerCase();
+                                        return (
+                                            event.title?.toLowerCase().includes(q) ||
+                                            event.description?.toLowerCase().includes(q) ||
+                                            event.location?.toLowerCase().includes(q) ||
+                                            event.projectName?.toLowerCase().includes(q)
+                                        );
+                                    })();
+                                    const isFadedEvent = isSearchActive && !matches;
+
                                     return (
-                                        <div key={event.eventId} onClick={() => onEventClick(event)}
-                                            className="absolute left-0.5 right-0.5 rounded-md px-2 py-1 cursor-pointer overflow-hidden transition-all hover:shadow-sm hover:z-10 bg-white border border-gray-200"
-                                            style={{ top: `${top}px`, height: `${height}px` }}>
+                                        <div 
+                                            key={event.eventId} 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEventClick(event);
+                                            }}
+                                            onMouseEnter={(e) => onHover(event, e)}
+                                            onMouseLeave={onHoverEnd}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            data-no-drag="true"
+                                            className={`event-card absolute left-0.5 right-0.5 rounded-md px-2 py-1 cursor-pointer overflow-hidden transition-all hover:shadow-sm hover:z-10 bg-white border border-gray-200
+                                                ${isFadedEvent ? 'opacity-30 blur-[0.2px] scale-95' : ''} 
+                                                ${isSearchActive && matches ? 'ring-2 ring-indigo-500 shadow-md scale-105 z-10' : ''}`}
+                                            style={{ top: `${top}px`, height: `${height}px` }}
+                                        >
                                             <div className="flex items-center gap-1 mb-0.5">
                                                 <div className={`w-1.5 h-1.5 rounded-full ${type.dot}`} />
                                                 <span className="text-[10px] font-medium text-gray-700 truncate">{event.title}</span>
@@ -461,10 +890,11 @@ function WeekView({ weekDays, getEventsForDay, onEventClick, currentMonth }) {
 }
 
 // ─── DAY VIEW ───────────────────────────────────────────────────────────
-function DayView({ currentDay, getEventsForHour, filteredEvents, onEventClick }) {
+function DayView({ currentDay, getEventsForHour, filteredEvents, onEventClick, searchText, onHover, onHoverEnd }) {
     const hours = getHours();
     const isToday = currentDay.toDateString() === new Date().toDateString();
     const allDayEvents = filteredEvents.filter(e => { if (!e.startTime) return false; const d = new Date(e.startTime); return d.getHours() === 0 && d.getMinutes() === 0; });
+    const isSearchActive = !!searchText.trim();
 
     return (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
@@ -484,7 +914,29 @@ function DayView({ currentDay, getEventsForHour, filteredEvents, onEventClick })
                 <div className="px-5 py-3 border-b border-gray-100">
                     <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-2">Cả ngày</div>
                     <div className="flex flex-wrap gap-2">
-                        {allDayEvents.map(event => <EventChip key={event.eventId} event={event} onClick={() => onEventClick(event)} />)}
+                        {allDayEvents.map(event => {
+                            const matches = !isSearchActive || (() => {
+                                const q = searchText.toLowerCase();
+                                return (
+                                    event.title?.toLowerCase().includes(q) ||
+                                    event.description?.toLowerCase().includes(q) ||
+                                    event.location?.toLowerCase().includes(q) ||
+                                    event.projectName?.toLowerCase().includes(q)
+                                );
+                            })();
+                            const isFadedEvent = isSearchActive && !matches;
+
+                            return (
+                                <EventChip 
+                                    key={event.eventId} 
+                                    event={event} 
+                                    onClick={(e) => { e.stopPropagation(); onEventClick(event); }} 
+                                    onMouseEnter={(e) => onHover(event, e)}
+                                    onMouseLeave={onHoverEnd}
+                                    className={`${isFadedEvent ? 'opacity-30 blur-[0.2px] scale-95' : ''} ${isSearchActive && matches ? 'ring-2 ring-indigo-500 shadow-md scale-105 z-10' : ''}`}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -509,7 +961,29 @@ function DayView({ currentDay, getEventsForHour, filteredEvents, onEventClick })
                                         <div className="h-full min-h-[64px] hover:bg-gray-50/50 rounded transition-colors cursor-pointer" />
                                     ) : (
                                         <div className="space-y-1.5">
-                                            {hourEvents.map(event => <EventCard key={event.eventId} event={event} onClick={() => onEventClick(event)} />)}
+                                            {hourEvents.map(event => {
+                                                const matches = !isSearchActive || (() => {
+                                                    const q = searchText.toLowerCase();
+                                                    return (
+                                                        event.title?.toLowerCase().includes(q) ||
+                                                        event.description?.toLowerCase().includes(q) ||
+                                                        event.location?.toLowerCase().includes(q) ||
+                                                        event.projectName?.toLowerCase().includes(q)
+                                                    );
+                                                })();
+                                                const isFadedEvent = isSearchActive && !matches;
+
+                                                return (
+                                                    <EventCard 
+                                                        key={event.eventId} 
+                                                        event={event} 
+                                                        onClick={(e) => { e.stopPropagation(); onEventClick(event); }} 
+                                                        onMouseEnter={(e) => onHover(event, e)}
+                                                        onMouseLeave={onHoverEnd}
+                                                        className={`${isFadedEvent ? 'opacity-30 blur-[0.2px] scale-95' : ''} ${isSearchActive && matches ? 'ring-2 ring-indigo-500 shadow-md scale-105 z-10' : ''}`}
+                                                    />
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -523,12 +997,18 @@ function DayView({ currentDay, getEventsForHour, filteredEvents, onEventClick })
 }
 
 // ─── EVENT CHIP ─────────────────────────────────────────────────────────
-function EventChip({ event, onClick, compact }) {
+function EventChip({ event, onClick, onMouseEnter, onMouseLeave, compact, className }) {
     const type = EVENT_TYPES[event.eventType] || EVENT_TYPES.OTHER;
     return (
-        <div onClick={onClick}
-            className="px-2 py-1 rounded-md text-xs cursor-pointer transition-all hover:shadow-sm bg-white border border-gray-200"
-            title={event.title}>
+        <div 
+            onClick={onClick}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            onMouseDown={(e) => e.stopPropagation()}
+            data-no-drag="true"
+            className={`event-chip px-2 py-1 rounded-md text-xs cursor-pointer transition-all hover:shadow-sm bg-white border border-gray-200 ${className || ''}`}
+            title={event.title}
+        >
             <div className="flex items-center gap-1">
                 <div className={`w-1.5 h-1.5 rounded-full ${type.dot}`} />
                 <span className="font-medium text-gray-700 truncate">{event.title}</span>
@@ -538,7 +1018,7 @@ function EventChip({ event, onClick, compact }) {
 }
 
 // ─── EVENT CARD ────────────────────────────────────────────────────────
-function EventCard({ event, onClick }) {
+function EventCard({ event, onClick, onMouseEnter, onMouseLeave, className }) {
     const type = EVENT_TYPES[event.eventType] || EVENT_TYPES.OTHER;
     const startTime = event.startTime ? new Date(event.startTime) : null;
     const endTime = event.endTime ? new Date(event.endTime) : null;
@@ -546,8 +1026,14 @@ function EventCard({ event, onClick }) {
     const isOver = endTime && endTime < new Date();
 
     return (
-        <div onClick={onClick}
-            className={`px-3 py-2 rounded-lg border transition-all hover:shadow-sm cursor-pointer bg-white border-gray-200 ${isOver ? 'opacity-60' : ''}`}>
+        <div 
+            onClick={onClick}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            onMouseDown={(e) => e.stopPropagation()}
+            data-no-drag="true"
+            className={`event-card px-3 py-2 rounded-lg border transition-all hover:shadow-sm cursor-pointer bg-white border-gray-200 ${isOver ? 'opacity-60' : ''} ${className || ''}`}
+        >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
@@ -604,6 +1090,18 @@ function EventDetailModal({ event, onClose, onEdit, onDelete, canManage }) {
                                     {startTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                     {endTime && ` – ${endTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`}
                                 </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {event.projectName && (
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                                <i className="fa-solid fa-folder text-gray-400 text-sm" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400 font-medium">Dự án</p>
+                                <p className="text-sm text-gray-700">{event.projectName}</p>
                             </div>
                         </div>
                     )}
@@ -667,7 +1165,7 @@ function EventDetailModal({ event, onClose, onEdit, onDelete, canManage }) {
 }
 
 // ─── EVENT FORM MODAL ────────────────────────────────────────────────
-function EventFormModal({ formData, setFormData, onSubmit, onClose, isEditing }) {
+function EventFormModal({ formData, setFormData, onSubmit, onClose, isEditing, projects = [] }) {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -717,6 +1215,17 @@ function EventFormModal({ formData, setFormData, onSubmit, onClose, isEditing })
                             <input type="datetime-local" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all" />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1.5">Dự án liên quan</label>
+                        <select value={formData.projectId || ''} onChange={e => setFormData({ ...formData, projectId: e.target.value })}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all appearance-none cursor-pointer">
+                            <option value="">Không có</option>
+                            {projects.map(p => (
+                                <option key={p.projectId} value={p.projectId}>{p.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>
@@ -782,3 +1291,195 @@ function LoadingCalendar({ viewMode }) {
         </div>
     );
 }
+
+// ─── FLOATING HOVER TOOLTIP ───────────────────────────────────────────
+function HoverTooltip({ event, coords }) {
+    const type = EVENT_TYPES[event.eventType] || EVENT_TYPES.OTHER;
+    const startTime = event.startTime ? new Date(event.startTime) : null;
+    const endTime = event.endTime ? new Date(event.endTime) : null;
+
+    return (
+        <div 
+            className="fixed z-50 w-64 bg-slate-900/95 text-white backdrop-blur-md rounded-xl border border-slate-700/50 shadow-2xl p-3.5 pointer-events-none transition-all duration-150 animate-in fade-in zoom-in-95"
+            style={{
+                left: `${coords.x}px`,
+                top: `${coords.y}px`,
+                transform: 'translate(-50%, -100%)',
+                marginTop: '-8px'
+            }}
+        >
+            <div className="flex items-center gap-1.5 mb-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${type.dot}`} />
+                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{type.label}</span>
+            </div>
+            
+            <h4 className="text-xs font-semibold text-white mb-2 leading-snug">{event.title}</h4>
+            
+            <div className="space-y-1.5 text-[11px] text-gray-300">
+                {startTime && (
+                    <div className="flex items-center gap-1.5">
+                        <i className="fa-regular fa-clock text-gray-400 w-3.5 text-center" />
+                        <span>
+                            {startTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            {endTime && ` – ${endTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`}
+                        </span>
+                    </div>
+                )}
+                {event.projectName && (
+                    <div className="flex items-center gap-1.5">
+                        <i className="fa-solid fa-folder text-gray-400 w-3.5 text-center" />
+                        <span className="truncate">{event.projectName}</span>
+                    </div>
+                )}
+                {event.location && (
+                    <div className="flex items-center gap-1.5">
+                        <i className="fa-solid fa-location-dot text-gray-400 w-3.5 text-center" />
+                        <span className="truncate">{event.location}</span>
+                    </div>
+                )}
+                {event.description && (
+                    <div className="border-t border-slate-800 pt-1.5 mt-1.5 text-[10px] text-gray-400 line-clamp-2">
+                        {event.description}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── QUICK CREATE POPOVER ─────────────────────────────────────────────
+function QuickCreatePopover({ popover, projects, onClose, onSave, onEditDetails }) {
+    const [title, setTitle] = useState('');
+    const [projectId, setProjectId] = useState('');
+    const [startTime, setStartTime] = useState('09:00');
+    const [endTime, setEndTime] = useState('10:00');
+    const popoverRef = useRef(null);
+
+    // Click outside handler
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+                onClose();
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [onClose]);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+        onSave({
+            title: title.trim(),
+            projectId: projectId ? Number(projectId) : null,
+            startTimeStr: startTime,
+            endTimeStr: endTime,
+            startDateStr: popover.startDateStr,
+            endDateStr: popover.endDateStr
+        });
+    };
+
+    // Calculate dates display
+    const formattedDates = useMemo(() => {
+        if (popover.startDateStr === popover.endDateStr) {
+            return formatDate(popover.startDateStr);
+        }
+        return `${formatDate(popover.startDateStr)} – ${formatDate(popover.endDateStr)}`;
+    }, [popover]);
+
+    return (
+        <div 
+            ref={popoverRef}
+            className="fixed z-50 w-80 bg-white/95 backdrop-blur-md rounded-2xl border border-gray-100 shadow-2xl p-5 animate-in fade-in zoom-in-95 duration-150"
+            style={{
+                left: `${Math.min(popover.x, window.innerWidth - 340)}px`,
+                top: `${Math.min(popover.y, window.innerHeight - 340)}px`,
+            }}
+        >
+            <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tạo nhanh sự kiện</span>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i className="fa-solid fa-xmark text-sm" />
+                </button>
+            </div>
+            
+            <div className="text-xs text-gray-500 font-medium mb-3 flex items-center gap-1.5 bg-gray-50 rounded-lg p-2">
+                <i className="fa-regular fa-calendar text-gray-400" />
+                {formattedDates}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+                <div>
+                    <input 
+                        type="text" 
+                        value={title} 
+                        onChange={e => setTitle(e.target.value)}
+                        placeholder="Tên sự kiện..." 
+                        required
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-gray-300 focus:bg-white transition-all"
+                        autoFocus
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">Giờ bắt đầu</label>
+                        <input 
+                            type="time" 
+                            value={startTime} 
+                            onChange={e => setStartTime(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-xs focus:outline-none focus:border-gray-300 focus:bg-white transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">Giờ kết thúc</label>
+                        <input 
+                            type="time" 
+                            value={endTime} 
+                            onChange={e => setEndTime(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-xs focus:outline-none focus:border-gray-300 focus:bg-white transition-all"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-[10px] font-medium text-gray-400 mb-1 font-semibold">Dự án liên quan</label>
+                    <select
+                        value={projectId}
+                        onChange={e => setProjectId(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-xs focus:outline-none focus:border-gray-300 focus:bg-white transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="">Không có</option>
+                        {projects.map(p => (
+                            <option key={p.projectId} value={p.projectId}>{p.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                    <button 
+                        type="button"
+                        onClick={() => onEditDetails({
+                            title,
+                            projectId: projectId ? Number(projectId) : null,
+                            startTime,
+                            endTime,
+                            startDateStr: popover.startDateStr,
+                            endDateStr: popover.endDateStr
+                        })}
+                        className="flex-1 px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold transition-colors text-center"
+                    >
+                        Chi tiết...
+                    </button>
+                    <button 
+                        type="submit"
+                        className="flex-1 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-semibold transition-colors"
+                    >
+                        Lưu nhanh
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+

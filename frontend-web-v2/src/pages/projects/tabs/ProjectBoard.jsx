@@ -803,27 +803,24 @@ export default function ProjectBoard({ project }) {
                     </span>
                     {canManageIssues && (
                         <>
-                            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                                <ExportButton
-                                    endpoint={ENDPOINTS.EXPORT.ISSUES(project.projectId)}
-                                    filename={`CongViec_Project_${project.projectId}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
-                                    label="Xuất"
-                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-xs md:!text-sm"
-                                />
-                                <div className="w-px h-6 bg-gray-200" />
-                                <ImportButton
-                                    endpoint={`${ENDPOINTS.IMPORT.ISSUES}?projectId=${project.projectId}`}
-                                    templateEndpoint={ENDPOINTS.TEMPLATE.ISSUES}
-                                    templateFilename="Template_CongViec.xlsx"
-                                    label="Nhập"
-                                    onSuccess={() => {
-                                        queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
-                                        queryClient.invalidateQueries({ queryKey: ['issues', project.projectId, 'board'] });
-                                        queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
-                                    }}
-                                    className="!rounded-none !border-0 !shadow-none hover:!bg-gray-50 !text-xs md:!text-sm !px-3"
-                                />
-                            </div>
+                            <ExportButton
+                                endpoint={ENDPOINTS.EXPORT.ISSUES(project.projectId)}
+                                filename={`CongViec_Project_${project.projectId}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.xlsx`}
+                                label="Xuất"
+                                className="!bg-white !text-gray-600 hover:!bg-gray-100 !border !border-gray-200 !px-4 !py-1.5 !rounded-lg !text-sm !font-medium !transition-all !shadow-none"
+                            />
+                            <ImportButton
+                                endpoint={`${ENDPOINTS.IMPORT.ISSUES}?projectId=${project.projectId}`}
+                                templateEndpoint={ENDPOINTS.TEMPLATE.ISSUES}
+                                templateFilename="Template_CongViec.xlsx"
+                                label="Nhập"
+                                onSuccess={() => {
+                                    queryClient.invalidateQueries({ queryKey: ['issues', project.projectId] });
+                                    queryClient.invalidateQueries({ queryKey: ['issues', project.projectId, 'board'] });
+                                    queryClient.invalidateQueries({ queryKey: ['backlog-including-planning'] });
+                                }}
+                                className="!bg-white !text-gray-600 hover:!bg-gray-100 !border !border-gray-200 !px-4 !py-1.5 !rounded-lg !text-sm !font-medium !transition-all !shadow-none"
+                            />
                             <button
                                 onClick={() => setShowCreateModal(true)}
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"

@@ -29,17 +29,17 @@ const STATUS_ORDER = ['To Do', 'In Progress', 'Review', 'Done'];
 
 // Unified status column styles matching ProjectBoard
 const COLUMN_STYLES = {
-    'To Do':       { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' },
+    'To Do': { bg: 'bg-gray-50 border border-gray-100', dot: 'bg-slate-400', marker: 'bg-slate-200' },
     'In Progress': { bg: 'bg-blue-50/60 border border-blue-100', dot: 'bg-indigo-500', marker: 'bg-indigo-200' },
-    'Review':      { bg: 'bg-amber-50/60 border border-amber-100', dot: 'bg-amber-500', marker: 'bg-amber-200' },
-    'Done':        { bg: 'bg-emerald-50/60 border border-emerald-100', dot: 'bg-green-500', marker: 'bg-emerald-200' },
+    'Review': { bg: 'bg-amber-50/60 border border-amber-100', dot: 'bg-amber-500', marker: 'bg-amber-200' },
+    'Done': { bg: 'bg-emerald-50/60 border border-emerald-100', dot: 'bg-green-500', marker: 'bg-emerald-200' },
 };
 
 const BACKWARD_MOVES = {
-    'To Do':       new Set([]),
+    'To Do': new Set([]),
     'In Progress': new Set(['To Do']),
-    'Review':      new Set(['To Do', 'In Progress']),
-    'Done':        new Set(['To Do', 'In Progress', 'Review']),
+    'Review': new Set(['To Do', 'In Progress']),
+    'Done': new Set(['To Do', 'In Progress', 'Review']),
 };
 
 // Statuses considered "forward" (not rework)
@@ -67,8 +67,25 @@ export default function MyIssuesPage() {
     const [pendingMove, setPendingMove] = useState(null);
     // Track which issues have been penalized in the current backward cycle
     const [penalizedIssues, setPenalizedIssues] = useState(new Set());
+    const [selectedProjectId, setSelectedProjectId] = useState('all');
     const queryClient = useQueryClient();
     const { showToast } = useToast();
+
+    // Fetch my projects
+    const { data: projects = [] } = useQuery({
+        queryKey: ['projects', 'my'],
+        queryFn: async () => {
+            try {
+                const res = await apiClient.get(ENDPOINTS.PROJECTS.MY_PROJECTS);
+                return Array.isArray(res.data) ? res.data : (res.data?.content || []);
+            } catch { return []; }
+        },
+        staleTime: 2 * 60 * 1000,
+    });
+
+    const activeProjects = useMemo(() => {
+        return (projects || []).filter(p => p.status !== 'CANCELLED');
+    }, [projects]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -191,20 +208,41 @@ export default function MyIssuesPage() {
     const reportedUnique = useMemo(() =>
         [...new Map(reportedIssues.map(i => [i.issueId, i])).values()], [reportedIssues]);
 
+    const projectsFilteredIssues = useMemo(() => {
+        if (selectedProjectId && selectedProjectId !== 'all') {
+            return allIssues.filter(i => String(i.projectId) === String(selectedProjectId));
+        }
+        return allIssues;
+    }, [allIssues, selectedProjectId]);
+
+    const projectsFilteredAssigned = useMemo(() => {
+        if (selectedProjectId && selectedProjectId !== 'all') {
+            return assignedUnique.filter(i => String(i.projectId) === String(selectedProjectId));
+        }
+        return assignedUnique;
+    }, [assignedUnique, selectedProjectId]);
+
+    const projectsFilteredReported = useMemo(() => {
+        if (selectedProjectId && selectedProjectId !== 'all') {
+            return reportedUnique.filter(i => String(i.projectId) === String(selectedProjectId));
+        }
+        return reportedUnique;
+    }, [reportedUnique, selectedProjectId]);
+
     const stats = useMemo(() => ({
-        total: allIssues.length,
-        assigned: assignedUnique.length,
-        reported: reportedUnique.length,
-        overdue: allIssues.filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.statusName !== 'Done').length,
-    }), [allIssues, assignedUnique, reportedUnique]);
+        total: projectsFilteredIssues.length,
+        assigned: projectsFilteredAssigned.length,
+        reported: projectsFilteredReported.length,
+        overdue: projectsFilteredIssues.filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.statusName !== 'Done').length,
+    }), [projectsFilteredIssues, projectsFilteredAssigned, projectsFilteredReported]);
 
     const filteredIssues = useMemo(() => {
         let list;
         switch (viewMode) {
-            case 'assigned':  list = assignedUnique; break;
-            case 'reported':  list = reportedUnique; break;
-            case 'overdue':   list = allIssues.filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.statusName !== 'Done'); break;
-            default:          list = allIssues;
+            case 'assigned': list = projectsFilteredAssigned; break;
+            case 'reported': list = projectsFilteredReported; break;
+            case 'overdue': list = projectsFilteredIssues.filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.statusName !== 'Done'); break;
+            default: list = projectsFilteredIssues;
         }
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
@@ -215,7 +253,7 @@ export default function MyIssuesPage() {
             );
         }
         return list;
-    }, [viewMode, searchQuery, allIssues, assignedUnique, reportedUnique]);
+    }, [viewMode, searchQuery, projectsFilteredIssues, projectsFilteredAssigned, projectsFilteredReported]);
 
     const byStatus = useMemo(() =>
         STATUS_ORDER.reduce((acc, s) => { acc[s] = filteredIssues.filter(i => i.statusName === s); return acc; }, {}),
@@ -340,8 +378,27 @@ export default function MyIssuesPage() {
                         </button>
                     ))}
                 </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-500">{filteredIssues.length} task</span>
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-sm text-gray-500">{filteredIssues.length} công việc</span>
+
+                    {/* Project Filter */}
+                    <div className="relative">
+                        <select
+                            value={selectedProjectId}
+                            onChange={e => setSelectedProjectId(e.target.value)}
+                            className="pl-3 pr-8 py-2 text-sm rounded-lg border border-gray-250 focus:outline-none focus:border-gray-400 bg-white transition-all appearance-none cursor-pointer font-medium text-gray-600"
+                        >
+                            <option value="all">Tất cả dự án</option>
+                            {activeProjects.map(p => (
+                                <option key={p.projectId || p.id} value={p.projectId || p.id}>
+                                    {p.name}
+                                </option>
+                            ))}
+                        </select>
+                        <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]" />
+                    </div>
+
+                    {/* Search */}
                     <div className="relative">
                         <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
                         <input
@@ -768,7 +825,7 @@ function ReviewSlaChip({ issue }) {
     if (!ts || Number.isNaN(ts)) return null;
     const h = (Date.now() - ts) / (1000 * 60 * 60);
     if (h < 0) return null;
-    const label = h >= 24 ? `${Math.floor(h/24)}d` : `${Math.max(1,Math.floor(h))}h`;
+    const label = h >= 24 ? `${Math.floor(h / 24)}d` : `${Math.max(1, Math.floor(h))}h`;
     if (h >= 48) return <span className="inline-flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-triangle-exclamation text-[8px]" />Trễ SLA</span>;
     if (h >= 24) return <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-clock text-[8px]" />Sắp trễ</span>;
     return <span className="inline-flex items-center gap-1 text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded font-medium"><i className="fa-solid fa-check text-[8px]" />SLA OK</span>;
@@ -787,7 +844,7 @@ function getPriorityColor(priority) {
 function LoadingBoard() {
     return (
         <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-280px)]">
-            {[1,2,3,4].map(i => (
+            {[1, 2, 3, 4].map(i => (
                 <div key={i} className="flex-shrink-0 w-80 bg-gray-50 rounded-xl animate-pulse p-4">
                     <div className="h-8 bg-gray-200 rounded mb-4 w-2/3" />
                     <div className="space-y-3">
@@ -804,10 +861,10 @@ function LoadingBoard() {
 // ─── Empty State ─────────────────────────────────────────────────────────
 function EmptyState({ viewMode }) {
     const msgs = {
-        all:      { icon: 'fa-list-check', title: 'Không có task nào',          sub: 'Bạn chưa được giao hoặc tạo task nào.' },
-        assigned: { icon: 'fa-user-check', title: 'Không có task được giao',   sub: 'Không có task nào được giao cho bạn.' },
-        reported: { icon: 'fa-user-pen',  title: 'Chưa tạo task nào',          sub: 'Bạn chưa tạo task nào.' },
-        overdue:  { icon: 'fa-clock',     title: 'Tuyệt vời!',                sub: 'Không có task nào quá hạn.' },
+        all: { icon: 'fa-list-check', title: 'Không có task nào', sub: 'Bạn chưa được giao hoặc tạo task nào.' },
+        assigned: { icon: 'fa-user-check', title: 'Không có task được giao', sub: 'Không có task nào được giao cho bạn.' },
+        reported: { icon: 'fa-user-pen', title: 'Chưa tạo task nào', sub: 'Bạn chưa tạo task nào.' },
+        overdue: { icon: 'fa-clock', title: 'Tuyệt vời!', sub: 'Không có task nào quá hạn.' },
     };
     const m = msgs[viewMode] || msgs.all;
     return (

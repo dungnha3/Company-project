@@ -77,15 +77,15 @@ export default function MyWorkPage() {
     const todaysIssues = useMemo(() => {
         return myIssues
             .filter(issue => {
-                const status = (issue.status || '').toLowerCase();
+                const status = (issue.statusName || '').toLowerCase();
                 const isActive = status.includes('progress') || status.includes('review');
                 const isUpcoming = issue.dueDate && issue.dueDate.split('T')[0] >= TODAY_STR;
                 return isActive || isUpcoming;
             })
             .sort((a, b) => {
                 // In Progress first, then by dueDate
-                const aStatus = (a.status || '').toLowerCase();
-                const bStatus = (b.status || '').toLowerCase();
+                const aStatus = (a.statusName || '').toLowerCase();
+                const bStatus = (b.statusName || '').toLowerCase();
                 const aActive = aStatus.includes('progress') ? 0 : 1;
                 const bActive = bStatus.includes('progress') ? 0 : 1;
                 if (aActive !== bActive) return aActive - bActive;
@@ -156,7 +156,7 @@ export default function MyWorkPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricBox title="Đến hạn hôm nay" value={todayMetrics.dueToday} subtitle="tasks" icon="fa-clock" iconColor="text-gray-500" />
                 <MetricBox title="Đã hoàn thành" value={todayMetrics.doneToday} subtitle="hôm nay" icon="fa-check-circle" iconColor="text-gray-500" />
-                <MetricBox title="Tasks đang làm" value={myIssues.filter(i => (i.status || '').toLowerCase().includes('progress')).length} subtitle="tasks" icon="fa-spinner" iconColor="text-gray-500" />
+                <MetricBox title="Tasks đang làm" value={myIssues.filter(i => (i.statusName || '').toLowerCase().includes('progress')).length} subtitle="tasks" icon="fa-spinner" iconColor="text-gray-500" />
                 <MetricBox title="Giờ làm hôm nay" value={todayMetrics.hoursToday.toFixed(1)} subtitle="giờ" icon="fa-hourglass-half" iconColor="text-gray-500" />
             </div>
 
@@ -169,7 +169,7 @@ export default function MyWorkPage() {
                         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="font-medium text-gray-900 flex items-center gap-2">
                                 <i className="fa-solid fa-list-check text-gray-400" />
-                                Công việc đang thực hiện
+                                Công việc cần thực hiện
                             </h3>
                             <Link to="/app/me/issues" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Xem tất cả →
@@ -309,7 +309,7 @@ function IssueRow({ issue }) {
 
     const { isRunning, issueId: runningIssueId, elapsedSeconds } = useTimerStore();
     const isRunningThis = isRunning && String(runningIssueId) === String(issue.issueId);
-    
+
     let actual = Number(issue.loggedHours ?? issue.actualHours ?? 0);
     if (isRunningThis) {
         actual += elapsedSeconds / 3600;
@@ -391,6 +391,10 @@ function MyProjectsList() {
         staleTime: 2 * 60 * 1000,
     });
 
+    const activeProjects = useMemo(() => {
+        return (projects || []).filter(p => p.status !== 'CANCELLED');
+    }, [projects]);
+
     if (isLoading) {
         return (
             <div className="space-y-2">
@@ -401,7 +405,7 @@ function MyProjectsList() {
         );
     }
 
-    if (projects.length === 0) {
+    if (activeProjects.length === 0) {
         return (
             <div className="text-center py-4">
                 <i className="fa-solid fa-folder-open text-2xl text-gray-300 mb-2" />
@@ -412,7 +416,7 @@ function MyProjectsList() {
 
     return (
         <div className="space-y-2">
-            {projects.slice(0, 5).map(project => (
+            {activeProjects.slice(0, 5).map(project => (
                 <Link
                     key={project.projectId || project.id}
                     to={`/app/projects/${project.projectId || project.id}`}
@@ -430,9 +434,9 @@ function MyProjectsList() {
                     <i className="fa-solid fa-chevron-right text-[10px] text-gray-400" />
                 </Link>
             ))}
-            {projects.length > 5 && (
+            {activeProjects.length > 5 && (
                 <Link to="/app/projects" className="block text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium py-2">
-                    +{projects.length - 5} dự án khác
+                    +{activeProjects.length - 5} dự án khác
                 </Link>
             )}
         </div>

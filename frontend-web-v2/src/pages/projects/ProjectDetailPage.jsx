@@ -16,6 +16,14 @@ const ProjectStorageTab = lazy(() => import('./tabs/ProjectStorageTab'));
 
 const PageLoader = () => <div className="flex items-center justify-center h-64"><i className="fa-solid fa-spinner fa-spin text-2xl text-primary" /></div>;
 
+const STATUS_LABELS = {
+    ACTIVE: 'Đang hoạt động',
+    ON_HOLD: 'Tạm dừng',
+    OVERDUE: 'Quá hạn',
+    COMPLETED: 'Hoàn thành',
+    CANCELLED: 'Đã hủy',
+};
+
 export default function ProjectDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -123,7 +131,7 @@ export default function ProjectDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <i className="fa-solid fa-chart-pie text-gray-400" />
-                        <span>Trạng thái: <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{project.status}</span></span>
+                        <span>Trạng thái: <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{STATUS_LABELS[project.status] || project.status}</span></span>
                     </div>
                 </div>
             </div>

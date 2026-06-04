@@ -7,8 +7,6 @@ import { useAccessControl } from '@shared/hooks/useAccessControl';
 
 const STATUS_OPTIONS = [
     { value: 'ACTIVE', label: 'Đang hoạt động' },
-    { value: 'PLANNING', label: 'Lập kế hoạch' },
-    { value: 'IN_PROGRESS', label: 'Đang thực hiện' },
     { value: 'ON_HOLD', label: 'Tạm dừng' },
     { value: 'COMPLETED', label: 'Hoàn thành' },
     { value: 'CANCELLED', label: 'Đã hủy' },
@@ -21,7 +19,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
         description: '',
         startDate: '',
         endDate: '',
-        status: 'PLANNING',
+        status: 'ACTIVE',
         budget: '',
     });
     const [memberEmail, setMemberEmail] = useState('');
@@ -123,6 +121,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             description: form.description || null,
             startDate: form.startDate || null,
             endDate: form.endDate || null,
+            status: form.status,
             budget: form.budget ? parseFloat(form.budget) : null,
         };
         createMutation.mutate(payload);
@@ -135,7 +134,7 @@ export default function CreateProjectModal({ isOpen, onClose, onSuccess }) {
             description: '',
             startDate: '',
             endDate: '',
-            status: 'PLANNING',
+            status: 'ACTIVE',
             budget: '',
         });
         setMemberEmail('');

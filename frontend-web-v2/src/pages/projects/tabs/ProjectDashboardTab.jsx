@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@shared/api/client';
@@ -37,16 +37,6 @@ export default function ProjectDashboardTab({ projectId, project }) {
         staleTime: 60 * 1000,
     });
 
-    // Fetch project goals
-    const { data: goals = [] } = useQuery({
-        queryKey: ['project-goals', projectId],
-        queryFn: async () => {
-            const res = await apiClient.get(ENDPOINTS.PROJECTS.GOALS(projectId));
-            return res.data || [];
-        },
-        staleTime: 60 * 1000,
-    });
-
     // Fetch activities
     const { data: activities = [] } = useQuery({
         queryKey: ['project-activities', projectId],
@@ -74,13 +64,6 @@ export default function ProjectDashboardTab({ projectId, project }) {
         return sprints.find(s => s.status === 'ACTIVE') || sprints.find(s => s.status === 'PLANNING') || null;
     }, [sprints]);
 
-    // Goal progress
-    const goalProgress = useMemo(() => {
-        if (goals.length === 0) return { completed: 0, total: 0, pct: 0 };
-        const completed = goals.filter(g => g.isCompleted).length;
-        return { completed, total: goals.length, pct: Math.round((completed / goals.length) * 100) };
-    }, [goals]);
-
     // Issue stats from project data
     const issueStats = useMemo(() => {
         if (!stats) return { total: 0, done: 0, inProgress: 0 };
@@ -104,7 +87,7 @@ export default function ProjectDashboardTab({ projectId, project }) {
                 <div className="flex gap-3">
                     <span className="px-4 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-lg flex items-center gap-2">
                         <i className="fa-solid fa-list-check text-blue-500 text-xs" />
-                        Tổng Issues: <strong className="text-gray-900">{issueStats.total}</strong>
+                        Tổng công việc: <strong className="text-gray-900">{issueStats.total}</strong>
                     </span>
                     <span className="px-4 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-lg flex items-center gap-2">
                         <i className="fa-solid fa-users text-orange-500 text-xs" />
@@ -115,15 +98,15 @@ export default function ProjectDashboardTab({ projectId, project }) {
 
             {/* Quick Stats - Clean minimal cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricBox title="Tổng Issues" value={issueStats.total} subtitle="trong dự án" color="blue" icon="fa-list-check" />
+                <MetricBox title="Tổng công việc" value={issueStats.total} subtitle="trong dự án" color="blue" icon="fa-list-check" />
                 <MetricBox title="Hoàn thành" value={issueStats.done} subtitle={`${issueStats.total > 0 ? Math.round((issueStats.done / issueStats.total) * 100) : 0}% tiến độ`} color="green" icon="fa-check-circle" />
                 <MetricBox title="Đang làm" value={issueStats.inProgress} subtitle="issues" color="orange" icon="fa-spinner" />
                 <MetricBox title="Thành viên" value={members.length} subtitle="trong team" color="purple" icon="fa-users" />
             </div>
 
-            {/* Sprint + Team Overview */}
+            {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left: Sprint + Burndown */}
+                {/* Left: Sprint/Burndown & Recent Activity */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Active Sprint Card */}
                     {activeSprint ? (
@@ -181,16 +164,33 @@ export default function ProjectDashboardTab({ projectId, project }) {
                             </Link>
                         </div>
                     )}
+
+                    {/* Recent Activity */}
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+                        <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
+                            <i className="fa-solid fa-clock-rotate-left text-gray-400 text-sm" />
+                            Hoạt động gần đây
+                        </h3>
+                        {activities.length === 0 ? (
+                            <p className="text-sm text-gray-500 text-center py-4">Chưa có hoạt động nào</p>
+                        ) : (
+                            <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                                {activities.map(act => (
+                                    <ActivityRow key={act.activityId || act.id} act={act} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Right: Top Performers + Goals */}
+                {/* Right: Top Performers & Team Members */}
                 <div className="space-y-6">
                     {/* Top Performers */}
                     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
                             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                                 <i className="fa-solid fa-trophy text-amber-500 text-sm" />
-                                Top performers
+                                Xếp hạng Nhân viên xuất sắc
                             </h3>
                             <Link to={`/app/projects/${projectId}?tab=performance`} className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                                 Xem tất cả →
@@ -207,91 +207,121 @@ export default function ProjectDashboardTab({ projectId, project }) {
                         )}
                     </div>
 
-                    {/* Project Goals */}
+                    {/* Team Members */}
                     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
                             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                                <i className="fa-solid fa-bullseye text-emerald-500 text-sm" />
-                                Mục tiêu dự án
+                                <i className="fa-solid fa-users text-gray-400 text-sm" />
+                                Thành viên ({members.length})
                             </h3>
-                            <Link to={`/app/projects/${projectId}?tab=goals`} className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                                {goals.length > 0 ? 'Chi tiết →' : 'Thêm →'}
+                            <Link to={`/app/projects/${projectId}?tab=team`} className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                                Quản lý →
                             </Link>
                         </div>
-                        {goalProgress.total > 0 && (
-                            <div className="mb-3">
-                                <div className="flex justify-between mb-1">
-                                    <span className="text-[10px] font-medium text-gray-500">{goalProgress.completed}/{goalProgress.total} hoàn thành</span>
-                                    <span className="text-[10px] font-bold text-gray-900">{goalProgress.pct}%</span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${goalProgress.pct}%` }} />
-                                </div>
-                            </div>
-                        )}
-                        <div className="space-y-1 max-h-[160px] overflow-y-auto">
-                            {goals.length === 0 ? (
-                                <p className="text-sm text-gray-500 text-center py-2">Chưa có mục tiêu</p>
-                            ) : (
-                                goals.slice(0, 5).map(goal => (
-                                    <div key={goal.goalId} className="flex items-center gap-2 text-sm p-2 bg-gray-50 rounded-lg">
-                                        <i className={`fa-solid ${goal.isCompleted ? 'fa-check-circle text-emerald-500' : 'fa-circle text-gray-300'} text-xs`} />
-                                        <span className={`font-medium ${goal.isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                                            {goal.title}
-                                        </span>
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                            {members.map(member => (
+                                <div key={member.userId} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                    <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-semibold text-sm">
+                                        {(member.fullName || member.username || '?').charAt(0).toUpperCase()}
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Team Members + Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Team */}
-                <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                            <i className="fa-solid fa-users text-gray-400 text-sm" />
-                            Thành viên ({members.length})
-                        </h3>
-                        <Link to={`/app/projects/${projectId}?tab=team`} className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                            Quản lý →
-                        </Link>
-                    </div>
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                        {members.map(member => (
-                            <div key={member.userId} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-semibold text-sm">
-                                    {(member.fullName || member.username || '?').charAt(0).toUpperCase()}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{member.fullName || member.username}</p>
+                                        <p className="text-[10px] text-gray-500 truncate">{member.email || member.role}</p>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">{member.fullName || member.username}</p>
-                                    <p className="text-[10px] text-gray-500 truncate">{member.email || member.role}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
-                        <i className="fa-solid fa-clock-rotate-left text-gray-400 text-sm" />
-                        Hoạt động gần đây
-                    </h3>
-                    {activities.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-4">Chưa có hoạt động nào</p>
-                    ) : (
-                        <div className="space-y-2 max-h-[220px] overflow-y-auto">
-                            {activities.map(act => (
-                                <ActivityRow key={act.activityId || act.id} act={act} />
                             ))}
                         </div>
-                    )}
+                    </div>
+
+                    {/* Sprint Goals */}
+                    <SprintGoalsCard activeSprint={activeSprint} />
                 </div>
             </div>
+        </div>
+    );
+}
+
+function SprintGoalsCard({ activeSprint }) {
+    const goals = useMemo(() => {
+        if (!activeSprint?.goal) return [];
+        return activeSprint.goal
+            .split(/\n|;/)
+            .map(g => g.trim())
+            .filter(g => g.length > 0)
+            .map(g => g.replace(/^[-\d.*)\s]+/, '').trim())
+            .filter(g => g.length > 0);
+    }, [activeSprint?.goal]);
+
+    const [checkedItems, setCheckedItems] = useState({});
+
+    useEffect(() => {
+        if (!activeSprint?.sprintId) return;
+        const saved = localStorage.getItem(`sprint-goals-checked-${activeSprint.sprintId}`);
+        if (saved) {
+            try {
+                setCheckedItems(JSON.parse(saved));
+            } catch (e) {
+                setCheckedItems({});
+            }
+        } else {
+            setCheckedItems({});
+        }
+    }, [activeSprint?.sprintId]);
+
+    const toggleItem = (index) => {
+        const next = { ...checkedItems, [index]: !checkedItems[index] };
+        setCheckedItems(next);
+        if (activeSprint?.sprintId) {
+            localStorage.setItem(`sprint-goals-checked-${activeSprint.sprintId}`, JSON.stringify(next));
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <i className="fa-solid fa-bullseye text-indigo-500 text-sm" />
+                    Mục tiêu của Sprint
+                </h3>
+                {activeSprint && (
+                    <span className="text-[10px] font-medium bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
+                        {activeSprint.name}
+                    </span>
+                )}
+            </div>
+            {goals.length === 0 ? (
+                <div className="text-center py-6 text-gray-500 text-sm">
+                    <i className="fa-solid fa-circle-info text-gray-300 text-lg mb-1 block" />
+                    Chưa có mục tiêu cho Sprint này
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {goals.map((goal, idx) => {
+                        const isChecked = !!checkedItems[idx];
+                        return (
+                            <div
+                                key={idx}
+                                onClick={() => toggleItem(idx)}
+                                className={`flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-all border ${isChecked
+                                    ? 'bg-emerald-50/40 border-emerald-100/50 text-gray-400'
+                                    : 'bg-gray-50/50 border-gray-100 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <button className="mt-0.5 focus:outline-none flex-shrink-0">
+                                    {isChecked ? (
+                                        <i className="fa-solid fa-circle-check text-emerald-500 text-base" />
+                                    ) : (
+                                        <i className="fa-regular fa-circle text-gray-400 hover:text-indigo-500 text-base" />
+                                    )}
+                                </button>
+                                <span className={`text-sm font-medium ${isChecked ? 'line-through' : ''}`}>
+                                    {goal}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

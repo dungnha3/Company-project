@@ -123,8 +123,19 @@ export const calendarApi = {
  * Issue API Service
  */
 export const issueApi = {
-    getMyIssues: async () => {
-        const response = await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES);
+    getMyIssues: async (params = {}) => {
+        const response = await apiClient.get(ENDPOINTS.ISSUES.MY_ISSUES, { params });
         return response.data;
     },
 };
+
+/**
+ * Leave API Service
+ */
+export const leaveApi = {
+    getMyLeaves: async (params = {}) => {
+        const response = await apiClient.get(ENDPOINTS.LEAVE_REQUESTS.ME, { params });
+        return response.data;
+    }
+};
+
